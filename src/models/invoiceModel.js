@@ -13,9 +13,19 @@ const invoiceItemSchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
+
+        // inside invoiceSchema
         reminderSent: {
             type: Boolean,
-            default: false,
+            default: false, // for upcoming due-date reminders (paymentReminderService)
+        },
+        overdueNoticeSent: {
+            type: Boolean,
+            default: false, // for overdue reminders (overdueReminderService)
+        },
+        overdueCount: {
+            type: Number,
+            default: 0, // how many overdue emails were sent
         },
 
         hsnCode: {

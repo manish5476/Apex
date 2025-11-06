@@ -1,6 +1,13 @@
 // src/utils/cron.js
-// require("../jobs/emiCronJob"); // Add other cron jobs here later
-// src/utils/cron.js
-require("../jobs/emiCronJob"); // your EMI overdue job (you already created earlier)
-require("../jobs/notificationCronJob"); // newly added
-// require("../jobs/inventoryAlertCronJob");
+console.log("🕒 Initializing scheduled cron jobs...");
+
+// --- Existing jobs ---
+require("../jobs/emiCronJob"); // Handles EMI overdue checks
+require("../jobs/notificationCronJob"); // Sends system / email notifications
+require("../jobs/inventoryAlertCronJob"); // Low stock alert emails
+
+// --- New reminder jobs ---
+require("../jobs/paymentReminderCronJob"); // Sends reminders before due date
+require("../jobs/overdueReminderCronJob"); // Sends overdue notices after due date
+
+console.log("✅ All cron jobs initialized successfully!");
