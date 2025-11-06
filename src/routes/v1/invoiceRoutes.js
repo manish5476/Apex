@@ -1,6 +1,7 @@
-const express = require('express');
-const invoiceController = require('../../controllers/invoiceController');
-const authController = require('../../controllers/authController');
+const express = require("express");
+const invoiceController = require("../../controllers/invoiceController");
+const invoicePDFController = require("../../controllers/invoicePDFController"); // ✅ For PDF + email
+const authController = require("../../controllers/authController");
 
 const router = express.Router();
 
@@ -9,33 +10,121 @@ const router = express.Router();
  * ========================================================== */
 router.use(authController.protect);
 
-// Create and list invoices
+/**
+ * @route   POST /api/v1/invoices
+ * @desc    Create a new invoice
+ * @access  Super Admin / Admin only
+ *
+ * @route   GET /api/v1/invoices
+ * @desc    Get all invoices (paginated + filtered)
+ * @access  Authorized users
+ */
 router
-  .route('/')
+  .route("/")
   .post(
-    authController.restrictTo('superadmin', 'admin'),
-    invoiceController.createInvoice
+    authController.restrictTo("superadmin", "admin"),
+    invoiceController.createInvoice,
   )
   .get(invoiceController.getAllInvoices);
 
-// Get invoices by customer
+/**
+ * @route   GET /api/v1/invoices/customer/:customerId
+ * @desc    Get all invoices for a specific customer
+ * @access  Super Admin / Admin only
+ */
 router.get(
-  '/customer/:customerId',
-  authController.restrictTo('superadmin', 'admin'),
-  invoiceController.getInvoicesByCustomer
+  "/customer/:customerId",
+  authController.restrictTo("superadmin", "admin"),
+  invoiceController.getInvoicesByCustomer,
 );
 
-// Individual invoice routes
+/**
+ * @route   GET /api/v1/invoices/:id
+ * @desc    Get a single invoice
+ * @access  Authorized users
+ *
+ * @route   PATCH /api/v1/invoices/:id
+ * @desc    Update invoice (admin only)
+ * @access  Super Admin / Admin only
+ *
+ * @route   DELETE /api/v1/invoices/:id
+ * @desc    Delete invoice
+ * @access  Super Admin only
+ */
 router
-  .route('/:id')
+  .route("/:id")
   .get(invoiceController.getInvoice)
   .patch(
-    authController.restrictTo('superadmin', 'admin'),
-    invoiceController.updateInvoice
+    authController.restrictTo("superadmin", "admin"),
+    invoiceController.updateInvoice,
   )
   .delete(
-    authController.restrictTo('superadmin'),
-    invoiceController.deleteInvoice
+    authController.restrictTo("superadmin"),
+    invoiceController.deleteInvoice,
   );
 
+/* ==========================================================
+ *  PDF & EMAIL ROUTES
+ * ========================================================== */
+
+/**
+ * @route   GET /api/v1/invoices/:id/download
+ * @desc    Download invoice PDF
+ * @access  Authorized users
+ */
+router.get("/:id/download", invoicePDFController.downloadInvoicePDF);
+
+/**
+ * @route   POST /api/v1/invoices/:id/email
+ * @desc    Send invoice PDF to customer via email
+ * @access  Super Admin / Admin only
+ */
+router.post(
+  "/:id/email",
+  authController.restrictTo("superadmin", "admin"),
+  invoicePDFController.emailInvoice,
+);
+
 module.exports = router;
+
+// const express = require('express');
+// const invoiceController = require('../../controllers/invoiceController');
+// const authController = require('../../controllers/authController');
+
+// const router = express.Router();
+
+// /* ==========================================================
+//  *  PROTECTED ROUTES
+//  * ========================================================== */
+// router.use(authController.protect);
+
+// // Create and list invoices
+// router
+//   .route('/')
+//   .post(
+//     authController.restrictTo('superadmin', 'admin'),
+//     invoiceController.createInvoice
+//   )
+//   .get(invoiceController.getAllInvoices);
+
+// // Get invoices by customer
+// router.get(downloadInvoice ,
+//   '/customer/:customerId',
+//   authController.restrictTo('superadmin', 'admin'),
+//   invoiceController.getInvoicesByCustomer
+// );
+
+// // Individual invoice routes
+// router
+//   .route('/:id')
+//   .get(invoiceController.getInvoice)
+//   .patch(
+//     authController.restrictTo('superadmin', 'admin'),
+//     invoiceController.updateInvoice
+//   )
+//   .delete(
+//     authController.restrictTo('superadmin'),
+//     invoiceController.deleteInvoice
+//   );
+
+// module.exports = router;

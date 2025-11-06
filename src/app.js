@@ -1,5 +1,5 @@
 // src/app.js
-const qs = require('qs');
+const qs = require("qs");
 const express = require("express");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
@@ -12,24 +12,25 @@ const compression = require("compression");
 const winston = require("winston");
 const path = require("path");
 const fs = require("fs");
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./config/swaggerConfig'); // <-- 1. IMPORT
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./config/swaggerConfig"); // <-- 1. IMPORT
 
 // TODO: You MUST copy 'errorController.js' and 'appError.js'
 const globalErrorHandler = require("./middleware/errorController");
 const AppError = require("./utils/appError");
 
 // ------------------------------ controllers import ---------------------------
-const organizationRoutes = require('./routes/v1/organizationRoutes');
-const authRoutes = require('./routes/v1/authRoutes'); // <-- ADD THIS
-const branchRoutes = require('./routes/v1/branchRoutes'); // <-- ADD THIS
-const supplierRoutes = require('./routes/v1/supplierRoutes'); // <-- ADD THIS
-const productRoutes = require('./routes/v1/productRoutes'); // <-- ADD THIS
-const customerRoutes = require('./routes/v1/customerRoutes'); // <-- ADD THIS
+const organizationRoutes = require("./routes/v1/organizationRoutes");
+const authRoutes = require("./routes/v1/authRoutes");
+const branchRoutes = require("./routes/v1/branchRoutes");
+const supplierRoutes = require("./routes/v1/supplierRoutes");
+const productRoutes = require("./routes/v1/productRoutes");
+const customerRoutes = require("./routes/v1/customerRoutes");
+const userRoutes = require("./routes/userRoutes");
 const app = express();
 
-app.set('query parser', (str) => {
-  return qs.parse(str, { defaultCharset: 'utf-8' });
+app.set("query parser", (str) => {
+  return qs.parse(str, { defaultCharset: "utf-8" });
 });
 
 app.set("trust proxy", 1);
@@ -84,7 +85,7 @@ app.use(helmet());
 // CORS
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
+    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : "*",
     credentials: true,
   }),
 );
@@ -148,13 +149,15 @@ app.get("/health", (req, res) => {
     ts: new Date().toISOString(),
   });
 });
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.use('/api/v1/organization', organizationRoutes);
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/branches', branchRoutes);
-app.use('/api/v1/products', productRoutes); // <-- ADD THIS
-app.use('/api/v1/customers', customerRoutes); // <-- ADD THIS
-app.use('/api/v1/suppliers', supplierRoutes); // <-- ADD THIS
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use("/api/v1/organization", organizationRoutes);
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/branches", branchRoutes);
+app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/customers", customerRoutes);
+app.use("/api/v1/suppliers", supplierRoutes);
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/invoices/pdf", require("./routes/invoicePDFRoutes"));
 // --- 4) 404 + Global Error MW ---
 
 // **FIXED 404 HANDLER**
@@ -167,14 +170,6 @@ app.use((req, res, next) => {
 app.use(globalErrorHandler);
 
 module.exports = app;
-
-
-
-
-
-
-
-
 
 // // src/app.js
 // const express = require('express');

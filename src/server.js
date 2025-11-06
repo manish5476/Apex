@@ -1,5 +1,8 @@
 // src/server.js
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
+const {
+  startPaymentReminderCron,
+} = require("./src/services/paymentReminderService");
 
 // --- 1. ENVIRONMENT SETUP ---
 // This now correctly loads the .env file from *inside* the 'src' folder
@@ -7,10 +10,10 @@ require("dotenv").config({ path: `${__dirname}/.env` });
 
 // We load 'app' *after* dotenv is configured
 const app = require("./app");
-require('dotenv').config();
+require("dotenv").config();
 
 // TODO: Copy your 'scheduledTasks.js' file into the 'src' folder
-// const { startScheduledTasks } = require("./scheduledTasks"); 
+// const { startScheduledTasks } = require("./scheduledTasks");
 
 const PORT = process.env.PORT || 4000;
 const DB_URI = process.env.DATABASE;
@@ -34,9 +37,10 @@ let server;
 
 async function startServer() {
   await connectDB();
+  startPaymentReminderCron();
 
   server = app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT} [${process.env.NODE_ENV}]`);
+    console.log(`🚀 Server running on port ${PORT}[${process.env.NODE_ENV}]`);
     // startScheduledTasks(); // Uncomment when ready
   });
 }
@@ -77,22 +81,6 @@ process.on("SIGTERM", () => shutdown(0)); // Deployment stop
 
 // --- 6. BOOTSTRAP ---
 startServer();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // // src/server.js
 // const dotenv = require('dotenv');
