@@ -1,24 +1,6 @@
-// src/server.js
-/**
- * Shivam Electronics CRM Backend
- * Central server entry point
- */
-
 require("dotenv").config({ path: `${__dirname}/.env` }); // Load environment variables first
-
 const mongoose = require("mongoose");
 const app = require("./app"); // Import Express app
-
-// --- 1. IMPORT CRON / JOB SERVICES ---
-const {
-  startPaymentReminderCron,
-} = require("./src/services/paymentReminderService");
-const {
-  startOverdueReminderCron,
-} = require("./src/services/overdueReminderService");
-
-// Optional: If you use a unified cron loader
-// require("./src/utils/cron");
 
 // --- 2. ENVIRONMENT CONFIG ---
 const PORT = process.env.PORT || 4000;
@@ -49,20 +31,12 @@ let server;
 async function startServer() {
   try {
     await connectDB();
-
-    // Start Express Server
     server = app.listen(PORT, () => {
       console.log(
         `🚀 Server running on port ${PORT} [${process.env.NODE_ENV}]`,
       );
-
-      // --- Start all CRON Jobs ---
       console.log("🕒 Initializing background cron jobs...");
-      startPaymentReminderCron();
-      startOverdueReminderCron();
-
-      // Optional: central cron loader (auto-starts all jobs)
-      // require("./src/utils/cron");
+      require("../src/utils/cron");
 
       console.log("✅ All scheduled jobs initialized successfully!");
     });

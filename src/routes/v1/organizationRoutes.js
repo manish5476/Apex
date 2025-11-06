@@ -16,9 +16,7 @@ router.use(authController.protect);
 
 // Owner/admin manage own organization
 router
-  .route('/my-organization')
-  .get(organizationController.getMyOrganization)
-  .patch(
+  .route('/my-organization').get(organizationController.getMyOrganization).patch(
     authController.restrictTo('superadmin', 'admin'),
     organizationController.updateMyOrganization
   )

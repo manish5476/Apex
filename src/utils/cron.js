@@ -1,7 +1,6 @@
 // src/utils/cron.js
 console.log("🕒 Initializing scheduled cron jobs...");
 
-// --- Existing jobs ---
 require("../jobs/emiCronJob"); // Handles EMI overdue checks
 require("../jobs/notificationCronJob"); // Sends system / email notifications
 require("../jobs/inventoryAlertCronJob"); // Low stock alert emails

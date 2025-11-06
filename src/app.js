@@ -126,7 +126,13 @@ app.use((err, req, res, next) => {
 });
 
 // Sanitization & hardening
-app.use(mongoSanitize());
+app.use(
+  mongoSanitize({
+    replaceWith: '_', // replaces dangerous chars instead of trying to reassign req.query
+  })
+);
+
+// app.use(mongoSanitize());
 app.use(xss());
 app.use(hpp()); // Use default whitelist for now
 app.use(compression());
@@ -171,42 +177,3 @@ app.use((req, res, next) => {
 app.use(globalErrorHandler);
 
 module.exports = app;
-
-// // src/app.js
-// const express = require('express');
-// const cors = require('cors');
-
-// const app = express();
-
-// // Enable CORS
-// const corsOptions = {
-//   // Check if there's a CORS_ORIGIN, otherwise allow all for simple dev
-//   origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
-//   credentials: true,
-// };
-// app.use(cors(corsOptions));
-
-// // Body parser, reading data from body into req.body
-// app.use(express.json({ limit: '10kb' }));
-// app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-
-// // --- API ROUTES WILL GO HERE ---
-// // Example: app.use('/api/v1/users', userRouter);
-
-// // Simple test route
-// app.get('/', (req, res) => {
-//   res.status(200).json({
-//     status: 'success',
-//     message: `Welcome to the Apex CRM API (${process.env.NODE_ENV} environment)`,
-//   });
-// });
-
-// // Handle undefined routes
-// // Handle undefined routes
-// app.use((req, res, next) => {  res.status(404).json({
-//     status: 'fail',
-//     message: `Can't find ${req.originalUrl} on this server!`,
-//   });
-// });
-
-// module.exports = app;

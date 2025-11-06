@@ -13,7 +13,6 @@ const catchAsync = require('../utils/catchAsync');
 =========================================================== */
 exports.deleteOne = (Model) =>
   catchAsync(async (req, res, next) => {
-    // Check if model has isDeleted flag
     const hasSoftDelete = !!Model.schema.path('isDeleted');
 
     let doc;
