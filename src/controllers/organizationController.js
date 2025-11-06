@@ -31,7 +31,6 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
     mainBranchName,
     mainBranchAddress,
   } = req.body;
-
   if (!organizationName || !ownerName || !ownerEmail || !ownerPassword)
     return next(new AppError('Missing required organization or owner fields', 400));
 

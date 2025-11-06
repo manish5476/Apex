@@ -126,13 +126,7 @@ app.use((err, req, res, next) => {
 });
 
 // Sanitization & hardening
-app.use(
-  mongoSanitize({
-    replaceWith: '_', // replaces dangerous chars instead of trying to reassign req.query
-  })
-);
-
-// app.use(mongoSanitize());
+app.use(mongoSanitize());
 app.use(xss());
 app.use(hpp()); // Use default whitelist for now
 app.use(compression());
