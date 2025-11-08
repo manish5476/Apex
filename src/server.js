@@ -41,15 +41,7 @@ async function startServer() {
     server = http.createServer(app);
 
     // --- ⚡ Initialize Socket.IO ---
-    // io = new Server(server, {
-    //   cors: {
-    //     origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : "*",
-    //     credentials: true,
-    //   },
-    //   transports: ["websocket", "polling"],
-    // });
-
-    io = new Server(server, {
+     io = new Server(server, {
       cors: {
         origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : "*",
         methods: ["GET", "POST"],
