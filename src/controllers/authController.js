@@ -62,6 +62,13 @@ exports.signup = catchAsync(async (req, res, next) => {
   organization.approvalRequests.push(newUser._id);
   await organization.save();
 
+  // Suppose the user ID of the owner you want to notify is `org.owner`
+// req.io.to(org.owner.toString()).emit("newNotification", {
+//   title: "New Signup Request",
+//   message: `${newUser.name} has signed up and is waiting for approval.`,
+//   createdAt: new Date().toISOString(),
+// });
+
 // Inside your signup controller (after organization.save())
 await createNotification(
   organization._id,
