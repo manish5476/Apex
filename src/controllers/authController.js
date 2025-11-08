@@ -6,42 +6,136 @@ const Role = require('../models/roleModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const { signToken } = require('../utils/authUtils');
+const { createNotification } = require("../services/notificationService");
 
 /**
  * @desc    Employee signs up under an organization
  * @route   POST /api/v1/auth/signup
  * @access  Public
  */
+// const Organization = require('../models/organizationModel');
+// const User = require('../models/userModel');
+// const AppError = require('../utils/appError');
+// const catchAsync = require('../utils/catchAsync');
+const sendEmail = require('../utils/email'); // Optional - for admin notification
+
+/**
+ * @desc  Employee signup for existing organization
+ * @route POST /api/v1/auth/signup
+ * @access Public
+ */
 exports.signup = catchAsync(async (req, res, next) => {
   const { name, email, password, passwordConfirm, uniqueShopId } = req.body;
 
-  // 1. Find the organization using the uniqueShopId
-  const organization = await Organization.findOne({ uniqueShopId });
-  if (!organization) {
-    return next(new AppError('No organization found with this Shop ID.', 404));
+  // 1️⃣ Validate input
+  if (!name || !email || !password || !passwordConfirm || !uniqueShopId) {
+    return next(new AppError('All fields are required', 400));
   }
 
-  // 2. Create the new user with 'pending' status
+  if (password !== passwordConfirm) {
+    return next(new AppError('Passwords do not match', 400));
+  }
+
+  // 2️⃣ Check for existing user with same email
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return next(new AppError('Email already in use. Please login instead.', 400));
+  }
+
+  // 3️⃣ Find organization
+  const organization = await Organization.findOne({ uniqueShopId }).populate('owner', 'name email');
+  if (!organization) {
+    return next(new AppError('Invalid Shop ID — organization not found.', 404));
+  }
+
+  // 4️⃣ Create user with pending status
   const newUser = await User.create({
     name,
     email,
     password,
-    passwordConfirm, // Assuming you have a validator in the model
+    passwordConfirm,
     organizationId: organization._id,
-    status: 'pending', // IMPORTANT: User must be approved
-    // 'role' and 'branchId' will be set upon approval
+    status: 'pending', // Wait for admin approval
   });
 
-  // 3. Add user to the organization's approval queue
+  // 5️⃣ Add to approval queue
   organization.approvalRequests.push(newUser._id);
   await organization.save();
 
-  // 4. Send response
+// Inside your signup controller (after organization.save())
+await createNotification(
+  organization._id,
+  organization.owner,
+  "USER_SIGNUP",
+  "New Employee Signup Request",
+  `${name} (${email}) has requested to join your organization. Please review and approve.`,
+  req.io // Socket instance attached to request
+);
+
+  // 6️⃣ OPTIONAL: Notify the organization owner
+  if (organization.owner?.email) {
+    try {
+      await sendEmail({
+        email: organization.owner.email,
+        subject: 'New Employee Signup Request',
+        message: `Hello ${organization.owner.name},
+
+${name} (${email}) has requested to join your organization (${organization.name}).
+Please review and approve them in your dashboard.
+
+– Shivam Electronics CRM`,
+      });
+    } catch (err) {
+      console.warn('Failed to send signup notification email:', err.message);
+    }
+  }
+
+  // 7️⃣ Return response
   res.status(201).json({
     status: 'success',
     message: 'Signup successful! Your account is pending approval from the admin.',
+    data: {
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        status: newUser.status,
+      },
+    },
   });
 });
+
+
+// exports.signup = catchAsync(async (req, res, next) => {
+//   const { name, email, password, passwordConfirm, uniqueShopId } = req.body;
+
+//   // 1. Find the organization using the uniqueShopId
+//   const organization = await Organization.findOne({ uniqueShopId });
+//   if (!organization) {
+//     return next(new AppError('No organization found with this Shop ID.', 404));
+//   }
+
+//   // 2. Create the new user with 'pending' status
+//   const newUser = await User.create({
+//     name,
+//     email,
+//     password,
+//     passwordConfirm, // Assuming you have a validator in the model
+//     organizationId: organization._id,
+//     status: 'pending', // IMPORTANT: User must be approved
+//     // 'role' and 'branchId' will be set upon approval
+//   });
+
+//   // 3. Add user to the organization's approval queue
+//   organization.approvalRequests.push(newUser._id);
+//   await organization.save();
+
+//   // 4. Send response
+//   res.status(201).json({
+//     status: 'success',
+//     message: 'Signup successful! Your account is pending approval from the admin.',
+//   });
+// });
 
 /**
  * @desc    User (Owner, Admin, Employee) logs in

@@ -110,6 +110,33 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
   }
 });
 
+
+/* -------------------------------------------------------------
+ * Pending Member (Requires userId, roleId, branchId)
+------------------------------------------------------------- */
+exports.getPendingMembers = catchAsync(async (req, res, next) => {
+  const org = await Organization.findOne({
+    _id: req.user.organizationId,
+    owner: req.user.id,
+  }).populate({
+    path: 'approvalRequests',
+    select: 'name email createdAt',
+  });
+
+  if (!org) {
+    return next(new AppError('You are not authorized to view this data', 403));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    results: org.approvalRequests.length,
+    data: {
+      pendingMembers: org.approvalRequests,
+    },
+  });
+});
+
+
 /* -------------------------------------------------------------
  * Approve Member (Requires userId, roleId, branchId)
 ------------------------------------------------------------- */

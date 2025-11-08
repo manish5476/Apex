@@ -2,9 +2,32 @@
 const Invoice = require("../models/invoiceModel");
 const Product = require("../models/productModel");
 const Customer = require("../models/customerModel");
+const Notification = require("../models/notificationModel");
 const EMI = require("../models/emiModel");
 const sendEmail = require("../utils/email");
 const inventoryAlertService = require("./inventoryAlertService");
+
+
+
+
+
+
+exports.createNotification = async (organizationId, recipientId, type, title, message, io = null) => {
+  const notification = await Notification.create({
+    organizationId,
+    recipientId,
+    type,
+    title,
+    message,
+  });
+
+  // 🔔 If socket.io instance is provided, emit real-time event
+  if (io) {
+    io.to(recipientId.toString()).emit("newNotification", notification);
+  }
+
+  return notification;
+};
 
 /**
  * Send overdue invoice emails to organizations

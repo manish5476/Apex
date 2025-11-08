@@ -14,6 +14,14 @@ router.post('/create', organizationController.createOrganization);
  * ========================================================== */
 router.use(authController.protect);
 
+router.get(
+  '/pending-members',
+  authController.protect,
+  authController.restrictTo('superadmin', 'admin'),
+  organizationController.getPendingMembers
+);
+
+
 // Owner/admin manage own organization
 router
   .route('/my-organization').get(organizationController.getMyOrganization).patch(

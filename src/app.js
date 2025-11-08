@@ -28,6 +28,7 @@ const productRoutes = require("./routes/v1/productRoutes");
 const customerRoutes = require("./routes/v1/customerRoutes");
 const userRoutes = require("./routes/v1/userRoutes");
 const invoicePDFRoutes = require("./routes/v1/invoicePDFRoutes")
+// const notificationRoutes = require("./routes/v1/notificationRoutes")
 const app = express();
 
 app.set("query parser", (str) => {
@@ -159,6 +160,7 @@ app.use("/api/v1/customers", customerRoutes);
 app.use("/api/v1/suppliers", supplierRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/invoices/pdf", invoicePDFRoutes);
+// app.use("/api/v1/notification/", notificationRoutes);
 // --- 4) 404 + Global Error MW ---
 
 // **FIXED 404 HANDLER**

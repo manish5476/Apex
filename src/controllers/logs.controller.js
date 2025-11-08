@@ -6,8 +6,8 @@ const Payment = require('../models/paymentModel');
 const Review = require('../models/ReviewModel');
 const fs = require('fs').promises; // For async file operations
 const path = require('path');
-const catchAsync = require('../../Utils/catchAsyncModule');
-const AppError = require('../../Utils/appError');
+const catchAsync = require('../../utils/catchAsyncModule');
+const AppError = require('../../utils/appError');
 
 
 exports.getSystemLogs = catchAsync(async (req, res, next) => {
