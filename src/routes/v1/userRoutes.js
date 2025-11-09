@@ -14,10 +14,6 @@ const router = express.Router();
 router.use(authController.protect);
 
 router.get("/me", userController.getMyProfile);
-router.patch(
-  "/me/photo",
-  upload.single("photo"),
-  userController.uploadProfilePhoto,
-);
+router.patch("/me/photo", upload.single("photo"), userController.uploadProfilePhoto,);
 
 module.exports = router;

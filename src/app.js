@@ -28,9 +28,12 @@ const productRoutes = require("./routes/v1/productRoutes");
 const customerRoutes = require("./routes/v1/customerRoutes");
 const userRoutes = require("./routes/v1/userRoutes");
 const invoicePDFRoutes = require("./routes/v1/invoicePDFRoutes")
-// const notificationRoutes = require("./routes/v1/notificationRoutes")
-const app = express();
+const notificationRoutes = require("./routes/v1/notificationRoutes");
+const roleRoutes = require('./routes/v1/rolesRoutes');
+const noteRoutes = require('./routes/v1/noteRoutes');
+const masterListRoutes = require('./routes/v1/masterListRoutesjs');
 
+const app = express();
 app.set("query parser", (str) => {
   return qs.parse(str, { defaultCharset: "utf-8" });
 });
@@ -160,7 +163,11 @@ app.use("/api/v1/customers", customerRoutes);
 app.use("/api/v1/suppliers", supplierRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/invoices/pdf", invoicePDFRoutes);
-// app.use("/api/v1/notification/", notificationRoutes);
+app.use('/api/v1/notes', noteRoutes);
+app.use('/api/v1/roles', roleRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
+app.use('/api/v1/master-list', masterListRoutes);
+
 // --- 4) 404 + Global Error MW ---
 
 // **FIXED 404 HANDLER**

@@ -40,6 +40,7 @@ router.post(
   organizationController.approveMember
 );
 
+
 /* ==========================================================
  *  PLATFORM ADMIN ROUTES
  * ========================================================== */

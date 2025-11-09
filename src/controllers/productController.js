@@ -1,5 +1,7 @@
 const Product = require('../models/productModel');
 const factory = require('../utils/handlerFactory');
+const catchAsync = require("../utils/catchAsync");
+
 /**
  * @desc    Create a new product
  * @route   POST /api/v1/products
@@ -43,3 +45,18 @@ exports.deleteProduct = factory.deleteOne(Product);
  * @route   PATCH /api/v1/products/:id/restore
  */
 exports.restoreProduct = factory.restoreOne(Product);
+
+
+
+
+const { uploadMultipleImages } = require("../services/uploads");
+exports.uploadProductImages = catchAsync(async (req, res, next) => {
+  if (!req.files || !req.files.length)
+    return next(new AppError("Please upload product images", 400));
+  const buffers = req.files.map((f) => f.buffer);
+  const uploadResults = await uploadMultipleImages(buffers, "products");
+  res.status(200).json({
+    status: "success",
+    data: { uploaded: uploadResults },
+  });
+});

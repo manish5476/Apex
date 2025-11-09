@@ -1,11 +1,9 @@
 const express = require('express');
 const customerController = require('../../controllers/customerController');
 const authController = require('../../controllers/authController');
-
+const { upload } = require("../../middleware/uploadMiddleware");
 const router = express.Router();
-
 router.use(authController.protect);
-
 router
   .route('/')
   .get(
@@ -38,5 +36,11 @@ router
     authController.restrictTo('update_customers', 'superadmin'),
     customerController.restoreCustomer
   );
+
+router.post(
+  "/customers/:id/upload",
+  upload.single("image"),
+  customerController.uploadCustomerImage
+);
 
 module.exports = router;

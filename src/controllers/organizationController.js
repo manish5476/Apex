@@ -84,8 +84,15 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
     newUser.role = newRole._id;
 
     await Promise.all([newOrg.save({ session }), newUser.save({ session })]);
-
     await session.commitTransaction();
+    const orgId = newOrg._id;
+
+    // fetch branches and roles for the org
+    const [branches, roles] = await Promise.all([
+      // limit fields to only what's needed for UI
+      require('../models/branchModel').find({ organizationId: orgId, isActive: true }).select('_id name address isMainBranch').lean(),
+      require('../models/roleModel').find({ organizationId: orgId }).select('_id name permissions isSuperAdmin isDefault').lean()
+    ]);
 
     const token = signToken(newUser);
     newUser.password = undefined;
@@ -94,6 +101,8 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       status: 'success',
       message: 'Organization created successfully!',
       token,
+      allbranches: branches,
+      allroles: roles,
       data: { organization: newOrg, owner: newUser, branch: newBranch, role: newRole },
     });
   } catch (err) {

@@ -40,4 +40,6 @@ router
     productController.restoreProduct
   );
 
+  // uploadProductImages
+
 module.exports = router;

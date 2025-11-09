@@ -1,4 +1,4 @@
-// controllers/notificationController.js
+// src/controllers/notificationController.js
 const Notification = require('../models/notificationModel');
 const catchAsync = require('../utils/catchAsync');
 

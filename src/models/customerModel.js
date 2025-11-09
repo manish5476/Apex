@@ -32,7 +32,7 @@ const customerSchema = new mongoose.Schema({
     trim: true,
   },
   avatar: { // <-- ADDED
-    type: String, // URL to profile image
+    type: String, 
     trim: true,
   },
   contactPerson: {
@@ -126,6 +126,20 @@ customerSchema.virtual('displayName').get(function () {
   return this.type === 'business' && this.contactPerson
     ? `${this.name} (${this.contactPerson})`
     : this.name;
+});
+
+customerSchema.pre('save', function (next) {
+  // If gstNumber is an empty string, set it to null
+  if (this.isModified('gstNumber') && this.gstNumber === '') {
+    this.gstNumber = null;
+  }
+  
+  // You can do the same for panNumber if it has a similar index
+  if (this.isModified('panNumber') && this.panNumber === '') {
+    this.panNumber = null;
+  }
+  
+  next();
 });
 
 // --- Middleware: Normalize ---
