@@ -31,7 +31,7 @@ const invoicePDFRoutes = require("./routes/v1/invoicePDFRoutes")
 const notificationRoutes = require("./routes/v1/notificationRoutes");
 const roleRoutes = require('./routes/v1/rolesRoutes');
 const noteRoutes = require('./routes/v1/noteRoutes');
-const masterListRoutes = require('./routes/v1/masterListRoutesjs');
+const masterListRoutes = require('./routes/v1/masterListRoutes.js');
 
 const app = express();
 app.set("query parser", (str) => {
