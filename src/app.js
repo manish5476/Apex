@@ -26,9 +26,11 @@ const branchRoutes = require("./routes/v1/branchRoutes");
 const supplierRoutes = require("./routes/v1/supplierRoutes");
 const productRoutes = require("./routes/v1/productRoutes");
 const customerRoutes = require("./routes/v1/customerRoutes");
+const paymentRoutes = require("./routes/v1/paymentRoutes");
 const userRoutes = require("./routes/v1/userRoutes");
 const invoicePDFRoutes = require("./routes/v1/invoicePDFRoutes")
 const notificationRoutes = require("./routes/v1/notificationRoutes");
+const invoiceRoutes = require("./routes/v1/invoiceRoutes");
 const roleRoutes = require('./routes/v1/rolesRoutes');
 const noteRoutes = require('./routes/v1/noteRoutes');
 const masterListRoutes = require('./routes/v1/masterListRoutes.js');
@@ -159,16 +161,17 @@ app.use("/api/v1/organization", organizationRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/branches", branchRoutes);
 app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/customers", customerRoutes);
 app.use("/api/v1/suppliers", supplierRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/invoices", invoiceRoutes);
 app.use("/api/v1/invoices/pdf", invoicePDFRoutes);
 app.use('/api/v1/notes', noteRoutes);
 app.use('/api/v1/roles', roleRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use('/api/v1/master-list', masterListRoutes);
 
-// --- 4) 404 + Global Error MW ---
 
 // **FIXED 404 HANDLER**
 // This 'app.use' runs only if no other route is matched
