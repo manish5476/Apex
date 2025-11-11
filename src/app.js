@@ -38,10 +38,7 @@ const transactionRouter = require('./routes/v1/transactionRoutes.js');
 const partyTransactionRouter = require('./routes/v1/partyTransactionRoutes');
 const adminRouter = require('./routes/v1/adminRoutes');
 const statementsRouter = require('./routes/v1/statementsRoutes');
-<<<<<<< HEAD
 const accountRouter = require('./routes/v1/accountRoutes.js');
-=======
->>>>>>> e9b25ad40e0445fb45883f37de0e63f61403ca9c
 // const reconRouter = require('./routes/v1/reconciliationRoutes.js');
 
 const app = express();
