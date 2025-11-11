@@ -108,5 +108,5 @@ ledgerSchema.pre('save', function (next) {
     next();
 });
 
-const Ledger = mongoose.model('Ledger', ledgerSchema);
+const Ledger = mongoose.models.Ledger || mongoose.model('Ledger', ledgerSchema);
 module.exports = Ledger;
