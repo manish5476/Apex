@@ -38,6 +38,7 @@ const transactionRouter = require('./routes/v1/transactionRoutes.js');
 const partyTransactionRouter = require('./routes/v1/partyTransactionRoutes');
 const adminRouter = require('./routes/v1/adminRoutes');
 const statementsRouter = require('./routes/v1/statementsRoutes');
+const accountRouter = require('./routes/v1/accountRoutes.js');
 // const reconRouter = require('./routes/v1/reconciliationRoutes.js');
 
 const app = express();
