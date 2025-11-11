@@ -1,0 +1,19 @@
+// src/routes/adminRoutes.js
+const express = require('express');
+const router = express.Router();
+const adminController = require('../../controllers/adminController');
+const authController = require('../../controllers/authController');
+
+router.use(authController.protect);
+router.use(authController.restrictTo('admin','super-admin')); // optional: restrict to admin roles if you have this middleware
+
+// GET /api/v1/admin/summary?startDate=&endDate=&branchId=
+router.get('/summary', adminController.summary);
+
+// GET /api/v1/admin/monthly?months=12
+router.get('/monthly', adminController.monthlyTrends);
+
+// GET /api/v1/admin/outstanding?type=receivable|payable&limit=20
+router.get('/outstanding', adminController.outstanding);
+
+module.exports = router;

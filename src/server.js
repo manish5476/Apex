@@ -43,7 +43,6 @@ async function startServer() {
 
     // --- Create HTTP Server ---
     server = http.createServer(app);
-
     // --- Initialize Socket.IO ---
     io = new Server(server, {
       cors: {
@@ -55,16 +54,11 @@ async function startServer() {
       },
       transports: ["websocket", "polling"],
     });
-
     console.log("🧩 Socket.IO CORS origins:", process.env.CORS_ORIGIN);
-
-    // --- Attach io instance to app for access in controllers ---
     app.set("io", io);
-
     // --- Socket.IO Logic ---
     io.on("connection", (socket) => {
       console.log(`⚡ Client connected: ${socket.id}`);
-
       // Register user by ID
       socket.on("registerUser", (userId) => {
         if (!userId) return;
@@ -84,6 +78,8 @@ async function startServer() {
         }
       });
     });
+// //////////////////////////////////////////
+
 
     // =====================================================
     // 3️⃣ START EXPRESS APP

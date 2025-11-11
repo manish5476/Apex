@@ -5,13 +5,20 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "seed-coa": "node scripts/seedDefaultCoa.js",
+    "create-indexes": "node scripts/createIndexes.js",
+    "test": "jest --runInBand"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 30000
+  },
   "type": "commonjs",
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.8.0",
     "compression": "^1.8.1",
@@ -20,9 +27,12 @@
     "express": "^4.18.2",
     "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^8.2.1",
+    "fast-csv": "^5.0.5",
     "helmet": "^8.1.0",
     "hpp": "^0.2.3",
+    "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
+    "jwt-decode": "^4.0.0",
     "mongoose": "^8.19.3",
     "mongoose-slug-generator": "^1.0.4",
     "morgan": "^1.10.1",
@@ -32,8 +42,10 @@
     "number-to-words": "^1.2.4",
     "pdfkit": "^0.17.2",
     "qs": "^6.14.0",
+    "redis": "^5.9.0",
     "slugify": "^1.6.6",
     "socket.io": "^4.8.1",
+    "socket.io-redis": "^5.4.0",
     "streamifier": "^0.1.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
@@ -41,6 +53,11 @@
     "xss-clean": "^0.1.4"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "@types/jest": "^30.0.0",
+    "jest": "^30.2.0",
+    "mongodb-memory-server": "^10.3.0",
+    "nodemon": "^3.1.10",
+    "socket.io-client": "^4.8.1",
+    "supertest": "^7.1.4"
   }
 }

@@ -111,6 +111,16 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
 
     // --- STEP 5: Commit Transaction ---
     await session.commitTransaction();
+    // -------------------------------------------------------------------------
+    const orgId = req.user.organizationId;
+    const date = invoice.invoiceDate || invoice.createdAt || new Date();
+    const amt = Number(invoice.grandTotal || 0);
+
+    // -------------------------------------------------------------------------
+    await postJournalEntries(orgId, date, [
+      { accountCode: 'AR', debit: amt, description: `Invoice ${invoice.invoiceNumber}`, referenceType: 'invoice', referenceId: invoice._id },
+      { accountCode: 'SALES', credit: amt, description: `Invoice ${invoice.invoiceNumber}`, referenceType: 'invoice', referenceId: invoice._id }
+    ], { updateBalances: true });
 
     res.status(201).json({
       status: "success",
