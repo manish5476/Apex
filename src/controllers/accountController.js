@@ -2,7 +2,11 @@
 const Account = require('../models/accountModel');
 const asyncHandler = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const { listAccountsWithBalance, getAccountHierarchy } = require('../services/accountService');
+<<<<<<< HEAD
 const AccountEntry = require('../models/accountModel');
+=======
+// const Account = require('../models/accountModel');
+>>>>>>> e9b25ad40e0445fb45883f37de0e63f61403ca9c
 
 
 // src/controllers/accountingController.js
