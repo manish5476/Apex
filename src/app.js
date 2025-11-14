@@ -34,6 +34,12 @@ const invoiceRoutes = require("./routes/v1/invoiceRoutes");
 const roleRoutes = require('./routes/v1/rolesRoutes');
 const noteRoutes = require('./routes/v1/noteRoutes');
 const masterListRoutes = require('./routes/v1/masterListRoutes.js');
+const transactionRouter = require('./routes/v1/transactionRoutes.js');
+const partyTransactionRouter = require('./routes/v1/partyTransactionRoutes');
+const adminRouter = require('./routes/v1/adminRoutes');
+const statementsRouter = require('./routes/v1/statementsRoutes');
+const accountRouter = require('./routes/v1/accountRoutes.js');
+// const reconRouter = require('./routes/v1/reconciliationRoutes.js');
 
 const app = express();
 app.set("query parser", (str) => {
@@ -171,6 +177,12 @@ app.use('/api/v1/notes', noteRoutes);
 app.use('/api/v1/roles', roleRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use('/api/v1/master-list', masterListRoutes);
+app.use('/api/v1/transactions', transactionRouter);
+app.use('/api/v1', partyTransactionRouter); // GET /api/v1/customers/64a.../transactions // GET /api/v1/suppliers/64b.../transactions
+app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/statements', statementsRouter);
+app.use('/api/v1/accounts', accountRouter);
+// app.use('/api/v1/reconciliation', reconRouter)
 
 
 // **FIXED 404 HANDLER**
