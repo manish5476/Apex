@@ -39,6 +39,7 @@ const partyTransactionRouter = require('./routes/v1/partyTransactionRoutes');
 const adminRouter = require('./routes/v1/adminRoutes');
 const statementsRouter = require('./routes/v1/statementsRoutes');
 const accountRouter = require('./routes/v1/accountRoutes.js');
+const masterRoutes = require('./routes/v1/masterRoutes.js');
 // const reconRouter = require('./routes/v1/reconciliationRoutes.js');
 
 const app = express();
@@ -182,6 +183,7 @@ app.use('/api/v1', partyTransactionRouter); // GET /api/v1/customers/64a.../tran
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/statements', statementsRouter);
 app.use('/api/v1/accounts', accountRouter);
+app.use('/api/v1/master', masterRoutes);
 // app.use('/api/v1/reconciliation', reconRouter)
 
 
