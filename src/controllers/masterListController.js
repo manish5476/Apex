@@ -106,7 +106,7 @@ exports.getMasterList = catchAsync(async (req, res, next) => {
       customers,
       suppliers,
       products,
-      masters: groupedMasters, // now includes dynamic master data
+      masters: groupedMasters,
     },
   });
 });

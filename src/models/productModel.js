@@ -1,8 +1,5 @@
 const mongoose = require('mongoose');
-const slug = require('mongoose-slug-generator');
-
-// Initialize the plugin
-mongoose.plugin(slug);
+const { nanoid } = require('nanoid');
 
 // --- Subdocument for Branch-Specific Inventory ---
 const inventorySchema = new mongoose.Schema({
@@ -17,16 +14,25 @@ const inventorySchema = new mongoose.Schema({
         default: 0,
         min: 0,
     },
-    // You could add branch-specific reorder-levels here
     reorderLevel: {
         type: Number,
         default: 10,
     }
 });
 
+// --- Helper slugify function ---
+const slugify = (value) => {
+    return value
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+};
+
 // --- Main Product Schema ---
 const productSchema = new mongoose.Schema({
-    // --- Core Links ---
+
     organizationId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Organization',
@@ -34,104 +40,83 @@ const productSchema = new mongoose.Schema({
         index: true,
     },
     
-    // --- Basic Details ---
     name: {
         type: String,
         required: [true, 'Product name is required'],
         trim: true,
     },
-    slug: { 
-        type: String, 
-        slug: 'name', // Auto-generates from 'name'
-        unique: true, // Slug must be unique
-    },
-    description: {
+
+    slug: {
         type: String,
-        trim: true,
-    },
-    sku: { // Stock Keeping Unit
-        type: String,
-        trim: true,
-        uppercase: true,
-    },
-    
-    // --- Categorization ---
-    brand: {
-        type: String,
-        trim: true,
-    },
-    category: {
-        type: String,
-        trim: true,
+        unique: true,
         index: true,
     },
-    subCategory: {
+
+    description: { type: String, trim: true },
+
+    sku: { type: String, trim: true, uppercase: true },
+
+    brand: { type: String, trim: true },
+    category: { type: String, trim: true, index: true },
+    subCategory: { type: String, trim: true },
+
+    purchasePrice: { type: Number, default: 0 },
+    sellingPrice: { 
+        type: Number, 
+        required: [true, 'Selling price is required']
+    },
+    discountedPrice: { type: Number },
+    taxRate: { type: Number, default: 0 },
+    isTaxInclusive: { type: Boolean, default: false },
+
+    inventory: [inventorySchema],
+
+    images: [{
         type: String,
         trim: true,
-    },
-
-    // --- Pricing ---
-    purchasePrice: { // What the organization paid for it
-        type: Number,
-        default: 0,
-    },
-    sellingPrice: { // What the organization sells it for (MRP)
-        type: Number,
-        required: [true, 'Selling price is required'],
-    },
-    discountedPrice: { // Optional sale price
-        type: Number,
-    },
-    taxRate: { // e.g., 18 for 18% GST
-        type: Number,
-        default: 0,
-    },
-    isTaxInclusive: { // Is the sellingPrice inclusive of tax?
-        type: Boolean,
-        default: false,
-    },
-
-    // --- Inventory ---
-    inventory: [inventorySchema], // Tracks stock per branch
-    
-    // --- Media ---
-    images: [{
-        type: String, // Array of URLs
-        trim: true,
     }],
-    
-    // --- Supplier (Dealer) ---
-    defaultSupplierId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Supplier', // We will create this model next
-    },
 
-    // --- Meta ---
+    defaultSupplierId: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
+
     tags: [{ type: String, trim: true }],
-    isActive: { // Is this product available for sale?
-        type: Boolean,
-        default: true,
-    },
-    
+
+    isActive: { type: Boolean, default: true },
+
 }, { 
     timestamps: true,
-    toJSON: { virtuals: true }, // Ensure virtuals are included in JSON
-    toObject: { virtuals: true } // Ensure virtuals are included in objects
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
 
-// --- Virtual Field: Total Stock ---
-// Calculates the total stock by summing up all branch quantities
-productSchema.virtual('totalStock').get(function() {
-    if (this.inventory && this.inventory.length > 0) {
-        return this.inventory.reduce((acc, branch) => acc + branch.quantity, 0);
+// --- Virtual: Total Stock ---
+productSchema.virtual('totalStock').get(function () {
+    return this.inventory?.reduce((acc, b) => acc + b.quantity, 0) || 0;
+});
+
+// --- Pre-Save Slug Generator ---
+productSchema.pre("save", async function (next) {
+    if (!this.isModified("name")) return next();
+
+    const baseSlug = slugify(this.name);
+    let finalSlug = baseSlug;
+
+    const exists = await this.constructor.findOne({ slug: baseSlug });
+
+    if (exists) {
+        // Add unique random short id
+        finalSlug = `${baseSlug}-${nanoid(6)}`;
     }
-    return 0;
+
+    this.slug = finalSlug;
+    next();
 });
 
-// --- Compound Index ---
-// Ensures that a SKU is unique *within* an organization,
-// but two different organizations can have the same SKU.
-productSchema.index({ organizationId: 1, sku: 1 }, { unique: true, partialFilterExpression: { sku: { $type: "string" } } });
+// --- Unique SKU per organization ---
+productSchema.index(
+    { organizationId: 1, sku: 1 },
+    { unique: true, partialFilterExpression: { sku: { $type: "string" } } }
+);
 
-const Product = mongoose.model('Product', productSchema);
+const Product = mongoose.model("Product", productSchema);
 module.exports = Product;
+
