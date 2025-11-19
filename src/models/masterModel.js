@@ -42,6 +42,5 @@ const masterSchema = new mongoose.Schema(
 );
 
 masterSchema.index({ organizationId: 1, type: 1, name: 1 }, { unique: true });
-
 const Master = mongoose.model("Master", masterSchema);
 module.exports = Master;

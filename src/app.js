@@ -40,6 +40,7 @@ const adminRouter = require('./routes/v1/adminRoutes');
 const statementsRouter = require('./routes/v1/statementsRoutes');
 const accountRouter = require('./routes/v1/accountRoutes.js');
 const masterRoutes = require('./routes/v1/masterRoutes.js');
+const masterTypeRoutes = require('./routes/v1/masterTypeRoutes.js');
 // const reconRouter = require('./routes/v1/reconciliationRoutes.js');
 
 const app = express();
@@ -184,6 +185,7 @@ app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/statements', statementsRouter);
 app.use('/api/v1/accounts', accountRouter);
 app.use('/api/v1/master', masterRoutes);
+app.use('/api/v1/master-types', masterTypeRoutes);
 // app.use('/api/v1/reconciliation', reconRouter)
 
 

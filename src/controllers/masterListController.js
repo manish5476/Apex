@@ -77,7 +77,7 @@ exports.getMasterList = catchAsync(async (req, res, next) => {
       .lean(),
 
     Supplier.find({ organizationId: orgId, isActive: true })
-      .select("_id name")
+      .select("_id companyName")
       .lean(),
 
     Product.find({ organizationId: orgId, isActive: true })
@@ -96,7 +96,6 @@ exports.getMasterList = catchAsync(async (req, res, next) => {
     return acc;
   }, {});
 
-  // Bundle clean response
   res.status(200).json({
     status: "success",
     data: {

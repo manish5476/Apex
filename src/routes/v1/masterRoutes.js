@@ -15,5 +15,6 @@ router
   .route("/:id")
   .patch(authController.restrictTo("superadmin", "admin"), masterController.updateMaster)
   .delete(authController.restrictTo("superadmin", "admin"), masterController.deleteMaster);
+  router.post('/bulk', authController.protect, masterController.bulkCreateMasters);
 
 module.exports = router;

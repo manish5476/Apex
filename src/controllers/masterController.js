@@ -54,7 +54,6 @@ exports.updateMaster = catchAsync(async (req, res, next) => {
   );
 
   if (!updated) return next(new AppError("Master not found or not yours", 404));
-
   res.status(200).json({
     status: "success",
     data: { master: updated },
@@ -80,4 +79,54 @@ exports.deleteMaster = catchAsync(async (req, res, next) => {
     status: "success",
     message: "Master deactivated successfully",
   });
+});
+
+
+/**
+ * @desc Bulk add master items (category, brand, etc.)
+ * @route POST /api/v1/master/bulk
+ */
+exports.bulkCreateMasters = catchAsync(async (req, res, next) => {
+  const { items } = req.body;
+  if (!Array.isArray(items) || items.length === 0) {
+    return next(new AppError("Items must be a non-empty array", 400));
+  }
+  const formattedItems = items.map((item, index) => {
+    if (!item.type || !item.name) {
+      throw new AppError(`Missing required fields at index ${index}`, 400);
+    }
+    return {
+      organizationId: req.user.organizationId,
+      type: item.type.toLowerCase(),
+      name: item.name.trim(),
+      code: item.code || null,
+      description: item.description || null,
+      createdBy: req.user._id
+    };
+  });
+  try {
+    const inserted = await Master.insertMany(formattedItems, { ordered: false });
+    res.status(201).json({
+      status: "success",
+      insertedCount: inserted.length,
+      data: { masters: inserted },
+    });
+
+  } catch (error) {
+    if (error?.writeErrors) {
+      const successful = error.insertedDocs || [];
+      return res.status(207).json({
+        status: "partial_success",
+        insertedCount: successful.length,
+        failedCount: error.writeErrors.length,
+        failedItems: error.writeErrors.map(e => ({
+          index: e.err.index,
+          error: e.err.errmsg
+        })),
+        data: { masters: successful }
+      });
+    }
+
+    return next(error);
+  }
 });
