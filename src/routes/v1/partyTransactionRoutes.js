@@ -5,7 +5,6 @@ const partyTransactionController = require('../../controllers/partyTransactionCo
 const authController = require('../../controllers/authController');
 
 router.use(authController.protect);
-
 router.get('/customers/:id/transactions', partyTransactionController.getCustomerTransactions);
 router.get('/suppliers/:id/transactions', partyTransactionController.getSupplierTransactions);
 

@@ -1,3 +1,4 @@
+// src/controllers/authController.js
 const { promisify } = require("util");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -13,15 +14,77 @@ const { createNotification } = require("../services/notificationService");
 // ======================================================
 // 🧩 HELPER: Create and Send JWT
 // ======================================================
+// const createSendToken = (user, statusCode, res) => {
+//   const token = signToken(user);
+//   // sanitize user object before sending
+//   const safeUser = {
+//     id: user._id,
+//     name: user.name,
+//     email: user.email,
+//     role: user.role || null,
+//     status: user.status || null,
+//   };
+//   res.status(statusCode).json({
+//     status: "success",
+//     token,
+//     data: { user: safeUser },
+//   });
+// };
 const createSendToken = (user, statusCode, res) => {
-  const token = signToken(user);
-  user.password = undefined;
+
+  const accessToken = signAccessToken(user._id);
+  const refreshToken = signRefreshToken(user._id);
+
+  // Send refresh token in secure cookie
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  });
+
+  const safeUser = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role || null,
+    status: user.status || null,
+  };
+
   res.status(statusCode).json({
     status: "success",
-    token,
-    data: { user },
+    token: accessToken,
+    data: { user: safeUser },
   });
 };
+
+exports.refreshToken = catchAsync(async (req, res, next) => {
+  const refreshToken = req.cookies.refreshToken;
+
+  if (!refreshToken)
+    return next(new AppError("No refresh token provided", 401));
+
+  let decoded;
+  try {
+    decoded = await promisify(jwt.verify)(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+  } catch (err) {
+    return next(new AppError("Invalid refresh token", 401));
+  }
+
+  const user = await User.findById(decoded.id);
+  if (!user)
+    return next(new AppError("User does not exist anymore", 401));
+
+  const newAccessToken = signAccessToken(user._id);
+
+  res.status(200).json({
+    status: "success",
+    token: newAccessToken,
+  });
+});
 
 // ======================================================
 // 🧩 SIGNUP (Employee)
@@ -60,10 +123,11 @@ exports.signup = catchAsync(async (req, res, next) => {
   });
 
   // Add to approval queue
+  organization.approvalRequests = organization.approvalRequests || [];
   organization.approvalRequests.push(newUser._id);
   await organization.save();
 
-  // ✅ Emit live notification to owner
+  // Emit live notification to owner (if socket exists)
   const io = req.app.get("io");
   if (io && organization.owner?._id) {
     io.to(organization.owner._id.toString()).emit("newNotification", {
@@ -71,10 +135,9 @@ exports.signup = catchAsync(async (req, res, next) => {
       message: `${newUser.name} has signed up and is waiting for approval.`,
       createdAt: new Date().toISOString(),
     });
-    console.log(`📡 Notification emitted to ${organization.owner._id}`);
   }
 
-  // ✅ Create persistent notification
+  // Create persistent notification
   await createNotification(
     organization._id,
     organization.owner._id,
@@ -84,7 +147,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     io
   );
 
-  // ✅ Optional email alert
+  // Optional email alert to owner
   if (organization.owner?.email) {
     try {
       await sendEmail({
@@ -96,9 +159,9 @@ ${name} (${email}) has requested to join your organization (${organization.name}
 Please review and approve them in your dashboard.
 
 – Shivam Electronics CRM`,
-        section
       });
     } catch (err) {
+      // Log but don't fail signup because of email failure
       console.warn("⚠️ Failed to send signup notification email:", err.message);
     }
   }
@@ -149,7 +212,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   if (!currentUser)
     return next(new AppError("The user belonging to this token no longer exists.", 401));
 
-  if (currentUser.changedPasswordAfter(decoded.iat))
+  if (currentUser.changedPasswordAfter && currentUser.changedPasswordAfter(decoded.iat))
     return next(new AppError("User recently changed password! Please log in again.", 401));
 
   if (currentUser.status !== "approved")
@@ -165,17 +228,14 @@ exports.protect = catchAsync(async (req, res, next) => {
 // ======================================================
 exports.restrictTo = (...permissions) => {
   return (req, res, next) => {
-    if (!req.user)
-      return next(new AppError("You are not authorized.", 403));
+    if (!req.user) return next(new AppError("You are not authorized.", 403));
 
     const { role, permissions: userPermissions } = req.user;
 
-    if (permissions.includes("superadmin") && role?.isSuperAdmin)
-      return next();
+    if (permissions.includes("superadmin") && role?.isSuperAdmin) return next();
 
     const hasPermission = permissions.some((p) => userPermissions.includes(p));
-    if (!hasPermission)
-      return next(new AppError("You do not have permission to perform this action.", 403));
+    if (!hasPermission) return next(new AppError("You do not have permission to perform this action.", 403));
 
     next();
   };
@@ -186,16 +246,17 @@ exports.restrictTo = (...permissions) => {
 // ======================================================
 exports.forgotPassword = catchAsync(async (req, res, next) => {
   const { email } = req.body;
+  if (!email) return next(new AppError("Please provide an email address.", 400));
 
   const user = await User.findOne({ email });
-  if (!user)
-    return next(new AppError("There is no user with that email address.", 404));
+  if (!user) return next(new AppError("There is no user with that email address.", 404));
 
-  // Generate reset token
+  // Generate reset token via model helper
   const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
 
-  const resetURL = `${process.env.FRONTEND_URL}/auth/reset-password/${resetToken}`;
+  const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get("host")}`;
+  const resetURL = `${frontendUrl}/auth/reset-password/${resetToken}`;
   const message = `Forgot your password? Reset it here: ${resetURL}\nIf you didn't request this, ignore this email.`;
 
   try {
@@ -208,9 +269,9 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
     res.status(200).json({
       status: "success",
       message: "Password reset link sent to your email.",
-      CSS
     });
   } catch (err) {
+    // cleanup on fail
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     await user.save({ validateBeforeSave: false });
@@ -222,17 +283,14 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
 // 🧩 RESET PASSWORD
 // ======================================================
 exports.resetPassword = catchAsync(async (req, res, next) => {
-  const hashedToken = crypto
-    .createHash("sha256")
-    .update(req.params.token)
-    .digest("hex");
+  const hashedToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
   const user = await User.findOne({
     passwordResetToken: hashedToken,
     passwordResetExpires: { $gt: Date.now() },
   });
 
-  if (!user)
-    return next(new AppError("Token is invalid or expired.", 400))
+  if (!user) return next(new AppError("Token is invalid or expired.", 400));
+
   user.password = req.body.password;
   user.passwordConfirm = req.body.passwordConfirm;
   user.passwordResetToken = undefined;
@@ -248,6 +306,8 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 exports.updateMyPassword = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.user.id).select("+password");
 
+  if (!user) return next(new AppError("User not found.", 404));
+
   if (!(await user.correctPassword(req.body.currentPassword, user.password)))
     return next(new AppError("Your current password is incorrect.", 401));
 
@@ -257,6 +317,50 @@ exports.updateMyPassword = catchAsync(async (req, res, next) => {
 
   createSendToken(user, 200, res);
 });
+
+// ======================================================
+// 🧩 VERIFY TOKEN
+// ======================================================
+exports.verifyToken = catchAsync(async (req, res, next) => {
+  let token;
+  if (req.headers.authorization?.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
+  } else if (req.cookies?.jwt) {
+    token = req.cookies.jwt;
+  }
+
+  if (!token) return next(new AppError("No token provided", 401));
+
+  let decoded;
+  try {
+    decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  } catch (err) {
+    return next(new AppError("Invalid or expired token", 401));
+  }
+
+  const currentUser = await User.findById(decoded.id).populate("role");
+  if (!currentUser) return next(new AppError("User no longer exists", 401));
+
+  if (currentUser.changedPasswordAfter && currentUser.changedPasswordAfter(decoded.iat))
+    return next(new AppError("User recently changed password", 401));
+
+  if (currentUser.status !== "approved")
+    return next(new AppError("User account not active", 401));
+
+  return res.status(200).json({
+    status: "success",
+    data: {
+      user: {
+        id: currentUser._id,
+        name: currentUser.name,
+        email: currentUser.email,
+        role: currentUser.role?.name ?? null,
+        permissions: currentUser.role?.permissions ?? [],
+      },
+    },
+  });
+});
+
 
 // const { promisify } = require("util");
 // const jwt = require("jsonwebtoken");
@@ -276,7 +380,6 @@ exports.updateMyPassword = catchAsync(async (req, res, next) => {
 // const createSendToken = (user, statusCode, res) => {
 //   const token = signToken(user);
 //   user.password = undefined;
-
 //   res.status(statusCode).json({
 //     status: "success",
 //     token,
@@ -357,6 +460,7 @@ exports.updateMyPassword = catchAsync(async (req, res, next) => {
 // Please review and approve them in your dashboard.
 
 // – Shivam Electronics CRM`,
+//         section
 //       });
 //     } catch (err) {
 //       console.warn("⚠️ Failed to send signup notification email:", err.message);
@@ -423,7 +527,6 @@ exports.updateMyPassword = catchAsync(async (req, res, next) => {
 // // ======================================================
 // // 🧩 RESTRICT TO
 // // ======================================================
-
 // exports.restrictTo = (...permissions) => {
 //   return (req, res, next) => {
 //     if (!req.user)
@@ -445,7 +548,6 @@ exports.updateMyPassword = catchAsync(async (req, res, next) => {
 // // ======================================================
 // // 🧩 FORGOT PASSWORD
 // // ======================================================
-
 // exports.forgotPassword = catchAsync(async (req, res, next) => {
 //   const { email } = req.body;
 
@@ -470,6 +572,7 @@ exports.updateMyPassword = catchAsync(async (req, res, next) => {
 //     res.status(200).json({
 //       status: "success",
 //       message: "Password reset link sent to your email.",
+//       CSS
 //     });
 //   } catch (err) {
 //     user.passwordResetToken = undefined;
@@ -487,15 +590,13 @@ exports.updateMyPassword = catchAsync(async (req, res, next) => {
 //     .createHash("sha256")
 //     .update(req.params.token)
 //     .digest("hex");
-
 //   const user = await User.findOne({
 //     passwordResetToken: hashedToken,
 //     passwordResetExpires: { $gt: Date.now() },
 //   });
 
 //   if (!user)
-//     return next(new AppError("Token is invalid or expired.", 400));
-
+//     return next(new AppError("Token is invalid or expired.", 400))
 //   user.password = req.body.password;
 //   user.passwordConfirm = req.body.passwordConfirm;
 //   user.passwordResetToken = undefined;

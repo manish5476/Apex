@@ -18,28 +18,22 @@ router.post(
 router.route("/").get(paymentController.getAllPayments);
 
 // convenience listings
-router.get(
-  "/customer/:customerId",
+router.get("/customer/:customerId",
   authController.restrictTo("superadmin", "admin"),
   paymentController.getPaymentsByCustomer,
 );
-router.get(
-  "/supplier/:supplierId",
+router.get("/supplier/:supplierId",
   authController.restrictTo("superadmin", "admin"),
   paymentController.getPaymentsBySupplier,
 );
 
+router.get("/:id/receipt/download", paymentController.downloadReceipt);
+router.post("/:id/receipt/email", paymentController.emailReceipt);
+
 // individual payment operations
-router
-  .route("/:id")
+router.route("/:id")
   .get(paymentController.getPayment)
-  .patch(
-    authController.restrictTo("superadmin", "admin"),
-    paymentController.updatePayment,
-  )
-  .delete(
-    authController.restrictTo("superadmin"),
-    paymentController.deletePayment,
-  );
+  .patch(authController.restrictTo("superadmin", "admin"), paymentController.updatePayment,)
+  .delete(authController.restrictTo("superadmin"),paymentController.deletePayment,);
 
 module.exports = router;

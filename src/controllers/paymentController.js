@@ -9,6 +9,7 @@ const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const factory = require('../utils/handlerFactory');
 const emiService = require('../services/emiService'); // top of file
+const paymentPDFService = require("../services/paymentPDFService");
 
 /* ==========================================================
    Utility: Apply or Reverse Balances
@@ -273,7 +274,7 @@ exports.updatePayment = catchAsync(async (req, res, next) => {
    Simple CRUD (Factory)
 ========================================================== */
 exports.getAllPayments = factory.getAll(Payment);
-exports.getPayment = factory.getOne(Payment);
+exports.getPayment = factory.getOne(Payment,['customerId','organizationId','branchId']);
 exports.deletePayment = factory.deleteOne(Payment);
 
 /* ==========================================================
@@ -309,6 +310,21 @@ exports.getPaymentsBySupplier = catchAsync(async (req, res, next) => {
   });
 });
 
+
+
+exports.downloadReceipt = catchAsync(async (req, res, next) => {
+  const buffer = await paymentPDFService.downloadPaymentPDF(req.params.id, req.user.organizationId);
+  res.set({
+    "Content-Type": "application/pdf",
+    "Content-Disposition": `inline; filename=receipt_${req.params.id}.pdf`,
+  });
+  res.send(buffer);
+});
+
+exports.emailReceipt = catchAsync(async (req, res, next) => {
+  await paymentPDFService.emailPaymentSlip(req.params.id, req.user.organizationId);
+  res.status(200).json({ status: "success", message: "Receipt emailed successfully" });
+});
 
 
 // const mongoose = require('mongoose');
