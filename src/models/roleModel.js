@@ -4,24 +4,12 @@ const mongoose = require('mongoose');
 // We keep it in one place so it's easy to manage.
 const allPermissions = [
     // User Permissions
-    'read_users', 'create_users', 'update_users', 'delete_users',
-    
-    // Product Permissions
-    'read_products', 'create_products', 'update_products', 'delete_products',
-    
-    // Customer Permissions
-    'read_customers', 'create_customers', 'update_customers', 'delete_customers',
-    
-    // Invoice Permissions
-    'read_invoices', 'create_invoices', 'update_invoices', 'delete_invoices',
-    
-    // Purchase Permissions
-    'read_purchases', 'create_purchases',
-    
-    // Branch Permissions
-    'read_branches', 'create_branches', 'update_branches',
-    
-    // Role & Permission Management
+    'read_users', 'create_users', 'update_users', 'delete_users',    // Product Permissions
+    'read_products', 'create_products', 'update_products', 'delete_products',    // Customer Permissions
+    'read_customers', 'create_customers', 'update_customers', 'delete_customers',    // Invoice Permissions
+    'read_invoices', 'create_invoices', 'update_invoices', 'delete_invoices',    // Purchase Permissions
+    'read_purchases', 'create_purchases',    // Branch Permissions
+    'read_branches', 'create_branches', 'update_branches',    // Role & Permission Management
     'read_roles', 'create_roles', 'update_roles', 'delete_roles'
 ];
 

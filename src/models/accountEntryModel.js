@@ -1,14 +1,5 @@
 // src/models/accountEntryModel.js
 const mongoose = require('mongoose');
-
-/**
- * AccountEntryModel
- * -----------------
- * Represents a single journal line (debit or credit) that affects one account.
- * Every financial transaction (invoice, payment, purchase, adjustment, etc.)
- * creates one or more AccountEntry documents.
- */
-
 const accountEntrySchema = new mongoose.Schema(
   {
     organizationId: {

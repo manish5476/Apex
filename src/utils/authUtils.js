@@ -17,3 +17,16 @@ exports.signToken = (user) => {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 };
+
+
+exports.signAccessToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || "1h",
+  });
+};
+
+exports.signRefreshToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.REFRESH_TOKEN_SECRET, {
+    expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "30d",
+  });
+};

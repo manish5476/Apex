@@ -201,13 +201,34 @@ exports.approveMember = catchAsync(async (req, res, next) => {
 /* -------------------------------------------------------------
  * Self-service organization endpoints
 ------------------------------------------------------------- */
+// exports.getMyOrganization = catchAsync(async (req, res, next) => {
+//   req.params.id = req.user.organizationId;
+//   return factory.getOne(Organization, [
+//     { path: 'owner', select: 'name email' },
+//     { path: 'members', select: 'name email role' },
+//     { path: 'branches', select: 'name city state' },
+//   ])(req, res, next);
+// });
 exports.getMyOrganization = catchAsync(async (req, res, next) => {
-  req.params.id = req.user.organizationId;
-  return factory.getOne(Organization, [
-    { path: 'owner', select: 'name email' },
-    { path: 'members', select: 'name email role' },
-    { path: 'branches', select: 'name city state' },
-  ])(req, res, next);
+  // 1. Safety Check
+  if (!req.user.organizationId) {
+    return next(new AppError('This user is not linked to any organization.', 400));
+  }
+
+  // 2. Direct Query (Instead of factory.getOne)
+  const org = await Organization.findById(req.user.organizationId)
+    .populate({ path: 'owner', select: 'name email' })
+    .populate({ path: 'members', select: 'name email role status' }) // Ensure 'status' is selected
+    .populate({ path: 'branches', select: 'name city state' });
+
+  if (!org) {
+    return next(new AppError('Organization not found (ID mismatch).', 404));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: org // Note: factory returns { data: { data: org } }, this returns { data: org }
+  });
 });
 
 exports.updateMyOrganization = catchAsync(async (req, res, next) => {

@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const Invoice = require('../src/models/invoiceModel');
 const Purchase = require('../src/models/purchaseModel');
 const Payment = require('../src/models/paymentModel');
-const Ledger = require('../src/models/LedgerModel');
+const Ledger = require('../src/models/ledgerModel');
 const AccountEntry = require('../src/models/accountEntryModel');
 
 async function connect() {

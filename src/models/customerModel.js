@@ -78,7 +78,7 @@ const customerSchema = new mongoose.Schema({
     default: 0,
   },
   creditLimit: {
-    type: Number,
+    type:Number,
     default: 0,
   },
   paymentTerms: {
@@ -118,7 +118,12 @@ const customerSchema = new mongoose.Schema({
 
 // --- Indexes ---
 customerSchema.index({ organizationId: 1, phone: 1 }, { unique: true });
+
+// --- THIS IS THE FIX ---
+// The 'sparse: true' option ensures the index only applies to documents
+// that have a non-null value for 'gstNumber'.
 customerSchema.index({ organizationId: 1, gstNumber: 1 }, { unique: true, sparse: true }); // GST is unique or null
+
 customerSchema.index({ organizationId: 1, name: 1 });
 
 // --- Virtual: Display Name ---
@@ -128,6 +133,7 @@ customerSchema.virtual('displayName').get(function () {
     : this.name;
 });
 
+// This pre-save hook is correct and works with the sparse index
 customerSchema.pre('save', function (next) {
   // If gstNumber is an empty string, set it to null
   if (this.isModified('gstNumber') && this.gstNumber === '') {

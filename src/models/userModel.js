@@ -108,7 +108,6 @@ userSchema.methods.createPasswordResetToken = function () {
   return resetToken;
 };
 
-// --- Helper ---
 userSchema.methods.isAdmin = function () {
   return ['admin', 'superadmin'].includes(this.role);
 };

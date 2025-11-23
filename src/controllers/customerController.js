@@ -1,5 +1,11 @@
 const Customer = require('../models/customerModel');
 const factory = require('../utils/handlerFactory');
+
+
+const AppError = require("../utils/appError");
+const catchAsync = require("../utils/catchAsync");
+const imageUploadService = require("../services/uploads/imageUploadService");
+
 exports.createCustomer = factory.createOne(Customer);
 exports.getAllCustomers = factory.getAll(Customer);
 exports.getCustomer = factory.getOne(Customer);
@@ -7,22 +13,101 @@ exports.updateCustomer = factory.updateOne(Customer);
 exports.deleteCustomer = factory.deleteOne(Customer);
 exports.restoreCustomer = factory.restoreOne(Customer);
 
-// src/controllers/customerController.js
-const { uploadImage } = require("../services/uploads");
-const catchAsync = require("../utils/catchAsync");
+// ======================================================
+// SEARCH CUSTOMERS
+// GET /customers/search?q=term
+// ======================================================
+exports.searchCustomers = catchAsync(async (req, res, next) => {
+  const q = req.query.q || "";
+  const orgId = req.user.organizationId;
 
-exports.uploadCustomerImage = catchAsync(async (req, res, next) => {
-  if (!req.file) return next(new AppError("Please upload an image", 400));
-
-  const imageData = await uploadImage(req.file.buffer, "customers");
-  const updatedCustomer = await Customer.findByIdAndUpdate(
-    req.params.id,
-    { avatar: imageData.url },
-    { new: true }
-  );
+  const customers = await Customer.find({
+    organizationId: orgId,
+    $or: [
+      { name: { $regex: q, $options: "i" } },
+      { phone: { $regex: q, $options: "i" } },
+      { gstNumber: { $regex: q, $options: "i" } },
+    ],
+  }).limit(20);
 
   res.status(200).json({
     status: "success",
-    data: { customer: updatedCustomer },
+    results: customers.length,
+    data: { customers },
   });
 });
+
+// ======================================================
+// BULK UPDATE
+// POST /customers/bulk-update
+// Body: [{ _id, updateFields }, ...]
+// ======================================================
+exports.bulkUpdateCustomers = catchAsync(async (req, res, next) => {
+  const updates = req.body;
+  if (!Array.isArray(updates) || updates.length === 0) {return next(new AppError("Provide an array of customer updates.", 400));}
+  const orgId = req.user.organizationId;
+  const operations = updates.map((c) => ({
+    updateOne: {
+      filter: { _id: c._id, organizationId: orgId },
+      update: { $set: c.update },
+    },
+  }));
+  await Customer.bulkWrite(operations);
+  res.status(200).json({
+    status: "success",
+    message: "Bulk update complete",
+  });
+});
+
+// ======================================================
+// FIX: CUSTOMER PHOTO UPLOAD
+// /customers/:id/upload
+// ======================================================
+exports.uploadCustomerPhoto = catchAsync(async (req, res, next) => {
+  const customerId = req.params.id;
+
+  if (!req.file || !req.file.buffer) {
+    return next(new AppError("Please upload an image file.", 400));
+  }
+
+  const folder = `customers/${req.user.organizationId}`;
+
+  // 1. This returns an Object (url, public_id, bytes, etc.)
+  const uploadResult = await imageUploadService.uploadImage(req.file.buffer, folder);
+
+  // 2. We must extract ONLY the '.url' string from that object
+  const customer = await Customer.findOneAndUpdate(
+    { _id: customerId, organizationId: req.user.organizationId },
+    { avatar: uploadResult.url }, // <--- FIX: Access .url property here
+    { new: true }
+  );
+
+  if (!customer) return next(new AppError("Customer not found.", 404));
+
+  res.status(200).json({
+    status: "success",
+    message: "Customer photo updated successfully",
+    data: { customer },
+  });
+});
+
+
+// // src/controllers/customerController.js
+// const { uploadImage } = require("../services/uploads");
+// const catchAsync = require("../utils/catchAsync");
+
+// exports.uploadCustomerImage = catchAsync(async (req, res, next) => {
+//   if (!req.file) return next(new AppError("Please upload an image", 400));
+
+//   const imageData = await uploadImage(req.file.buffer, "customers");
+//   const updatedCustomer = await Customer.findByIdAndUpdate(
+//     req.params.id,
+//     { avatar: imageData.url },
+//     { new: true }
+//   );
+
+//   res.status(200).json({
+//     status: "success",
+//     data: { customer: updatedCustomer },
+//   });
+// });
