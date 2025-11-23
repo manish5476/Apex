@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const Invoice = require('../models/invoiceModel');
 const Purchase = require('../models/purchaseModel');
 const Payment = require('../models/paymentModel');
-const Ledger = require('../models/LedgerModel');
+const Ledger = require('../models/ledgerModel');
 
 /**
  * Important domain notes:

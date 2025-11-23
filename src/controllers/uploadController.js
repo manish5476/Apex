@@ -10,7 +10,7 @@ exports.uploadImageHandler = catchAsync(async (req, res, next) => {
     // The 'uploads' string is the folder name in Cloudinary
     const imageUrl = await uploadImage(req.file.buffer, 'uploads');
     res.status(201).json({
-        status: 'success',
+        status: 'success',  
         message: 'Image uploaded successfully',
         data: {
             imageUrl: imageUrl,

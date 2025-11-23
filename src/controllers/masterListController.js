@@ -4,7 +4,7 @@ const Customer = require("../models/customerModel");
 const Supplier = require("../models/supplierModel");
 const Product = require("../models/productModel");
 const Master = require("../models/masterModel");
-const Account = require("../models/accountModel");       // Added
+// const Account = require("../models/accountModel");       // Added
 const User = require("../models/userModel");             // Added
 const Invoice = require("../models/invoiceModel");       // Added
 const Purchase = require("../models/purchaseModel");     // Added
@@ -32,7 +32,7 @@ exports.getMasterList = catchAsync(async (req, res, next) => {
     suppliers,
     products,
     masters,
-    accounts,
+    // accounts,
     users,
     invoices,
     purchases,
@@ -59,7 +59,7 @@ exports.getMasterList = catchAsync(async (req, res, next) => {
     Master.find({ organizationId: orgId, isActive: true }).select("_id type name code").lean(),
 
     // 7. Accounts (Chart of Accounts)
-    Account.find({ organizationId: orgId }).select("_id name code type balance").lean(),
+    // Account.find({ organizationId: orgId }).select("_id name code type balance").lean(),
 
     // 8. Users (Employees/Salespersons) - Exclude passwords
     User.find({ organizationId: orgId, isActive: true }).select("_id name email role").lean(),
@@ -96,7 +96,7 @@ exports.getMasterList = catchAsync(async (req, res, next) => {
       customers,
       suppliers,
       products,
-      accounts,
+      // accounts,
       users,
       masters: groupedMasters,
       // Transactional summaries (optional, remove if payload is too heavy)
@@ -273,210 +273,3 @@ exports.getSpecificList = catchAsync(async (req, res, next) => {
     data,
   });
 });
-
-// /**
-//  * 2. DYNAMIC SPECIFIC LIST CONTROLLER
-//  * Use this to fetch just one model type on demand.
-//  * Usage: GET /api/v1/masters/specific?type=product
-//  */
-// exports.getSpecificList = catchAsync(async (req, res, next) => {
-//   const orgId = req.user.organizationId;
-//   const { type } = req.query; // e.g., ?type=customer
-
-//   if (!type) {
-//     return next(new AppError("Please provide a 'type' query parameter (e.g., ?type=product)", 400));
-//   }
-
-//   let data = [];
-//   let Model = null;
-//   let selectFields = "";
-//   let query = { organizationId: orgId };
-//   switch (type.toLowerCase()) {
-//     case "branch":
-//       Model = Branch;
-//       selectFields = "_id name branchCode address";
-//       query.isActive = true;
-//       break;
-//     case "role":
-//       Model = Role;
-//       selectFields = "_id name permissions";
-//       break;
-//     case "customer":
-//       Model = Customer;
-//       selectFields = "_id name phone email outstandingBalance";
-//       query.isActive = true;
-//       break;
-//     case "supplier":
-//       Model = Supplier;
-//       selectFields = "_id companyName contactPerson phone outstandingBalance";
-//       query.isActive = true;
-//       break;
-//     case "product":
-//       Model = Product;
-//       selectFields = "_id name sku sellingPrice stock";
-//       query.isActive = true;
-//       break;
-//     case "account":
-//       Model = Account;
-//       selectFields = "_id name code type parent balance";
-//       break;
-//     case "user":
-//       Model = User;
-//       selectFields = "_id name email role phone status";
-//       query.isActive = true;
-//       break;
-//     case "invoice":
-//       Model = Invoice;
-//       selectFields = "_id invoiceNumber invoiceDate grandTotal paymentStatus";
-//       break;
-//     case "purchase":
-//       Model = Purchase;
-//       selectFields = "_id invoiceNumber purchaseDate grandTotal supplierId";
-//       break;
-//     case "sales":
-//       Model = Sales;
-//       selectFields = "_id invoiceNumber saleDate grandTotal customerId";
-//       break;
-//     case "payment":
-//       Model = Payment;
-//       selectFields = "_id referenceNumber paymentDate amount type";
-//       break;
-//     case "ledger":
-//       Model = Ledger;
-//       selectFields = "_id entryDate type amount description";
-//       break;
-//     case "emi":
-//       Model = EMI;
-//       selectFields = "_id totalAmount balanceAmount status";
-//       break;
-//     case "master":
-//       Model = Master;
-//       selectFields = "_id type name code";
-//       query.isActive = true;
-//       break;
-//     default:
-//       return next(new AppError(`Invalid type requested: ${type}`, 400));
-//   }
-
-//   // Execute Query
-//   data = await Model.find(query).select(selectFields).sort({ createdAt: -1 }).lean();
-//   res.status(200).json({
-//     status: "success",
-//     results: data.length,
-//     type: type,
-//     data,
-//   });
-// });
-
-
-// const Branch = require("../models/branchModel");
-// const Role = require("../models/roleModel");
-// const Customer = require("../models/customerModel");
-// const Supplier = require("../models/supplierModel");
-// const Product = require("../models/productModel");
-// const Master = require("../models/masterModel"); // <-- new
-// const catchAsync = require("../utils/catchAsync");
-// const AppError = require("../utils/appError");
-
-// exports.getMasterList = catchAsync(async (req, res, next) => {
-//   const orgId = req.user.organizationId;
-//   if (!orgId) return next(new AppError("Organization not found for current user.", 400));
-
-//   // Fetch all in parallel for efficiency
-//   const [branches, roles, customers, suppliers, products, masters] = await Promise.all([
-//     Branch.find({ organizationId: orgId, isActive: true })
-//       .select("_id name")
-//       .lean(),
-
-//     Role.find({ organizationId: orgId })
-//       .select("_id name")
-//       .lean(),
-
-//     Customer.find({ organizationId: orgId, isActive: true })
-//       .select("_id name")
-//       .lean(),
-
-//     Supplier.find({ organizationId: orgId, isActive: true })
-//       .select("_id companyName")
-//       .lean(),
-
-//     Product.find({ organizationId: orgId, isActive: true })
-//       .select("_id name")
-//       .lean(),
-
-//     Master.find({ organizationId: orgId, isActive: true })
-//       .select("_id type name code")
-//       .lean(),
-//   ]);
-
-//   const groupedMasters = masters.reduce((acc, item) => {
-//     if (!acc[item.type]) acc[item.type] = [];
-//     acc[item.type].push({ _id: item._id, name: item.name, code: item.code });
-//     return acc;
-//   }, {});
-//   res.status(200).json({
-//     status: "success",
-//     data: {
-//       organizationId: orgId,
-//       branches,
-//       roles,
-//       customers,
-//       suppliers,
-//       products,
-//       masters: groupedMasters,
-//     },
-//   });
-// });
-
-
-// // // src/controllers/masterListController.js
-// // const Branch = require('../models/branchModel');
-// // const Role = require('../models/roleModel');
-// // const Customer = require('../models/customerModel');
-// // const Supplier = require('../models/supplierModel');
-// // const Product = require('../models/productModel');
-// // const catchAsync = require('../utils/catchAsync');
-// // const AppError = require('../utils/appError');
-
-// // exports.getMasterList = catchAsync(async (req, res, next) => {
-// //   const orgId = req.user.organizationId;
-// //   if (!orgId) return next(new AppError('Organization not found for current user.', 400));
-
-// //   // Fetch all reference data concurrently
-// //   const [branches, roles, customers, suppliers, products] = await Promise.all([
-// //     Branch.find({ organizationId: orgId, isActive: true })
-// //       .select('_id name')
-// //       .lean(),
-
-// //     Role.find({ organizationId: orgId })
-// //       .select('_id name')
-// //       .lean(),
-
-// //     Customer.find({ organizationId: orgId, isActive: true })
-// //       .select('_id name')
-// //       .lean(),
-
-// //     Supplier.find({ organizationId: orgId, isActive: true })
-// //       .select('_id name')
-// //       .lean(),
-
-// //     Product.find({ organizationId: orgId, isActive: true })
-// //       .select('_id name')
-// //       .lean(),
-// //   ]);
-
-// //   // Bundle it cleanly
-// //   res.status(200).json({
-// //     status: 'success',
-// //     data: {
-// //       organizationId: orgId,
-// //       branches,
-// //       roles,
-// //       customers,
-// //       suppliers,
-// //       products,
-// //     },
-// //   });
-// // });
-
-// // src/controllers/masterListController.js

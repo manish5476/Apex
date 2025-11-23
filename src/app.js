@@ -21,6 +21,7 @@ const AppError = require("./utils/appError");
 
 // ------------------------------ controllers import ---------------------------
 const organizationRoutes = require("./routes/v1/organizationRoutes");
+const neworganization = require("./routes/v1/organizationExtrasRoutes.js");
 const authRoutes = require("./routes/v1/authRoutes");
 const branchRoutes = require("./routes/v1/branchRoutes");
 const supplierRoutes = require("./routes/v1/supplierRoutes");
@@ -42,6 +43,7 @@ const accountRouter = require('./routes/v1/accountRoutes.js');
 const masterRoutes = require('./routes/v1/masterRoutes.js');
 const masterTypeRoutes = require('./routes/v1/masterTypeRoutes.js');
 const ledgersRoutes = require('./routes/v1/ledgerRoutes.js');
+const dashboard = require('./routes/v1/dashboardRoutes');
 // const reconRouter = require('./routes/v1/reconciliationRoutes.js');
 
 const app = express();
@@ -167,6 +169,7 @@ app.get("/health", (req, res) => {
 });
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/v1/organization", organizationRoutes);
+app.use("/api/v1/neworganization", neworganization);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/branches", branchRoutes);
 app.use("/api/v1/products", productRoutes);
@@ -184,10 +187,11 @@ app.use('/api/v1/transactions', transactionRouter);
 app.use('/api/v1/partytransactions', partyTransactionRouter); // GET /api/v1/customers/64a.../transactions // GET /api/v1/suppliers/64b.../transactions
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/statements', statementsRouter);
-app.use('/api/v1/accounts', accountRouter);
+// app.use('/api/v1/accounts', accountRouter);
 app.use('/api/v1/master', masterRoutes);
 app.use('/api/v1/master-types', masterTypeRoutes);
 app.use('/api/v1/ledgers', ledgersRoutes)
+app.use('/api/v1/dashboard', dashboard)
 
 
 // **FIXED 404 HANDLER**

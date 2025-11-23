@@ -7,7 +7,7 @@ let server;
 const Invoice = require('../src/models/invoiceModel');
 const Purchase = require('../src/models/purchaseModel');
 const Payment = require('../src/models/paymentModel');
-const Ledger = require('../src/models/LedgerModel');
+const Ledger = require('../src/models/ledgerModel');
 
 describe('Statements API', () => {
   let mongod;

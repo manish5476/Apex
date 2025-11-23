@@ -2,8 +2,7 @@ const User = require("../models/userModel");
 const Organization = require("../models/organizationModel");
 const AppError = require("../utils/appError");
 const catchAsync = require("../utils/catchAsync");
-const { logActivity } = require("../services/activityLogService");
-
+const ActivityLog = require('../models/activityLogModel'); // <--- CRITICAL FIX
 
 // ======================================================
 // TRANSFER OWNERSHIP

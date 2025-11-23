@@ -7,7 +7,7 @@ const Organization = require("../models/organizationModel");
 const Role = require("../models/roleModel");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
-const { signToken } = require("../utils/authUtils");
+const { signAccessToken, signRefreshToken } = require("../utils/authUtils");
 const sendEmail = require("../utils/email");
 const { createNotification } = require("../services/notificationService");
 

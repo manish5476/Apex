@@ -35,13 +35,19 @@ router.post(
 // 🖼 PRODUCT IMAGE UPLOAD
 // PATCH /products/:id/upload
 // -------------------------------------------------------
+// router.patch(
+//   "/:id/upload",
+//   authController.restrictTo("update_products", "superadmin"),
+//   upload.single("photo"),
+//   productController.uploadProductImage
+// );
+
 router.patch(
-  "/:id/upload",
-  authController.restrictTo("update_products", "superadmin"),
-  upload.single("photo"),
+  '/:id/upload',
+  authController.protect,
+  upload.array('photos', 10), // <--- CHANGE TO ARRAY, use key 'photos'
   productController.uploadProductImage
 );
-
 // -------------------------------------------------------
 // CRUD ROUTES
 // -------------------------------------------------------

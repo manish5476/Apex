@@ -44,22 +44,15 @@ exports.searchCustomers = catchAsync(async (req, res, next) => {
 // ======================================================
 exports.bulkUpdateCustomers = catchAsync(async (req, res, next) => {
   const updates = req.body;
-
-  if (!Array.isArray(updates) || updates.length === 0) {
-    return next(new AppError("Provide an array of customer updates.", 400));
-  }
-
+  if (!Array.isArray(updates) || updates.length === 0) {return next(new AppError("Provide an array of customer updates.", 400));}
   const orgId = req.user.organizationId;
-
   const operations = updates.map((c) => ({
     updateOne: {
       filter: { _id: c._id, organizationId: orgId },
       update: { $set: c.update },
     },
   }));
-
   await Customer.bulkWrite(operations);
-
   res.status(200).json({
     status: "success",
     message: "Bulk update complete",
@@ -78,11 +71,14 @@ exports.uploadCustomerPhoto = catchAsync(async (req, res, next) => {
   }
 
   const folder = `customers/${req.user.organizationId}`;
-  const imageUrl = await imageUploadService.uploadImage(req.file.buffer, folder);
 
+  // 1. This returns an Object (url, public_id, bytes, etc.)
+  const uploadResult = await imageUploadService.uploadImage(req.file.buffer, folder);
+
+  // 2. We must extract ONLY the '.url' string from that object
   const customer = await Customer.findOneAndUpdate(
     { _id: customerId, organizationId: req.user.organizationId },
-    { photo: imageUrl },
+    { avatar: uploadResult.url }, // <--- FIX: Access .url property here
     { new: true }
   );
 

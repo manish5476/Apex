@@ -5,7 +5,7 @@ const adminController = require('../../controllers/adminController');
 const authController = require('../../controllers/authController');
 
 router.use(authController.protect);
-router.use(authController.restrictTo('admin','super-admin')); // optional: restrict to admin roles if you have this middleware
+// router.use(authController.restrictTo('admin','Super Admin')); // optional: restrict to admin roles if you have this middleware
 
 // GET /api/v1/admin/summary?startDate=&endDate=&branchId=
 router.get('/summary', adminController.summary);
