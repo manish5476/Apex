@@ -7,7 +7,7 @@
  * ✅ Sorting
  * ✅ Field limiting
  * ✅ Pagination
- * ✅ Multi-value queries
+ * ✅ Muti-value queries
  * ✅ Regex search
  * ✅ Soft-delete safe queries
  * ✅ Nested field access
