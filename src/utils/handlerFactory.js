@@ -1,5 +1,5 @@
 const AppError = require('../utils/appError');
-const ApiFeatures = require('../utils/apiFeatures');
+const ApiFeatures = require('../utils/ApiFeatures');
 const catchAsync = require('../utils/catchAsync');
 
 /**
