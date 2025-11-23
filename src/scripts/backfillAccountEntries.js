@@ -5,8 +5,8 @@ const Invoice = require('../models/invoiceModel');
 const Purchase = require('../models/purchaseModel');
 const Payment = require('../models/paymentModel');
 const Ledger = require('../models/ledgerModel');
-const AccountEntry = require('../src/models/accountEntryModel');
-const { postJournalEntries } = require('../src/services/accountingService');
+const AccountEntry = require('../models/accountEntryModel');
+const { postJournalEntries } = require('../services/accountingService');
 
 async function connect() {
   await mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });

@@ -1,7 +1,7 @@
 // scripts/seedDefaultCoa.js (update)
 require('dotenv').config();
 const mongoose = require('mongoose');
-const Account = require('../src/models/accountModel');
+const Account = require('../models/accountModel');
 
 const defaultAccounts = [
   { code: '1000', name: 'Cash', type: 'asset', metadata: { short: 'CASH' } },
@@ -28,7 +28,7 @@ const defaultAccounts = [
 // // scripts/seedDefaultCoa.js
 // require('dotenv').config();
 // const mongoose = require('mongoose');
-// const Account = require('../src/models/accountModel');
+// const Account = require('../models/accountModel');
 
 // const defaultAccounts = [
 //   { code: '1000', name: 'Cash', type: 'asset', metadata: { short: 'CASH' } },

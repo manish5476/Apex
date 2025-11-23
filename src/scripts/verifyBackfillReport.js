@@ -1,11 +1,11 @@
 // // scripts/verifyBackfillReport.js
 // require('dotenv').config();
 // const mongoose = require('mongoose');
-// const Invoice = require('../src/models/invoiceModel');
-// const Purchase = require('../src/models/purchaseModel');
-// const Payment = require('../src/models/paymentModel');
+// const Invoice = require('../models/invoiceModel');
+// const Purchase = require('../models/purchaseModel');
+// const Payment = require('../models/paymentModel');
 // const Ledger = require('../models/ledgerModel');
-// const AccountEntry = require('../src/models/accountEntryModel');
+// const AccountEntry = require('../models/accountEntryModel');
 
 // async function connect() {
 //   await mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -187,13 +187,13 @@
 //   entryRows.forEach(r => {
 //     const key = `${r.referenceType}:${String(r.referenceId)}`;
 //     const postedSum = Number(r.totalDebit || 0) + Number(r.totalCredit || 0);
-//     const src = sourceMap[key] || 0;
-//     const expected = src * 2; // two-sided posting usually
+//     const = sourceMap[key] || 0;
+//     const expected = * 2; // two-sided posting usually
 //     if (Math.abs(postedSum - expected) > Math.max(1, 0.001 * expected)) {
 //       report.discrepancies.push({
 //         referenceType: r.referenceType,
 //         referenceId: r.referenceId,
-//         sourceAmount: src,
+//         sourceAmount:,
 //         postedDebit: r.totalDebit,
 //         postedCredit: r.totalCredit,
 //         postedCombined: postedSum,

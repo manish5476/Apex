@@ -3,8 +3,8 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 let app, server;
-const Account = require('../src/models/accountModel');
-const AccountEntry = require('../src/models/accountEntryModel');
+const Account = require('../models/accountModel');
+const AccountEntry = require('../models/accountEntryModel');
 
 describe('Account routes', () => {
   let mongod, token;
