@@ -1,10 +1,10 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const Invoice = require('../src/models/invoiceModel');
-const Purchase = require('../src/models/purchaseModel');
-const Payment = require('../src/models/paymentModel');
-const Ledger = require('../src/models/ledgerModel');
+const Invoice = require('../models/invoiceModel');
+const Purchase = require('../models/purchaseModel');
+const Payment = require('../models/paymentModel');
+const Ledger = require('../models/ledgerModel');
 const AccountEntry = require('../src/models/accountEntryModel');
 const { postJournalEntries } = require('../src/services/accountingService');
 

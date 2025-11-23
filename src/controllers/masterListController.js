@@ -11,7 +11,7 @@ const Purchase = require("../models/purchaseModel");     // Added
 const Sales = require("../models/salesModel");           // Added
 const Payment = require("../models/paymentModel");       // Added
 const EMI = require("../models/emiModel");               // Added
-const Ledger = require("../models/ledgerModel");         // Added
+const Ledger = require('../models/ledgerModel');
 
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");

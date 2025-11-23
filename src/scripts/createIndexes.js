@@ -1,10 +1,10 @@
 // scripts/createIndexes.js
 require('dotenv').config();
 const mongoose = require('mongoose');
-const Invoice = require('../src/models/invoiceModel');
-const Payment = require('../src/models/paymentModel');
-const Purchase = require('../src/models/purchaseModel');
-const Ledger = require('../src/models/ledgerModel');
+const Invoice = require('../models/invoiceModel');
+const Payment = require('../models/paymentModel');
+const Purchase = require('../models/purchaseModel');
+const Ledger = require('../models/ledgerModel');
 
 (async () => {
   try {

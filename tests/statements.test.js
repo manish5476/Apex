@@ -4,10 +4,10 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 let app;
 let server;
-const Invoice = require('../src/models/invoiceModel');
-const Purchase = require('../src/models/purchaseModel');
-const Payment = require('../src/models/paymentModel');
-const Ledger = require('../src/models/ledgerModel');
+const Invoice = require('../models/invoiceModel');
+const Purchase = require('../models/purchaseModel');
+const Payment = require('../models/paymentModel');
+const Ledger = require('../models/ledgerModel');
 
 describe('Statements API', () => {
   let mongod;
