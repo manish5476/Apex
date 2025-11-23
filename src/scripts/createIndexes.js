@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const Invoice = require('../src/models/invoiceModel');
 const Payment = require('../src/models/paymentModel');
 const Purchase = require('../src/models/purchaseModel');
-const Ledger = require('../src/models/LedgerModel');
+const Ledger = require('../src/models/ledgerModel');
 
 (async () => {
   try {
