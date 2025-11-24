@@ -38,8 +38,9 @@ const masterListRoutes = require('./routes/v1/masterListRoutes.js');
 const transactionRouter = require('./routes/v1/transactionRoutes.js');
 const partyTransactionRouter = require('./routes/v1/partyTransactionRoutes');
 const adminRouter = require('./routes/v1/adminRoutes');
+const emiRoutes = require('./routes/v1/emiRoutes');
 const statementsRouter = require('./routes/v1/statementsRoutes');
-const accountRouter = require('./routes/v1/accountRoutes.js');
+// const accountRouter = require('./routes/v1/accountRoutes.js');
 const masterRoutes = require('./routes/v1/masterRoutes.js');
 const masterTypeRoutes = require('./routes/v1/masterTypeRoutes.js');
 const ledgersRoutes = require('./routes/v1/ledgerRoutes.js');
@@ -192,6 +193,7 @@ app.use('/api/v1/master', masterRoutes);
 app.use('/api/v1/master-types', masterTypeRoutes);
 app.use('/api/v1/ledgers', ledgersRoutes)
 app.use('/api/v1/dashboard', dashboard)
+app.use('/api/v1/emi', emiRoutes)
 
 
 // **FIXED 404 HANDLER**
