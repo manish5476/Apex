@@ -3,6 +3,81 @@ const EMI = require('../models/emiModel');
 const Customer = require('../models/customerModel');
 const mongoose = require('mongoose');
 const AppError = require('../utils/appError');
+const Payment = require('../models/paymentModel'); // Your existing model
+
+exports.payEmiInstallment = async ({ 
+    emiId, 
+    installmentNumber, 
+    amount, 
+    paymentMethod, // e.g., 'cash', 'upi'
+    referenceNumber, // e.g., "CASH-12" or UPI ID
+    remarks,
+    organizationId,
+    createdBy 
+}) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // 1. Fetch the EMI Plan
+    const emi = await EMI.findOne({ _id: emiId, organizationId }).session(session);
+    if (!emi) throw new AppError('EMI plan not found', 404);
+
+    // 2. Find the specific installment
+    const installment = emi.installments.find(
+      (inst) => inst.installmentNumber === Number(installmentNumber)
+    );
+
+    if (!installment) throw new AppError('Invalid installment number', 404);
+
+    // 3. CREATE THE REAL PAYMENT RECORD (Using your Model)
+    const newPayment = await Payment.create([{
+        organizationId: emi.organizationId,
+        branchId: emi.branchId, // Important for branch accounting
+        
+        type: 'inflow', // EMIs are always money coming IN
+        customerId: emi.customerId,
+        invoiceId: emi.invoiceId, // Link back to original invoice
+        
+        amount: amount,
+        paymentMethod: paymentMethod, // matches your enum: 'cash', 'upi', etc.
+        referenceNumber: referenceNumber, 
+        remarks: remarks || `EMI Installment #${installmentNumber}`,
+        
+        status: 'completed',
+        createdBy: createdBy,
+        paymentDate: new Date()
+    }], { session });
+
+    // 4. Update the EMI Installment
+    installment.paidAmount += amount;
+    
+    // ✅ LINKING: Store the _id of the new Payment document
+    installment.paymentId = newPayment[0]._id; 
+
+    // 5. Update Status Logic
+    if (installment.paidAmount >= installment.totalAmount) {
+      installment.paymentStatus = 'paid';
+    } else if (installment.paidAmount > 0) {
+      installment.paymentStatus = 'partial';
+    }
+
+    // Check if whole plan is completed
+    const allPaid = emi.installments.every((i) => i.paymentStatus === 'paid');
+    if (allPaid) emi.status = 'completed';
+
+    await emi.save({ session });
+    
+    await session.commitTransaction();
+    return { emi, payment: newPayment[0] };
+    
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
+};
 
 /**
  * Create EMI Plan from Invoice
@@ -95,43 +170,43 @@ exports.createEmiPlan = async ({
 /**
  * Mark an EMI installment as paid
  */
-exports.payEmiInstallment = async ({ emiId, installmentNumber, amount, paymentId }) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+// exports.payEmiInstallment = async ({ emiId, installmentNumber, amount, paymentId }) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
 
-  try {
-    const emi = await EMI.findById(emiId).session(session);
-    if (!emi) throw new AppError('EMI plan not found', 404);
+//   try {
+//     const emi = await EMI.findById(emiId).session(session);
+//     if (!emi) throw new AppError('EMI plan not found', 404);
 
-    const installment = emi.installments.find(
-      (inst) => inst.installmentNumber === Number(installmentNumber)
-    );
+//     const installment = emi.installments.find(
+//       (inst) => inst.installmentNumber === Number(installmentNumber)
+//     );
 
-    if (!installment) throw new AppError('Invalid installment number', 404);
+//     if (!installment) throw new AppError('Invalid installment number', 404);
 
-    installment.paidAmount += amount;
-    installment.paymentId = paymentId;
+//     installment.paidAmount += amount;
+//     installment.paymentId = paymentId;
 
-    if (installment.paidAmount >= installment.totalAmount) {
-      installment.paymentStatus = 'paid';
-    } else if (installment.paidAmount > 0) {
-      installment.paymentStatus = 'partial';
-    }
+//     if (installment.paidAmount >= installment.totalAmount) {
+//       installment.paymentStatus = 'paid';
+//     } else if (installment.paidAmount > 0) {
+//       installment.paymentStatus = 'partial';
+//     }
 
-    const allPaid = emi.installments.every((i) => i.paymentStatus === 'paid');
-    if (allPaid) emi.status = 'completed';
+//     const allPaid = emi.installments.every((i) => i.paymentStatus === 'paid');
+//     if (allPaid) emi.status = 'completed';
 
-    await emi.save({ session });
-    await session.commitTransaction();
+//     await emi.save({ session });
+//     await session.commitTransaction();
 
-    return emi;
-  } catch (err) {
-    await session.abortTransaction();
-    throw err;
-  } finally {
-    session.endSession();
-  }
-};
+//     return emi;
+//   } catch (err) {
+//     await session.abortTransaction();
+//     throw err;
+//   } finally {
+//     session.endSession();
+//   }
+// };
 
 /**
  * Fetch EMI plan details by Invoice

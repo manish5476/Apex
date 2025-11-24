@@ -101,26 +101,57 @@ exports.getEmiById = catchAsync(async (req, res, next) => {
  * Mark an EMI installment as paid
 ------------------------------------------------------------- */
 exports.payEmiInstallment = catchAsync(async (req, res, next) => {
-  const { emiId, installmentNumber, amount, paymentId } = req.body;
+  const { 
+    emiId, 
+    installmentNumber, 
+    amount, 
+    paymentMethod, // e.g. "cash"
+    referenceNumber, // e.g. "TXN-1234"
+    remarks 
+  } = req.body;
 
-  if (!emiId || !installmentNumber || !amount) {
-    return next(new AppError('emiId, installmentNumber, and amount are required', 400));
+  if (!emiId || !installmentNumber || !amount || !paymentMethod) {
+    return next(new AppError('emiId, installmentNumber, amount, and paymentMethod are required', 400));
   }
 
-  const emi = await emiService.payEmiInstallment({
+  const result = await emiService.payEmiInstallment({
     emiId,
     installmentNumber,
     amount,
-    paymentId,
-    organizationId: req.user.organizationId // Security check usually inside service
+    paymentMethod,
+    referenceNumber,
+    remarks,
+    organizationId: req.user.organizationId,
+    createdBy: req.user._id
   });
 
   res.status(200).json({
     status: 'success',
-    message: 'EMI installment updated successfully',
-    data: { emi },
+    message: 'Payment recorded and EMI updated successfully',
+    data: result,
   });
 });
+// exports.payEmiInstallment = catchAsync(async (req, res, next) => {
+//   const { emiId, installmentNumber, amount, paymentId } = req.body;
+
+//   if (!emiId || !installmentNumber || !amount) {
+//     return next(new AppError('emiId, installmentNumber, and amount are required', 400));
+//   }
+
+//   const emi = await emiService.payEmiInstallment({
+//     emiId,
+//     installmentNumber,
+//     amount,
+//     paymentId,
+//     organizationId: req.user.organizationId // Security check usually inside service
+//   });
+
+//   res.status(200).json({
+//     status: 'success',
+//     message: 'EMI installment updated successfully',
+//     data: { emi },
+//   });
+// });
 
 // const emiService = require('../services/emiService');
 // const catchAsync = require('../utils/catchAsync');

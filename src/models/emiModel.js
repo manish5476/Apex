@@ -12,7 +12,12 @@ const installmentSchema = new mongoose.Schema({
     enum: ['pending', 'partial', 'paid', 'overdue'],
     default: 'pending',
   },
-  paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
+  paymentId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'Payment', 
+      default: null 
+  },
+  // paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
 });
 
 const emiSchema = new mongoose.Schema(
