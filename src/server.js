@@ -86,8 +86,6 @@ async function startServer() {
     // =====================================================
     server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT} [${process.env.NODE_ENV}]`);
-
-      // --- Initialize CRON Jobs ---
       try {
         console.log("🕒 Initializing background cron jobs...");
         require("./utils/cron");

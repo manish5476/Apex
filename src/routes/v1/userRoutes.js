@@ -10,8 +10,6 @@ router.use(authController.protect);
 router.get("/me", userController.getMyProfile);
 router.patch("/me", userController.updateMyProfile);
 router.patch("/me/photo", upload.single("photo"), userController.uploadProfilePhoto);
-
-// --- Admin-only operations ---
 router.use(authController.restrictTo("manage_users"));
 router.get("/", userController.getAllUsers);
 router.post("/", userController.createUser);

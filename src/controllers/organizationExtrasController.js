@@ -2,7 +2,8 @@ const User = require("../models/userModel");
 const Organization = require("../models/organizationModel");
 const AppError = require("../utils/appError");
 const catchAsync = require("../utils/catchAsync");
-const ActivityLog = require('../models/activityLogModel'); // <--- CRITICAL FIX
+const ActivityLog = require("../models/activityLogModel");
+const { logActivity } = require("../services/activityLogService");
 
 // ======================================================
 // TRANSFER OWNERSHIP
@@ -10,24 +11,18 @@ const ActivityLog = require('../models/activityLogModel'); // <--- CRITICAL FIX
 // ======================================================
 exports.transferOwnership = catchAsync(async (req, res, next) => {
   const { newOwnerId } = req.body;
-
   if (!newOwnerId)
     return next(new AppError("Provide newOwnerId", 400));
-
   const org = await Organization.findById(req.user.organizationId);
   if (!org) return next(new AppError("Organization not found", 404));
-
   // Only current org owner or superadmin can do this
   if (org.owner.toString() !== req.user.id && !req.user.role?.isSuperAdmin)
     return next(new AppError("You cannot transfer ownership.", 403));
-
   const user = await User.findById(newOwnerId);
   if (!user)
     return next(new AppError("New owner user not found.", 404));
-
   if (user.organizationId.toString() !== org._id.toString())
     return next(new AppError("User does not belong to this organization.", 400));
-
   org.owner = newOwnerId;
   await org.save();
 
@@ -94,6 +89,9 @@ exports.inviteUser = catchAsync(async (req, res, next) => {
 exports.removeMember = catchAsync(async (req, res, next) => {
   const memberId = req.params.id;
 
+  const org = await Organization.findById(req.user.organizationId);
+  if (!org) return next(new AppError("Organization not found", 404));
+
   const member = await User.findOne({
     _id: memberId,
     organizationId: req.user.organizationId,
@@ -102,7 +100,8 @@ exports.removeMember = catchAsync(async (req, res, next) => {
   if (!member)
     return next(new AppError("User not found.", 404));
 
-  if (memberId === req.user.organizationId?.owner?.toString())
+  // Prevent removing organization owner
+  if (org.owner.toString() === memberId)
     return next(new AppError("You cannot remove the owner.", 400));
 
   await User.findByIdAndUpdate(memberId, {
@@ -143,3 +142,4 @@ exports.getActivityLog = catchAsync(async (req, res, next) => {
     data: { logs },
   });
 });
+

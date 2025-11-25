@@ -232,10 +232,55 @@ exports.getMyOrganization = catchAsync(async (req, res, next) => {
 });
 
 exports.updateMyOrganization = catchAsync(async (req, res, next) => {
-  if (req.body.owner)
-    return next(new AppError('You cannot change the organization owner.', 403));
-  req.params.id = req.user.organizationId;
-  return factory.updateOne(Organization)(req, res, next);
+  const orgId = req.user.organizationId;
+
+  if (!orgId) {
+    return next(new AppError("You are not linked to any organization.", 400));
+  }
+
+  // Block owner overrides
+  if (req.body.owner) {
+    return next(new AppError("You cannot change the organization owner.", 403));
+  }
+
+  // Allow only editable fields
+  const allowedFields = [
+    "name",
+    "primaryEmail",
+    "primaryPhone",
+    "gstNumber",
+    "uniqueShopId",
+    "address",
+    "city",
+    "state",
+    "country",
+    "pincode"
+  ];
+
+  const updates = {};
+  Object.keys(req.body).forEach((key) => {
+    if (allowedFields.includes(key)) updates[key] = req.body[key];
+  });
+
+  if (Object.keys(updates).length === 0) {
+    return next(new AppError("No valid fields provided for update.", 400));
+  }
+
+  const updatedOrg = await Organization.findByIdAndUpdate(
+    orgId,
+    updates,
+    { new: true, runValidators: true }
+  );
+
+  if (!updatedOrg) {
+    return next(new AppError("Organization not found.", 404));
+  }
+
+  res.status(200).json({
+    status: "success",
+    message: "Organization updated successfully.",
+    data: updatedOrg
+  });
 });
 
 exports.deleteMyOrganization = catchAsync(async (req, res, next) => {
@@ -256,5 +301,19 @@ exports.getOrganization = factory.getOne(Organization, [
   { path: 'members', select: 'name email role' },
   { path: 'branches', select: 'name city state' },
 ]);
+
 exports.updateOrganization = factory.updateOne(Organization);
 exports.deleteOrganization = factory.deleteOne(Organization);
+
+
+
+
+
+
+
+// exports.updateMyOrganization = catchAsync(async (req, res, next) => {
+//   if (req.body.owner)
+//     return next(new AppError('You cannot change the organization owner.', 403));
+//   req.params.id = req.user.organizationId;
+//   return factory.updateOne(Organization)(req, res, next);
+// });
