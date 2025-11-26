@@ -181,96 +181,160 @@ Please review and approve them in your dashboard.
 // 🧩 LOGIN
 // ======================================================
 
-const MAX_SESSIONS = Number(process.env.MAX_SESSIONS_PER_USER || 5);
 exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
 
-  // 1️⃣ Validate input
-  if (!email || !password) {
+  if (!email || !password)
     return next(new AppError("Email and password required.", 400));
-  }
 
-  // 2️⃣ Find user + check password
+  // 1. Fetch user
   const user = await User.findOne({ email }).select("+password");
-  if (!user) return next(new AppError("Invalid credentials.", 401));
+  if (!user || !(await user.correctPassword(password, user.password)))
+    return next(new AppError("Invalid credentials.", 401));
 
-  const correct = await user.correctPassword(password, user.password);
-  if (!correct) return next(new AppError("Invalid credentials.", 401));
-
-  // 3️⃣ Check status
-  if (user.status !== "approved") {
+  if (user.status !== "approved")
     return next(new AppError("Account is not approved.", 401));
-  }
 
-  // 4️⃣ Create JWT
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
-  });
+  // 2. Generate JWT
+  const token = signAccessToken(user._id);
 
-  // 5️⃣ Parse device info properly
+  // 3. Parse device info
   const parser = new UAParser(req.headers["user-agent"] || "");
-  const device = parser.getDevice();
-  const browser = parser.getBrowser();
-  const os = parser.getOS();
+  const browser = parser.getBrowser()?.name || "unknown";
+  const os = parser.getOS()?.name || "unknown";
+  const device = parser.getDevice()?.model || "unknown";
 
-  // 6️⃣ Safer IP handling
-  const ipAddress =
-    req.ip ||
+  // 4. Determine IP
+  const ip =
     req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
     req.socket?.remoteAddress ||
-    null;
+    req.ip;
 
-  // 7️⃣ Create session
+  // 5. Create session
   const session = await Session.create({
     userId: user._id,
     token,
-    deviceType: device.type || "unknown",
-    deviceModel: device.model || "unknown",
-    browser: browser.name || "unknown",
-    os: os.name || "unknown",
-    ipAddress,
-    userAgent: req.headers["user-agent"] || null,
     isValid: true,
+    browser,
+    os,
+    deviceType: device,
+    ipAddress: ip,
+    userAgent: req.headers["user-agent"] || null,
   });
 
-  // 8️⃣ Send socket event
+  // 6. Emit socket event (only if user is connected)
   const io = req.app.get("io");
   if (io) {
     io.to(user._id.toString()).emit("sessionCreated", {
       sessionId: session._id,
       token,
-      device: session.deviceModel,
-      browser: session.browser,
-      os: session.os,
-      ip: session.ipAddress,
+      browser,
+      os,
+      device,
+      ip,
       loginAt: session.createdAt,
     });
   }
 
-  // 9️⃣ Remove password before sending
+  // 7. Clean sensitive info
   user.password = undefined;
 
-  // 🔟 Send response
+  // 8. Send response
   res.status(200).json({
     status: "success",
     token,
     data: { user, session },
   });
 });
+
+// const MAX_SESSIONS = Number(process.env.MAX_SESSIONS_PER_USER || 5);
+// exports.login = catchAsync(async (req, res, next) => {
+//   const { email, password } = req.body;
+
+//   // 1️⃣ Validate input
+//   if (!email || !password) {
+//     return next(new AppError("Email and password required.", 400));
+//   }
+
+//   // 2️⃣ Find user + check password
+//   const user = await User.findOne({ email }).select("+password");
+//   if (!user) return next(new AppError("Invalid credentials.", 401));
+
+//   const correct = await user.correctPassword(password, user.password);
+//   if (!correct) return next(new AppError("Invalid credentials.", 401));
+
+//   // 3️⃣ Check status
+//   if (user.status !== "approved") {
+//     return next(new AppError("Account is not approved.", 401));
+//   }
+
+//   // 4️⃣ Create JWT
+//   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+//     expiresIn: "7d",
+//   });
+
+//   // 5️⃣ Parse device info properly
+//   const parser = new UAParser(req.headers["user-agent"] || "");
+//   const device = parser.getDevice();
+//   const browser = parser.getBrowser();
+//   const os = parser.getOS();
+
+//   // 6️⃣ Safer IP handling
+//   const ipAddress =
+//     req.ip ||
+//     req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+//     req.socket?.remoteAddress ||
+//     null;
+
+//   // 7️⃣ Create session
+//   const session = await Session.create({
+//     userId: user._id,
+//     token,
+//     deviceType: device.type || "unknown",
+//     deviceModel: device.model || "unknown",
+//     browser: browser.name || "unknown",
+//     os: os.name || "unknown",
+//     ipAddress,
+//     userAgent: req.headers["user-agent"] || null,
+//     isValid: true,
+//   });
+
+//   // 8️⃣ Send socket event
+//   const io = req.app.get("io");
+//   if (io) {
+//     io.to(user._id.toString()).emit("sessionCreated", {
+//       sessionId: session._id,
+//       token,
+//       device: session.deviceModel,
+//       browser: session.browser,
+//       os: session.os,
+//       ip: session.ipAddress,
+//       loginAt: session.createdAt,
+//     });
+//   }
+
+//   // 9️⃣ Remove password before sending
+//   user.password = undefined;
+
+//   // 🔟 Send response
+//   res.status(200).json({
+//     status: "success",
+//     token,
+//     data: { user, session },
+//   });
+// });
 // ======================================================
 // 🧩 PROTECT (JWT Middleware)
 // ======================================================
-
 exports.protect = catchAsync(async (req, res, next) => {
-  // 1️⃣ Extract token
   let token;
+
   if (req.headers.authorization?.startsWith("Bearer"))
     token = req.headers.authorization.split(" ")[1];
 
-  if (!token)
-    return next(new AppError("Not authenticated — login required.", 401));
+  if (!token) return next(new AppError("Not authenticated.", 401));
 
-  // 2️⃣ Verify JWT
+  // Decode JWT
   let decoded;
   try {
     decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
@@ -278,40 +342,86 @@ exports.protect = catchAsync(async (req, res, next) => {
     return next(new AppError("Invalid or expired token.", 401));
   }
 
-  // 3️⃣ Verify if user still exists
-  const currentUser = await User.findById(decoded.id).populate("role");
-  if (!currentUser)
-    return next(new AppError("User no longer exists.", 401));
+  // Fetch user
+  const user = await User.findById(decoded.id).populate("role");
+  if (!user) return next(new AppError("User no longer exists.", 401));
 
-  // 4️⃣ Check if password changed after token issue
-  if (currentUser.changedPasswordAfter && currentUser.changedPasswordAfter(decoded.iat))
-    return next(new AppError("Password changed — please log in again.", 401));
+  // Check password change
+  if (user.changedPasswordAfter(decoded.iat))
+    return next(new AppError("Password changed recently. Login again.", 401));
 
-  // 5️⃣ Check if user is active/approved
-  if (currentUser.status !== "approved")
-    return next(new AppError("Account not approved or disabled.", 401));
-
-  // 6️⃣ 🔒 Validate session (critical)
+  // Validate session
   const session = await Session.findOne({
     token,
-    userId: currentUser._id,
+    userId: user._id,
     isValid: true,
   });
 
   if (!session)
-    return next(new AppError("Session revoked — please log in again.", 401));
+    return next(new AppError("Session revoked. Login again.", 401));
 
-  // 7️⃣ Update last activity timestamp (optional but recommended)
+  // Update last active
   session.lastActivityAt = new Date();
   await session.save();
 
-  // 8️⃣ Attach user & session to req
-  req.user = currentUser;
+  req.user = user;
   req.session = session;
-  req.user.permissions = currentUser.role?.permissions || [];
+  req.user.permissions = user.role?.permissions || [];
 
   next();
 });
+
+// exports.protect = catchAsync(async (req, res, next) => {
+//   // 1️⃣ Extract token
+//   let token;
+//   if (req.headers.authorization?.startsWith("Bearer"))
+//     token = req.headers.authorization.split(" ")[1];
+
+//   if (!token)
+//     return next(new AppError("Not authenticated — login required.", 401));
+
+//   // 2️⃣ Verify JWT
+//   let decoded;
+//   try {
+//     decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+//   } catch (err) {
+//     return next(new AppError("Invalid or expired token.", 401));
+//   }
+
+//   // 3️⃣ Verify if user still exists
+//   const currentUser = await User.findById(decoded.id).populate("role");
+//   if (!currentUser)
+//     return next(new AppError("User no longer exists.", 401));
+
+//   // 4️⃣ Check if password changed after token issue
+//   if (currentUser.changedPasswordAfter && currentUser.changedPasswordAfter(decoded.iat))
+//     return next(new AppError("Password changed — please log in again.", 401));
+
+//   // 5️⃣ Check if user is active/approved
+//   if (currentUser.status !== "approved")
+//     return next(new AppError("Account not approved or disabled.", 401));
+
+//   // 6️⃣ 🔒 Validate session (critical)
+//   const session = await Session.findOne({
+//     token,
+//     userId: currentUser._id,
+//     isValid: true,
+//   });
+
+//   if (!session)
+//     return next(new AppError("Session revoked — please log in again.", 401));
+
+//   // 7️⃣ Update last activity timestamp (optional but recommended)
+//   session.lastActivityAt = new Date();
+//   await session.save();
+
+//   // 8️⃣ Attach user & session to req
+//   req.user = currentUser;
+//   req.session = session;
+//   req.user.permissions = currentUser.role?.permissions || [];
+
+//   next();
+// });
 
 // ======================================================
 // 🧩 Restric to
