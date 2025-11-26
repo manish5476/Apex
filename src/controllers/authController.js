@@ -1,19 +1,3 @@
-// src/controllers/authController.js
-const { promisify } = require("util");
-const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
-const User = require("../models/userModel");
-const Organization = require("../models/organizationModel");
-const Role = require("../models/roleModel");
-const catchAsync = require("../utils/catchAsync");
-const AppError = require("../utils/appError");
-const { signAccessToken, signRefreshToken } = require("../utils/authUtils");
-const sendEmail = require("../utils/email");
-const { createNotification } = require("../services/notificationService");
-
-// ======================================================
-// 🧩 HELPER: Create and Send JWT
-// ======================================================
 // const createSendToken = (user, statusCode, res) => {
 //   const token = signToken(user);
 //   // sanitize user object before sending
@@ -30,6 +14,27 @@ const { createNotification } = require("../services/notificationService");
 //     data: { user: safeUser },
 //   });
 // };
+// src/controllers/authController.js
+
+const { promisify } = require("util");
+const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const User = require("../models/userModel");
+const Organization = require("../models/organizationModel");
+const Role = require("../models/roleModel");
+const catchAsync = require("../utils/catchAsync");
+const AppError = require("../utils/appError");
+const { signAccessToken, signRefreshToken } = require("../utils/authUtils");
+const sendEmail = require("../utils/email");
+const { createNotification } = require("../services/notificationService");
+const Session = require('../models/sessionModel');
+const uaParser = require("ua-parser-js"); // npm i ua-parser-js
+
+
+// ======================================================
+// 🧩 HELPER: Create and Send JWT
+// ======================================================
+
 const createSendToken = (user, statusCode, res) => {
 
   const accessToken = signAccessToken(user._id);
@@ -175,56 +180,141 @@ Please review and approve them in your dashboard.
 // ======================================================
 // 🧩 LOGIN
 // ======================================================
+
+const MAX_SESSIONS = Number(process.env.MAX_SESSIONS_PER_USER || 5);
 exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
 
-  if (!email || !password)
-    return next(new AppError("Please provide email and password!", 400));
+  // 1️⃣ Validate input
+  if (!email || !password) {
+    return next(new AppError("Email and password required.", 400));
+  }
 
-  const user = await User.findOne({ email }).select("+password").populate("role");
+  // 2️⃣ Find user + check password
+  const user = await User.findOne({ email }).select("+password");
+  if (!user) return next(new AppError("Invalid credentials.", 401));
 
-  if (!user || !(await user.correctPassword(password, user.password)))
-    return next(new AppError("Incorrect email or password", 401));
+  const correct = await user.correctPassword(password, user.password);
+  if (!correct) return next(new AppError("Invalid credentials.", 401));
 
-  if (user.status === "pending")
-    return next(new AppError("Your account is still pending approval.", 401));
+  // 3️⃣ Check status
+  if (user.status !== "approved") {
+    return next(new AppError("Account is not approved.", 401));
+  }
 
-  if (user.status !== "approved")
-    return next(new AppError("This user account is inactive.", 401));
+  // 4️⃣ Create JWT
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
 
-  createSendToken(user, 200, res);
+  // 5️⃣ Parse device info properly
+  const parser = new UAParser(req.headers["user-agent"] || "");
+  const device = parser.getDevice();
+  const browser = parser.getBrowser();
+  const os = parser.getOS();
+
+  // 6️⃣ Safer IP handling
+  const ipAddress =
+    req.ip ||
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    null;
+
+  // 7️⃣ Create session
+  const session = await Session.create({
+    userId: user._id,
+    token,
+    deviceType: device.type || "unknown",
+    deviceModel: device.model || "unknown",
+    browser: browser.name || "unknown",
+    os: os.name || "unknown",
+    ipAddress,
+    userAgent: req.headers["user-agent"] || null,
+    isValid: true,
+  });
+
+  // 8️⃣ Send socket event
+  const io = req.app.get("io");
+  if (io) {
+    io.to(user._id.toString()).emit("sessionCreated", {
+      sessionId: session._id,
+      token,
+      device: session.deviceModel,
+      browser: session.browser,
+      os: session.os,
+      ip: session.ipAddress,
+      loginAt: session.createdAt,
+    });
+  }
+
+  // 9️⃣ Remove password before sending
+  user.password = undefined;
+
+  // 🔟 Send response
+  res.status(200).json({
+    status: "success",
+    token,
+    data: { user, session },
+  });
 });
-
 // ======================================================
 // 🧩 PROTECT (JWT Middleware)
 // ======================================================
+
 exports.protect = catchAsync(async (req, res, next) => {
+  // 1️⃣ Extract token
   let token;
   if (req.headers.authorization?.startsWith("Bearer"))
     token = req.headers.authorization.split(" ")[1];
 
   if (!token)
-    return next(new AppError("You are not logged in! Please log in.", 401));
+    return next(new AppError("Not authenticated — login required.", 401));
 
-  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  // 2️⃣ Verify JWT
+  let decoded;
+  try {
+    decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  } catch (err) {
+    return next(new AppError("Invalid or expired token.", 401));
+  }
 
+  // 3️⃣ Verify if user still exists
   const currentUser = await User.findById(decoded.id).populate("role");
   if (!currentUser)
-    return next(new AppError("The user belonging to this token no longer exists.", 401));
+    return next(new AppError("User no longer exists.", 401));
 
+  // 4️⃣ Check if password changed after token issue
   if (currentUser.changedPasswordAfter && currentUser.changedPasswordAfter(decoded.iat))
-    return next(new AppError("User recently changed password! Please log in again.", 401));
+    return next(new AppError("Password changed — please log in again.", 401));
 
+  // 5️⃣ Check if user is active/approved
   if (currentUser.status !== "approved")
-    return next(new AppError("This user account is not active.", 401));
+    return next(new AppError("Account not approved or disabled.", 401));
 
+  // 6️⃣ 🔒 Validate session (critical)
+  const session = await Session.findOne({
+    token,
+    userId: currentUser._id,
+    isValid: true,
+  });
+
+  if (!session)
+    return next(new AppError("Session revoked — please log in again.", 401));
+
+  // 7️⃣ Update last activity timestamp (optional but recommended)
+  session.lastActivityAt = new Date();
+  await session.save();
+
+  // 8️⃣ Attach user & session to req
   req.user = currentUser;
+  req.session = session;
   req.user.permissions = currentUser.role?.permissions || [];
+
   next();
 });
 
 // ======================================================
-// 🧩 RESTRICT TO
+// 🧩 Restric to
 // ======================================================
 exports.restrictTo = (...permissions) => {
   return (req, res, next) => {
@@ -240,6 +330,7 @@ exports.restrictTo = (...permissions) => {
     next();
   };
 };
+
 
 // ======================================================
 // 🧩 FORGOT PASSWORD
@@ -362,6 +453,207 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
 });
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// exports.protect = catchAsync(async (req, res, next) => {
+//   let token;
+//   if (req.headers.authorization?.startsWith("Bearer"))
+//     token = req.headers.authorization.split(" ")[1];
+
+//   if (!token)
+//     return next(new AppError("You are not logged in! Please log in.", 401));
+
+//   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+
+//   const currentUser = await User.findById(decoded.id).populate("role");
+//   if (!currentUser)
+//     return next(new AppError("The user belonging to this token no longer exists.", 401));
+
+//   if (currentUser.changedPasswordAfter && currentUser.changedPasswordAfter(decoded.iat))
+//     return next(new AppError("User recently changed password! Please log in again.", 401));
+
+//   if (currentUser.status !== "approved")
+//     return next(new AppError("This user account is not active.", 401));
+
+//   req.user = currentUser;
+//   req.user.permissions = currentUser.role?.permissions || [];
+//   next();
+// });
+
+// exports.login = catchAsync(async (req, res, next) => {
+//   const { email, password } = req.body;
+
+//   // 1. Require credentials
+//   if (!email || !password) {
+//     return next(new AppError("Please provide email and password!", 400));
+//   }
+
+//   // 2. Find user + password + role
+//   const user = await User.findOne({ email })
+//     .select("+password")
+//     .populate("role");
+
+//   if (!user || !(await user.correctPassword(password, user.password))) {
+//     return next(new AppError("Incorrect email or password", 401));
+//   }
+
+//   // 3. Status checks
+//   if (user.status === "pending") {
+//     return next(new AppError("Your account is still pending approval.", 401));
+//   }
+
+//   if (user.status !== "approved") {
+//     return next(new AppError("This user account is inactive.", 401));
+//   }
+
+//   // 4. Generate JWT
+//   const token = signToken(user);
+
+//   // 5. Limit number of active sessions
+//   const activeCount = await Session.countDocuments({
+//     userId: user._id,
+//     isValid: true,
+//   });
+
+//   if (activeCount >= MAX_SESSIONS) {
+//     return next(
+//       new AppError(
+//         "Too many active sessions. Please logout from other devices or contact admin.",
+//         403
+//       )
+//     );
+//   }
+
+//   // 6. Parse UA details
+//   const parser = new UAParser(req.headers["user-agent"] || "");
+//   const device = parser.getDevice();
+//   const browser = parser.getBrowser();
+//   const os = parser.getOS();
+
+//   // 7. Get IP safely
+//   const ipAddress =
+//     req.ip ||
+//     req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+//     req.socket?.remoteAddress ||
+//     null;
+
+//   // 8. Create session entry
+//   await Session.create({
+//     userId: user._id,
+//     organizationId: user.organizationId,
+//     token,
+//     device: device.model || "Unknown",
+//     browser: browser.name || "Unknown",
+//     os: os.name || "Unknown",
+//     ipAddress,
+//     userAgent: req.headers["user-agent"] || null,
+//     lastActivityAt: new Date(),
+//     isValid: true,
+//   });
+
+//   // 9. Cleanup
+//   user.password = undefined;
+
+//   // 10. Send final response
+//   res.status(200).json({
+//     status: "success",
+//     token,
+//     data: { user },
+//   });
+//   this.notificationService.connect(user._id); // open socket and register
+
+// });
+// // exports.login = catchAsync(async (req, res, next) => {
+// //   const { email, password } = req.body;
+
+// //   // 1. Check if email & password exist
+// //   if (!email || !password) {
+// //     return next(new AppError("Please provide email and password!", 400));
+// //   }
+
+// //   // 2. Find user + include password + include role
+// //   const user = await User.findOne({ email })
+// //     .select("+password")
+// //     .populate("role");
+
+// //   if (!user || !(await user.correctPassword(password, user.password))) {
+// //     return next(new AppError("Incorrect email or password", 401));
+// //   }
+
+// //   // 3. Account status checks (from old code)
+// //   if (user.status === "pending") {
+// //     return next(new AppError("Your account is still pending approval.", 401));
+// //   }
+
+// //   if (user.status !== "approved") {
+// //     return next(new AppError("This user account is inactive.", 401));
+// //   }
+
+// //   // 4. Create JWT
+// //   const token = signToken(user);
+
+// //   // 5. Store session
+// //   const ua = uaParser(req.headers["user-agent"]);
+
+// //   await Session.create({
+// //     userId: user._id,
+// //     organizationId: user.organizationId,
+// //     token,
+// //     device: ua.device.model || "Unknown",
+// //     browser: ua.browser.name || "Unknown",
+// //     os: ua.os.name || "Unknown",
+// //     ipAddress: req.ip,
+// //     lastActivityAt: new Date()
+// //   });
+
+// //   // 6. Return token + user
+// //   createSendToken(user, 200, res, token);
+// // });
+// // // exports.login = catchAsync(async (req, res, next) => {
+// // //   const { email, password } = req.body;
+
+// // //   if (!email || !password)
+// // //     return next(new AppError("Please provide email and password!", 400));
+
+// // //   const user = await User.findOne({ email }).select("+password").populate("role");
+
+// // //   if (!user || !(await user.correctPassword(password, user.password)))
+// // //     return next(new AppError("Incorrect email or password", 401));
+
+// // //   if (user.status === "pending")
+// // //     return next(new AppError("Your account is still pending approval.", 401));
+
+// // //   if (user.status !== "approved")
+// // //     return next(new AppError("This user account is inactive.", 401));
+
+// // //   createSendToken(user, 200, res);
+// // // });
+
+// ======================================================
+// 🧩 RESTRICT TO
+// ======================================================
+
+
+
+
+
+
+
+// ////////////////////////////////////////////////////////////////
 // const { promisify } = require("util");
 // const jwt = require("jsonwebtoken");
 // const crypto = require("crypto");

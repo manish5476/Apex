@@ -24,6 +24,7 @@ exports.getMasterList = catchAsync(async (req, res, next) => {
   const orgId = req.user.organizationId;
   if (!orgId) return next(new AppError("Organization not found for current user.", 400));
 
+  
   // Fetch all in parallel for efficiency
   const [
     branches,

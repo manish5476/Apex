@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "D:\\Apex\\apex-crm-backend\\src\\logs\\.0cb782f7ba3a5cca2967bb59bb58c9122a11cbf2-audit.json",
+    "files": [
+        {
+            "date": 1764173662462,
+            "name": "D:\\Apex\\apex-crm-backend\\src\\logs\\error-2025-11-26.log",
+            "hash": "d20c33278abed64faf74a9919be042341f25d12f55f89c74f058bc3cb9b7b4cd"
+        }
+    ],
+    "hashType": "sha256"
+}

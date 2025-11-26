@@ -2,6 +2,30 @@ const dashboardService = require('../services/dashboardService');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 
+// in src/controllers/dashboardController.js
+const SalesService = require('../services/salesService');
+
+async function dashboardSummary(req, res, next) {
+  // existing computations
+  const lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth() - 1);
+  const salesAgg = await SalesService.aggregateTotal({ createdAt: { $gte: lastMonth } });
+
+  // include monthly totals
+  const monthly = await require('../models/salesModel').aggregateMonthlyTotals(
+    new Date(new Date().getFullYear(), 0, 1),
+    new Date()
+  );
+
+  res.json({
+    success: true,
+    invoicesSummary,
+    paymentsSummary,
+    salesSummary: salesAgg,
+    salesMonthly: monthly
+  });
+}
+
+
 /* ==========================================================
    Controller: Get Dashboard Data
    ----------------------------------------------------------
@@ -22,3 +46,4 @@ exports.getDashboardOverview = catchAsync(async (req, res, next) => {
     data,
   });
 });
+

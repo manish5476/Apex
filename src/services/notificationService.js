@@ -11,8 +11,6 @@ exports.createNotification = async (organizationId, recipientId, type, title, me
   const notification = await Notification.create({
     organizationId, recipientId, type, title, message,
   });
-
-  // 🔔 If socket.io instance is provided, emit real-time event
   if (io) {
     io.to(recipientId.toString()).emit("newNotification", notification);
   }

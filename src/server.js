@@ -59,7 +59,6 @@ async function startServer() {
     // --- Socket.IO Logic ---
     io.on("connection", (socket) => {
       console.log(`⚡ Client connected: ${socket.id}`);
-      // Register user by ID
       socket.on("registerUser", (userId) => {
         if (!userId) return;
         activeUsers.set(userId, socket.id);
