@@ -197,6 +197,7 @@ exports.login = catchAsync(async (req, res, next) => {
     os,
     deviceType: device,
     ipAddress: ip,
+    organizationId: user.organizationId,
     userAgent: req.headers["user-agent"] || null,
   });
 
