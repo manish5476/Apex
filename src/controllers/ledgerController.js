@@ -129,3 +129,27 @@ exports.getOrganizationLedgerSummary = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+
+// GET /v1/ledgers/export?start=&end&customerId=&supplierId=
+exports.exportLedgers = catchAsync(async (req, res, next) => {
+  const { start, end, customerId, supplierId, format='csv' } = req.query;
+  const filter = { organizationId: req.user.organizationId };
+  if (start || end) filter.date = {};
+  if (start) filter.date.$gte = new Date(start);
+  if (end) filter.date.$lte = new Date(end);
+  if (customerId) filter.customerId = customerId;
+  if (supplierId) filter.supplierId = supplierId;
+
+  const docs = await Ledger.find(filter).lean();
+  if (format === 'csv') {
+    const headers = ['date','type','amount','party','notes'];
+    const rows = [headers.join(',')].concat(docs.map(d => {
+      return `${d.date?.toISOString()||''},${d.type||''},${d.amount||0},${d.party||''},${JSON.stringify(d.notes||'')}`;
+    }));
+    res.setHeader('Content-Disposition', 'attachment; filename=ledger.csv');
+    res.setHeader('Content-Type', 'text/csv');
+    return res.send(rows.join('\n'));
+  }
+  res.status(200).json({ status: 'success', results: docs.length, data: { ledgers: docs } });
+});

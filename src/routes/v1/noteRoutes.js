@@ -51,4 +51,10 @@ router
   .patch(noteController.updateNote)
   .delete(noteController.deleteNote);
 
+
+
+
+router.get('/search', noteController.searchNotes);
+router.patch('/:id/tags', noteController.updateTags);
+
 module.exports = router;

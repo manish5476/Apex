@@ -85,4 +85,10 @@ router.post(
   invoicePDFController.emailInvoice,
 );
 
+router.get('/validate-number/:number', authController.restrictTo('create_invoices','superadmin'), invoiceController.validateNumber);
+router.get('/export', authController.restrictTo('read_invoices','superadmin'), invoiceController.exportInvoices);
+router.get('/profit-summary', authController.restrictTo('read_invoices','superadmin'), invoiceController.profitSummary);
+router.get('/:id/history', authController.restrictTo('read_invoices','superadmin'), invoiceController.getInvoiceHistory);
+
+
 module.exports = router;

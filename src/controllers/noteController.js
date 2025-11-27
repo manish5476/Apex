@@ -204,3 +204,25 @@ exports.uploadMedia = catchAsync(async (req, res, next) => {
     data: formattedAttachments
   });
 });
+
+exports.searchNotes = catchAsync(async (req, res, next) => {
+  const q = req.query.q || "";
+  const org = req.user.organizationId;
+  const notes = await Note.find({
+    organizationId: org,
+    $or: [
+      { title: { $regex: q, $options: "i" } },
+      { body: { $regex: q, $options: "i" } },
+      { tags: { $in: [new RegExp(q, 'i')] } }
+    ]
+  }).limit(100);
+  res.status(200).json({ status: "success", results: notes.length, data: { notes } });
+});
+
+exports.updateTags = catchAsync(async (req, res, next) => {
+  const { tags } = req.body;
+  if (!Array.isArray(tags)) return next(new AppError("tags must be array", 400));
+  const note = await Note.findOneAndUpdate({ _id: req.params.id, organizationId: req.user.organizationId }, { tags }, { new: true });
+  if (!note) return next(new AppError("Note not found", 404));
+  res.status(200).json({ status: "success", data: { note } });
+});

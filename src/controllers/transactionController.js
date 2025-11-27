@@ -206,6 +206,27 @@ exports.exportTransactionsCsv = asyncHandler(async (req, res) => {
   logAudit({ user, action: 'export:transactions', entityType: 'transaction', req, meta: { fileName, rowCount } });
 });
 
+// const Transaction = require('../models/transactionModel');
+
+// exports.getTransactionById = catchAsync(async (req, res, next) => {
+//   const tx = await Transaction.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
+//   if (!tx) return next(new AppError("Transaction not found", 404));
+//   res.status(200).json({ status: "success", data: { transaction: tx } });
+// });
+
+// exports.updateTransaction = catchAsync(async (req, res, next) => {
+//   const tx = await Transaction.findOneAndUpdate({ _id: req.params.id, organizationId: req.user.organizationId }, req.body, { new: true });
+//   if (!tx) return next(new AppError("Transaction not found", 404));
+//   res.status(200).json({ status: "success", data: { transaction: tx } });
+// });
+
+// exports.deleteTransaction = catchAsync(async (req, res, next) => {
+//   const tx = await Transaction.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+//   if (!tx) return next(new AppError("Transaction not found", 404));
+//   res.status(200).json({ status: "success", message: "Transaction deleted" });
+// });
+
+
 
 
 

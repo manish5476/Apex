@@ -131,6 +131,22 @@ exports.payEmiInstallment = catchAsync(async (req, res, next) => {
     data: result,
   });
 });
+
+// DELETE /v1/emi/:id
+exports.deleteEmi = catchAsync(async (req, res, next) => {
+  const emi = await Emi.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+  if (!emi) return next(new AppError("EMI not found", 404));
+  res.status(200).json({ status: "success", message: "EMI deleted" });
+});
+
+// GET /v1/emi/:id/history
+exports.getEmiHistory = catchAsync(async (req, res, next) => {
+  const emi = await Emi.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
+  if (!emi) return next(new AppError("EMI not found", 404));
+  // Assuming emi.payments is an array
+  res.status(200).json({ status: "success", results: emi.payments?.length || 0, data: { payments: emi.payments || [] } });
+});
+
 // exports.payEmiInstallment = catchAsync(async (req, res, next) => {
 //   const { emiId, installmentNumber, amount, paymentId } = req.body;
 

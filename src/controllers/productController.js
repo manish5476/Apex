@@ -154,6 +154,43 @@ exports.uploadProductImage = catchAsync(async (req, res, next) => {
   });
 });
 
+
+
+// POST /v1/products/bulk-update
+exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
+  const updates = req.body; // expect [{ _id, update: { field: value } }, ...]
+  if (!Array.isArray(updates) || updates.length === 0) return next(new AppError("Provide updates array", 400));
+  const org = req.user.organizationId;
+
+  const ops = updates.map(u => ({
+    updateOne: {
+      filter: { _id: u._id, organizationId: org },
+      update: u.update
+    }
+  }));
+
+  await Product.bulkWrite(ops);
+  res.status(200).json({ status: "success", message: "Bulk update applied." });
+});
+
+// POST /v1/products/:id/stock-adjust
+exports.adjustStock = catchAsync(async (req, res, next) => {
+  const { type, quantity, reason } = req.body;
+  if (!['add','subtract'].includes(type)) return next(new AppError("Invalid type", 400));
+  if (typeof quantity !== 'number' || quantity <= 0) return next(new AppError("Invalid quantity", 400));
+
+  const product = await Product.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
+  if (!product) return next(new AppError("Product not found", 404));
+
+  product.stock = type === 'add' ? product.stock + quantity : product.stock - quantity;
+  if (product.stock < 0) product.stock = 0;
+  await product.save();
+
+  // Optionally create StockAdjustment log model
+  res.status(200).json({ status: "success", data: { product } });
+});
+
+
 // exports.uploadProductImage = catchAsync(async (req, res, next) => {
 //   if (!req.file || !req.file.buffer) {
 //     return next(new AppError("Please upload an image file.", 400));

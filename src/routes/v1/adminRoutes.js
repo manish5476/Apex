@@ -16,4 +16,9 @@ router.get('/monthly', adminController.monthlyTrends);
 // GET /api/v1/admin/outstanding?type=receivable|payable&limit=20
 router.get('/outstanding', adminController.outstanding);
 
+router.get('/top-customers', authController.restrictTo('admin','superadmin'), adminController.topCustomers);
+router.get('/top-products', authController.restrictTo('admin','superadmin'), adminController.topProducts);
+router.get('/branch-sales', authController.restrictTo('admin','superadmin'), adminController.branchSales);
+
+
 module.exports = router;

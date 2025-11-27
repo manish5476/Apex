@@ -14,4 +14,8 @@ router.get(
   notificationController.getMyNotifications
 );
 
+router.patch('/:id/read', notificationController.markAsRead);
+router.patch('/read-all', notificationController.markAllRead);
+
+
 module.exports = router;

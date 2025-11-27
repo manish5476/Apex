@@ -274,3 +274,11 @@ exports.getSpecificList = catchAsync(async (req, res, next) => {
     data,
   });
 });
+
+
+exports.exportMasterList = catchAsync(async (req, res, next) => {
+  const data = await MasterList.find({ organizationId: req.user.organizationId }).lean();
+  res.setHeader('Content-Disposition', 'attachment; filename=master-list.json');
+  res.setHeader('Content-Type', 'application/json');
+  res.send(JSON.stringify(data));
+});

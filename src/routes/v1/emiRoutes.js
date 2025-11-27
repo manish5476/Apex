@@ -52,4 +52,9 @@ router.get(
   emiController.getEmiById
 );
 
+router.delete('/:id', authController.restrictTo('superadmin','admin'), emiController.deleteEmi);
+router.get('/:id/history', authController.restrictTo('superadmin','admin','employee'), emiController.getEmiHistory);
+
+// router.get('/export', authController.restrictTo('superadmin','admin'), ledgerController.exportLedgers);
+
 module.exports = router;

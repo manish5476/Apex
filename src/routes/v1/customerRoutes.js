@@ -77,4 +77,9 @@ router.patch(
   customerController.restoreCustomer
 );
 
+router.patch('/:id/credit-limit',
+  authController.restrictTo('update_customers','superadmin'),
+  customerController.updateCreditLimit
+);
+
 module.exports = router;

@@ -7,5 +7,6 @@ const router = express.Router();
 router.use(authController.protect);
 router.get('/', masterListController.getMasterList);
 router.get('/list', masterListController.getSpecificList);
+router.get('/export', authController.restrictTo('superadmin','admin'), masterListController.exportMasterList);
 
 module.exports = router;

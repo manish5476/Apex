@@ -34,4 +34,16 @@ router
     supplierController.deleteSupplier
   );
 
+  router.get('/search',
+  authController.restrictTo('read_suppliers','superadmin'),
+  supplierController.searchSuppliers
+);
+
+// if not present, upload endpoint
+// router.patch('/:id/upload',
+//   upload.single('photo'),
+//   supplierController.uploadSupplierPhoto
+// );
+
+
 module.exports = router;

@@ -410,6 +410,17 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.logout = catchAsync(async (req, res, next) => {
+  res.cookie("refreshToken", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    expires: new Date(0),
+    sameSite: "strict"
+  });
+  res.status(200).json({ status: "success", message: "Logged out successfully." });
+});
+
+
 // // const createSendToken = (user, statusCode, res) => {
 // //   const token = signToken(user);
 // //   // sanitize user object before sending

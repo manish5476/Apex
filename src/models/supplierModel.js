@@ -18,7 +18,7 @@ const supplierSchema = new mongoose.Schema({
         required: true,
         index: true,
     },
-
+    avatar: { type: String },
     // --- Business Details ---
     companyName: {
         type: String,
@@ -103,12 +103,12 @@ supplierSchema.index({ organizationId: 1, companyName: 1 });
 supplierSchema.index({ organizationId: 1, gstNumber: 1 });
 
 // --- Virtual for Display Name ---
-supplierSchema.virtual('displayName').get(function() {
+supplierSchema.virtual('displayName').get(function () {
     return this.contactPerson ? `${this.companyName} (${this.contactPerson})` : this.companyName;
 });
 
 // --- Middleware: Normalize Text ---
-supplierSchema.pre('save', function(next) {
+supplierSchema.pre('save', function (next) {
     if (this.companyName) this.companyName = this.companyName.trim();
     if (this.contactPerson) this.contactPerson = this.contactPerson.trim();
     next();

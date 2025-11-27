@@ -171,11 +171,8 @@ app.use("/api/v1/emi", emiRoutes);
 // Logs route (admin-only route should be implemented in logRoutes)
 app.use("/api/v1/logs", logRoutes);
 app.use("/api/v1/sessions", require("./routes/v1/sessionRoutes"));
-
-// Sales and any remaining routes
 app.use("/api/v1/sales", salesRoutes);
 
-// 404 handler
 app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
 });

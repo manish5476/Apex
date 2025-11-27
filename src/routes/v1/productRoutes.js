@@ -81,5 +81,16 @@ router.patch(
   productController.restoreProduct
 );
 
+router.post('/bulk-update',
+  authController.restrictTo('update_products','superadmin'),
+  productController.bulkUpdateProducts
+);
+
+router.post('/:id/stock-adjust',
+  authController.restrictTo('update_products','superadmin'),
+  productController.adjustStock
+);
+
+
 module.exports = router;
 

@@ -16,5 +16,12 @@ router.post("/", userController.createUser);
 router.patch("/:id", userController.updateUser);
 router.patch("/:id/password", userController.adminUpdatePassword);
 router.delete("/:id", userController.deleteUser);
+
+// admin-only routes
+router.get('/search', authController.restrictTo('manage_users','superadmin'), userController.searchUsers);
+router.patch('/:id/deactivate', authController.restrictTo('manage_users','superadmin'), userController.deactivateUser);
+router.patch('/:id/activate', authController.restrictTo('manage_users','superadmin'), userController.activateUser);
+router.get('/:id/activity', authController.restrictTo('manage_users','superadmin'), userController.getUserActivity);
+
 module.exports = router;
 
