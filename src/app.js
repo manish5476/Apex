@@ -18,7 +18,7 @@ const swaggerSpec = require("./config/swaggerConfig");
 const globalErrorHandler = require("./middleware/errorController");
 const AppError = require("./utils/appError");
 // Centralized logger (single source of truth)
-const logger = require("./config/logger");
+// const logger = require("./config/logger");
 
 // Routes
 const organizationRoutes = require("./routes/v1/organizationRoutes");
@@ -75,20 +75,20 @@ app.use(
 );
 
 // HTTP access logging: morgan -> logger
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-} else {
-  app.use(
-    morgan("combined", {
-      stream: {
-        write: (msg) => {
-          // trim newline added by morgan
-          logger.info(msg.trim());
-        },
-      },
-    })
-  );
-}
+// if (process.env.NODE_ENV === "development") {
+//   app.use(morgan("dev"));
+// } else {
+//   app.use(
+//     morgan("combined", {
+//       stream: {
+//         write: (msg) => {
+//           // trim newline added by morgan
+//           logger.info(msg.trim());
+//         },
+//       },
+//     })
+//   );
+// }
 
 // Rate limiter for API
 app.use(
