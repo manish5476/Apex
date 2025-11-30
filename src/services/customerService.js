@@ -1,6 +1,6 @@
 // Services/customerService.js
 const Customer = require('../models/customerModel');
-const fileUploadService = require('./fileUploadService'); // We will use our existing file upload utility
+const fileUploadService = require('./uploads/fileUploadService');
 const AppError = require('../utils/appError');
 
 

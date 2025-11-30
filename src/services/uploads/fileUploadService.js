@@ -15,11 +15,7 @@ exports.uploadFile = (fileBuffer, folder = "uploads", resourceType = "auto") => 
     if (!fileBuffer)
       return reject(new AppError("No file buffer provided", 400));
 
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: resourceType,
-      },
+    const uploadStream = cloudinary.uploader.upload_stream({folder, resource_type: resourceType,},
       (error, result) => {
         if (error) {
           console.error("❌ Cloudinary upload error:", error);
@@ -46,7 +42,6 @@ exports.uploadFile = (fileBuffer, folder = "uploads", resourceType = "auto") => 
  */
 exports.deleteFile = async (publicId) => {
   if (!publicId) throw new AppError("No public_id provided for deletion", 400);
-
   try {
     const result = await cloudinary.uploader.destroy(publicId);
     return result.result === "ok";
