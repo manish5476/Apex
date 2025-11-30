@@ -49,6 +49,7 @@ const salesRoutes = require("./routes/v1/salesRoutes");
 const logRoutes = require("./routes/v1/logRoutes");
 const aiAgent = require("./routes/v1/AiAgentRoutes.js");
 const purchaseRoutes = require("./routes/v1/purchaseRoutes");
+const analyticsRoutes = require("./routes/v1/analyticsRoutes.js");
 
 const app = express();
 app.set("query parser", (str) => qs.parse(str, { defaultCharset: "utf-8" }));
@@ -175,6 +176,7 @@ app.use("/api/v1/sessions", require("./routes/v1/sessionRoutes"));
 app.use("/api/v1/sales", salesRoutes);
 app.use("/api/v1/ai-agent", aiAgent);
 app.use("/api/v1/purchases", purchaseRoutes);
+app.use("/api/v1/analytics", analyticsRoutes);
 
 app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
