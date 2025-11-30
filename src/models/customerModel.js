@@ -11,16 +11,16 @@ const addressSchema = new mongoose.Schema({
 
 // --- Main Customer Schema ---
 const customerSchema = new mongoose.Schema({
-  // --- Core Link ---
+ 
   organizationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Organization',
     required: true,
     index: true,
   },
-  // --- branchId removed ---
+ 
 
-  // --- Customer Details ---
+ 
   type: {
     type: String,
     enum: ['individual', 'business'],
@@ -31,7 +31,7 @@ const customerSchema = new mongoose.Schema({
     required: [true, 'Customer name is required'],
     trim: true,
   },
-  avatar: { // <-- ADDED
+  avatar: {
     type: String, 
     trim: true,
   },
@@ -64,11 +64,11 @@ const customerSchema = new mongoose.Schema({
     uppercase: true,
   },
 
-  // --- Address ---
+ 
   billingAddress: addressSchema,
   shippingAddress: addressSchema,
 
-  // --- Financial Info ---
+ 
   openingBalance: {
     type: Number,
     default: 0,
@@ -86,7 +86,7 @@ const customerSchema = new mongoose.Schema({
     trim: true,
   },
 
-  // --- Status & Meta ---
+ 
   isActive: {
     type: Boolean,
     default: true,
@@ -104,7 +104,7 @@ const customerSchema = new mongoose.Schema({
     trim: true,
   },
 
-  // --- Audit Trail ---
+ 
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -122,7 +122,7 @@ customerSchema.index({ organizationId: 1, phone: 1 }, { unique: true });
 // --- THIS IS THE FIX ---
 // The 'sparse: true' option ensures the index only applies to documents
 // that have a non-null value for 'gstNumber'.
-customerSchema.index({ organizationId: 1, gstNumber: 1 }, { unique: true, sparse: true }); // GST is unique or null
+customerSchema.index({ organizationId: 1, gstNumber: 1 }, { unique: true, sparse: true });
 
 customerSchema.index({ organizationId: 1, name: 1 });
 
@@ -135,12 +135,12 @@ customerSchema.virtual('displayName').get(function () {
 
 // This pre-save hook is correct and works with the sparse index
 customerSchema.pre('save', function (next) {
-  // If gstNumber is an empty string, set it to null
+ 
   if (this.isModified('gstNumber') && this.gstNumber === '') {
     this.gstNumber = null;
   }
   
-  // You can do the same for panNumber if it has a similar index
+ 
   if (this.isModified('panNumber') && this.panNumber === '') {
     this.panNumber = null;
   }

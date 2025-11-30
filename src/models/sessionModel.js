@@ -24,27 +24,3 @@ const sessionSchema = new mongoose.Schema({
 
 module.exports = mongoose.model("Session", sessionSchema);
 
-
-// const mongoose = require("mongoose");
-
-// const sessionSchema = new mongoose.Schema({
-//   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-//   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: "Organization", required: true },
-
-//   // Device metadata
-//   device: { type: String },
-//   browser: { type: String },
-//   os: { type: String },
-
-//   ipAddress: { type: String },
-//   location: { type: String }, // optional (geo)
-
-//   token: { type: String, required: true }, // JWT / session token
-//   isValid: { type: Boolean, default: true }, // admin can invalidate
-
-//   loggedInAt: { type: Date, default: Date.now },
-//   lastActivityAt: { type: Date, default: Date.now },
-
-// }, { timestamps: true });
-
-// module.exports = mongoose.model("Session", sessionSchema);
