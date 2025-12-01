@@ -74,15 +74,15 @@ app.use(helmet());
 // FIX: Correctly mount the session activity middleware function
 app.use(updateSessionActivity);
 
-// app.use(
-//   cors({
-//     // FIX: Handle credentials with specific origins, fallback to localhost if env missing
-//     origin: process.env.CORS_ORIGIN
-//       ? process.env.CORS_ORIGIN.split(",")
-//       : ["http://localhost:4200", "http://localhost:3000"],
-//     credentials: true,
-//   })
-// );
+app.use(
+  cors({
+    // FIX: Handle credentials with specific origins, fallback to localhost if env missing
+    origin: process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(",")
+      : ["http://localhost:4200", "https://apex-infinity.vercel.app"],
+    credentials: true,
+  }),
+);
 
 // HTTP access logging
 // FIX: Corrected syntax errors in the 'else' block
