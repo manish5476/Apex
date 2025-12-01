@@ -1,4 +1,3 @@
-// src/app.js
 const qs = require("qs");
 const express = require("express");
 const morgan = require("morgan");
@@ -19,10 +18,16 @@ const globalErrorHandler = require("./middleware/errorController");
 const AppError = require("./utils/appError");
 // Centralized logger (single source of truth)
 // const logger = require("./config/logger");
+// Centralized logger
+const logger = require("./config/logger");
 
-// Routes
+// Middleware Imports
+// We destructure specifically to get the function, preventing the "received Object" crash
+const { updateSessionActivity } = require("./middleware/sessionActivity");
+
+// Routes Imports
 const organizationRoutes = require("./routes/v1/organizationRoutes");
-const neworganization = require("./routes/v1/organizationExtrasRoutes.js");
+const organizationExtrasRoutes = require("./routes/v1/organizationExtrasRoutes.js");
 const authRoutes = require("./routes/v1/authRoutes");
 const branchRoutes = require("./routes/v1/branchRoutes");
 const supplierRoutes = require("./routes/v1/supplierRoutes");
@@ -50,29 +55,35 @@ const logRoutes = require("./routes/v1/logRoutes");
 const aiAgent = require("./routes/v1/AiAgentRoutes.js");
 const purchaseRoutes = require("./routes/v1/purchaseRoutes");
 const analyticsRoutes = require("./routes/v1/analyticsRoutes.js");
+const sessionRoutes = require("./routes/v1/sessionRoutes");
 
 const app = express();
+
 app.set("query parser", (str) => qs.parse(str, { defaultCharset: "utf-8" }));
 app.set("trust proxy", 1);
 
-// Ensure logs directory exists (logger may already do this; safe to re-check)
+// Ensure logs directory exists
 try {
   const logsDir = path.join(__dirname, "logs");
   if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 } catch (err) {
-  // If logging creation fails, write to stdout and continue — don't crash app startup
-  // logger may not be fully available yet; use console as fallback
   console.error("Failed to ensure logs directory:", err && err.message);
 }
 
 // ---------------------- SECURITY & COMMON MIDDLEWARE ----------------------
 app.use(helmet());
-require("./middleware/sessionActivity")
+
+// FIX: Correctly mount the session activity middleware function
+app.use(updateSessionActivity);
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : "*",
+    // FIX: Handle credentials with specific origins, fallback to localhost if env missing
+    origin: process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(",")
+      : ["http://localhost:4200", "https://apex-infinity.vercel.app"],
     credentials: true,
-  })
+  }),
 );
 
 // HTTP access logging: morgan -> logger
@@ -100,11 +111,12 @@ app.use(
     standardHeaders: true,
     legacyHeaders: false,
     message: "Too many requests from this IP, please try again after an hour.",
-  })
+  }),
 );
 
 // Body parsing
-app.use(express.json({ limit: "50kb" }));
+// FIX: Increased limit to 10mb to handle invoices/images
+app.use(express.json({ limit: "10mb" }));
 
 // Handle bad JSON early
 app.use((err, req, res, next) => {
@@ -120,10 +132,9 @@ app.use(xss());
 app.use(hpp());
 app.use(compression());
 
-// Small request context logger (non-blocking)
+// Small request context logger
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
-  // Use structured log object to facilitate parsing
   logger.info("Incoming Request", {
     method: req.method,
     url: req.originalUrl,
@@ -144,9 +155,9 @@ app.get("/health", (req, res) => {
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Register your API routers (same order as before)
+// API Routes
 app.use("/api/v1/organization", organizationRoutes);
-app.use("/api/v1/neworganization", neworganization);
+app.use("/api/v1/neworganization", organizationExtrasRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/branches", branchRoutes);
 app.use("/api/v1/products", productRoutes);
@@ -154,8 +165,11 @@ app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/customers", customerRoutes);
 app.use("/api/v1/suppliers", supplierRoutes);
 app.use("/api/v1/users", userRoutes);
-app.use("/api/v1/invoices", invoiceRoutes);
+
+// FIX: Specific PDF route BEFORE generic invoices route
 app.use("/api/v1/invoices/pdf", invoicePDFRoutes);
+app.use("/api/v1/invoices", invoiceRoutes);
+
 app.use("/api/v1/notes", noteRoutes);
 app.use("/api/v1/roles", roleRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
@@ -169,22 +183,20 @@ app.use("/api/v1/master-types", masterTypeRoutes);
 app.use("/api/v1/ledgers", ledgersRoutes);
 app.use("/api/v1/dashboard", dashboard);
 app.use("/api/v1/emi", emiRoutes);
-
-// Logs route (admin-only route should be implemented in logRoutes)
 app.use("/api/v1/logs", logRoutes);
-app.use("/api/v1/sessions", require("./routes/v1/sessionRoutes"));
+app.use("/api/v1/sessions", sessionRoutes);
 app.use("/api/v1/sales", salesRoutes);
 app.use("/api/v1/ai-agent", aiAgent);
 app.use("/api/v1/purchases", purchaseRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
 
+// 404 Handler
 app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
 });
 
-// Centralized error handler (use logger inside controller)
+// Centralized Error Handler
 app.use((err, req, res, next) => {
-  // Log error server-side (structured)
   try {
     logger.error(err.message || "Unhandled error", {
       stack: err.stack,
