@@ -19,7 +19,7 @@ const AppError = require("./utils/appError");
 // Centralized logger (single source of truth)
 // const logger = require("./config/logger");
 // Centralized logger
-const logger = require("./config/logger");
+// const logger = require("./config/logger");
 
 // Middleware Imports
 // We destructure specifically to get the function, preventing the "received Object" crash
@@ -56,23 +56,20 @@ const aiAgent = require("./routes/v1/AiAgentRoutes.js");
 const purchaseRoutes = require("./routes/v1/purchaseRoutes");
 const analyticsRoutes = require("./routes/v1/analyticsRoutes.js");
 const sessionRoutes = require("./routes/v1/sessionRoutes");
-
 const app = express();
-
 app.set("query parser", (str) => qs.parse(str, { defaultCharset: "utf-8" }));
 app.set("trust proxy", 1);
 
 // Ensure logs directory exists
-try {
-  const logsDir = path.join(__dirname, "logs");
-  if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
-} catch (err) {
-  console.error("Failed to ensure logs directory:", err && err.message);
-}
+// try {
+//   const logsDir = path.join(__dirname, "logs");
+//   if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+// } catch (err) {
+//   console.error("Failed to ensure logs directory:", err && err.message);
+// }
 
 // ---------------------- SECURITY & COMMON MIDDLEWARE ----------------------
 app.use(helmet());
-
 // FIX: Correctly mount the session activity middleware function
 app.use(updateSessionActivity);
 
@@ -107,7 +104,7 @@ app.use(
   "/api/v1",
   rateLimit({
     limit: 2000,
-    windowMs: 60 * 60 * 1000, // 1 hour
+    windowMs: 60 * 60 * 1000,
     standardHeaders: true,
     legacyHeaders: false,
     message: "Too many requests from this IP, please try again after an hour.",
@@ -133,16 +130,16 @@ app.use(hpp());
 app.use(compression());
 
 // Small request context logger
-app.use((req, res, next) => {
-  req.requestTime = new Date().toISOString();
-  logger.info("Incoming Request", {
-    method: req.method,
-    url: req.originalUrl,
-    ip: req.ip,
-    ts: req.requestTime,
-  });
-  next();
-});
+// app.use((req, res, next) => {
+//   req.requestTime = new Date().toISOString();
+//   logger.info("Incoming Request", {
+//     method: req.method,
+//     url: req.originalUrl,
+//     ip: req.ip,
+//     ts: req.requestTime,
+//   });
+//   next();
+// });
 
 // ----------------------------- ROUTES -----------------------------------
 app.get("/health", (req, res) => {
