@@ -1,17 +1,33 @@
+// Maps to the same logic as Analytics/Admin
 const express = require("express");
+const router = express.Router();
 const dashboardController = require("../../controllers/dashboardController");
 const authController = require("../../controllers/authController");
+const { checkPermission } = require("../../middleware/permissionMiddleware");
+const { PERMISSIONS } = require("../../config/permissions");
 
-const router = express.Router();
-/* ==========================================================
- *  PROTECTED ROUTE
- * ========================================================== */
 router.use(authController.protect);
 
-router.get(
-  "/",
-  authController.restrictTo("superadmin", "admin"),
-  dashboardController.getDashboardOverview,
-);
+router.get("/", checkPermission(PERMISSIONS.ANALYTICS.VIEW_EXECUTIVE), dashboardController.getDashboardOverview);
 
 module.exports = router;
+
+
+
+// const express = require("express");
+// const dashboardController = require("../../controllers/dashboardController");
+// const authController = require("../../controllers/authController");
+
+// const router = express.Router();
+// /* ==========================================================
+//  *  PROTECTED ROUTE
+//  * ========================================================== */
+// router.use(authController.protect);
+
+// router.get(
+//   "/",
+//   authController.restrictTo("superadmin", "admin"),
+//   dashboardController.getDashboardOverview,
+// );
+
+// module.exports = router;

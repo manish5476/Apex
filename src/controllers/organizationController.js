@@ -184,7 +184,6 @@ exports.approveMember = catchAsync(async (req, res, next) => {
     org.approvalRequests.pull(userId);
     await org.save({ session });
     await session.commitTransaction();
-
     res.status(200).json({
       status: 'success',
       message: 'Member approved successfully',
@@ -201,14 +200,6 @@ exports.approveMember = catchAsync(async (req, res, next) => {
 /* -------------------------------------------------------------
  * Self-service organization endpoints
 ------------------------------------------------------------- */
-// exports.getMyOrganization = catchAsync(async (req, res, next) => {
-//   req.params.id = req.user.organizationId;
-//   return factory.getOne(Organization, [
-//     { path: 'owner', select: 'name email' },
-//     { path: 'members', select: 'name email role' },
-//     { path: 'branches', select: 'name city state' },
-//   ])(req, res, next);
-// });
 exports.getMyOrganization = catchAsync(async (req, res, next) => {
   // 1. Safety Check
   if (!req.user.organizationId) {
@@ -305,15 +296,3 @@ exports.getOrganization = factory.getOne(Organization, [
 exports.updateOrganization = factory.updateOne(Organization);
 exports.deleteOrganization = factory.deleteOne(Organization);
 
-
-
-
-
-
-
-// exports.updateMyOrganization = catchAsync(async (req, res, next) => {
-//   if (req.body.owner)
-//     return next(new AppError('You cannot change the organization owner.', 403));
-//   req.params.id = req.user.organizationId;
-//   return factory.updateOne(Organization)(req, res, next);
-// });

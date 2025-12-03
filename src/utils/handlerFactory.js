@@ -78,9 +78,7 @@ exports.createOne = (Model) =>
     req.body.organizationId = req.user.organizationId;
     req.body.createdBy = req.user.id;
     if (req.user.branchId) req.body.branchId = req.user.branchId;
-
     const doc = await Model.create(req.body);
-
     res.status(201).json({
       status: 'success',
       data: {

@@ -42,8 +42,6 @@ router.get("/", (req, res) => {
       message: "Log file not found",
     });
   }
-
-  // Read last N lines efficiently
   const raw = fs.readFileSync(filePath, "utf8");
   let lines = raw.split("\n");
 
@@ -65,73 +63,48 @@ router.get("/", (req, res) => {
       }
     });
   }
-
-  // Apply text search
   if (search) {
     lines = lines.filter((line) => line.toLowerCase().includes(search.toLowerCase()));
   }
-
-  // Limit last N lines
   lines = lines.slice(-limit);
-
-  // res.json({
-  //   success: true,
-  //   file,
-  //   count: lines.length,
-  //   content: lines,
-  // });
   res.json({
-  success: true,
-  file,
-  count: lines.length,
-  content: lines
-    .map(l => {
-      const clean = l.trim();
-      if (!clean) return null;
+    success: true,
+    file,
+    count: lines.length,
+    content: lines
+      .map(l => {
+        const clean = l.trim();
+        if (!clean) return null;
 
-      try {
-        return JSON.parse(clean);
-      } catch {
-        return { raw: clean };
-      }
-    })
-    .filter(Boolean)
-});
+        try {
+          return JSON.parse(clean);
+        } catch {
+          return { raw: clean };
+        }
+      })
+      .filter(Boolean)
+  });
 
 });
 
 module.exports = router;
+/**const express = require("express");
+const router = express.Router();
+const fs = require("fs");
+const path = require("path");
+const authController = require("../../controllers/authController");
+const { checkPermission } = require("../../middleware/permissionMiddleware");
+const { PERMISSIONS } = require("../../config/permissions");
 
-// const express = require("express");
-// const fs = require("fs");
-// const path = require("path");
-// const authController = require("../../controllers/authController");
+router.use(authController.protect);
 
-// const router = express.Router();
+// Explicit LOGS.VIEW permission required
+router.get("/", checkPermission(PERMISSIONS.LOGS.VIEW), (req, res) => {
+  // ... existing log reading code (abbreviated for brevity as logic doesn't change)
+  const { file = "combined", limit = 300 } = req.query;
+  const VALID_FILES = { combined: "combined.log", error: "error.log" };
+  // ... implementation ...
+  res.json({ success: true, message: "Log data (stubbed for brevity)" });
+});
 
-// router.use(authController.protect);
-// router.use(authController.restrictTo("superadmin"));
-
-// router.get("/", (req, res) => {
-//   const file = req.query.file || "combined.log";
-
-//   const filePath = path.join(__dirname, "../../logs", file);
-
-//   if (!fs.existsSync(filePath)) {
-//     return res.status(404).json({
-//       success: false,
-//       message: "Log file not found",
-//     });
-//   }
-
-//   const content = fs.readFileSync(filePath, "utf8");
-
-//   res.json({
-//     success: true,
-//     file,
-//     size: fs.statSync(filePath).size,
-//     content: content.split("\n").slice(-300),  // last 300 lines only
-//   });
-// });
-
-// module.exports = router;
+module.exports = router; */

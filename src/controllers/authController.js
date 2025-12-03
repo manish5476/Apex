@@ -222,11 +222,9 @@ exports.login = catchAsync(async (req, res, next) => {
     data: { user, session },
   });
 });
-
 // ======================================================
 //  PROTECT (JWT AUTH)
 // ======================================================
-
 exports.protect = catchAsync(async (req, res, next) => {
   let token;
   if (req.headers.authorization?.startsWith("Bearer"))
@@ -272,17 +270,47 @@ exports.protect = catchAsync(async (req, res, next) => {
 exports.restrictTo = (...permissions) => {
   return (req, res, next) => {
     if (!req.user) return next(new AppError("Not authorized.", 403));
-
     const { role, permissions: userPerms } = req.user;
-
     if (permissions.includes("superadmin") && role?.isSuperAdmin) return next();
-
     const ok = permissions.some((p) => userPerms.includes(p));
     if (!ok) return next(new AppError("Permission denied.", 403));
 
     next();
   };
 };
+
+
+exports.checkUserPermission = (permissionTag) => {
+  return async (req, res, next) => {
+    if (!req.user) {
+      return next(new AppError("User not authenticated", 401));
+    }
+
+    const role = await Role.findById(req.user.role);
+
+    if (!role) {
+      return next(new AppError("User role not found", 403));
+    }
+
+    // 🔥 SuperAdmin override
+    if (role.isSuperAdmin || role.permissions.includes("*")) {
+      return next();
+    }
+
+    // 🔍 Check actual permission tag
+    const hasPermission = role.permissions.includes(permissionTag);
+
+    if (!hasPermission) {
+      return next(
+        new AppError(`You do not have permission: ${permissionTag}`, 403)
+      );
+    }
+
+    next();
+  };
+};
+
+
 
 // ======================================================
 //  FORGOT PASSWORD

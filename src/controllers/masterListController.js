@@ -12,6 +12,7 @@ const Sales = require("../models/salesModel");           // Added
 const Payment = require("../models/paymentModel");       // Added
 const EMI = require("../models/emiModel");               // Added
 const Ledger = require('../models/ledgerModel');
+const { PERMISSIONS_LIST } = require('../config/permissions');
 
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
@@ -282,3 +283,12 @@ exports.exportMasterList = catchAsync(async (req, res, next) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(JSON.stringify(data));
 });
+
+
+exports.getPermissionsMetadata = (req, res, next) => {
+  res.status(200).json({
+    status: 'success',
+    results: PERMISSIONS_LIST.length,
+    data: PERMISSIONS_LIST 
+  });
+};
