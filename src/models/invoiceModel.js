@@ -215,6 +215,7 @@ const invoiceSchema = new mongoose.Schema(
 invoiceSchema.index({ organizationId: 1, invoiceNumber: 1 }, { unique: true });
 invoiceSchema.index({ organizationId: 1, customerId: 1 });
 invoiceSchema.index({ organizationId: 1, invoiceDate: -1 });
+invoiceSchema.index({ organizationId: 1, branchId: 1, invoiceDate: -1 });
 
 // --- Virtual Field: Total Quantity ---
 invoiceSchema.virtual("totalQuantity").get(function () {

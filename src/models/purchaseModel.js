@@ -153,6 +153,7 @@ const purchaseSchema = new mongoose.Schema({
 // --- Indexing ---
 purchaseSchema.index({ organizationId: 1, supplierId: 1 });
 purchaseSchema.index({ organizationId: 1, invoiceNumber: 1 }, { unique: true, sparse: true });
+purchaseSchema.index({ organizationId: 1, purchaseDate: -1 });
 
 // --- Virtual Field: Total Quantity ---
 purchaseSchema.virtual('totalQuantity').get(function() {

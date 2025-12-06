@@ -1,7 +1,3 @@
-// src/services/ai/agentService.js
-// Initializes a "best-effort" agent: uses LangChain+Google if available, otherwise a stable fallback.
-// Exports: processUserMessage(message, userContext)
-// userContext: { organizationId, branchId }
 
 const { salesTool, productTool, customerDuesTool, emiTool } = require("./agentTools");
 const debug = (msg, ...args) => { if (process.env.NODE_ENV !== "production") console.debug("[AI AGENT]", msg, ...args); };

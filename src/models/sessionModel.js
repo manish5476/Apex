@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 const sessionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: "Organization", required: true, index: true },
-
   // device/browser info
   device: { type: String, default: "Unknown" },
   browser: { type: String, default: "Unknown" },

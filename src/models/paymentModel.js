@@ -108,6 +108,7 @@ paymentSchema.index({ customerId: 1 });
 paymentSchema.index({ supplierId: 1 });
 paymentSchema.index({ invoiceId: 1 });
 paymentSchema.index({ purchaseId: 1 });
+paymentSchema.index({ organizationId: 1, paymentDate: -1 });
 
 // --- Virtual: Transaction Direction ---
 paymentSchema.virtual('direction').get(function() {
