@@ -279,6 +279,15 @@ exports.approveMember = catchAsync(async (req, res, next) => {
       message: "Member approved.",
       data: { user }
     });
+    
+    emitToOrg(req.user.organizationId, 'newNotification', {
+      title: "Member Approved",
+      message: `A new member has joined the team!`,
+      type: "success",
+      createdAt: new Date()
+    });
+
+    res.status(200).json({ status: "success" });
 
   } catch (err) {
     await session.abortTransaction();
