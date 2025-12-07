@@ -1,53 +1,104 @@
 const PERMISSIONS_LIST = [
 
+//   // -----------------------------
+//   // EXECUTIVE & STRATEGIC
+//   // -----------------------------
+//   { tag: "analytics:view_executive", group: "Analytics", description: "Access Executive Dashboard & Strategic Insights" },
+//   { tag: "analytics:view_branch_comparison", group: "Analytics", description: "Compare Branch Performance & Benchmarks" },
+//   { tag: "analytics:view_forecast", group: "Analytics", description: "View Revenue & Sales Forecasts" },
+//   { tag: "analytics:view_alerts", group: "Analytics", description: "View Critical Business Alerts" },
+
+//   // -----------------------------
+//   // FINANCIAL REPORTS
+//   // -----------------------------
+//   { tag: "analytics:view_financial", group: "Analytics", description: "View Financial Summary Reports (P&L, Revenue, Expense)" },
+//   { tag: "analytics:view_cashflow", group: "Analytics", description: "View Cash Flow & Payment Activity" },
+//   { tag: "analytics:view_tax", group: "Analytics", description: "View GST/Tax Reports" },
+//   { tag: "analytics:view_debtor_aging", group: "Analytics", description: "View Debtor Aging & Outstanding Balances" },
+//   { tag: "analytics:view_profitability", group: "Analytics", description: "View Gross Profit & Margin Insights" },
+
+//   // -----------------------------
+//   // OPERATIONAL & STAFF ANALYTICS
+//   // -----------------------------
+//   { tag: "analytics:view_operational", group: "Analytics", description: "View Operational Efficiency Metrics" },
+//   { tag: "analytics:view_staff_performance", group: "Analytics", description: "View Employee Sales Leaderboard & KPIs" },
+//   { tag: "analytics:view_peak_hours", group: "Analytics", description: "View Peak Business Hour Heatmap" },
+//   { tag: "analytics:view_procurement", group: "Analytics", description: "View Supplier & Procurement Spend Analysis" },
+
+//   // -----------------------------
+//   // INVENTORY INTELLIGENCE
+//   // -----------------------------
+//   { tag: "analytics:view_inventory", group: "Analytics", description: "View Inventory Valuation & Stock Levels" },
+//   { tag: "analytics:view_product_performance", group: "Analytics", description: "View Best Sellers & Slow Movers" },
+//   { tag: "analytics:view_dead_stock", group: "Analytics", description: "View Dead Stock & Non-Moving Items" },
+//   { tag: "analytics:view_stock_forecast", group: "Analytics", description: "View Stock Out Predictions" },
+
+//   // -----------------------------
+//   // CUSTOMER INSIGHTS
+//   // -----------------------------
+//   { tag: "analytics:view_customer_segmentation", group: "Analytics", description: "View Customer Segments (RFM)" },
+//   { tag: "analytics:view_customer_retention", group: "Analytics", description: "View Cohort & Retention Metrics" },
+
+//   // -----------------------------
+//   // SECURITY ANALYTICS
+//   // -----------------------------
+//   { tag: "analytics:view_security_audit", group: "Analytics", description: "View Audit Logs & Suspicious Activity" },
+
+//   // -----------------------------
+//   // EXPORTS
+//   // -----------------------------
+//   { tag: "analytics:export_data", group: "Analytics", description: "Export Analytics Data (CSV/Excel)" },
+
+// ==============================================================================
+  // 📊 ANALYTICS & INTELLIGENCE PERMISSIONS
+  // ==============================================================================
+
   // -----------------------------
   // EXECUTIVE & STRATEGIC
   // -----------------------------
   { tag: "analytics:view_executive", group: "Analytics", description: "Access Executive Dashboard & Strategic Insights" },
   { tag: "analytics:view_branch_comparison", group: "Analytics", description: "Compare Branch Performance & Benchmarks" },
-  { tag: "analytics:view_forecast", group: "Analytics", description: "View Revenue & Sales Forecasts" },
-  { tag: "analytics:view_alerts", group: "Analytics", description: "View Critical Business Alerts" },
+  { tag: "analytics:view_forecast", group: "Analytics", description: "View AI Revenue & Sales Forecasts" },
+  { tag: "analytics:view_alerts", group: "Analytics", description: "View Critical Business Alerts (Risk & Stock)" },
 
   // -----------------------------
   // FINANCIAL REPORTS
   // -----------------------------
-  { tag: "analytics:view_financial", group: "Analytics", description: "View Financial Summary Reports (P&L, Revenue, Expense)" },
-  { tag: "analytics:view_cashflow", group: "Analytics", description: "View Cash Flow & Payment Activity" },
-  { tag: "analytics:view_tax", group: "Analytics", description: "View GST/Tax Reports" },
-  { tag: "analytics:view_debtor_aging", group: "Analytics", description: "View Debtor Aging & Outstanding Balances" },
-  { tag: "analytics:view_profitability", group: "Analytics", description: "View Gross Profit & Margin Insights" },
+  { tag: "analytics:view_financial", group: "Analytics", description: "View Financial Summary (P&L, Revenue, Expense)" },
+  { tag: "analytics:view_cashflow", group: "Analytics", description: "View Cash Flow & Payment Mode Breakdown" },
+  { tag: "analytics:view_tax", group: "Analytics", description: "View GST Input/Output Tax Reports" },
+  { tag: "analytics:view_debtor_aging", group: "Analytics", description: "View Debtor Aging (0-90+ Days Analysis)" },
+  { tag: "analytics:view_profitability", group: "Analytics", description: "View Real Gross Profit & Margins" },
 
   // -----------------------------
-  // OPERATIONAL & STAFF ANALYTICS
+  // OPERATIONAL & STAFF
   // -----------------------------
-  { tag: "analytics:view_operational", group: "Analytics", description: "View Operational Efficiency Metrics" },
+  { tag: "analytics:view_operational", group: "Analytics", description: "View General Operational Efficiency Metrics" },
   { tag: "analytics:view_staff_performance", group: "Analytics", description: "View Employee Sales Leaderboard & KPIs" },
-  { tag: "analytics:view_peak_hours", group: "Analytics", description: "View Peak Business Hour Heatmap" },
-  { tag: "analytics:view_procurement", group: "Analytics", description: "View Supplier & Procurement Spend Analysis" },
+  { tag: "analytics:view_peak_hours", group: "Analytics", description: "View Peak Business Hours & Days Heatmap" },
+  { tag: "analytics:view_procurement", group: "Analytics", description: "View Supplier Spend Analysis" },
 
   // -----------------------------
   // INVENTORY INTELLIGENCE
   // -----------------------------
-  { tag: "analytics:view_inventory", group: "Analytics", description: "View Inventory Valuation & Stock Levels" },
-  { tag: "analytics:view_product_performance", group: "Analytics", description: "View Best Sellers & Slow Movers" },
-  { tag: "analytics:view_dead_stock", group: "Analytics", description: "View Dead Stock & Non-Moving Items" },
-  { tag: "analytics:view_stock_forecast", group: "Analytics", description: "View Stock Out Predictions" },
+  { tag: "analytics:view_inventory", group: "Analytics", description: "View Inventory Valuation & Stock Overview" },
+  { tag: "analytics:view_product_performance", group: "Analytics", description: "View Best Sellers & High Margin Items" },
+  { tag: "analytics:view_dead_stock", group: "Analytics", description: "View Dead Stock (Non-moving Items > 90 Days)" },
+  { tag: "analytics:view_stock_forecast", group: "Analytics", description: "View Stock-Out Predictions (Run Rate)" },
 
   // -----------------------------
   // CUSTOMER INSIGHTS
   // -----------------------------
-  { tag: "analytics:view_customer_segmentation", group: "Analytics", description: "View Customer Segments (RFM)" },
-  { tag: "analytics:view_customer_retention", group: "Analytics", description: "View Cohort & Retention Metrics" },
+  { tag: "analytics:view_customer_insights", group: "Analytics", description: "View General Customer Risk Metrics" },
+  { tag: "analytics:view_customer_segmentation", group: "Analytics", description: "View Customer Segments (RFM Analysis)" },
+  { tag: "analytics:view_customer_retention", group: "Analytics", description: "View Cohort Analysis & Retention Rates" },
 
   // -----------------------------
-  // SECURITY ANALYTICS
+  // SECURITY & SYSTEM
   // -----------------------------
-  { tag: "analytics:view_security_audit", group: "Analytics", description: "View Audit Logs & Suspicious Activity" },
+  { tag: "analytics:view_security_audit", group: "Analytics", description: "View Sensitive Audit Logs & Suspicious Activity" },
+  { tag: "analytics:export_data", group: "Analytics", description: "Export Reports to CSV/Excel" },
 
-  // -----------------------------
-  // EXPORTS
-  // -----------------------------
-  { tag: "analytics:export_data", group: "Analytics", description: "Export Analytics Data (CSV/Excel)" },
   // --- CRM (Customers) ---
   { tag: "customer:read", group: "Customers", description: "View Customer Details" },
   { tag: "customer:create", group: "Customers", description: "Create Customers" },

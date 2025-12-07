@@ -838,58 +838,58 @@ exports.getSecurityPulse = async (orgId, startDate, endDate) => {
 // ===========================================================================
 // 🆕 9. DATA EXPORT (Raw)
 // ===========================================================================
-exports.getExportData = async (orgId, type, startDate, endDate) => {
-    const match = { 
-        organizationId: toObjectId(orgId),
-        createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) }
-    };
+// exports.getExportData = async (orgId, type, startDate, endDate) => {
+//     const match = { 
+//         organizationId: toObjectId(orgId),
+//         createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) }
+//     };
 
-    if (type === 'sales') {
-        const invoices = await Invoice.find(match)
-            .populate('customerId', 'name')
-            .populate('branchId', 'name')
-            .lean();
+//     if (type === 'sales') {
+//         const invoices = await Invoice.find(match)
+//             .populate('customerId', 'name')
+//             .populate('branchId', 'name')
+//             .lean();
         
-        return invoices.map(inv => ({
-            Date: inv.invoiceDate ? inv.invoiceDate.toISOString().split('T')[0] : '',
-            InvoiceNo: inv.invoiceNumber,
-            Customer: inv.customerId?.name || 'Walk-in',
-            Branch: inv.branchId?.name,
-            Amount: inv.grandTotal,
-            Status: inv.paymentStatus
-        }));
-    }
+//         return invoices.map(inv => ({
+//             Date: inv.invoiceDate ? inv.invoiceDate.toISOString().split('T')[0] : '',
+//             InvoiceNo: inv.invoiceNumber,
+//             Customer: inv.customerId?.name || 'Walk-in',
+//             Branch: inv.branchId?.name,
+//             Amount: inv.grandTotal,
+//             Status: inv.paymentStatus
+//         }));
+//     }
 
-    if (type === 'inventory') {
-        const products = await Product.find({ organizationId: match.organizationId }).lean();
-        // Flatten inventory array
-        let rows = [];
-        products.forEach(p => {
-            p.inventory.forEach(inv => {
-                rows.push({
-                    Product: p.name,
-                    SKU: p.sku,
-                    Stock: inv.quantity,
-                    Price: p.sellingPrice
-                });
-            });
-        });
-        return rows;
-    }
+//     if (type === 'inventory') {
+//         const products = await Product.find({ organizationId: match.organizationId }).lean();
+//         // Flatten inventory array
+//         let rows = [];
+//         products.forEach(p => {
+//             p.inventory.forEach(inv => {
+//                 rows.push({
+//                     Product: p.name,
+//                     SKU: p.sku,
+//                     Stock: inv.quantity,
+//                     Price: p.sellingPrice
+//                 });
+//             });
+//         });
+//         return rows;
+//     }
 
-    if (type === 'tax') {
-        // Similar to sales but focused on tax breakdown
-        const invoices = await Invoice.find(match).lean();
-        return invoices.map(inv => ({
-            InvoiceNo: inv.invoiceNumber,
-            Taxable: inv.subTotal,
-            TaxAmount: inv.totalTax,
-            Total: inv.grandTotal
-        }));
-    }
+//     if (type === 'tax') {
+//         // Similar to sales but focused on tax breakdown
+//         const invoices = await Invoice.find(match).lean();
+//         return invoices.map(inv => ({
+//             InvoiceNo: inv.invoiceNumber,
+//             Taxable: inv.subTotal,
+//             TaxAmount: inv.totalTax,
+//             Total: inv.grandTotal
+//         }));
+//     }
 
-    return [];
-};
+//     return [];
+// };
 
 
 // In analyticsService.js
