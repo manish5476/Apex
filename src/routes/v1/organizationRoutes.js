@@ -10,9 +10,11 @@ router.post('/create', organizationController.createOrganization);
 
 router.use(authController.protect);
 
-// Members & Approval
-router.get('/pending-members', checkPermission(PERMISSIONS.ORG.MANAGE_MEMBERS), organizationController.getPendingMembers);
+router.get('/pending-members', organizationController.getPendingMembers);// checkPermission(PERMISSIONS.ORG.MANAGE_MEMBERS)
 router.post('/approve-member', checkPermission(PERMISSIONS.ORG.MANAGE_MEMBERS), organizationController.approveMember);
+// Members & Approval
+// router.get('/pending-members', checkPermission(PERMISSIONS.ORG.MANAGE_MEMBERS), organizationController.getPendingMembers);
+// router.post('/approve-member', checkPermission(PERMISSIONS.ORG.MANAGE_MEMBERS), organizationController.approveMember);
 
 // Manage OWN Organization
 router.route('/my-organization')

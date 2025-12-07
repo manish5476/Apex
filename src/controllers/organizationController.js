@@ -123,25 +123,64 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
 /* -------------------------------------------------------------
  * Pending Member (Requires userId, roleId, branchId)
 ------------------------------------------------------------- */
+// exports.getPendingMembers = catchAsync(async (req, res, next) => {
+//   const org = await Organization.findOne({
+//     _id: req.user.organizationId,
+//     owner: req.user.id,
+//   }).populate({
+//     path: 'approvalRequests',
+//     select: 'name email createdAt',
+//   });
+
+//   if (!org) {
+//     return next(new AppError('You are not authorized to view this data', 403));
+//   }
+
+//   res.status(200).json({
+//     status: 'success',
+//     results: org.approvalRequests.length,
+//     data: {
+//       pendingMembers: org.approvalRequests,
+//     },
+//   });
+// });
 exports.getPendingMembers = catchAsync(async (req, res, next) => {
   const org = await Organization.findOne({
-    _id: req.user.organizationId,
-    owner: req.user.id,
-  }).populate({
-    path: 'approvalRequests',
-    select: 'name email createdAt',
-  });
+    _id: req.user.organizationId
+  }).lean();
 
-  if (!org) {
-    return next(new AppError('You are not authorized to view this data', 403));
+  if (!org) return next(new AppError("Organization not found.", 404));
+
+  // Extract userIds from approvalRequests
+  const userIds = org.approvalRequests
+    .filter(r => r.status === 'pending')
+    .map(r => r.userId);
+
+  if (userIds.length === 0) {
+    return res.status(200).json({
+      status: "success",
+      results: 0,
+      data: { pendingMembers: [] }
+    });
   }
 
+  const users = await User.find({ _id: { $in: userIds } })
+    .select("_id name email createdAt")
+    .lean();
+
+  // Match users back to original metadata (like requestedAt)
+  const pendingMembers = users.map(u => {
+    const meta = org.approvalRequests.find(r => r.userId.toString() === u._id.toString());
+    return {
+      ...u,
+      requestedAt: meta?.requestedAt
+    };
+  });
+
   res.status(200).json({
-    status: 'success',
-    results: org.approvalRequests.length,
-    data: {
-      pendingMembers: org.approvalRequests,
-    },
+    status: "success",
+    results: pendingMembers.length,
+    data: { pendingMembers }
   });
 });
 
@@ -149,46 +188,98 @@ exports.getPendingMembers = catchAsync(async (req, res, next) => {
 /* -------------------------------------------------------------
  * Approve Member (Requires userId, roleId, branchId)
 ------------------------------------------------------------- */
+// exports.approveMember = catchAsync(async (req, res, next) => {
+//   const { userId, roleId, branchId } = req.body;
+//   if (!userId || !roleId || !branchId)
+//     return next(new AppError('Please provide userId, roleId, and branchId', 400));
+
+//   const org = await Organization.findOne({
+//     _id: req.user.organizationId,
+//     owner: req.user.id,
+//   });
+//   if (!org) return next(new AppError('Not authorized', 403));
+
+//   const user = await User.findOne({
+//     _id: userId,
+//     organizationId: req.user.organizationId,
+//     status: 'pending',
+//   });
+//   if (!user) return next(new AppError('No pending user found', 404));
+
+//   const [role, branch] = await Promise.all([
+//     Role.findOne({ _id: roleId, organizationId: req.user.organizationId }),
+//     Branch.findOne({ _id: branchId, organizationId: req.user.organizationId }),
+//   ]);
+//   if (!role || !branch) return next(new AppError('Invalid Role or Branch', 400));
+
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+//   try {
+//     user.status = 'approved';
+//     user.role = roleId;
+//     user.branchId = branchId;
+//     await user.save({ session });
+//     org.members.push(userId);
+//     org.approvalRequests.pull(userId);
+//     await org.save({ session });
+//     await session.commitTransaction();
+//     res.status(200).json({
+//       status: 'success',
+//       message: 'Member approved successfully',
+//       data: { user },
+//     });
+//   } catch (err) {
+//     await session.abortTransaction();
+//     next(err);
+//   } finally {
+//     session.endSession();
+//   }
+// });
+
 exports.approveMember = catchAsync(async (req, res, next) => {
   const { userId, roleId, branchId } = req.body;
-  if (!userId || !roleId || !branchId)
-    return next(new AppError('Please provide userId, roleId, and branchId', 400));
 
-  const org = await Organization.findOne({
-    _id: req.user.organizationId,
-    owner: req.user.id,
-  });
-  if (!org) return next(new AppError('Not authorized', 403));
+  if (!userId || !roleId || !branchId)
+    return next(new AppError("Missing required fields: userId, roleId, branchId", 400));
+
+  const org = await Organization.findOne({ _id: req.user.organizationId });
+
+  if (!org) return next(new AppError("Organization not found.", 404));
 
   const user = await User.findOne({
     _id: userId,
     organizationId: req.user.organizationId,
-    status: 'pending',
+    status: "pending",
   });
-  if (!user) return next(new AppError('No pending user found', 404));
 
-  const [role, branch] = await Promise.all([
-    Role.findOne({ _id: roleId, organizationId: req.user.organizationId }),
-    Branch.findOne({ _id: branchId, organizationId: req.user.organizationId }),
-  ]);
-  if (!role || !branch) return next(new AppError('Invalid Role or Branch', 400));
+  if (!user) return next(new AppError("User is not pending.", 404));
+
+  const role = await Role.findOne({ _id: roleId, organizationId: req.user.organizationId });
+  if (!role) return next(new AppError("Invalid role ID.", 400));
+
+  const branch = await Branch.findOne({ _id: branchId, organizationId: req.user.organizationId });
+  if (!branch) return next(new AppError("Invalid branch ID.", 400));
 
   const session = await mongoose.startSession();
   session.startTransaction();
+
   try {
-    user.status = 'approved';
+    user.status = "approved";
     user.role = roleId;
     user.branchId = branchId;
-    await user.save({ session });
-    org.members.push(userId);
-    org.approvalRequests.pull(userId);
-    await org.save({ session });
+
+    org.members.push(user._id);
+    org.approvalRequests = org.approvalRequests.filter(r => r.userId.toString() !== userId);
+
+    await Promise.all([user.save({ session }), org.save({ session })]);
     await session.commitTransaction();
+
     res.status(200).json({
-      status: 'success',
-      message: 'Member approved successfully',
-      data: { user },
+      status: "success",
+      message: "Member approved.",
+      data: { user }
     });
+
   } catch (err) {
     await session.abortTransaction();
     next(err);
