@@ -20,31 +20,31 @@ const { emitToUser } = require("../utils/socket");
 //  HELPERS
 // ======================================================
 
-const createSendToken = (user, statusCode, res) => {
-  const accessToken = signAccessToken(user._id);
-  const refreshToken = signRefreshToken(user._id);
+// const createSendToken = (user, statusCode, res) => {
+//   const accessToken = signAccessToken(user._id);
+//   const refreshToken = signRefreshToken(user._id);
 
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-  });
+//   res.cookie("refreshToken", refreshToken, {
+//     httpOnly: true,
+//     secure: process.env.NODE_ENV === "production",
+//     sameSite: "strict",
+//     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+//   });
 
-  const safeUser = {
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role || null,
-    status: user.status || null,
-  };
+//   const safeUser = {
+//     id: user._id,
+//     name: user.name,
+//     email: user.email,
+//     role: user.role || null,
+//     status: user.status || null,
+//   };
 
-  res.status(statusCode).json({
-    status: "success",
-    token: accessToken,
-    data: { user: safeUser },
-  });
-};
+//   res.status(statusCode).json({
+//     status: "success",
+//     token: accessToken,
+//     data: { user: safeUser },
+//   });
+// };
 
 const getClientIp = (req) => {
   return (
@@ -72,31 +72,6 @@ const getDeviceInfo = (req) => {
   }
 };
 
-// ======================================================
-//  REFRESH TOKEN
-// ======================================================
-
-exports.refreshToken = catchAsync(async (req, res, next) => {
-  const refreshToken = req.cookies.refreshToken;
-  if (!refreshToken)
-    return next(new AppError("No refresh token provided", 401));
-
-  let decoded;
-  try {
-    decoded = await promisify(jwt.verify)(
-      refreshToken,
-      process.env.REFRESH_TOKEN_SECRET,
-    );
-  } catch {
-    return next(new AppError("Invalid refresh token", 401));
-  }
-
-  const user = await User.findById(decoded.id);
-  if (!user) return next(new AppError("User does not exist anymore", 401));
-
-  const newAccessToken = signAccessToken(user._id);
-  res.status(200).json({ status: "success", token: newAccessToken });
-});
 
 // ======================================================
 //  SIGNUP (EMPLOYEE)
@@ -135,13 +110,13 @@ exports.signup = catchAsync(async (req, res, next) => {
   // ✅ REVERTED: Pushing ONLY the User ID string as requested
   organization.approvalRequests = organization.approvalRequests || [];
   organization.approvalRequests.push(newUser._id);
-  
+
   await organization.save();
 
   // ✅ REAL-TIME NOTIFICATION TO OWNER
   if (organization.owner && organization.owner._id) {
     const ownerId = organization.owner._id.toString();
-    
+
     emitToUser(ownerId, "newNotification", {
       title: "New Signup Request",
       message: `${newUser.name} has signed up.`,
@@ -169,7 +144,7 @@ exports.signup = catchAsync(async (req, res, next) => {
         message: `${name} (${email}) requested to join your organization.`,
       });
     }
-  } catch {}
+  } catch { }
 
   res.status(201).json({
     status: "success",
@@ -180,7 +155,6 @@ exports.signup = catchAsync(async (req, res, next) => {
 // ======================================================
 //  LOGIN
 // ======================================================
-
 exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -194,14 +168,27 @@ exports.login = catchAsync(async (req, res, next) => {
   if (user.status !== "approved")
     return next(new AppError("Account is not approved.", 401));
 
-  const token = signAccessToken(user._id);
+  user.password = undefined;
 
+  // CREATE ACCESS + REFRESH TOKENS
+  const accessToken = signAccessToken(user._id);
+  const refreshToken = signRefreshToken(user._id);
+
+  // SET REFRESH TOKEN COOKIE
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    maxAge: 30 * 24 * 60 * 60 * 1000
+  });
+
+  // CREATE SESSION RECORD
   const { browser, os, device } = getDeviceInfo(req);
   const ip = getClientIp(req);
 
   const session = await Session.create({
     userId: user._id,
-    token,
+    token: accessToken,
     isValid: true,
     browser,
     os,
@@ -211,27 +198,65 @@ exports.login = catchAsync(async (req, res, next) => {
     userAgent: req.headers["user-agent"] || null,
   });
 
-  const io = req.app.get("io");
-  if (io) {
-    io.to(user._id.toString()).emit("sessionCreated", {
-      sessionId: session._id,
-      token,
-      browser,
-      os,
-      device,
-      ip,
-      loginAt: session.createdAt,
-    });
-  }
-
-  user.password = undefined;
-
+  // SEND RESPONSE
   res.status(200).json({
     status: "success",
-    token,
-    data: { user, session },
+    token: accessToken,
+    data: { user, session }
   });
 });
+
+// exports.login = catchAsync(async (req, res, next) => {
+//   const { email, password } = req.body;
+
+//   if (!email || !password)
+//     return next(new AppError("Email and password required.", 400));
+
+//   const user = await User.findOne({ email }).select("+password");
+//   if (!user || !(await user.correctPassword(password, user.password)))
+//     return next(new AppError("Invalid credentials.", 401));
+
+//   if (user.status !== "approved")
+//     return next(new AppError("Account is not approved.", 401));
+
+//   const token = signAccessToken(user._id);
+
+//   const { browser, os, device } = getDeviceInfo(req);
+//   const ip = getClientIp(req);
+
+//   const session = await Session.create({
+//     userId: user._id,
+//     token,
+//     isValid: true,
+//     browser,
+//     os,
+//     deviceType: device,
+//     ipAddress: ip,
+//     organizationId: user.organizationId,
+//     userAgent: req.headers["user-agent"] || null,
+//   });
+
+//   const io = req.app.get("io");
+//   if (io) {
+//     io.to(user._id.toString()).emit("sessionCreated", {
+//       sessionId: session._id,
+//       token,
+//       browser,
+//       os,
+//       device,
+//       ip,
+//       loginAt: session.createdAt,
+//     });
+//   }
+
+//   user.password = undefined;
+
+//   res.status(200).json({
+//     status: "success",
+//     token,
+//     data: { user, session },
+//   });
+// });
 
 // ======================================================
 //  PROTECT (JWT AUTH)
@@ -255,9 +280,13 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   if (user.changedPasswordAfter(decoded.iat))
     return next(new AppError("Password changed recently.", 401));
-
+  // ❗❗❗❗changes this because refresh token
+  // const session = await Session.findOne({
+  //   token,
+  //   userId: user._id,
+  //   isValid: true,
+  // });
   const session = await Session.findOne({
-    token,
     userId: user._id,
     isValid: true,
   });
@@ -449,6 +478,59 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
   });
 });
 
+const createSendToken = (user, statusCode, res) => {
+  const accessToken = signAccessToken(user._id);
+  const refreshToken = signRefreshToken(user._id);
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: false,        // LOCALHOST MUST BE FALSE
+    sameSite: "lax",      // "none" only if you need cross-site POST forms
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+
+  const safeUser = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role || null,
+    status: user.status || null,
+  };
+
+  res.status(statusCode).json({
+    status: "success",
+    token: accessToken,
+    data: { user: safeUser },
+  });
+};
+
+// ======================================================
+//  REFRESH TOKEN
+// ======================================================
+
+exports.refreshToken = catchAsync(async (req, res, next) => {
+  const refreshToken = req.cookies.refreshToken;
+  if (!refreshToken)
+    return next(new AppError("No refresh token provided", 401));
+
+  let decoded;
+  try {
+    decoded = await promisify(jwt.verify)(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET,
+    );
+  } catch {
+    return next(new AppError("Invalid refresh token", 401));
+  }
+
+  const user = await User.findById(decoded.id);
+  if (!user) return next(new AppError("User does not exist anymore", 401));
+
+  const newAccessToken = signAccessToken(user._id);
+  res.status(200).json({ status: "success", token: newAccessToken });
+});
+
+
 exports.logout = catchAsync(async (req, res, next) => {
   res.cookie("refreshToken", "", {
     httpOnly: true,
@@ -458,6 +540,16 @@ exports.logout = catchAsync(async (req, res, next) => {
   });
   res.status(200).json({ status: "success", message: "Logged out successfully." });
 });
+
+
+
+
+
+
+
+
+
+
 
 // const { promisify } = require("util");
 // const jwt = require("jsonwebtoken");
