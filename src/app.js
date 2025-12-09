@@ -46,6 +46,8 @@ const aiAgent = require("./routes/v1/AiAgentRoutes");
 const purchaseRoutes = require("./routes/v1/purchaseRoutes");
 const analyticsRoutes = require("./routes/v1/analyticsRoutes");
 const sessionRoutes = require("./routes/v1/sessionRoutes");
+const chatRoutes = require("./routes/v1/chatRoutes");
+const cookieParser = require("cookie-parser");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -62,8 +64,8 @@ app.use(
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"]
   })
 );
-
 app.options("*", cors());
+app.use(cookieParser());
 
 // ---------------------- FIX: BYPASS AUTH ON PREFLIGHT ----------------------
 app.use((req, res, next) => {
@@ -145,6 +147,7 @@ app.use("/api/v1/sales", salesRoutes);
 app.use("/api/v1/ai-agent", aiAgent);
 app.use("/api/v1/purchases", purchaseRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
+app.use("/api/v1/chat", chatRoutes);
 
 // ---------------------- 404 ----------------------
 app.use((req, res, next) => {
