@@ -171,7 +171,8 @@ exports.login = catchAsync(async (req, res, next) => {
   user.password = undefined;
 
   // CREATE ACCESS + REFRESH TOKENS
-  const accessToken = signAccessToken(user._id);
+  // const accessToken = signAccessToken(user._id);
+  const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user._id);
 
   // SET REFRESH TOKEN COOKIE
@@ -479,7 +480,8 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
 });
 
 const createSendToken = (user, statusCode, res) => {
-  const accessToken = signAccessToken(user._id);
+  // const accessToken = signAccessToken(user._id);
+  const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user._id);
 
   res.cookie("refreshToken", refreshToken, {
@@ -507,7 +509,6 @@ const createSendToken = (user, statusCode, res) => {
 // ======================================================
 //  REFRESH TOKEN
 // ======================================================
-
 exports.refreshToken = catchAsync(async (req, res, next) => {
   const refreshToken = req.cookies.refreshToken;
   if (!refreshToken)
@@ -523,23 +524,49 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
     return next(new AppError("Invalid refresh token", 401));
   }
 
+  // 1. We need to make sure we fetch the organizationId
+  // (In many Mongoose setups, findById returns it by default, but verify your Schema)
   const user = await User.findById(decoded.id);
+  
   if (!user) return next(new AppError("User does not exist anymore", 401));
 
-  const newAccessToken = signAccessToken(user._id);
+  // 2. 👇 FIX IS HERE: Pass the WHOLE user object, not just ID
+  const newAccessToken = signAccessToken(user); 
+  
   res.status(200).json({ status: "success", token: newAccessToken });
 });
+// exports.refreshToken = catchAsync(async (req, res, next) => {
+//   const refreshToken = req.cookies.refreshToken;
+//   if (!refreshToken)
+//     return next(new AppError("No refresh token provided", 401));
+
+//   let decoded;
+//   try {
+//     decoded = await promisify(jwt.verify)(
+//       refreshToken,
+//       process.env.REFRESH_TOKEN_SECRET,
+//     );
+//   } catch {
+//     return next(new AppError("Invalid refresh token", 401));
+//   }
+
+//   const user = await User.findById(decoded.id);
+//   if (!user) return next(new AppError("User does not exist anymore", 401));
+
+//   const newAccessToken = signAccessToken(user._id);
+//   res.status(200).json({ status: "success", token: newAccessToken });
+// });
 
 
-exports.logout = catchAsync(async (req, res, next) => {
-  res.cookie("refreshToken", "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    expires: new Date(0),
-    sameSite: "strict"
-  });
-  res.status(200).json({ status: "success", message: "Logged out successfully." });
-});
+// exports.logout = catchAsync(async (req, res, next) => {
+//   res.cookie("refreshToken", "", {
+//     httpOnly: true,
+//     secure: process.env.NODE_ENV === "production",
+//     expires: new Date(0),
+//     sameSite: "strict"
+//   });
+//   res.status(200).json({ status: "success", message: "Logged out successfully." });
+// });
 
 
 
