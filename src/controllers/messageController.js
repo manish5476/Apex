@@ -1,7 +1,7 @@
 // src/controllers/messageController.js
 const MessageModel = require('../models/messageModel');
 const User = require('../models/userModel'); // Needed for role check in delete
-
+const fileUploadService = require('../services/uploads/fileUploadService'); // ✅ Import your service
 exports.getMessages = async (req, res) => {
   try {
     const { channelId } = req.params;
@@ -96,64 +96,31 @@ exports.deleteMessage = async (req, res) => {
   }
 };
 
+exports.uploadAttachment = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
 
+    // 1. Upload to Cloudinary using your existing service
+    // We use a specific folder 'chat_attachments' to keep things organized
+    const result = await fileUploadService.uploadFile(
+      req.file.buffer, 
+      'chat_attachments', 
+      'auto'
+    );
 
-// // -----------------------------------------------------------------------------
-// // FILE: src/controllers/messageController.js
-// // Controllers for fetching, editing, deleting messages and server-side actions
-// const MessageModel = require('../models/messageModel');
+    // 2. Return the data needed for the frontend 'Attachment' interface
+    res.status(200).json({
+      name: req.file.originalname,
+      url: result.url,
+      type: result.format || 'file', // or req.file.mimetype
+      publicId: result.public_id,     // Useful if you want to delete it later
+      size: result.bytes
+    });
 
-// exports.getMessages = async (req, res) => {
-//   const { channelId } = req.params;
-//   const { before, limit = 50 } = req.query;
-//   const orgId = req.user.organizationId;
-
-//   // permission checks: ensure channel belongs to org and user is member if private
-//   const filter = { channelId };
-//   if (before) filter.createdAt = { $lt: new Date(before) };
-
-//   const messages = await MessageModel.find(filter).sort({ createdAt: -1 }).limit(Number(limit));
-//   res.json({ messages });
-// };
-
-// exports.editMessage = async (req, res) => {
-//   const { messageId } = req.params;
-//   const { body } = req.body;
-//   const userId = req.user._id;
-
-//   const msg = await MessageModel.findById(messageId);
-//   if (!msg) return res.status(404).json({ message: 'not found' });
-//   if (String(msg.senderId) !== String(userId)) return res.status(403).json({ message: 'cannot edit' });
-
-//   msg.body = body;
-//   msg.editedAt = Date.now();
-//   await msg.save();
-
-//   // Notify via socket (if available)
-//   try { const socketUtil = require('../utils/socket'); socketUtil.emitToOrg(msg.organizationId, 'messageEdited', msg); } catch(e){}
-
-//   res.json(msg);
-// };
-
-// exports.deleteMessage = async (req, res) => {
-//   const { messageId } = req.params;
-//   const userId = req.user._id;
-
-//   const msg = await MessageModel.findById(messageId);
-//   if (!msg) return res.status(404).json({ message: 'not found' });
-
-//   const actor = await User.findById(userId).select('role');
-//   const isOwnerOrAdmin = actor && ['superadmin','admin','owner'].includes(actor.role);
-
-//   if (String(msg.senderId) !== String(userId) && !isOwnerOrAdmin) return res.status(403).json({ message: 'cannot delete' });
-
-//   // soft delete pattern
-//   msg.body = '';
-//   msg.deleted = true;
-//   await msg.save();
-
-//   try { const socketUtil = require('../utils/socket'); socketUtil.emitToOrg(msg.organizationId, 'messageDeleted', { messageId }); } catch(e){}
-
-//   res.json({ success: true });
-// };
-
+  } catch (err) {
+    console.error('Upload Attachment Error:', err);
+    res.status(500).json({ message: 'File upload failed' });
+  }
+};

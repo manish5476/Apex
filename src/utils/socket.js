@@ -209,6 +209,12 @@ function init(server, options = {}) {
     socket.on('sendMessage', async (payload = {}) => {
       const { channelId, body, attachments } = payload;
       if (!channelId || (!body && !attachments)) return socket.emit('error', { code: 'INVALID_PAYLOAD' });
+      // 👇 ADD THESE DEBUG LOGS 👇
+  console.log('----------------DEBUG----------------');
+  console.log('1. Payload Attachments:', attachments);
+  console.log('2. Schema Definition:', Message.schema.path('attachments').instance);
+  console.log('3. Schema Caster:', Message.schema.path('attachments').caster.instance);
+  console.log('-------------------------------------');
       try {
         const channel = await Channel.findById(channelId);
         if (!channel) return socket.emit('error', { code: 'CHANNEL_NOT_FOUND' });
