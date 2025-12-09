@@ -18,12 +18,28 @@ exports.signToken = (user) => {
   });
 };
 
-
-exports.signAccessToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || "1h",
-  });
+exports.signAccessToken = (user) => {
+  console.log(user,"😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎")
+  return jwt.sign(
+    {
+      id: user._id,
+      name:user.name,
+      sub: user._id, // Standard JWT subject
+      organizationId: user.organizationId, // ✅ REQUIRED for Socket
+      role: user.role
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || "1h",
+    }
+  );
 };
+
+// exports.signAccessToken = (userId) => {
+//   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+//     expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || "1h",
+//   });
+// };
 
 exports.signRefreshToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.REFRESH_TOKEN_SECRET, {
