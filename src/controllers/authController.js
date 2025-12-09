@@ -172,9 +172,10 @@ exports.login = catchAsync(async (req, res, next) => {
 
   // CREATE ACCESS + REFRESH TOKENS
   // const accessToken = signAccessToken(user._id);
+  // const refreshToken = signRefreshToken(user._id);
+
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user._id);
-
   // SET REFRESH TOKEN COOKIE
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
@@ -480,8 +481,7 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
 });
 
 const createSendToken = (user, statusCode, res) => {
-  // const accessToken = signAccessToken(user._id);
-  const accessToken = signAccessToken(user);
+  const accessToken = signAccessToken(user._id);
   const refreshToken = signRefreshToken(user._id);
 
   res.cookie("refreshToken", refreshToken, {
@@ -509,32 +509,7 @@ const createSendToken = (user, statusCode, res) => {
 // ======================================================
 //  REFRESH TOKEN
 // ======================================================
-exports.refreshToken = catchAsync(async (req, res, next) => {
-  const refreshToken = req.cookies.refreshToken;
-  if (!refreshToken)
-    return next(new AppError("No refresh token provided", 401));
 
-  let decoded;
-  try {
-    decoded = await promisify(jwt.verify)(
-      refreshToken,
-      process.env.REFRESH_TOKEN_SECRET,
-    );
-  } catch {
-    return next(new AppError("Invalid refresh token", 401));
-  }
-
-  // 1. We need to make sure we fetch the organizationId
-  // (In many Mongoose setups, findById returns it by default, but verify your Schema)
-  const user = await User.findById(decoded.id);
-  
-  if (!user) return next(new AppError("User does not exist anymore", 401));
-
-  // 2. 👇 FIX IS HERE: Pass the WHOLE user object, not just ID
-  const newAccessToken = signAccessToken(user); 
-  
-  res.status(200).json({ status: "success", token: newAccessToken });
-});
 // exports.refreshToken = catchAsync(async (req, res, next) => {
 //   const refreshToken = req.cookies.refreshToken;
 //   if (!refreshToken)
@@ -556,17 +531,70 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
 //   const newAccessToken = signAccessToken(user._id);
 //   res.status(200).json({ status: "success", token: newAccessToken });
 // });
+// src/controllers/authController.js
 
+exports.refreshToken = catchAsync(async (req, res, next) => {
+  const refreshToken = req.cookies.refreshToken;
 
-// exports.logout = catchAsync(async (req, res, next) => {
-//   res.cookie("refreshToken", "", {
-//     httpOnly: true,
-//     secure: process.env.NODE_ENV === "production",
-//     expires: new Date(0),
-//     sameSite: "strict"
-//   });
-//   res.status(200).json({ status: "success", message: "Logged out successfully." });
-// });
+  if (!refreshToken) {
+    return next(new AppError("No refresh token provided", 401));
+  }
+
+  let decoded;
+  try {
+    decoded = await promisify(jwt.verify)(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+  } catch (err) {
+    return next(new AppError("Invalid refresh token", 401));
+  }
+
+  // 1. Check if user exists
+  const user = await User.findById(decoded.id);
+  if (!user) {
+    return next(new AppError("User does not exist anymore", 401));
+  }
+
+  // 2. 🔥 FIX: Check if a valid session exists for this user
+  // Since your protect middleware requires a session, refresh must respect that.
+  const sessionExists = await Session.findOne({
+    userId: user._id,
+    isValid: true
+  });
+
+  if (!sessionExists) {
+    // If no session in DB, the user is technically logged out.
+    // Clear the cookie to stop the client from trying again.
+    res.cookie("refreshToken", "", {
+      httpOnly: true,
+      expires: new Date(0),
+    });
+    return next(new AppError("Session expired or revoked. Please login again.", 401));
+  }
+
+  // 3. Issue new token
+  const newAccessToken = signAccessToken(user._id);
+
+  // Optional: Update the session's last activity to keep it alive
+  sessionExists.lastActivityAt = new Date();
+  await sessionExists.save();
+
+  res.status(200).json({
+    status: "success",
+    token: newAccessToken
+  });
+});
+
+exports.logout = catchAsync(async (req, res, next) => {
+  res.cookie("refreshToken", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    expires: new Date(0),
+    sameSite: "strict"
+  });
+  res.status(200).json({ status: "success", message: "Logged out successfully." });
+});
 
 
 
