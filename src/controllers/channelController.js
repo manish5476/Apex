@@ -30,7 +30,6 @@ exports.createChannel = async (req, res) => {
     let finalMembers = [...members]; 
     
     if (type === 'private' || type === 'dm') {
-      // Check if creator is already in list (comparing as strings)
       const isCreatorIncluded = finalMembers.some(m => String(m) === String(creatorId));
       if (!isCreatorIncluded) {
         finalMembers.push(creatorId);
