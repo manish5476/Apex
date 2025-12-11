@@ -116,7 +116,7 @@ exports.getCustomerLedger = catchAsync(async (req, res, next) => {
   // Note: For pagination to work with running balance, you ideally need the 
   // "Opening Balance" from before the page starts. This simplified version 
   // calculates balance based on fetched records.
-  
+
   let balance = 0;
   // Optional: If date filter exists, you might want to fetch "Opening Balance" 
   // from transactions BEFORE startDate. For now, we start at 0.
@@ -240,10 +240,47 @@ exports.getOrganizationLedgerSummary = catchAsync(async (req, res, next) => {
 /* -------------------------------------------------------------
  * Export Ledgers (CSV)
 ------------------------------------------------------------- */
+// exports.exportLedgers = catchAsync(async (req, res, next) => {
+//   const { start, end, customerId, supplierId, format='csv' } = req.query;
+//   const filter = { organizationId: req.user.organizationId };
+
+//   if (start || end) {
+//     filter.entryDate = {};
+//     if (start) filter.entryDate.$gte = new Date(start);
+//     if (end) filter.entryDate.$lte = new Date(end);
+//   }
+//   if (customerId) filter.customerId = customerId;
+//   if (supplierId) filter.supplierId = supplierId;
+
+//   const docs = await Ledger.find(filter)
+//     .populate('customerId', 'name')
+//     .populate('supplierId', 'companyName name')
+//     .lean();
+
+//   if (format === 'csv') {
+//     const headers = ['Date', 'Type', 'Amount', 'Party', 'Description', 'Ref'];
+//     const rows = [headers.join(',')].concat(docs.map(d => {
+//       const party = d.customerId?.name || d.supplierId?.companyName || d.supplierId?.name || '-';
+//       const date = d.entryDate ? new Date(d.entryDate).toLocaleDateString() : '';
+//       const notes = (d.description || '').replace(/,/g, ' '); // simple escape comma
+//       return `${date},${d.type},${d.amount},${party},${notes},${d.referenceNumber||''}`;
+//     }));
+
+//     res.setHeader('Content-Disposition', 'attachment; filename=ledger.csv');
+//     res.setHeader('Content-Type', 'text/csv');
+//     return res.send(rows.join('\n'));
+//   }
+
+//   res.status(200).json({ status: 'success', results: docs.length, data: { ledgers: docs } });
+// });
+/* -------------------------------------------------------------
+ * Export Ledgers (CSV with Debit/Credit & Running Balance)
+------------------------------------------------------------- */
 exports.exportLedgers = catchAsync(async (req, res, next) => {
-  const { start, end, customerId, supplierId, format='csv' } = req.query;
+  const { start, end, customerId, supplierId, format = 'csv' } = req.query;
   const filter = { organizationId: req.user.organizationId };
-  
+
+  // 1. Date Filter
   if (start || end) {
     filter.entryDate = {};
     if (start) filter.entryDate.$gte = new Date(start);
@@ -252,29 +289,64 @@ exports.exportLedgers = catchAsync(async (req, res, next) => {
   if (customerId) filter.customerId = customerId;
   if (supplierId) filter.supplierId = supplierId;
 
+  // 2. Fetch & Sort (Crucial: Must be sorted by date for Running Balance to work)
   const docs = await Ledger.find(filter)
+    .sort({ entryDate: 1 })
     .populate('customerId', 'name')
     .populate('supplierId', 'companyName name')
     .lean();
 
   if (format === 'csv') {
-    const headers = ['Date', 'Type', 'Amount', 'Party', 'Description', 'Ref'];
-    const rows = [headers.join(',')].concat(docs.map(d => {
+    // 3. Define Headers (Side-by-Side Format)
+    const headers = ['Date', 'Description', 'Ref', 'Party', 'Debit', 'Credit', 'Balance'];
+
+    let runningBalance = 0;
+
+    const rows = docs.map(d => {
       const party = d.customerId?.name || d.supplierId?.companyName || d.supplierId?.name || '-';
-      const date = d.entryDate ? new Date(d.entryDate).toLocaleDateString() : '';
-      const notes = (d.description || '').replace(/,/g, ' '); // simple escape comma
-      return `${date},${d.type},${d.amount},${party},${notes},${d.referenceNumber||''}`;
-    }));
-    
+      const date = d.entryDate ? new Date(d.entryDate).toLocaleDateString() : '-';
+      const notes = (d.description || '').replace(/,/g, ' '); // Remove commas to prevent CSV break
+      const ref = d.referenceNumber || '-';
+
+      // 4. Split Amount into Debit/Credit Columns
+      let debit = 0;
+      let credit = 0;
+
+      if (d.type === 'debit') {
+        debit = d.amount;
+      } else {
+        credit = d.amount;
+      }
+
+      // 5. Calculate Running Balance
+      // Logic Check:
+      // - For Supplier: Credit (Purchase) increases what we owe. Debit (Payment) decreases it.
+      // - For Customer: Debit (Sale) increases what they owe. Credit (Payment) decreases it.
+      if (supplierId) {
+        runningBalance += (credit - debit);
+      } else {
+        // Default/Customer behavior
+        runningBalance += (debit - credit);
+      }
+
+      // 6. Format Row
+      // We use empty strings '' for zero values to make the CSV look cleaner
+      return `${date},${notes},${ref},${party},${debit || ''},${credit || ''},${runningBalance.toFixed(2)}`;
+    });
+
+    // 7. Add Header Row
+    const csvContent = [headers.join(',')].concat(rows).join('\n');
+
     res.setHeader('Content-Disposition', 'attachment; filename=ledger.csv');
     res.setHeader('Content-Type', 'text/csv');
-    return res.send(rows.join('\n'));
+    return res.send(csvContent);
   }
-  
+
+  // Fallback JSON response
   res.status(200).json({ status: 'success', results: docs.length, data: { ledgers: docs } });
 });
 
-
+// 1
 // const Ledger = require('../models/ledgerModel');
 // const Customer = require('../models/customerModel');
 // const Supplier = require('../models/supplierModel');

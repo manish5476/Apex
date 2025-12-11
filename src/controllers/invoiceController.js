@@ -177,27 +177,81 @@ exports.validateNumber = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", valid: !exists });
 });
 
+// /* -------------------------------------------------------------
+//  * EXPORT INVOICES (CSV/JSON)
+// ------------------------------------------------------------- */
+// exports.exportInvoices = catchAsync(async (req, res, next) => {
+//   const { format = 'csv', start, end } = req.query;
+//   const filter = { organizationId: req.user.organizationId };
+//   if (start) filter.createdAt = { ...filter.createdAt, $gte: new Date(start) };
+//   if (end) filter.createdAt = { ...filter.createdAt, $lte: new Date(end) };
+
+//   const docs = await Invoice.find(filter).lean();
+
+//   if (format === 'csv') {
+//     const headers = Object.keys(docs[0] || {});
+//     const rows = [headers.join(',')].concat(docs.map(d => headers.map(h => JSON.stringify(d[h] ?? '')).join(',')));
+//     res.setHeader('Content-Disposition', 'attachment; filename=invoices.csv');
+//     res.setHeader('Content-Type', 'text/csv');
+//     return res.send(rows.join("\n"));
+//   }
+//   res.status(200).json({ status: 'success', results: docs.length, data: { invoices: docs } });
+// });
+const { format } = require('fast-csv'); // ✅ Ensure this is imported at the top
+
 /* -------------------------------------------------------------
- * EXPORT INVOICES (CSV/JSON)
+ * EXPORT INVOICES (Professional CSV with Customer Names)
 ------------------------------------------------------------- */
 exports.exportInvoices = catchAsync(async (req, res, next) => {
-  const { format = 'csv', start, end } = req.query;
+  const { format: fileFormat = 'csv', start, end } = req.query;
   const filter = { organizationId: req.user.organizationId };
-  if (start) filter.createdAt = { ...filter.createdAt, $gte: new Date(start) };
-  if (end) filter.createdAt = { ...filter.createdAt, $lte: new Date(end) };
 
-  const docs = await Invoice.find(filter).lean();
-
-  if (format === 'csv') {
-    const headers = Object.keys(docs[0] || {});
-    const rows = [headers.join(',')].concat(docs.map(d => headers.map(h => JSON.stringify(d[h] ?? '')).join(',')));
-    res.setHeader('Content-Disposition', 'attachment; filename=invoices.csv');
-    res.setHeader('Content-Type', 'text/csv');
-    return res.send(rows.join("\n"));
+  // 1. Better Date Filtering (Using invoiceDate is usually better for reports)
+  if (start || end) {
+    filter.invoiceDate = {};
+    if (start) filter.invoiceDate.$gte = new Date(start);
+    if (end) filter.invoiceDate.$lte = new Date(end);
   }
+
+  // 2. Fetch Data with Population
+  const docs = await Invoice.find(filter)
+    .populate('customerId', 'name phone email') // ✅ Get Customer Details
+    .sort({ invoiceDate: -1 }) // Newest first
+    .lean();
+
+  if (fileFormat === 'csv') {
+    // 3. Set Headers for Download
+    res.setHeader('Content-Disposition', `attachment; filename=invoices_${new Date().toISOString().slice(0,10)}.csv`);
+    res.setHeader('Content-Type', 'text/csv');
+
+    // 4. Create Stream with Specific Columns
+    const csvStream = format({ headers: true });
+    csvStream.pipe(res);
+
+    docs.forEach(doc => {
+      // 5. Write Clean Rows
+      csvStream.write({
+        'Date': doc.invoiceDate ? new Date(doc.invoiceDate).toLocaleDateString() : '-',
+        'Invoice No': doc.invoiceNumber,
+        'Customer Name': doc.customerId?.name || 'Walk-in',
+        'Customer Phone': doc.customerId?.phone || '-',
+        'Total Amount': doc.grandTotal || 0,
+        'Paid Amount': doc.paidAmount || 0,
+        'Balance': doc.balanceAmount || 0,
+        'Status': doc.status,
+        'Payment Status': doc.paymentStatus,
+        // Optional: List items in a single cell
+        'Items Summary': doc.items ? doc.items.map(i => `${i.name} (x${i.quantity})`).join(', ') : ''
+      });
+    });
+
+    csvStream.end();
+    return;
+  }
+
+  // Fallback for JSON
   res.status(200).json({ status: 'success', results: docs.length, data: { invoices: docs } });
 });
-
 /* -------------------------------------------------------------
  * PROFIT SUMMARY
 ------------------------------------------------------------- */
