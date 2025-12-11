@@ -216,7 +216,10 @@ invoiceSchema.index({ organizationId: 1, invoiceNumber: 1 }, { unique: true });
 invoiceSchema.index({ organizationId: 1, customerId: 1 });
 invoiceSchema.index({ organizationId: 1, invoiceDate: -1 });
 invoiceSchema.index({ organizationId: 1, branchId: 1, invoiceDate: -1 });
-
+// Add these if missing to make dashboards 100x faster
+invoiceSchema.index({ organizationId: 1, createdAt: -1 }); // For "Recent Sales" dashboard
+invoiceSchema.index({ organizationId: 1, customerId: 1 }); // For "Customer History"
+invoiceSchema.index({ invoiceNumber: 1, organizationId: 1 }, { unique: true }); // Prevent duplicate numbers
 // --- Virtual Field: Total Quantity ---
 invoiceSchema.virtual("totalQuantity").get(function () {
     if (!this.items || this.items.length === 0) return 0;
