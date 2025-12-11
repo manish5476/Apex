@@ -39,7 +39,15 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Branch',
   },
-
+  preferences: {
+    notifications: {
+      email: { type: Boolean, default: true },
+      sms: { type: Boolean, default: false },
+      push: { type: Boolean, default: true }
+    },
+    theme: { type: String, enum: ['light', 'dark'], default: 'light' },
+    denseMode: { type: Boolean, default: false }
+  },
   // --- Role & Status ---
   role: {
     type: mongoose.Schema.Types.ObjectId,
@@ -60,7 +68,7 @@ const userSchema = new mongoose.Schema({
   avatar: {
     type: String, // URL to profile image
   },
-passwordResetToken: String,
+  passwordResetToken: String,
   passwordResetExpires: Date,
 
   isActive: {

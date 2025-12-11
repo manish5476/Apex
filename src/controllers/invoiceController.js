@@ -1,11 +1,11 @@
 const mongoose = require("mongoose");
-const { z } = require("zod"); // 📦 Make sure to install: npm install zod
+const { z } = require("zod");
 
 const Invoice = require("../models/invoiceModel");
 const Product = require("../models/productModel");
 const Customer = require("../models/customerModel");
 const Ledger = require('../models/ledgerModel');
-const AccountEntry = require('../models/accountEntryModel'); // ✅ Import AccountEntry
+const AccountEntry = require('../models/accountEntryModel');
 const Organization = require("../models/organizationModel");
 const SalesService = require("../services/salesService");
 const invoicePDFService = require("../services/invoicePDFService");
@@ -16,8 +16,8 @@ const factory = require("../utils/handlerFactory");
 const { runInTransaction } = require("../utils/runInTransaction");
 const { emitToOrg } = require("../utils/socket");
 const { createNotification } = require("../services/notificationService");
-
-// 🛡️ 1. Define Strict Validation Schema
+const InvoiceAudit = require('../models/invoiceAuditModel');
+// 🛡️ 1. Validation Schema
 const createInvoiceSchema = z.object({
   customerId: z.string().min(1, "Customer ID is required"),
   items: z.array(z.object({
@@ -37,40 +37,30 @@ const createInvoiceSchema = z.object({
   notes: z.string().optional()
 });
 
+/* -------------------------------------------------------------
+ * CREATE INVOICE (Transactional & Validated)
+------------------------------------------------------------- */
 exports.createInvoice = catchAsync(async (req, res, next) => {
-  // 🛡️ 2. Validate Request Body
+  // Validate
   const validation = createInvoiceSchema.safeParse(req.body);
   if (!validation.success) {
     return next(new AppError(validation.error.errors[0].message, 400));
   }
-  const body = validation.data; // Use sanitized data
+  const body = validation.data;
 
   let newInvoice, salesDoc;
 
-  /* -------------------------------------------------------------
-   * EXECUTE ENTIRE WORKFLOW INSIDE SAFE RETRY TRANSACTION
-   ------------------------------------------------------------- */
   await runInTransaction(async (session) => {
-
-    /* -------------------------------------------------------------
-      * STEP 1 — Create Invoice
-     ------------------------------------------------------------- */
-    const invoiceArr = await Invoice.create(
-      [
-        {
-          organizationId: req.user.organizationId,
-          branchId: req.user.branchId,
-          createdBy: req.user._id,
-          ...body // Spread validated body
-        },
-      ],
-      { session }
-    );
+    // 1. Create Invoice
+    const invoiceArr = await Invoice.create([{
+      organizationId: req.user.organizationId,
+      branchId: req.user.branchId,
+      createdBy: req.user._id,
+      ...body
+    }], { session });
     newInvoice = invoiceArr[0];
 
-    /* -------------------------------------------------------------
-      * STEP 2 — Reduce Inventory
-     ------------------------------------------------------------- */
+    // 2. Reduce Inventory
     for (const item of body.items) {
       const product = await Product.findById(item.productId).session(session);
       if (!product) throw new AppError(`Product not found: ${item.productId}`, 404);
@@ -82,14 +72,11 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
       if (!branchInv || branchInv.quantity < item.quantity) {
         throw new AppError(`Insufficient stock for ${product.name}`, 400);
       }
-
       branchInv.quantity -= item.quantity;
       await product.save({ session });
     }
 
-    /* -------------------------------------------------------------
-      * STEP 3 — Update Customer Outstanding
-     ------------------------------------------------------------- */
+    // 3. Update Customer Outstanding
     const totalDue = newInvoice.grandTotal - (body.paidAmount || 0);
     if (totalDue !== 0) {
       await Customer.findByIdAndUpdate(
@@ -99,42 +86,33 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
       );
     }
 
-    /* -------------------------------------------------------------
-      * STEP 4 — Customer Ledger Entry (Party Ledger)
-     ------------------------------------------------------------- */
-    await Ledger.create(
-      [
-        {
-          organizationId: req.user.organizationId,
-          branchId: req.user.branchId,
-          customerId: body.customerId,
-          invoiceId: newInvoice._id,
-          type: "debit", // Receivable
-          amount: newInvoice.grandTotal,
-          description: `Invoice #${newInvoice.invoiceNumber} Created`,
-          accountType: "customer",
-          createdBy: req.user._id,
-        },
-      ],
-      { session }
-    );
+    // ✅ LOG CREATION
+    await InvoiceAudit.create([{
+      invoiceId: newInvoice._id,
+      action: 'CREATE',
+      performedBy: req.user._id,
+      details: `Invoice #${newInvoice.invoiceNumber} created with Grand Total: ${newInvoice.grandTotal}`,
+      ipAddress: req.ip
+    }], { session });
 
-    /* -------------------------------------------------------------
-      * STEP 5 — Sales Record
-     ------------------------------------------------------------- */
-    salesDoc = await SalesService.createFromInvoiceTransactional(
-      newInvoice,
-      session
-    );
+    // 4. Ledger Entry (Party)
+    await Ledger.create([{
+      organizationId: req.user.organizationId,
+      branchId: req.user.branchId,
+      customerId: body.customerId,
+      invoiceId: newInvoice._id,
+      type: "debit",
+      amount: newInvoice.grandTotal,
+      description: `Invoice #${newInvoice.invoiceNumber}`,
+      accountType: "customer",
+      createdBy: req.user._id,
+    }], { session });
 
-    /* -------------------------------------------------------------
-      * ✅ STEP 6 — Accounting Journal Entries (MOVED INSIDE TRANSACTION)
-      * This ensures "Financial Accounts" match "Inventory" & "Invoices"
-     ------------------------------------------------------------- */
-    // Note: You need to fetch Account IDs (e.g., 'Sales Account', 'Accounts Receivable')
-    // based on your Chart of Accounts. For now, we simulate generic entries.
-    
-    // Debit: Accounts Receivable (Asset)
+    // 5. Sales Record
+    salesDoc = await SalesService.createFromInvoiceTransactional(newInvoice, session);
+
+    // 6. Accounting Entries (Double Entry)
+    // Debit AR
     await AccountEntry.create([{
       organizationId: req.user.organizationId,
       date: newInvoice.invoiceDate,
@@ -142,112 +120,71 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
       amount: newInvoice.grandTotal,
       description: `Invoice ${newInvoice.invoiceNumber}`,
       referenceId: newInvoice._id,
-      referenceModel: 'Invoice',
-      // accountId: '...ID of AR Account...', 
+      referenceModel: 'Invoice'
     }], { session });
 
-    // Credit: Sales Income (Revenue)
+    // Credit Sales
     await AccountEntry.create([{
       organizationId: req.user.organizationId,
       date: newInvoice.invoiceDate,
       type: 'credit',
-      amount: newInvoice.grandTotal, // (Excluding tax usually, but simplified here)
-      description: `Sales Revenue - Inv ${newInvoice.invoiceNumber}`,
+      amount: newInvoice.grandTotal,
+      description: `Revenue - Inv ${newInvoice.invoiceNumber}`,
       referenceId: newInvoice._id,
-      referenceModel: 'Invoice',
-      // accountId: '...ID of Sales Account...', 
+      referenceModel: 'Invoice'
     }], { session });
 
-  }, 3, {
-    action: "CREATE_INVOICE",
-    customerId: body.customerId,
-    branchId: req.user.branchId,
-    userId: req.user._id,
-  });
+  }, 3, { action: "CREATE_INVOICE", userId: req.user._id });
 
-  /* -------------------------------------------------------------
-   * STEP 7 — NOTIFICATIONS (Safe to run after commit)
-   ------------------------------------------------------------- */
+  // 7. Notifications (After Transaction)
   try {
-    // 1. Socket Emit
     emitToOrg(req.user.organizationId, "newNotification", {
-      title: "New Sale Recorded",
-      message: `Invoice #${newInvoice.invoiceNumber} created for ₹${newInvoice.grandTotal}`,
-      type: "success",
-      createdAt: new Date()
+      title: "New Sale",
+      message: `Invoice #${newInvoice.invoiceNumber} for ₹${newInvoice.grandTotal}`,
+      type: "success"
     });
 
-    // 2. Persistent Notification
+    // Notify Owner
     const org = await Organization.findById(req.user.organizationId).select('owner');
     if (org && org.owner) {
-      await createNotification(
-        req.user.organizationId,
-        org.owner,
-        "INVOICE_CREATED",
-        "New Invoice Generated",
-        `Invoice #${newInvoice.invoiceNumber} generated by ${req.user.name}`,
-        req.app.get("io")
-      );
+      createNotification(req.user.organizationId, org.owner, "INVOICE_CREATED", "New Sale", `Invoice generated by ${req.user.name}`, req.app.get("io"));
     }
-  } catch (notifErr) {
-    console.error("Failed to send notification:", notifErr.message);
-  }
+  } catch (e) { console.error("Notification failed", e.message); }
 
-  /* -------------------------------------------------------------
-   * STEP 8 — RESPONSE
-   ------------------------------------------------------------- */
-  return res.status(201).json({
-    status: "success",
-    message: "Invoice created successfully",
-    data: { invoice: newInvoice, sales: salesDoc },
-  });
+  res.status(201).json({ status: "success", data: { invoice: newInvoice, sales: salesDoc } });
 });
 
-// ... Keep existing exports (getAllInvoices, getInvoice, etc.) ...
-exports.getAllInvoices = factory.getAll(Invoice);
-exports.getInvoice = factory.getOne(Invoice, [
-  { path: "customerId", select: "name phone email" },
-  { path: "items.productId", select: "name sku brand category" },
-]);
-exports.updateInvoice = factory.updateOne(Invoice);
-exports.deleteInvoice = factory.deleteOne(Invoice);
+/* -------------------------------------------------------------
+ * BULK STATUS UPDATE (Productivity Feature)
+------------------------------------------------------------- */
+exports.bulkUpdateStatus = catchAsync(async (req, res, next) => {
+  const { ids, status } = req.body;
+  if (!ids || !Array.isArray(ids)) return next(new AppError("ids array required", 400));
 
-exports.getInvoicesByCustomer = catchAsync(async (req, res, next) => {
-  const { customerId } = req.params;
-  const invoices = await Invoice.find({
-    organizationId: req.user.organizationId,
-    customerId,
-    isDeleted: { $ne: true },
-  });
-  res.status(200).json({ status: "success", results: invoices.length, data: { invoices } });
+  const result = await Invoice.updateMany(
+    { _id: { $in: ids }, organizationId: req.user.organizationId },
+    { $set: { status: status, paymentStatus: status === 'paid' ? 'paid' : 'unpaid' } }
+  );
+
+  res.status(200).json({ status: "success", message: `Updated ${result.modifiedCount} invoices.` });
 });
 
-exports.downloadInvoice = catchAsync(async (req, res, next) => {
-  const pdfBuffer = await invoicePDFService.generateInvoicePDF(req.params.id, req.user.organizationId);
-  res.set({
-    "Content-Type": "application/pdf",
-    "Content-Disposition": `inline; filename=invoice_${req.params.id}.pdf`,
-  });
-  res.send(pdfBuffer);
-});
-
-exports.emailInvoice = catchAsync(async (req, res, next) => {
-  await invoicePDFService.sendInvoiceEmail(req.params.id, req.user.organizationId);
-  res.status(200).json({ status: "success", message: "Invoice emailed successfully." });
-});
-
+/* -------------------------------------------------------------
+ * VALIDATE INVOICE NUMBER
+------------------------------------------------------------- */
 exports.validateNumber = catchAsync(async (req, res, next) => {
-  const number = req.params.number;
-  const exists = await Invoice.exists({ invoiceNumber: number, organizationId: req.user.organizationId });
+  const exists = await Invoice.exists({ invoiceNumber: req.params.number, organizationId: req.user.organizationId });
   res.status(200).json({ status: "success", valid: !exists });
 });
 
+/* -------------------------------------------------------------
+ * EXPORT INVOICES (CSV/JSON)
+------------------------------------------------------------- */
 exports.exportInvoices = catchAsync(async (req, res, next) => {
   const { format = 'csv', start, end } = req.query;
   const filter = { organizationId: req.user.organizationId };
-  if (start || end) filter.createdAt = {};
-  if (start) filter.createdAt.$gte = new Date(start);
-  if (end) filter.createdAt.$lte = new Date(end);
+  if (start) filter.createdAt = { ...filter.createdAt, $gte: new Date(start) };
+  if (end) filter.createdAt = { ...filter.createdAt, $lte: new Date(end) };
 
   const docs = await Invoice.find(filter).lean();
 
@@ -261,34 +198,100 @@ exports.exportInvoices = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: 'success', results: docs.length, data: { invoices: docs } });
 });
 
+/* -------------------------------------------------------------
+ * PROFIT SUMMARY
+------------------------------------------------------------- */
 exports.profitSummary = catchAsync(async (req, res, next) => {
   const { start, end } = req.query;
   const match = { organizationId: req.user.organizationId };
-  if (start || end) match.createdAt = {};
-  if (start) match.createdAt.$gte = new Date(start);
-  if (end) match.createdAt.$lte = new Date(end);
+  if (start) match.createdAt = { ...match.createdAt, $gte: new Date(start) };
+  if (end) match.createdAt = { ...match.createdAt, $lte: new Date(end) };
 
   const agg = await Invoice.aggregate([
     { $match: match },
-    {
-      $group: {
-        _id: null,
-        totalRevenue: { $sum: "$total" }, // Ensure your Invoice model has 'total' or use 'grandTotal'
-        totalCost: { $sum: "$cost" },     // Ensure your Invoice model has 'cost' populated
-        count: { $sum: 1 }
-      }
-    }
+    { $group: { _id: null, totalRevenue: { $sum: "$total" }, totalCost: { $sum: "$cost" }, count: { $sum: 1 } } }
   ]);
+
   const summary = agg[0] || { totalRevenue: 0, totalCost: 0, count: 0, profit: 0 };
   summary.profit = summary.totalRevenue - summary.totalCost;
   res.status(200).json({ status: "success", data: { summary } });
 });
 
-exports.getInvoiceHistory = catchAsync(async (req, res, next) => {
-  // const InvoiceAudit = require('../models/invoiceAuditModel'); 
-  // const history = await InvoiceAudit.find({ invoiceId: req.params.id }).sort({ createdAt: -1 });
-  res.status(200).json({ status: "success", data: { history: [] } }); 
+/* -------------------------------------------------------------
+ * STANDARD CRUD & PDF
+------------------------------------------------------------- */
+exports.getAllInvoices = factory.getAll(Invoice);
+exports.getInvoice = factory.getOne(Invoice, [
+  { path: "customerId", select: "name phone email" },
+  { path: "items.productId", select: "name sku brand category" }
+]);
+exports.updateInvoice = exports.updateInvoice = catchAsync(async (req, res, next) => {
+  const invoice = await Invoice.findById(req.params.id);
+  if (!invoice) return next(new AppError("Invoice not found", 404));
+
+  const updates = req.body;
+  
+  // ✅ LOG STATUS CHANGE
+  if (updates.status && updates.status !== invoice.status) {
+    await InvoiceAudit.create({
+      invoiceId: invoice._id,
+      action: 'STATUS_CHANGE',
+      performedBy: req.user._id,
+      details: `Status changed from ${invoice.status} to ${updates.status}`,
+      meta: { old: invoice.status, new: updates.status },
+      ipAddress: req.ip
+    });
+  } else {
+    // ✅ LOG GENERAL UPDATE
+    await InvoiceAudit.create({
+      invoiceId: invoice._id,
+      action: 'UPDATE',
+      performedBy: req.user._id,
+      details: `Invoice details updated`,
+      meta: { updates },
+      ipAddress: req.ip
+    });
+  }
+
+  // Perform the actual update
+  const updatedInvoice = await Invoice.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
+
+  res.status(200).json({ status: "success", data: { invoice: updatedInvoice } });
 });
+// factory.updateOne(Invoice);
+exports.deleteInvoice = factory.deleteOne(Invoice);
+
+exports.getInvoicesByCustomer = catchAsync(async (req, res, next) => {
+  const invoices = await Invoice.find({ organizationId: req.user.organizationId, customerId: req.params.customerId });
+  res.status(200).json({ status: "success", results: invoices.length, data: { invoices } });
+});
+
+exports.downloadInvoice = catchAsync(async (req, res, next) => {
+  const pdfBuffer = await invoicePDFService.generateInvoicePDF(req.params.id, req.user.organizationId);
+  res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename=invoice_${req.params.id}.pdf` });
+  res.send(pdfBuffer);
+});
+
+exports.emailInvoice = catchAsync(async (req, res, next) => {
+  await invoicePDFService.sendInvoiceEmail(req.params.id, req.user.organizationId);
+  res.status(200).json({ status: "success", message: "Emailed successfully." });
+});
+
+exports.getInvoiceHistory = catchAsync(async (req, res, next) => {
+  const invoiceId = req.params.id;
+  
+  // ✅ Now this works!
+  const history = await InvoiceAudit.find({ invoiceId })
+    .populate('performedBy', 'name email') // Show who did it
+    .sort({ createdAt: -1 }); // Newest actions first
+
+  res.status(200).json({ 
+    status: "success", 
+    results: history.length, 
+    data: { history } 
+  });
+});
+
 // const Invoice = require("../models/invoiceModel");
 // const Product = require("../models/productModel");
 // const Customer = require("../models/customerModel");
@@ -298,8 +301,8 @@ exports.getInvoiceHistory = catchAsync(async (req, res, next) => {
 // const AppError = require("../utils/appError");
 // const mongoose = require("mongoose");
 // const invoicePDFService = require("../services/invoicePDFService");
-// const SalesService = require("../services/salesService"); 
-// const { runInTransaction } = require("../utils/runInTransaction"); 
+// const SalesService = require("../services/salesService");
+// const { runInTransaction } = require("../utils/runInTransaction");
 // const factory = require("../utils/handlerFactory");
 
 // // ✅ IMPORT NOTIFICATION HELPERS

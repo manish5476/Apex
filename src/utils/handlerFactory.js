@@ -1,13 +1,6 @@
 const AppError = require('../utils/appError');
 const ApiFeatures = require('../utils/ApiFeatures');
 const catchAsync = require('../utils/catchAsync');
-
-/**
- * Generic factory controller for CRUD operations.
- * Ensures every document operation is scoped by organizationId
- * (multi-tenant safety).
- */
-
 /* ===========================================================
    DELETE ONE  — soft delete preferred for financial records
 =========================================================== */

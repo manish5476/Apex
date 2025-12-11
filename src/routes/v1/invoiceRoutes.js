@@ -28,7 +28,7 @@ router.route("/:id")
   .get(checkPermission(PERMISSIONS.INVOICE.READ), invoiceController.getInvoice)
   .patch(checkPermission(PERMISSIONS.INVOICE.UPDATE), invoiceController.updateInvoice)
   .delete(checkPermission(PERMISSIONS.INVOICE.DELETE), invoiceController.deleteInvoice);
-
+router.patch("/bulk-status", checkPermission(PERMISSIONS.INVOICE.UPDATE), invoiceController.bulkUpdateStatus);
 module.exports = router;
 // const express = require("express");
 // const invoiceController = require("../../controllers/invoiceController");
