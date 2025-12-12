@@ -152,7 +152,8 @@ exports.updateUser = catchAsync(async (req, res, next) => {
     updates,
     { new: true, runValidators: true }
   )
-  .populate("role", "name")
+    .populate("role") // ✅ Populate Role to get permissions
+  // .populate("role", "name")
   .populate("branchId", "name")
   .select("-password");
 
