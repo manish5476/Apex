@@ -156,6 +156,86 @@ exports.getPendingMembers = catchAsync(async (req, res, next) => {
 /* -------------------------------------------------------------
  * Approve Member (Requires userId, roleId, branchId)
 ------------------------------------------------------------- */
+// exports.approveMember = catchAsync(async (req, res, next) => {
+//   const { userId, roleId, branchId } = req.body;
+
+//   if (!userId || !roleId || !branchId)
+//     return next(new AppError("Missing required fields: userId, roleId, branchId", 400));
+
+//   const org = await Organization.findOne({ _id: req.user.organizationId });
+//   if (!org) return next(new AppError("Organization not found.", 404));
+
+//   // Find pending user
+//   const user = await User.findOne({
+//     _id: userId,
+//     organizationId: req.user.organizationId,
+//     status: "pending",
+//   });
+
+//   if (!user) return next(new AppError("User is not pending or doesn't exist.", 404));
+
+//   // Validate role & branch
+//   const role = await Role.findOne({ _id: roleId, organizationId: req.user.organizationId });
+//   if (!role) return next(new AppError("Invalid role ID.", 400));
+
+//   const branch = await Branch.findOne({ _id: branchId, organizationId: req.user.organizationId });
+//   if (!branch) return next(new AppError("Invalid branch ID.", 400));
+
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     // 1. Update user
+//     user.status = "approved";
+//     user.role = roleId;
+//     user.branchId = branchId;
+
+//     // 2. Update Org Members
+//     if (!org.members.includes(user._id)) {
+//       org.members.push(user._id);
+//     }
+
+//     // 3. Remove from approvalRequests (Handle both Object and ID cases safely)
+//     // Since we are now pushing just IDs in Auth Controller, we use .pull() or filter by ID.
+//     // This filter is robust: checks if item is an ID or an Object with .userId
+//     org.approvalRequests = org.approvalRequests.filter(item => {
+//       const itemId = item.userId ? item.userId.toString() : item.toString();
+//       return itemId !== userId.toString();
+//     });
+
+//     await Promise.all([
+//       user.save({ session }),
+//       org.save({ session })
+//     ]);
+
+//     await session.commitTransaction();
+
+//     // 4. Send Real-time Notification
+//     if (typeof emitToOrg === "function") {
+//       emitToOrg(req.user.organizationId, "newNotification", {
+//         title: "Member Approved",
+//         message: `${user.name} has been approved.`,
+//         type: "success",
+//         createdAt: new Date()
+//       });
+//     }
+
+//     res.status(200).json({
+//       status: "success",
+//       message: "Member approved successfully",
+//       data: { user }
+//     });
+
+//   } catch (err) {
+//     await session.abortTransaction();
+//     next(err);
+//   } finally {
+//     session.endSession();
+//   }
+// });
+/* -------------------------------------------------------------
+ * Approve Member (Requires userId, roleId, branchId)
+------------------------------------------------------------- */
 exports.approveMember = catchAsync(async (req, res, next) => {
   const { userId, roleId, branchId } = req.body;
 
@@ -189,15 +269,15 @@ exports.approveMember = catchAsync(async (req, res, next) => {
     user.status = "approved";
     user.role = roleId;
     user.branchId = branchId;
+    // We do NOT save permissions array on user DB model to avoid de-sync. 
+    // We rely on population or manual injection in response.
 
     // 2. Update Org Members
     if (!org.members.includes(user._id)) {
       org.members.push(user._id);
     }
 
-    // 3. Remove from approvalRequests (Handle both Object and ID cases safely)
-    // Since we are now pushing just IDs in Auth Controller, we use .pull() or filter by ID.
-    // This filter is robust: checks if item is an ID or an Object with .userId
+    // 3. Remove from approvalRequests
     org.approvalRequests = org.approvalRequests.filter(item => {
       const itemId = item.userId ? item.userId.toString() : item.toString();
       return itemId !== userId.toString();
@@ -210,7 +290,13 @@ exports.approveMember = catchAsync(async (req, res, next) => {
 
     await session.commitTransaction();
 
-    // 4. Send Real-time Notification
+    // 4. Prepare Response Data (Flatten permissions for UI)
+    // We manually construct the response object to include permissions from the Role we just fetched
+    const userResponse = user.toObject();
+    userResponse.permissions = role.permissions || []; // ✅ HERE: Inject permissions for UI
+    userResponse.role = role; // Embed full role object for context
+
+    // 5. Send Real-time Notification
     if (typeof emitToOrg === "function") {
       emitToOrg(req.user.organizationId, "newNotification", {
         title: "Member Approved",
@@ -223,7 +309,7 @@ exports.approveMember = catchAsync(async (req, res, next) => {
     res.status(200).json({
       status: "success",
       message: "Member approved successfully",
-      data: { user }
+      data: { user: userResponse }
     });
 
   } catch (err) {
@@ -233,7 +319,6 @@ exports.approveMember = catchAsync(async (req, res, next) => {
     session.endSession();
   }
 });
-
 
 /* -------------------------------------------------------------
  * Self-service organization endpoints
