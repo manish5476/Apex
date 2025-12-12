@@ -77,16 +77,11 @@ exports.signup = catchAsync(async (req, res, next) => {
     status: "pending",
   });
 
-  // ✅ REVERTED: Pushing ONLY the User ID string as requested
   organization.approvalRequests = organization.approvalRequests || [];
   organization.approvalRequests.push(newUser._id);
-
   await organization.save();
-
-  // ✅ REAL-TIME NOTIFICATION TO OWNER
   if (organization.owner && organization.owner._id) {
     const ownerId = organization.owner._id.toString();
-
     emitToUser(ownerId, "newNotification", {
       title: "New Signup Request",
       message: `${newUser.name} has signed up.`,
