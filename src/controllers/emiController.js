@@ -42,7 +42,13 @@ exports.createEmiPlan = catchAsync(async (req, res, next) => {
  * Get All EMIs (with filters & pagination)
  * Used for the EMI List View
 ------------------------------------------------------------- */
-exports.getAllEmis = factory.getAll(EMI);
+const popOptions = [
+  { 
+    path: 'customerId', 
+    select: 'name email phone avatar'
+  },
+];
+exports.getAllEmis = factory.getAll(EMI,popOptions);
 
 // exports.getAllEmis = catchAsync(async (req, res, next) => {
 //   const { page = 1, limit = 10, customerId, status, invoiceId, search } = req.query;
@@ -101,13 +107,13 @@ exports.getEmiById = catchAsync(async (req, res, next) => {
  * Mark an EMI installment as paid
 ------------------------------------------------------------- */
 exports.payEmiInstallment = catchAsync(async (req, res, next) => {
-  const { 
-    emiId, 
-    installmentNumber, 
-    amount, 
+  const {
+    emiId,
+    installmentNumber,
+    amount,
     paymentMethod, // e.g. "cash"
     referenceNumber, // e.g. "TXN-1234"
-    remarks 
+    remarks
   } = req.body;
 
   if (!emiId || !installmentNumber || !amount || !paymentMethod) {

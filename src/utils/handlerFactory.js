@@ -106,25 +106,63 @@ exports.getOne = (Model, popOptions) =>
 /* ===========================================================
    GET ALL  — supports filtering, sorting, pagination
 =========================================================== */
-exports.getAll = (Model) =>
+// exports.getAll = (Model) =>
+//   catchAsync(async (req, res, next) => {
+//     // Base filter: only documents for this organization
+//     const filter = {
+//       organizationId: req.user.organizationId,
+//     };
+
+//     // Exclude soft-deleted docs if applicable
+//     if (Model.schema.path('isDeleted')) {
+//       filter.isDeleted = { $ne: true };
+//     }
+
+//     // Build query using ApiFeatures utility
+//     const features = new ApiFeatures(Model.find(filter), req.query)
+//       .filter()
+//       .sort()
+//       .limitFields()
+//       .paginate();
+
+//     const docs = await features.query;
+
+//     res.status(200).json({
+//       status: 'success',
+//       results: docs.length,
+//       data: {
+//         data: docs,
+//       },
+//     });
+//   });
+/* ===========================================================
+   GET ALL — supports filtering, sorting, pagination
+=========================================================== */
+exports.getAll = (Model, popOptions) =>
   catchAsync(async (req, res, next) => {
-    // Base filter: only documents for this organization
+    // 1. Base filter: only documents for this organization
     const filter = {
       organizationId: req.user.organizationId,
     };
 
-    // Exclude soft-deleted docs if applicable
+    // 2. Exclude soft-deleted docs if applicable
     if (Model.schema.path('isDeleted')) {
       filter.isDeleted = { $ne: true };
     }
 
-    // Build query using ApiFeatures utility
+    // 3. Build query using ApiFeatures utility
     const features = new ApiFeatures(Model.find(filter), req.query)
       .filter()
       .sort()
       .limitFields()
       .paginate();
 
+    // 4. Apply Populate (IF provided) BEFORE awaiting
+    if (popOptions) {
+      features.query = features.query.populate(popOptions);
+    }
+
+    // 5. Execute Query
     const docs = await features.query;
 
     res.status(200).json({
@@ -135,7 +173,6 @@ exports.getAll = (Model) =>
       },
     });
   });
-
 /* ===========================================================
    OPTIONAL: RESTORE ONE  — for soft-deleted records
 =========================================================== */
