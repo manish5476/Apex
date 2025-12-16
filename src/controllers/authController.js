@@ -310,7 +310,6 @@ exports.restrictTo = (...permissions) => {
     if (permissions.includes("superadmin") && role?.isSuperAdmin) return next();
     const ok = permissions.some((p) => userPerms.includes(p));
     if (!ok) return next(new AppError("Permission denied.", 403));
-
     next();
   };
 };

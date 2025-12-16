@@ -150,6 +150,7 @@ app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/search", require("./routes/v1/searchRoutes"));
 app.use("/api/v1/announcements", require("./routes/v1/announcementRoutes"));
 app.use('/api/v1/accounts', require('./routes/v1/accountRoutes'));
+app.use('/api/v1/ownership', require('./routes/v1/ownership.routes'));
 // ---------------------- 404 ----------------------
 app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));

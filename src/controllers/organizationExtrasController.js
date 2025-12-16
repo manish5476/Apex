@@ -6,41 +6,7 @@ const ActivityLog = require("../models/activityLogModel");
 const { logActivity } = require("../services/activityLogService");
 const mongoose = require("mongoose"); // ✅ Added
 const Role = require("../models/roleModel"); // ✅ Added
-// ... existing imports ...
-// ======================================================
-// TRANSFER OWNERSHIP
-// PATCH /organization/transfer-ownership
-// ======================================================
-// exports.transferOwnership = catchAsync(async (req, res, next) => {
-//   const { newOwnerId } = req.body;
-//   if (!newOwnerId)
-//     return next(new AppError("Provide newOwnerId", 400));
-//   const org = await Organization.findById(req.user.organizationId);
-//   if (!org) return next(new AppError("Organization not found", 404));
-//   // Only current org owner or superadmin can do this
-//   if (org.owner.toString() !== req.user.id && !req.user.role?.isSuperAdmin)
-//     return next(new AppError("You cannot transfer ownership.", 403));
-//   const user = await User.findById(newOwnerId);
-//   if (!user)
-//     return next(new AppError("New owner user not found.", 404));
-//   if (user.organizationId.toString() !== org._id.toString())
-//     return next(new AppError("User does not belong to this organization.", 400));
-//   org.owner = newOwnerId;
-//   await org.save();
 
-//   await logActivity(
-//     org._id,
-//     req.user.id,
-//     "TRANSFER_OWNERSHIP",
-//     `Ownership transferred to ${user.name}`,
-//     { newOwnerId }
-//   );
-
-//   res.status(200).json({
-//     status: "success",
-//     message: "Ownership transferred successfully.",
-//   });
-// });
 
 exports.transferOwnership = catchAsync(async (req, res, next) => {
   const newOwnerId = req.body.user?._id || req.body.user;
