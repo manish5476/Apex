@@ -89,6 +89,92 @@ exports.initiateOwnershipTransfer = catchAsync(async (req, res, next) => {
    STEP 2: FINALIZE TRANSFER (Atomic Swap)
    POST /api/v1/organization/ownership/finalize
    ====================================================== */
+// exports.finalizeOwnershipTransfer = catchAsync(async (req, res, next) => {
+//   const { token, action } = req.body; 
+  
+//   if (!token) return next(new AppError("Token is required.", 400));
+
+//   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+//   const request = await TransferRequest.findOne({ 
+//     tokenHash: hashedToken, 
+//     status: 'pending' 
+//   }).select('+tokenHash');
+
+//   if (!request) return next(new AppError("Link is invalid or has expired.", 400));
+
+//   // Security: Ensure the person clicking is the intended target
+//   if (req.user.id !== request.newOwner.toString()) {
+//      return next(new AppError("You are not the intended recipient.", 403));
+//   }
+
+//   if (action === 'reject') {
+//     await TransferRequest.findByIdAndDelete(request._id);
+//     return res.status(200).json({ status: "success", message: "Ownership transfer rejected." });
+//   }
+
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const orgId = request.organizationId;
+    
+//     // 1. Fetch New Owner Details (Need Email/Phone for Org Update)
+//     const newOwnerUser = await User.findById(request.newOwner).session(session);
+//     if (!newOwnerUser) throw new AppError("New owner user not found.", 404);
+
+//     // 2. Fetch Roles
+//     const superAdminRole = await Role.findOne({ organizationId: orgId, isSuperAdmin: true }).session(session);
+//     let downgradeRole = await Role.findOne({ organizationId: orgId, name: { $regex: /Admin/i } }).session(session);
+    
+//     if (!downgradeRole) {
+//       downgradeRole = await Role.findOne({ organizationId: orgId, isDefault: true }).session(session);
+//     }
+
+//     if (!superAdminRole || !downgradeRole) throw new AppError("System Error: Cannot determine roles.", 500);
+
+//     // 3. Perform Role Swap
+//     await User.findByIdAndUpdate(request.newOwner, { role: superAdminRole._id }, { session });
+//     await User.findByIdAndUpdate(request.currentOwner, { role: downgradeRole._id }, { session });
+
+//     // 4. Update Organization (Owner + Contact Info)
+//     // ✅ Logic: Update primaryEmail always. Update phone ONLY if user has one (to avoid validation errors).
+//     const orgUpdates = { 
+//       owner: request.newOwner,
+//       primaryEmail: newOwnerUser.email 
+//     };
+//     if (newOwnerUser.phone) orgUpdates.primaryPhone = newOwnerUser.phone;
+
+//     await Organization.findByIdAndUpdate(orgId, orgUpdates, { session });
+
+//     // 5. Complete Request
+//     request.status = 'completed';
+//     await request.save({ session });
+
+//     await session.commitTransaction();
+
+//     // Notify Org Members
+//     emitToOrg(orgId, "ownershipTransferred", {
+//       message: `Ownership transferred to ${newOwnerUser.name}.`,
+//       newOwnerId: request.newOwner
+//     });
+
+//     res.status(200).json({
+//       status: "success",
+//       message: "Ownership transferred successfully. Contact details updated."
+//     });
+
+//   } catch (err) {
+//     await session.abortTransaction();
+//     next(err);
+//   } finally {
+//     session.endSession();
+//   }
+// });
+/* ======================================================
+   STEP 2: FINALIZE TRANSFER (Atomic Swap + Data Sync)
+   POST /api/v1/organization/ownership/finalize
+   ====================================================== */
 exports.finalizeOwnershipTransfer = catchAsync(async (req, res, next) => {
   const { token, action } = req.body; 
   
@@ -103,7 +189,6 @@ exports.finalizeOwnershipTransfer = catchAsync(async (req, res, next) => {
 
   if (!request) return next(new AppError("Link is invalid or has expired.", 400));
 
-  // Security: Ensure the person clicking is the intended target
   if (req.user.id !== request.newOwner.toString()) {
      return next(new AppError("You are not the intended recipient.", 403));
   }
@@ -119,7 +204,7 @@ exports.finalizeOwnershipTransfer = catchAsync(async (req, res, next) => {
   try {
     const orgId = request.organizationId;
     
-    // 1. Fetch New Owner Details (Need Email/Phone for Org Update)
+    // 1. Fetch New Owner Details (We need their Email & Phone)
     const newOwnerUser = await User.findById(request.newOwner).session(session);
     if (!newOwnerUser) throw new AppError("New owner user not found.", 404);
 
@@ -133,17 +218,20 @@ exports.finalizeOwnershipTransfer = catchAsync(async (req, res, next) => {
 
     if (!superAdminRole || !downgradeRole) throw new AppError("System Error: Cannot determine roles.", 500);
 
-    // 3. Perform Role Swap
+    // 3. Swap Roles
     await User.findByIdAndUpdate(request.newOwner, { role: superAdminRole._id }, { session });
     await User.findByIdAndUpdate(request.currentOwner, { role: downgradeRole._id }, { session });
 
-    // 4. Update Organization (Owner + Contact Info)
-    // ✅ Logic: Update primaryEmail always. Update phone ONLY if user has one (to avoid validation errors).
+    // 4. ✅ AUTO-SYNC: Update Organization Contact Info to match New Owner
     const orgUpdates = { 
       owner: request.newOwner,
-      primaryEmail: newOwnerUser.email 
+      primaryEmail: newOwnerUser.email // <--- CRITICAL FIX: Sync Email
     };
-    if (newOwnerUser.phone) orgUpdates.primaryPhone = newOwnerUser.phone;
+    
+    // Only sync phone if the user actually has one, otherwise keep existing
+    if (newOwnerUser.phone) {
+        orgUpdates.primaryPhone = newOwnerUser.phone; 
+    }
 
     await Organization.findByIdAndUpdate(orgId, orgUpdates, { session });
 
@@ -153,7 +241,7 @@ exports.finalizeOwnershipTransfer = catchAsync(async (req, res, next) => {
 
     await session.commitTransaction();
 
-    // Notify Org Members
+    // 6. Notify
     emitToOrg(orgId, "ownershipTransferred", {
       message: `Ownership transferred to ${newOwnerUser.name}.`,
       newOwnerId: request.newOwner
@@ -161,7 +249,7 @@ exports.finalizeOwnershipTransfer = catchAsync(async (req, res, next) => {
 
     res.status(200).json({
       status: "success",
-      message: "Ownership transferred successfully. Contact details updated."
+      message: "Ownership transferred. Organization contact details have been updated."
     });
 
   } catch (err) {
@@ -171,7 +259,6 @@ exports.finalizeOwnershipTransfer = catchAsync(async (req, res, next) => {
     session.endSession();
   }
 });
-
 /* ======================================================
    STEP 3: FORCE TRANSFER (Instant, No Email Required)
    POST /api/v1/organization/ownership/force
