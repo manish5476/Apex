@@ -12,10 +12,6 @@ router.use(authController.protect);
 
 router.get('/pending-members', organizationController.getPendingMembers);// checkPermission(PERMISSIONS.ORG.MANAGE_MEMBERS)
 router.post('/approve-member', checkPermission(PERMISSIONS.ORG.MANAGE_MEMBERS), organizationController.approveMember);
-// Members & Approval
-// router.get('/pending-members', checkPermission(PERMISSIONS.ORG.MANAGE_MEMBERS), organizationController.getPendingMembers);
-// router.post('/approve-member', checkPermission(PERMISSIONS.ORG.MANAGE_MEMBERS), organizationController.approveMember);
-
 // Manage OWN Organization
 router.route('/my-organization')
   .get(organizationController.getMyOrganization) // Usually open to logged in users to see their own org

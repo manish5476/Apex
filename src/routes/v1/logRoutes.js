@@ -88,23 +88,3 @@ router.get("/", (req, res) => {
 });
 
 module.exports = router;
-/**const express = require("express");
-const router = express.Router();
-const fs = require("fs");
-const path = require("path");
-const authController = require("../../controllers/authController");
-const { checkPermission } = require("../../middleware/permissionMiddleware");
-const { PERMISSIONS } = require("../../config/permissions");
-
-router.use(authController.protect);
-
-// Explicit LOGS.VIEW permission required
-router.get("/", checkPermission(PERMISSIONS.LOGS.VIEW), (req, res) => {
-  // ... existing log reading code (abbreviated for brevity as logic doesn't change)
-  const { file = "combined", limit = 300 } = req.query;
-  const VALID_FILES = { combined: "combined.log", error: "error.log" };
-  // ... implementation ...
-  res.json({ success: true, message: "Log data (stubbed for brevity)" });
-});
-
-module.exports = router; */

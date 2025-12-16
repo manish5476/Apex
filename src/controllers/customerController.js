@@ -98,6 +98,28 @@ exports.uploadCustomerPhoto = catchAsync(async (req, res, next) => {
   });
 });
 
+// GET /v1/customers/check-duplicate?email=x&phone=y
+exports.checkDuplicate = catchAsync(async (req, res, next) => {
+  const { email, phone, name } = req.query;
+  const orgId = req.user.organizationId;
+
+  const query = { organizationId: orgId, $or: [] };
+  if (email) query.$or.push({ email: email });
+  if (phone) query.$or.push({ phone: phone });
+  if (name) query.$or.push({ name: { $regex: `^${name}$`, $options: 'i' } });
+
+  if (query.$or.length === 0) {
+    return res.status(200).json({ status: "success", isDuplicate: false });
+  }
+
+  const existing = await Customer.findOne(query).select("name email phone");
+  res.status(200).json({
+    status: "success",
+    isDuplicate: !!existing,
+    existingCustomer: existing || null
+  });
+});
+
 
 // // src/controllers/customerController.js
 // const { uploadImage } = require("../services/uploads");

@@ -77,16 +77,11 @@ exports.signup = catchAsync(async (req, res, next) => {
     status: "pending",
   });
 
-  // ✅ REVERTED: Pushing ONLY the User ID string as requested
   organization.approvalRequests = organization.approvalRequests || [];
   organization.approvalRequests.push(newUser._id);
-
   await organization.save();
-
-  // ✅ REAL-TIME NOTIFICATION TO OWNER
   if (organization.owner && organization.owner._id) {
     const ownerId = organization.owner._id.toString();
-
     emitToUser(ownerId, "newNotification", {
       title: "New Signup Request",
       message: `${newUser.name} has signed up.`,
@@ -131,7 +126,10 @@ exports.login = catchAsync(async (req, res, next) => {
   if (!email || !password)
     return next(new AppError("Email and password required.", 400));
 
-  const user = await User.findOne({ email }).select("+password");
+  // const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email })
+    .select('+password')
+    .populate('role');
   if (!user || !(await user.correctPassword(password, user.password)))
     return next(new AppError("Invalid credentials.", 401));
 
@@ -450,31 +448,72 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
   });
 });
 
-const createSendToken = (user, statusCode, res) => {
-  const accessToken = signAccessToken(user); 
-  const refreshToken = signRefreshToken(user._id);
+const createSendToken = async (user, statusCode, res) => {
+  // 1. Populate role if not already populated (to get permissions)
+  if (!user.role || !user.role.permissions) {
+    await user.populate('role');
+  }
 
-  res.cookie("refreshToken", refreshToken, {
+  const token = signToken(user._id, user.email, user.organizationId, user.role._id);
+
+  // 2. Cookie options
+  const cookieOptions = {
+    expires: new Date(
+      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
+    ),
     httpOnly: true,
-    secure: false, // Set true in production
-    sameSite: "lax",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-  });
-
-  const safeUser = {
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role || null,
-    status: user.status || null,
   };
+  if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
+
+  res.cookie('jwt', token, cookieOptions);
+
+  // 3. Remove sensitive data
+  user.password = undefined;
+
+  // 4. FLATTEN PERMISSIONS: Create a clean list for the frontend
+  // This allows the UI to check user.permissions.includes('PERM') directly
+  let permissions = [];
+  if (user.role && user.role.permissions) {
+    permissions = user.role.permissions;
+  }
+  
+  // Create a clean user object for response
+  const userResponse = user.toObject();
+  userResponse.permissions = permissions; // Inject permissions array
 
   res.status(statusCode).json({
-    status: "success",
-    token: accessToken,
-    data: { user: safeUser },
+    status: 'success',
+    token,
+    data: {
+      user: userResponse,
+    },
   });
 };
+// const createSendToken = (user, statusCode, res) => {
+//   const accessToken = signAccessToken(user); 
+//   const refreshToken = signRefreshToken(user._id);
+
+//   res.cookie("refreshToken", refreshToken, {
+//     httpOnly: true,
+//     secure: false, // Set true in production
+//     sameSite: "lax",
+//     maxAge: 30 * 24 * 60 * 60 * 1000,
+//   });
+
+//   const safeUser = {
+//     id: user._id,
+//     name: user.name,
+//     email: user.email,
+//     role: user.role || null,
+//     status: user.status || null,
+//   };
+
+//   res.status(statusCode).json({
+//     status: "success",
+//     token: accessToken,
+//     data: { user: safeUser },
+//   });
+// };
 
 
 // ======================================================
