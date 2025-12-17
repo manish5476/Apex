@@ -6,14 +6,9 @@
     "auditLog": "D:\\Apex\\apex-crm-backend\\src\\logs\\.0406e3a6396a966b70d46459761a83a4ae62143e-audit.json",
     "files": [
         {
-            "date": 1764174988268,
-            "name": "D:\\Apex\\apex-crm-backend\\src\\logs\\rejections.log.2025-11-26",
-            "hash": "f49d3683cdeec2dc0fac775081524197a6364e1a51fc206543a57cb0074bc8c6"
-        },
-        {
-            "date": 1764261290832,
-            "name": "D:\\Apex\\apex-crm-backend\\src\\logs\\rejections.log.2025-11-27",
-            "hash": "2f27522eda4df7c98d970cc46ba9beeca6fbce303ce3c52a0931c053fe704c04"
+            "date": 1765692626568,
+            "name": "D:\\Apex\\apex-crm-backend\\src\\logs\\rejections.log.2025-12-14",
+            "hash": "ad74b89ae4fb6c648d62dc0531531ab6407b6d15dcc6a5b5f94c9b34d15a9b47"
         }
     ],
     "hashType": "sha256"

@@ -46,6 +46,8 @@ const aiAgent = require("./routes/v1/AiAgentRoutes");
 const purchaseRoutes = require("./routes/v1/purchaseRoutes");
 const analyticsRoutes = require("./routes/v1/analyticsRoutes");
 const sessionRoutes = require("./routes/v1/sessionRoutes");
+const chatRoutes = require("./routes/v1/chatRoutes");
+const cookieParser = require("cookie-parser");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -62,8 +64,8 @@ app.use(
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"]
   })
 );
-
 app.options("*", cors());
+app.use(cookieParser());
 
 // ---------------------- FIX: BYPASS AUTH ON PREFLIGHT ----------------------
 app.use((req, res, next) => {
@@ -81,17 +83,17 @@ app.use(compression());
 app.use(updateSessionActivity);
 
 // ---------------------- LOGGER ----------------------
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-} else {
-  app.use(
-    morgan("combined", {
-      stream: {
-        write: (msg) => logger.info(msg.trim())
-      }
-    })
-  );
-}
+// if (process.env.NODE_ENV === "development") {
+//   app.use(morgan("dev"));
+// } else {
+//   app.use(
+//     morgan("combined", {
+//       stream: {
+//         write: (msg) => logger.info(msg.trim())
+//       }
+//     })
+//   );
+// }
 
 // ---------------------- RATE LIMITER ----------------------
 app.use(
@@ -114,7 +116,6 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
 app.use("/api/v1/organization", organizationRoutes);
 app.use("/api/v1/neworganization", organizationExtrasRoutes);
 app.use("/api/v1/auth", authRoutes);
@@ -145,7 +146,10 @@ app.use("/api/v1/sales", salesRoutes);
 app.use("/api/v1/ai-agent", aiAgent);
 app.use("/api/v1/purchases", purchaseRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
-
+app.use("/api/v1/chat", chatRoutes);
+app.use("/api/v1/search", require("./routes/v1/searchRoutes"));
+app.use("/api/v1/announcements", require("./routes/v1/announcementRoutes"));
+app.use('/api/v1/accounts', require('./routes/v1/accountRoutes'));
 // ---------------------- 404 ----------------------
 app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
@@ -153,12 +157,12 @@ app.use((req, res, next) => {
 
 // ---------------------- GLOBAL ERROR HANDLER ----------------------
 app.use((err, req, res, next) => {
-  logger.error(err.message || "Unhandled error", {
-    stack: err.stack,
-    path: req.originalUrl,
-    method: req.method,
-    user: req.user?._id,
-  });
+  // logger.error(err.message || "Unhandled error", {
+  //   stack: err.stack,
+  //   path: req.originalUrl,
+  //   method: req.method,
+  //   user: req.user?._id,
+  // });
 
   globalErrorHandler(err, req, res, next);
 });

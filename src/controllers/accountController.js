@@ -1,166 +1,136 @@
-// // src/controllers/accountController.js
-// const Account = require('../models/accountModel');
-// const asyncHandler = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
-// const { listAccountsWithBalance, getAccountHierarchy } = require('../services/accountService');
+const Account = require('../models/accountModel');
+const AccountEntry = require('../models/accountEntryModel'); // ✅ Needed for delete check
+const catchAsync = require('../utils/catchAsync'); // Using your project's standard util
+const AppError = require('../utils/appError');
+const { listAccountsWithBalance, getAccountHierarchy } = require('../services/accountService');
 
+// Helper
+function validateAccountPayload(body) {
+  const { code, name, type } = body;
+  if (!code || !String(code).trim()) throw new Error('Account code is required');
+  if (!name || !String(name).trim()) throw new Error('Account name is required');
+  if (!type || !['asset','liability','equity','income','expense','other'].includes(type))
+    throw new Error('Invalid account type');
+}
 
-// // src/controllers/accountingController.js
-// // const { postJournalEntries } = require('../services/accountingService');
+exports.createAccount = catchAsync(async (req, res, next) => {
+  const orgId = req.user.organizationId;
+  validateAccountPayload(req.body);
 
-// // exports.postJournal = asyncHandler(async (req,res) => {
-// //   const orgId = req.user.organizationId;
-// //   const { date, entries } = req.body;
-// //   // validate entries format on server
-// //   if (!Array.isArray(entries) || entries.length < 1) return res.status(400).json({ status:'fail', message:'entries required' });
-// //   const created = await postJournalEntries(orgId, date || new Date(), entries.map(e=>({ ...e, referenceType: e.referenceType, referenceId: e.referenceId })), { updateBalances:true });
-// //   res.json({ status:'success', created });
-// // });
+  const payload = {
+    organizationId: orgId,
+    code: req.body.code,
+    name: req.body.name,
+    type: req.body.type,
+    parent: req.body.parent || null,
+    metadata: req.body.metadata || {}
+  };
 
+  // Ensure uniqueness per org
+  const existing = await Account.findOne({ organizationId: orgId, code: payload.code });
+  if (existing) return next(new AppError('Account code already exists', 409));
 
+  const acc = await Account.create(payload);
+  res.status(201).json({ status: 'success', data: acc });
+});
 
-// // Helpers
-// function validateAccountPayload(body) {
-//   const { code, name, type } = body;
-//   if (!code || !String(code).trim()) throw new Error('Account code is required');
-//   if (!name || !String(name).trim()) throw new Error('Account name is required');
-//   if (!type || !['asset','liability','equity','income','expense','other'].includes(type))
-//     throw new Error('Invalid account type');
-// }
+exports.getAccounts = catchAsync(async (req, res, next) => {
+  const orgId = req.user.organizationId;
+  const params = { type: req.query.type, search: req.query.search };
+  // Ensure your service handles the empty check
+  const accounts = await listAccountsWithBalance(orgId, params);
+  res.status(200).json({ status: 'success', results: accounts.length, data: accounts });
+});
 
-// exports.createAccount = asyncHandler(async (req, res) => {
-//   // only admins allowed
-//   const orgId = req.user.organizationId;
-//   validateAccountPayload(req.body);
-//   const payload = {
-//     organizationId: orgId,
-//     code: req.body.code,
-//     name: req.body.name,
-//     type: req.body.type,
-//     parent: req.body.parent || null,
-//     metadata: req.body.metadata || {}
-//   };
-//   // ensure uniqueness per org
-//   const existing = await Account.findOne({ organizationId: orgId, code: payload.code });
-//   if (existing) return res.status(409).json({ status: 'fail', message: 'Account code already exists' });
+exports.getHierarchy = catchAsync(async (req, res, next) => {
+  const orgId = req.user.organizationId;
+  const tree = await getAccountHierarchy(orgId);
+  res.status(200).json({ status: 'success', data: tree });
+});
 
-//   const acc = await Account.create(payload);
-//   res.status(201).json({ status: 'success', data: acc });
-// });
+exports.getAccount = catchAsync(async (req, res, next) => {
+  const acc = await Account.findOne({ _id: req.params.id, organizationId: req.user.organizationId }).lean();
+  if (!acc) return next(new AppError('Account not found', 404));
+  res.status(200).json({ status: 'success', data: acc });
+});
 
-// exports.getAccounts = asyncHandler(async (req, res) => {
-//   const orgId = req.user.organizationId;
-//   const params = { type: req.query.type, search: req.query.search };
-//   const accounts = await listAccountsWithBalance(orgId, params);
-//   res.status(200).json({ status: 'success', results: accounts.length, data: accounts });
-// });
+exports.updateAccount = catchAsync(async (req, res, next) => {
+  validateAccountPayload(req.body);
+  const update = {
+    code: req.body.code,
+    name: req.body.name,
+    type: req.body.type,
+    parent: req.body.parent || null,
+    metadata: req.body.metadata || {}
+  };
+  
+  const acc = await Account.findOneAndUpdate(
+    { _id: req.params.id, organizationId: req.user.organizationId }, 
+    update, 
+    { new: true }
+  );
+  if (!acc) return next(new AppError('Account not found', 404));
+  
+  res.status(200).json({ status: 'success', data: acc });
+});
 
-// exports.getHierarchy = asyncHandler(async (req, res) => {
-//   const orgId = req.user.organizationId;
-//   const tree = await getAccountHierarchy(orgId);
-//   res.status(200).json({ status: 'success', data: tree });
-// });
+exports.deleteAccount = catchAsync(async (req, res, next) => {
+  const orgId = req.user.organizationId;
+  const accountId = req.params.id;
 
+  // 1. Check for child accounts
+  const child = await Account.findOne({ parent: accountId, organizationId: orgId });
+  if (child) return next(new AppError('Cannot delete account with child accounts', 400));
 
-// // exports.getAccounts = asyncHandler(async (req, res) => {
-// //   const orgId = req.user.organizationId;
-// //   const q = { organizationId: orgId };
+  // 2. Check for financial entries (FIXED)
+  // ❌ Previous error: checked 'Account' model
+  // ✅ Correct logic: check 'AccountEntry' model
+  const entry = await AccountEntry.findOne({ accountId: accountId, organizationId: orgId });
+  if (entry) return next(new AppError('Cannot delete account with posted entries. Archive it instead.', 400));
 
-// //   // optional filters: type, search (code or name)
-// //   if (req.query.type) q.type = req.query.type;
-// //   if (req.query.search) {
-// //     const re = new RegExp(req.query.search, 'i');
-// //     q.$or = [{ code: re }, { name: re }];
-// //   }
+  const acc = await Account.findOneAndDelete({ _id: accountId, organizationId: orgId });
+  if (!acc) return next(new AppError('Account not found', 404));
 
-// //   const accounts = await Account.find(q).sort({ code: 1 }).lean();
-// //   res.status(200).json({ status: 'success', results: accounts.length, data: accounts });
-// // });
+  res.status(200).json({ status: 'success', message: 'Deleted' });
+});
 
-// exports.getAccount = asyncHandler(async (req, res) => {
-//   const orgId = req.user.organizationId;
-//   const acc = await Account.findOne({ _id: req.params.id, organizationId: orgId }).lean();
-//   if (!acc) return res.status(404).json({ status: 'fail', message: 'Account not found' });
-//   res.status(200).json({ status: 'success', data: acc });
-// });
+exports.reparentAccount = catchAsync(async (req, res, next) => {
+  const orgId = req.user.organizationId;
+  const accountId = req.params.id;
+  const newParentId = req.body.parent || null;
 
-// exports.updateAccount = asyncHandler(async (req, res) => {
-//   const orgId = req.user.organizationId;
-//   validateAccountPayload(req.body);
-//   const update = {
-//     code: req.body.code,
-//     name: req.body.name,
-//     type: req.body.type,
-//     parent: req.body.parent || null,
-//     metadata: req.body.metadata || {}
-//   };
-//   const acc = await Account.findOneAndUpdate({ _id: req.params.id, organizationId: orgId }, update, { new: true });
-//   if (!acc) return res.status(404).json({ status: 'fail', message: 'Account not found' });
-//   res.status(200).json({ status: 'success', data: acc });
-// });
+  if (newParentId && String(newParentId) === String(accountId)) {
+    return next(new AppError('Account cannot be parent of itself', 400));
+  }
 
-// exports.deleteAccount = asyncHandler(async (req, res) => {
-//   const orgId = req.user.organizationId;
-//   const child = await Account.findOne({ parent: req.params.id, organizationId: orgId });
-//   if (child) return res.status(400).json({ status: 'fail', message: 'Cannot delete account with child accounts' });
+  // Prevent cycles and invalid parents
+  const accounts = await Account.find({ organizationId: orgId }).lean();
+  const map = {};
+  accounts.forEach(a => { map[String(a._id)] = a; });
 
-//   const entry = await Account.findOne({ accountId: req.params.id, organizationId: orgId }).lean();
-//   if (entry) return res.status(400).json({ status: 'fail', message: 'Cannot delete account with posted entries' });
+  if (newParentId && !map[String(newParentId)]) {
+    return next(new AppError('New parent not found', 404));
+  }
 
-//   const acc = await Account.findOneAndDelete({ _id: req.params.id, organizationId: orgId });
-//   if (!acc) return res.status(404).json({ status: 'fail', message: 'Account not found' });
-//   res.status(200).json({ status: 'success', message: 'Deleted' });
-// });
+  let cur = newParentId;
+  while (cur) {
+    if (String(cur) === String(accountId)) {
+      return next(new AppError('Reparent would create a cycle', 400));
+    }
+    const parent = map[String(cur)];
+    cur = parent ? parent.parent : null;
+  }
 
-// // Reparent account
-// exports.reparentAccount = asyncHandler(async (req, res) => {
-//   const orgId = req.user.organizationId;
-//   const accountId = req.params.id;
-//   const newParentId = req.body.parent || null;
+  const updated = await Account.findOneAndUpdate(
+    { _id: accountId, organizationId: orgId }, 
+    { parent: newParentId || null }, 
+    { new: true }
+  );
+  if (!updated) return next(new AppError('Account not found', 404));
 
-//   if (newParentId && String(newParentId) === String(accountId)) {
-//     return res.status(400).json({ status: 'fail', message: 'Account cannot be parent of itself' });
-//   }
-
-//   // load all accounts for org (small optimization: fetch subtree when large orgs use different logic)
-//   const accounts = await Account.find({ organizationId: orgId }).lean();
-//   const map = {};
-//   accounts.forEach(a => { map[String(a._id)] = a; });
-
-//   if (newParentId && !map[String(newParentId)]) {
-//     return res.status(404).json({ status: 'fail', message: 'New parent not found' });
-//   }
-
-//   // detect cycle: traverse up from newParent and ensure we don't meet accountId
-//   let cur = newParentId;
-//   while (cur) {
-//     if (String(cur) === String(accountId)) {
-//       return res.status(400).json({ status: 'fail', message: 'Reparent would create a cycle' });
-//     }
-//     const parent = map[String(cur)];
-//     cur = parent ? parent.parent : null;
-//   }
-
-//   // optional: disallow reparent when account has entries -- safer
-//   const allowIfEntries = process.env.ALLOW_REPARENT_WITH_ENTRIES === 'true';
-//   if (!allowIfEntries) {
-//     const entry = await require('../models/accountEntryModel').findOne({ accountId: accountId, organizationId: orgId }).lean();
-//     if (entry) return res.status(400).json({ status: 'fail', message: 'Cannot reparent account with posted entries' });
-//   }
-
-//   const updated = await Account.findOneAndUpdate({ _id: accountId, organizationId: orgId }, { parent: newParentId || null }, { new: true });
-//   if (!updated) return res.status(404).json({ status: 'fail', message: 'Account not found' });
-//   res.status(200).json({ status: 'success', data: updated });
-// });
+  res.status(200).json({ status: 'success', data: updated });
+});
 
 
 
-// // exports.deleteAccount = asyncHandler(async (req, res) => {
-// //   const orgId = req.user.organizationId;
-// //   // Prevent deleting accounts that have entries or children ideally. Minimal check: children.
-// //   const child = await Account.findOne({ parent: req.params.id, organizationId: orgId });
-// //   if (child) return res.status(400).json({ status: 'fail', message: 'Cannot delete account with child accounts' });
 
-// //   const acc = await Account.findOneAndDelete({ _id: req.params.id, organizationId: orgId });
-// //   if (!acc) return res.status(404).json({ status: 'fail', message: 'Account not found' });
-// //   res.status(200).json({ status: 'success', message: 'Deleted' });
-// // });
