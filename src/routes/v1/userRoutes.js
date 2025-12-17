@@ -16,7 +16,14 @@ router.use(authController.protect);
 router.get("/me", userController.getMyProfile);
 router.patch("/me", userController.updateMyProfile);
 router.patch("/me/photo", upload.single("photo"), userController.uploadProfilePhoto);
-
+router
+  .route('/:id/photo')
+  .patch(
+    authController.protect,
+    authController.restrictTo('superadmin'),
+    upload.single("photo"),
+    userController.uploadUserPhotoByAdmin
+  );
 // ======================================================
 // 2. USER MANAGEMENT (Admin)
 // ======================================================
@@ -30,7 +37,6 @@ router.route("/")
   .get(checkPermission(PERMISSIONS.USER.READ), userController.getAllUsers)
   .post(checkPermission(PERMISSIONS.USER.MANAGE), userController.createUser);
 
-// ✅ FIX: Added .get() here so you can fetch a single user for editing
 router.route("/:id")
   .get(checkPermission(PERMISSIONS.USER.READ), userController.getUser) 
   .patch(checkPermission(PERMISSIONS.USER.MANAGE), userController.updateUser)

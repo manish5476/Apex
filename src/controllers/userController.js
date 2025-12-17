@@ -61,6 +61,41 @@ exports.uploadProfilePhoto = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.uploadUserPhotoByAdmin = catchAsync(async (req, res, next) => {
+  // 1. Get the target User ID from the URL parameters
+  const userId = req.params.id;
+
+  // 2. Check for uploaded file
+  if (!req.file || !req.file.buffer) {
+    return next(new AppError("Please upload an image file.", 400));
+  }
+
+  // 3. Optional: Determine the upload folder based on the organization of the user being updated.
+  //    First, fetch the user to get organizationId.
+  const targetUser = await User.findById(userId).select('organizationId');
+  if (!targetUser) {
+    return next(new AppError("User not found.", 404));
+  }
+
+  const folder = `profiles/${targetUser.organizationId || "global"}`;
+
+  // 4. Upload the image to the service (e.g., S3, Cloudinary)
+  const imageUrl = await imageUploadService.uploadImage(req.file.buffer, folder);
+
+  // 5. Update the target user's avatar field
+  const updatedUser = await User.findByIdAndUpdate(
+    userId, // Use the ID from the URL parameter
+    { avatar: imageUrl.url || imageUrl }, 
+    { new: true, runValidators: true }
+  ).select("-password"); // Exclude password from the returned object
+
+  // 6. Send success response
+  res.status(200).json({
+    status: "success",
+    message: `Profile photo for user ${userId} updated successfully by admin.`,
+    data: { user: updatedUser },
+  });
+});
 // ======================================================
 // 2. ADMIN USER MANAGEMENT (Using Factory)
 // ======================================================
