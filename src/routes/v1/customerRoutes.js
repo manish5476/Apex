@@ -18,6 +18,8 @@ router.patch("/:id/restore", checkPermission(PERMISSIONS.CUSTOMER.UPDATE), custo
 router.patch('/:id/credit-limit', checkPermission(PERMISSIONS.CUSTOMER.CREDIT_LIMIT), customerController.updateCreditLimit);
 router.get("/check-duplicate", checkPermission(PERMISSIONS.CUSTOMER.READ), customerController.checkDuplicate);
 // CRUD
+router.route("/bulk-customer")  .post(checkPermission(PERMISSIONS.CUSTOMER.CREATE), customerController.createBulkCustomer);
+
 router.route("/")
   .get(checkPermission(PERMISSIONS.CUSTOMER.READ), customerController.getAllCustomers)
   .post(checkPermission(PERMISSIONS.CUSTOMER.CREATE), customerController.createCustomer);

@@ -7,6 +7,7 @@ const imageUploadService = require("../services/uploads/imageUploadService");
 
 // Standard CRUD
 exports.createSupplier = factory.createOne(Supplier);
+exports.createbulkSupplier = factory.bulkCreate(Supplier);
 exports.getAllSuppliers = factory.getAll(Supplier);
 exports.getSupplier = factory.getOne(Supplier);
 exports.updateSupplier = factory.updateOne(Supplier);

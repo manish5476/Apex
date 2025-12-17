@@ -7,75 +7,38 @@ const addressSchema = new mongoose.Schema({
   state: { type: String, trim: true },
   zipCode: { type: String, trim: true },
   country: { type: String, trim: true, default: 'India' },
-});
+}, { _id: false });
 
 // --- Main Supplier Schema ---
 const supplierSchema = new mongoose.Schema(
   {
-    // --- Core Link ---
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Organization',
       required: true,
       index: true,
     },
-
     avatar: { type: String },
-
-    // --- Business Details ---
     companyName: {
       type: String,
       required: [true, 'Supplier company name is required'],
       trim: true,
     },
-
     contactPerson: { type: String, trim: true },
-
-    email: {
-      type: String,
-      trim: true,
-      lowercase: true,
-      sparse: true, // required for compound unique
-    },
-
-    phone: {
-      type: String,
-      trim: true,
-      sparse: true,
-    },
-
+    email: { type: String, trim: true, lowercase: true, default: null },
+    phone: { type: String, trim: true, default: null },
     altPhone: { type: String, trim: true },
+    gstNumber: { type: String, trim: true, uppercase: true, default: null },
+    panNumber: { type: String, trim: true, uppercase: true, default: null },
 
-    gstNumber: {
-      type: String,
-      trim: true,
-      uppercase: true,
-      sparse: true,
-    },
-
-    panNumber: { type: String, trim: true, uppercase: true },
-
-    // --- Address ---
     address: addressSchema,
-
-    // --- Financial Info ---
     openingBalance: { type: Number, default: 0 },
     outstandingBalance: { type: Number, default: 0 },
     paymentTerms: { type: String, trim: true },
 
-    // --- Relations ---
-    branchesSupplied: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Branch',
-      },
-    ],
-
-    // --- Status ---
+    branchesSupplied: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Branch' }],
     isActive: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false },
-
-    // --- Audit Trail ---
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
@@ -83,44 +46,63 @@ const supplierSchema = new mongoose.Schema(
 );
 
 /* ===================================================
-   🔥 CRITICAL FIX: Multi-tenant unique indexes
-   Prevent duplicate email/phone/gst inside organization
+    🔥 THE FIX: Partial Indexes
 ==================================================== */
+
+// Email Unique per Org (Ignored if null/empty)
 supplierSchema.index(
   { organizationId: 1, email: 1 },
-  { unique: true, sparse: true }
+  { 
+    unique: true, 
+    partialFilterExpression: { email: { $gt: "" } } 
+  }
 );
 
+// Phone Unique per Org (Ignored if null/empty)
 supplierSchema.index(
   { organizationId: 1, phone: 1 },
-  { unique: true, sparse: true }
+  { 
+    unique: true, 
+    partialFilterExpression: { phone: { $gt: "" } } 
+  }
 );
 
+// GST Unique per Org (Ignored if null/empty)
 supplierSchema.index(
   { organizationId: 1, gstNumber: 1 },
-  { unique: true, sparse: true }
+  { 
+    unique: true, 
+    partialFilterExpression: { gstNumber: { $gt: "" } } 
+  }
 );
 
-/* Additional Useful Indexes */
 supplierSchema.index({ organizationId: 1, companyName: 1 });
-// REMOVED DUPLICATE: organizationId + gstNumber was listed here again.
 
 // --- Virtual for Display Name ---
 supplierSchema.virtual('displayName').get(function () {
-  return this.contactPerson
-    ? `${this.companyName} (${this.contactPerson})`
-    : this.companyName;
+  return this.contactPerson ? `${this.companyName} (${this.contactPerson})` : this.companyName;
 });
 
-// --- Middleware: Normalize Text ---
+// --- Middleware: Normalize Text & Clean Nulls ---
 supplierSchema.pre('save', function (next) {
   if (this.companyName) this.companyName = this.companyName.trim();
   if (this.contactPerson) this.contactPerson = this.contactPerson.trim();
+  
+  // Convert empty strings to null to avoid index collisions
+  const fields = ['email', 'phone', 'gstNumber', 'panNumber'];
+  fields.forEach(field => {
+    if (this[field] === "") this[field] = null;
+  });
+  
   next();
 });
 
 const Supplier = mongoose.model('Supplier', supplierSchema);
 module.exports = Supplier;
+
+
+
+
 // const mongoose = require('mongoose');
 
 // // --- Subdocument for Address ---
@@ -226,7 +208,7 @@ module.exports = Supplier;
 
 // /* Additional Useful Indexes */
 // supplierSchema.index({ organizationId: 1, companyName: 1 });
-// supplierSchema.index({ organizationId: 1, gstNumber: 1 });
+// // REMOVED DUPLICATE: organizationId + gstNumber was listed here again.
 
 // // --- Virtual for Display Name ---
 // supplierSchema.virtual('displayName').get(function () {

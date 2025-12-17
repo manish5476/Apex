@@ -6,7 +6,11 @@ const accountSchema = new mongoose.Schema({
   name: { type: String, required: true },
   type: { type: String, required: true, enum: ['asset', 'liability', 'equity', 'income', 'expense', 'other'] },
   parent: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', default: null },
-  balance: { type: Number, default: 0 },
+  
+  // ✅ NEW: Safety Flags
+  isGroup: { type: Boolean, default: false }, // If true, cannot contain entries
+  cachedBalance: { type: Number, default: 0 }, // Renamed from 'balance' to show it is calculated
+
   metadata: { type: mongoose.Schema.Types.Mixed }
 }, { timestamps: true });
 
