@@ -11,7 +11,7 @@ const AppError = require('../utils/appError');
 const factory = require('../utils/handlerFactory');
 const emiService = require('../services/emiService');
 const paymentPDFService = require("../services/paymentPDFService");
-
+const automationService = require('../services/automationService');
 /* ==========================================================
    AUDIT CORE: Apply or Reverse Financial Effects
    ----------------------------------------------------------
@@ -286,6 +286,7 @@ exports.createPayment = catchAsync(async (req, res, next) => {
     }
 
     await session.commitTransaction();
+automationService.triggerEvent('payment.received', payment, req.user.organizationId);
 
     res.status(201).json({
       status: 'success',

@@ -1,31 +1,62 @@
 const Notification = require('../models/notificationModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+const APIFeatures = require('../utils/ApiFeatures'); // Standardize if you have it, else manual logic below
 
-// 1. Get All Notifications (History)
-// This fulfills your request to see notifications even after they are checked.
+// 1. Get My Notifications (Paginated)
 exports.getMyNotifications = catchAsync(async (req, res, next) => {
-  const notifications = await Notification.find({
-    recipientId: req.user.id, // ✅ Correct field
-  }).sort({ createdAt: -1 });
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 20;
+  const skip = (page - 1) * limit;
+
+  // Filter: My ID + Organization
+  const filter = { 
+      recipientId: req.user.id,
+      organizationId: req.user.organizationId 
+  };
+
+  // Optional: Filter by read/unread
+  if (req.query.isRead !== undefined) {
+      filter.isRead = req.query.isRead === 'true';
+  }
+
+  const [notifications, total] = await Promise.all([
+      Notification.find(filter)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+      Notification.countDocuments(filter)
+  ]);
 
   res.status(200).json({
     status: 'success',
     results: notifications.length,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
     data: { notifications },
   });
 });
 
-// 2. Mark Single Notification as Read
-exports.markAsRead = catchAsync(async (req, res, next) => {
-  const id = req.params.id;
+// 2. Get Unread Count (For Badge 🔴)
+exports.getUnreadCount = catchAsync(async (req, res, next) => {
+    const count = await Notification.countDocuments({
+        recipientId: req.user.id,
+        organizationId: req.user.organizationId,
+        isRead: false
+    });
 
+    res.status(200).json({
+        status: 'success',
+        data: { count }
+    });
+});
+
+// 3. Mark Single as Read
+exports.markAsRead = catchAsync(async (req, res, next) => {
   const notification = await Notification.findOneAndUpdate(
-    {
-      _id: id,
-      recipientId: req.user.id // ✅ FIXED: Changed 'user' to 'recipientId'
-    },
-    { isRead: true },          // ✅ FIXED: Changed 'read' to 'isRead'
+    { _id: req.params.id, recipientId: req.user.id },
+    { isRead: true },
     { new: true }
   );
 
@@ -33,25 +64,99 @@ exports.markAsRead = catchAsync(async (req, res, next) => {
     return next(new AppError("Notification not found", 404));
   }
 
-  res.status(200).json({
-    status: "success",
-    data: { notification }
-  });
+  res.status(200).json({ status: "success", data: { notification } });
 });
 
-// 3. Mark All as Read
+// 4. Mark All as Read
 exports.markAllRead = catchAsync(async (req, res, next) => {
   await Notification.updateMany(
-    {
-      recipientId: req.user.id, // ✅ FIXED: Changed 'user' to 'recipientId'
-      isRead: false             // ✅ FIXED: Changed 'read' to 'isRead'
-    },
-    { isRead: true }            // ✅ FIXED: Changed 'read' to 'isRead'
+    { recipientId: req.user.id, isRead: false },
+    { isRead: true }
   );
 
-  res.status(200).json({
-    status: "success",
-    message: "All notifications marked read"
-  });
+  res.status(200).json({ status: "success", message: "All marked as read" });
 });
+
+// 5. Delete Single (Cleanup)
+exports.deleteNotification = catchAsync(async (req, res, next) => {
+    const notification = await Notification.findOneAndDelete({ 
+        _id: req.params.id, 
+        recipientId: req.user.id 
+    });
+
+    if (!notification) {
+        return next(new AppError("Notification not found", 404));
+    }
+
+    res.status(204).json({ status: "success", data: null });
+});
+
+// 6. Clear All (Cleanup)
+exports.clearAll = catchAsync(async (req, res, next) => {
+    await Notification.deleteMany({ recipientId: req.user.id });
+    res.status(204).json({ status: "success", data: null });
+});
+
+
+
+
+
+
+
+// const Notification = require('../models/notificationModel');
+// const catchAsync = require('../utils/catchAsync');
+// const AppError = require('../utils/appError');
+
+// // 1. Get All Notifications (History)
+// // This fulfills your request to see notifications even after they are checked.
+// exports.getMyNotifications = catchAsync(async (req, res, next) => {
+//   const notifications = await Notification.find({
+//     recipientId: req.user.id, // ✅ Correct field
+//   }).sort({ createdAt: -1 });
+
+//   res.status(200).json({
+//     status: 'success',
+//     results: notifications.length,
+//     data: { notifications },
+//   });
+// });
+
+// // 2. Mark Single Notification as Read
+// exports.markAsRead = catchAsync(async (req, res, next) => {
+//   const id = req.params.id;
+
+//   const notification = await Notification.findOneAndUpdate(
+//     {
+//       _id: id,
+//       recipientId: req.user.id // ✅ FIXED: Changed 'user' to 'recipientId'
+//     },
+//     { isRead: true },          // ✅ FIXED: Changed 'read' to 'isRead'
+//     { new: true }
+//   );
+
+//   if (!notification) {
+//     return next(new AppError("Notification not found", 404));
+//   }
+
+//   res.status(200).json({
+//     status: "success",
+//     data: { notification }
+//   });
+// });
+
+// // 3. Mark All as Read
+// exports.markAllRead = catchAsync(async (req, res, next) => {
+//   await Notification.updateMany(
+//     {
+//       recipientId: req.user.id, // ✅ FIXED: Changed 'user' to 'recipientId'
+//       isRead: false             // ✅ FIXED: Changed 'read' to 'isRead'
+//     },
+//     { isRead: true }            // ✅ FIXED: Changed 'read' to 'isRead'
+//   );
+
+//   res.status(200).json({
+//     status: "success",
+//     message: "All notifications marked read"
+//   });
+// });
 

@@ -20,7 +20,7 @@ const AppError = require("../utils/appError");
 const factory = require("../utils/handlerFactory");
 const { runInTransaction } = require("../utils/runInTransaction");
 const { emitToOrg } = require("../utils/socket");
-
+const automationService = require('../services/automationService');
 // --- HELPER: Ensure System Accounts Exist (Idempotent) ---
 async function getOrInitAccount(orgId, type, name, code, session) {
   let account = await Account.findOne({ organizationId: orgId, code }).session(session);
@@ -202,6 +202,8 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
   }, 3, { action: "CREATE_INVOICE", userId: req.user._id });
 
   try { emitToOrg(req.user.organizationId, "newNotification", { title: "New Sale", message: `#${newInvoice.invoiceNumber}`, type: "success" }); } catch (e) {}
+
+  automationService.triggerEvent('invoice.created', newInvoice.toObject(), req.user.organizationId);
 
   res.status(201).json({ status: "success", data: { invoice: newInvoice, sales: salesDoc, payment: newPayment } });
 });

@@ -191,6 +191,8 @@ app.use("/api/v1/sessions", sessionRoutes);
 app.use('/api/v1/ownership', require('./routes/v1/ownership.routes'));
 app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1/feed", feedRoutes);
+app.use("/api/v1/reconciliation", require("./routes/v1/reconciliationRoutes"));
+app.use("/api/v1/automation", require("./routes/v1/automationRoutes"));
 // ---------------------- 5. ERROR HANDLING ----------------------
 app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
