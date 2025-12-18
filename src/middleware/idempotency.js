@@ -1,26 +1,38 @@
 const { createClient } = require('redis');
 const AppError = require('../utils/appError');
 
-const redis = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
-redis.connect().catch(console.error);
+// Reuse existing Redis env or default
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const redis = createClient({ url: redisUrl });
+
+(async () => {
+  try {
+    await redis.connect();
+    console.log('✅ Idempotency Redis connected');
+  } catch (err) {
+    console.warn('⚠️ Idempotency Redis failed (Feature disabled):', err.message);
+  }
+})();
 
 exports.checkIdempotency = async (req, res, next) => {
-  const key = req.headers['idempotency-key'];
+  if (!redis.isOpen) return next(); // Fail open if Redis is down
 
-  // 1. Skip if no key provided (Optional: or enforce it for sensitive routes)
-  if (!key) return next();
+  const key = req.headers['idempotency-key'];
+  if (!key) return next(); // Skip if no key provided
 
   const idempotencyKey = `idempotency:${req.user.id}:${key}`;
 
-  // 2. Check if key exists
-  const exists = await redis.get(idempotencyKey);
+  try {
+    const exists = await redis.get(idempotencyKey);
+    if (exists) {
+      return next(new AppError('Duplicate request detected. Please wait.', 429));
+    }
 
-  if (exists) {
-    return next(new AppError('Duplicate request detected. Please wait a moment.', 429));
+    // Lock for 60 seconds
+    await redis.set(idempotencyKey, 'processing', { EX: 60 });
+    next();
+  } catch (err) {
+    console.error('Idempotency error:', err);
+    next();
   }
-
-  // 3. Lock this key for 30 seconds (Enough time to process payment)
-  await redis.set(idempotencyKey, 'processing', { EX: 30 });
-
-  next();
 };
