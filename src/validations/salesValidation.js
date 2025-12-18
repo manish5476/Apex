@@ -1,4 +1,3 @@
-// src/validations/salesValidation.js
 const Joi = require('joi');
 const mongoose = require('mongoose');
 
@@ -8,7 +7,7 @@ const objectId = Joi.string().custom((value, helpers) => {
 }, 'ObjectId validation');
 
 const salesItem = Joi.object({
-  product: objectId.required(),
+  productId: objectId.required(), // ✅ FIXED: Was 'product'
   sku: Joi.string().allow('', null),
   name: Joi.string().allow('', null),
   qty: Joi.number().integer().min(0).required(),
@@ -19,19 +18,26 @@ const salesItem = Joi.object({
 });
 
 const createSalesSchema = Joi.object({
-  invoice: objectId.optional(),
-  invoiceNo: Joi.string().allow('', null),
-  customer: objectId.optional(),
-  branch: objectId.optional(),
+  // ✅ FIXED: Field names now match Mongoose Schema (invoiceId, customerId)
+  invoiceId: objectId.required(), // Required by Model, so Joi must enforce it
+  invoiceNumber: Joi.string().allow('', null), // Changed from invoiceNo to match schema
+  
+  customerId: objectId.required(), // Required by Model
+  branchId: objectId.optional(),   // Optional in Body (Injected by Controller)
+  
   items: Joi.array().items(salesItem).min(1).required(),
-  subTotal: Joi.number().min(0).required(),
-  taxTotal: Joi.number().min(0).required(),
-  discountTotal: Joi.number().min(0).required(),
+  
+  subTotal: Joi.number().min(0).default(0),
+  taxTotal: Joi.number().min(0).default(0),
+  discountTotal: Joi.number().min(0).default(0),
+  
   totalAmount: Joi.number().min(0).required(),
   paidAmount: Joi.number().min(0).default(0),
   dueAmount: Joi.number().min(0).default(0),
+  
   paymentStatus: Joi.string().valid('unpaid','partial','paid','refunded').default('unpaid'),
   status: Joi.string().valid('active','cancelled','returned').default('active'),
+  
   createdBy: objectId.optional(),
   meta: Joi.object().optional()
 });

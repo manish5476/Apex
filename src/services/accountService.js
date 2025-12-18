@@ -1,38 +1,66 @@
-// src/services/accountService.js
 const mongoose = require('mongoose');
 const Account = require('../models/accountModel');
-const AccountEntry = require('../models/accountModel');
+const AccountEntry = require('../models/accountEntryModel'); // ✅ Fixed Import
 
 /**
  * listAccountsWithBalance(orgId, filters)
- * returns accounts with computed balance (sum debit - credit from AccountEntry unless account.balance exists)
+ * returns accounts with computed balance
  */
 async function listAccountsWithBalance(organizationId, { type, search } = {}) {
-  const match = { organizationId: mongoose.Types.ObjectId(organizationId) };
+  const match = { organizationId: new mongoose.Types.ObjectId(organizationId) }; // ✅ Safety: Ensure ObjectId
   if (type) match.type = type;
   if (search) match.$or = [{ code: new RegExp(search, 'i') }, { name: new RegExp(search, 'i') }];
 
-  // fetch accounts
+  // 1. Fetch Accounts
   const accounts = await Account.find(match).lean();
-
   if (accounts.length === 0) return [];
 
   const ids = accounts.map(a => a._id);
 
-  // aggregate entries grouped by accountId
+  // 2. Aggregate Entries (Raw Sums)
   const ag = [
-    { $match: { organizationId: mongoose.Types.ObjectId(organizationId), accountId: { $in: ids } } },
+    { $match: { organizationId: new mongoose.Types.ObjectId(organizationId), accountId: { $in: ids } } },
     { $group: { _id: '$accountId', totalDebit: { $sum: '$debit' }, totalCredit: { $sum: '$credit' } } }
   ];
-  const sums = await AccountEntry.collection.aggregate(ag).toArray();
-  const sumMap = sums.reduce((acc, s) => { acc[String(s._id)] = { debit: s.totalDebit || 0, credit: s.totalCredit || 0 }; return acc; }, {});
+  
+  // Use .aggregate() on the Model, not collection, for better stability
+  const sums = await AccountEntry.aggregate(ag); 
+  
+  const sumMap = sums.reduce((acc, s) => { 
+    acc[String(s._id)] = { debit: s.totalDebit || 0, credit: s.totalCredit || 0 }; 
+    return acc; 
+  }, {});
 
-  // attach balance: prefer denormalized account.balance when defined (not 0) otherwise compute
+  // 3. Merge & Normalize
   const out = accounts.map(a => {
     const m = sumMap[String(a._id)] || { debit: 0, credit: 0 };
-    const computed = (m.debit || 0) - (m.credit || 0);
-    const useBalance = (typeof a.balance === 'number' && a.balance !== 0) ? a.balance : computed;
-    return { ...a, computedBalance: computed, balance: useBalance };
+    
+    // Raw Net (Debit - Credit)
+    const rawNet = (m.debit || 0) - (m.credit || 0);
+
+    // ✅ AUDIT FIX 1: Use 'cachedBalance' matching the Schema
+    // ✅ AUDIT FIX 2: Handle Polarity (Normal Balance)
+    // Assets/Expenses: Normal Balance is Debit (+)
+    // Liab/Equity/Income: Normal Balance is Credit (-)
+    // We convert everything to positive for display if it matches normal behavior
+    
+    let displayBalance = rawNet;
+    if (['liability', 'equity', 'income'].includes(a.type)) {
+        displayBalance = rawNet * -1;
+    }
+
+    const useCached = (typeof a.cachedBalance === 'number' && a.cachedBalance !== 0) 
+        ? a.cachedBalance 
+        : displayBalance;
+
+    return { 
+        ...a, 
+        debitTotal: m.debit, 
+        creditTotal: m.credit,
+        rawBalance: rawNet,       // Mathematical (Dr - Cr)
+        balance: useCached,       // Normalized for UI (Positive = Normal)
+        computedBalance: displayBalance 
+    };
   });
 
   return out;
@@ -40,12 +68,15 @@ async function listAccountsWithBalance(organizationId, { type, search } = {}) {
 
 /**
  * getAccountHierarchy(organizationId)
- * returns accounts tree (parent-child)
  */
 async function getAccountHierarchy(organizationId) {
-  const accounts = await Account.find({ organizationId: mongoose.Types.ObjectId(organizationId) }).lean();
+  const accounts = await Account.find({ organizationId }).lean();
+  
   const map = {};
-  accounts.forEach(a => { map[String(a._id)] = { ...a, children: [] }; });
+  accounts.forEach(a => { 
+      map[String(a._id)] = { ...a, children: [] }; 
+  });
+  
   const roots = [];
   accounts.forEach(a => {
     if (a.parent && map[String(a.parent)]) {
@@ -54,6 +85,7 @@ async function getAccountHierarchy(organizationId) {
       roots.push(map[String(a._id)]);
     }
   });
+  
   return roots;
 }
 

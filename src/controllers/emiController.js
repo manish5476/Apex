@@ -5,7 +5,10 @@ const factory = require('../utils/handlerFactory');
 const EMI = require('../models/emiModel');
 
 /* -------------------------------------------------------------
- * Create EMI Plan
+   Create EMI Plan
+   -------------------------------------------------------------
+   AUDIT: Validates that an invoice exists and isn't already 
+   converted to EMI before proceeding.
 ------------------------------------------------------------- */
 exports.createEmiPlan = catchAsync(async (req, res, next) => {
   const {
@@ -17,7 +20,7 @@ exports.createEmiPlan = catchAsync(async (req, res, next) => {
   } = req.body;
 
   if (!invoiceId || !numberOfInstallments || !emiStartDate) {
-    return next(new AppError('Missing required fields', 400));
+    return next(new AppError('Missing required fields: invoiceId, numberOfInstallments, emiStartDate', 400));
   }
 
   const emi = await emiService.createEmiPlan({
@@ -25,9 +28,9 @@ exports.createEmiPlan = catchAsync(async (req, res, next) => {
     branchId: req.user.branchId,
     invoiceId,
     createdBy: req.user._id,
-    downPayment,
-    numberOfInstallments,
-    interestRate,
+    downPayment: Number(downPayment) || 0,
+    numberOfInstallments: Number(numberOfInstallments),
+    interestRate: Number(interestRate) || 0,
     emiStartDate,
   });
 
@@ -39,42 +42,22 @@ exports.createEmiPlan = catchAsync(async (req, res, next) => {
 });
 
 /* -------------------------------------------------------------
- * Get All EMIs (with filters & pagination)
- * Used for the EMI List View
+   Get All EMIs
 ------------------------------------------------------------- */
 const popOptions = [
   { 
     path: 'customerId', 
     select: 'name email phone avatar'
   },
+  {
+    path: 'invoiceId',
+    select: 'invoiceNumber grandTotal balanceAmount'
+  }
 ];
-exports.getAllEmis = factory.getAll(EMI,popOptions);
-
-// exports.getAllEmis = catchAsync(async (req, res, next) => {
-//   const { page = 1, limit = 10, customerId, status, invoiceId, search } = req.query;
-//   const filter = { organizationId: req.user.organizationId };
-
-//   if (customerId) filter.customerId = customerId;
-//   if (status) filter.status = status;
-//   if (invoiceId) filter.invoiceId = invoiceId;
-//   if (search) filter.search = search;
-//   const options = {
-//     page: parseInt(page, 10),
-//     limit: parseInt(limit, 10),
-//     sortBy: 'createdAt:desc' // Show newest first
-//   };
-//   const result = await emiService.queryEmis(filter, options);
-//   res.status(200).json({
-//     status: 'success',
-//     results: result.totalResults,
-//     totalPages: result.totalPages,
-//     currentPage: result.page,
-//     data: result.results // The array of EMIs
-//   });
-// });
+exports.getAllEmis = factory.getAll(EMI, popOptions);
 
 /* -------------------------------------------------------------
- * Get EMI by Invoice ID
+   Get EMI by Invoice ID
 ------------------------------------------------------------- */
 exports.getEmiByInvoice = catchAsync(async (req, res, next) => {
   const { invoiceId } = req.params;
@@ -89,7 +72,7 @@ exports.getEmiByInvoice = catchAsync(async (req, res, next) => {
 });
 
 /* -------------------------------------------------------------
- * Get EMI by ID (Specific EMI Details)
+   Get EMI by ID
 ------------------------------------------------------------- */
 exports.getEmiById = catchAsync(async (req, res, next) => {
   const { id } = req.params;
@@ -104,80 +87,90 @@ exports.getEmiById = catchAsync(async (req, res, next) => {
 });
 
 /* -------------------------------------------------------------
- * Mark an EMI installment as paid
+   Pay EMI Installment (The Critical Fix)
+   -------------------------------------------------------------
+   This now correctly triggers accounting entries via Service.
 ------------------------------------------------------------- */
 exports.payEmiInstallment = catchAsync(async (req, res, next) => {
   const {
     emiId,
     installmentNumber,
     amount,
-    paymentMethod, // e.g. "cash"
-    referenceNumber, // e.g. "TXN-1234"
+    paymentMethod,
+    referenceNumber,
     remarks
   } = req.body;
 
   if (!emiId || !installmentNumber || !amount || !paymentMethod) {
-    return next(new AppError('emiId, installmentNumber, amount, and paymentMethod are required', 400));
+    return next(new AppError('Required: emiId, installmentNumber, amount, paymentMethod', 400));
   }
 
   const result = await emiService.payEmiInstallment({
     emiId,
     installmentNumber,
-    amount,
+    amount: Number(amount),
     paymentMethod,
     referenceNumber,
     remarks,
     organizationId: req.user.organizationId,
+    branchId: req.user.branchId, // Pass branch for accounting
     createdBy: req.user._id
   });
 
   res.status(200).json({
     status: 'success',
-    message: 'Payment recorded and EMI updated successfully',
+    message: 'Payment recorded, Ledger updated, and EMI installment marked paid.',
     data: result,
   });
 });
 
-// DELETE /v1/emi/:id
+/* -------------------------------------------------------------
+   Delete EMI (Restricted)
+------------------------------------------------------------- */
 exports.deleteEmi = catchAsync(async (req, res, next) => {
-  const emi = await Emi.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+  // Audit: Only allow delete if no payments have been made? 
+  // For now, we allow soft delete if implemented, otherwise hard delete.
+  const emi = await EMI.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
+  
   if (!emi) return next(new AppError("EMI not found", 404));
+
+  // Safety: Don't delete active EMI with payments
+  const hasPayments = emi.installments.some(i => i.paidAmount > 0);
+  if (hasPayments) {
+      return next(new AppError("Cannot delete EMI plan with processed payments. Please cancel instead.", 400));
+  }
+
+  await EMI.deleteOne({ _id: req.params.id });
+  
   res.status(200).json({ status: "success", message: "EMI deleted" });
 });
 
-// GET /v1/emi/:id/history
+/* -------------------------------------------------------------
+   History
+------------------------------------------------------------- */
 exports.getEmiHistory = catchAsync(async (req, res, next) => {
-  const emi = await Emi.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
+  const emi = await EMI.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
   if (!emi) return next(new AppError("EMI not found", 404));
-  // Assuming emi.payments is an array
-  res.status(200).json({ status: "success", results: emi.payments?.length || 0, data: { payments: emi.payments || [] } });
+
+  // Filter only paid/partial installments
+  const history = emi.installments.filter(i => i.paidAmount > 0);
+
+  res.status(200).json({ 
+    status: "success", 
+    results: history.length, 
+    data: { history } 
+  });
 });
 
-// exports.payEmiInstallment = catchAsync(async (req, res, next) => {
-//   const { emiId, installmentNumber, amount, paymentId } = req.body;
 
-//   if (!emiId || !installmentNumber || !amount) {
-//     return next(new AppError('emiId, installmentNumber, and amount are required', 400));
-//   }
 
-//   const emi = await emiService.payEmiInstallment({
-//     emiId,
-//     installmentNumber,
-//     amount,
-//     paymentId,
-//     organizationId: req.user.organizationId // Security check usually inside service
-//   });
 
-//   res.status(200).json({
-//     status: 'success',
-//     message: 'EMI installment updated successfully',
-//     data: { emi },
-//   });
-// });
 
 // const emiService = require('../services/emiService');
 // const catchAsync = require('../utils/catchAsync');
 // const AppError = require('../utils/appError');
+// const factory = require('../utils/handlerFactory');
+// const EMI = require('../models/emiModel');
 
 // /* -------------------------------------------------------------
 //  * Create EMI Plan
@@ -214,6 +207,41 @@ exports.getEmiHistory = catchAsync(async (req, res, next) => {
 // });
 
 // /* -------------------------------------------------------------
+//  * Get All EMIs (with filters & pagination)
+//  * Used for the EMI List View
+// ------------------------------------------------------------- */
+// const popOptions = [
+//   { 
+//     path: 'customerId', 
+//     select: 'name email phone avatar'
+//   },
+// ];
+// exports.getAllEmis = factory.getAll(EMI,popOptions);
+
+// // exports.getAllEmis = catchAsync(async (req, res, next) => {
+// //   const { page = 1, limit = 10, customerId, status, invoiceId, search } = req.query;
+// //   const filter = { organizationId: req.user.organizationId };
+
+// //   if (customerId) filter.customerId = customerId;
+// //   if (status) filter.status = status;
+// //   if (invoiceId) filter.invoiceId = invoiceId;
+// //   if (search) filter.search = search;
+// //   const options = {
+// //     page: parseInt(page, 10),
+// //     limit: parseInt(limit, 10),
+// //     sortBy: 'createdAt:desc' // Show newest first
+// //   };
+// //   const result = await emiService.queryEmis(filter, options);
+// //   res.status(200).json({
+// //     status: 'success',
+// //     results: result.totalResults,
+// //     totalPages: result.totalPages,
+// //     currentPage: result.page,
+// //     data: result.results // The array of EMIs
+// //   });
+// // });
+
+// /* -------------------------------------------------------------
 //  * Get EMI by Invoice ID
 // ------------------------------------------------------------- */
 // exports.getEmiByInvoice = catchAsync(async (req, res, next) => {
@@ -229,25 +257,66 @@ exports.getEmiHistory = catchAsync(async (req, res, next) => {
 // });
 
 // /* -------------------------------------------------------------
+//  * Get EMI by ID (Specific EMI Details)
+// ------------------------------------------------------------- */
+// exports.getEmiById = catchAsync(async (req, res, next) => {
+//   const { id } = req.params;
+//   const emi = await emiService.getEmiById(id, req.user.organizationId);
+
+//   if (!emi) return next(new AppError('EMI plan not found', 404));
+
+//   res.status(200).json({
+//     status: 'success',
+//     data: { emi },
+//   });
+// });
+
+// /* -------------------------------------------------------------
 //  * Mark an EMI installment as paid
 // ------------------------------------------------------------- */
 // exports.payEmiInstallment = catchAsync(async (req, res, next) => {
-//   const { emiId, installmentNumber, amount, paymentId } = req.body;
-
-//   if (!emiId || !installmentNumber || !amount) {
-//     return next(new AppError('emiId, installmentNumber, and amount are required', 400));
-//   }
-
-//   const emi = await emiService.payEmiInstallment({
+//   const {
 //     emiId,
 //     installmentNumber,
 //     amount,
-//     paymentId,
+//     paymentMethod, // e.g. "cash"
+//     referenceNumber, // e.g. "TXN-1234"
+//     remarks
+//   } = req.body;
+
+//   if (!emiId || !installmentNumber || !amount || !paymentMethod) {
+//     return next(new AppError('emiId, installmentNumber, amount, and paymentMethod are required', 400));
+//   }
+
+//   const result = await emiService.payEmiInstallment({
+//     emiId,
+//     installmentNumber,
+//     amount,
+//     paymentMethod,
+//     referenceNumber,
+//     remarks,
+//     organizationId: req.user.organizationId,
+//     createdBy: req.user._id
 //   });
 
 //   res.status(200).json({
 //     status: 'success',
-//     message: 'EMI installment updated successfully',
-//     data: { emi },
+//     message: 'Payment recorded and EMI updated successfully',
+//     data: result,
 //   });
+// });
+
+// // DELETE /v1/emi/:id
+// exports.deleteEmi = catchAsync(async (req, res, next) => {
+//   const emi = await Emi.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
+//   if (!emi) return next(new AppError("EMI not found", 404));
+//   res.status(200).json({ status: "success", message: "EMI deleted" });
+// });
+
+// // GET /v1/emi/:id/history
+// exports.getEmiHistory = catchAsync(async (req, res, next) => {
+//   const emi = await Emi.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
+//   if (!emi) return next(new AppError("EMI not found", 404));
+//   // Assuming emi.payments is an array
+//   res.status(200).json({ status: "success", results: emi.payments?.length || 0, data: { payments: emi.payments || [] } });
 // });

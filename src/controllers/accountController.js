@@ -81,10 +81,6 @@ exports.deleteAccount = catchAsync(async (req, res, next) => {
   // 1. Check for child accounts
   const child = await Account.findOne({ parent: accountId, organizationId: orgId });
   if (child) return next(new AppError('Cannot delete account with child accounts', 400));
-
-  // 2. Check for financial entries (FIXED)
-  // ❌ Previous error: checked 'Account' model
-  // ✅ Correct logic: check 'AccountEntry' model
   const entry = await AccountEntry.findOne({ accountId: accountId, organizationId: orgId });
   if (entry) return next(new AppError('Cannot delete account with posted entries. Archive it instead.', 400));
 
