@@ -9,163 +9,286 @@ const hpp = require("hpp");
 const cors = require("cors");
 const compression = require("compression");
 const swaggerUi = require("swagger-ui-express");
+const cookieParser = require("cookie-parser");
+
 const swaggerSpec = require("./config/swaggerConfig");
 const globalErrorHandler = require("./middleware/errorController");
 const AppError = require("./utils/appError");
 const logger = require("./config/logger");
-const { updateSessionActivity } = require("./middleware/sessionActivity");
 
-// ---------------------- ROUTES ----------------------
+// --- Route Imports ---
+const authRoutes = require("./routes/v1/authRoutes");
+const userRoutes = require("./routes/v1/userRoutes");
 const organizationRoutes = require("./routes/v1/organizationRoutes");
 const organizationExtrasRoutes = require("./routes/v1/organizationExtrasRoutes");
-const authRoutes = require("./routes/v1/authRoutes");
 const branchRoutes = require("./routes/v1/branchRoutes");
-const supplierRoutes = require("./routes/v1/supplierRoutes");
 const productRoutes = require("./routes/v1/productRoutes");
 const customerRoutes = require("./routes/v1/customerRoutes");
-const paymentRoutes = require("./routes/v1/paymentRoutes");
-const userRoutes = require("./routes/v1/userRoutes");
-const invoicePDFRoutes = require("./routes/v1/invoicePDFRoutes");
-const notificationRoutes = require("./routes/v1/notificationRoutes");
+const supplierRoutes = require("./routes/v1/supplierRoutes");
 const invoiceRoutes = require("./routes/v1/invoiceRoutes");
-const roleRoutes = require("./routes/v1/rolesRoutes");
-const noteRoutes = require("./routes/v1/noteRoutes");
-const masterListRoutes = require("./routes/v1/masterListRoutes");
-const transactionRouter = require("./routes/v1/transactionRoutes");
-const partyTransactionRouter = require("./routes/v1/partyTransactionRoutes");
-const adminRouter = require("./routes/v1/adminRoutes");
-const emiRoutes = require("./routes/v1/emiRoutes");
-const statementsRouter = require("./routes/v1/statementsRoutes");
-const masterRoutes = require("./routes/v1/masterRoutes");
-const masterTypeRoutes = require("./routes/v1/masterTypeRoutes");
-const ledgersRoutes = require("./routes/v1/ledgerRoutes");
-const dashboard = require("./routes/v1/dashboardRoutes");
-const salesRoutes = require("./routes/v1/salesRoutes");
-const logRoutes = require("./routes/v1/logRoutes");
-const aiAgent = require("./routes/v1/AiAgentRoutes");
+const invoicePDFRoutes = require("./routes/v1/invoicePDFRoutes");
 const purchaseRoutes = require("./routes/v1/purchaseRoutes");
+const paymentRoutes = require("./routes/v1/paymentRoutes");
+const salesRoutes = require("./routes/v1/salesRoutes");
+const transactionRoutes = require("./routes/v1/transactionRoutes");
+const ledgerRoutes = require("./routes/v1/ledgerRoutes");
+const statementsRoutes = require("./routes/v1/statementsRoutes");
+const dashboardRoutes = require("./routes/v1/dashboardRoutes");
 const analyticsRoutes = require("./routes/v1/analyticsRoutes");
+const emiRoutes = require("./routes/v1/emiRoutes");
+const notificationRoutes = require("./routes/v1/notificationRoutes");
 const sessionRoutes = require("./routes/v1/sessionRoutes");
-const chatRoutes = require("./routes/v1/chatRoutes");
-const cookieParser = require("cookie-parser");
+// Add others as needed (e.g., chatRoutes, aiAgent)
 
 const app = express();
+
+// --- Config ---
 app.set("trust proxy", 1);
 app.set("query parser", (str) => qs.parse(str, { defaultCharset: "utf-8" }));
 
-// ---------------------- CORS FIRST ----------------------
-app.use(
-  cors({
+// --- Middleware ---
+app.use(cors({
     origin: process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(",")
       : ["http://localhost:4200", "https://apex-infinity.vercel.app"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"]
-  })
-);
+}));
 app.options("*", cors());
+
 app.use(cookieParser());
-
-// ---------------------- FIX: BYPASS AUTH ON PREFLIGHT ----------------------
-app.use((req, res, next) => {
-  if (req.method === "OPTIONS") return res.sendStatus(204);
-  next();
-});
-
-// ---------------------- SECURITY ----------------------
 app.use(helmet());
 app.use(express.json({ limit: "10mb" }));
 app.use(mongoSanitize());
 app.use(xss());
 app.use(hpp());
 app.use(compression());
-app.use(updateSessionActivity);
 
-// ---------------------- LOGGER ----------------------
+// ⚡ PERFORMANCE FIX: Removed app.use(updateSessionActivity)
+// Session updates are now handled strictly in authController.protect()
+
+// --- Logging ---
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 } else {
-  app.use(
-    morgan("combined", {
-      stream: {
-        write: (msg) => logger.info(msg.trim())
-      }
-    })
-  );
+  app.use(morgan("combined", { stream: { write: (msg) => logger.info(msg.trim()) } }));
 }
 
-// ---------------------- RATE LIMITER ----------------------
-app.use(
-  "/api/v1",
-  rateLimit({
-    limit: 2000,
-    windowMs: 60 * 60 * 1000,
-    standardHeaders: true,
-    legacyHeaders: false
-  })
-);
-
-// ---------------------- ROUTES ----------------------
-app.get("/health", (req, res) => {
-  res.status(200).json({
-    status: "UP",
-    env: process.env.NODE_ENV,
-    ts: new Date().toISOString(),
-  });
+// --- Rate Limiting (Security) ---
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Reasonable limit for an ERP
+  standardHeaders: true,
+  legacyHeaders: false
 });
+app.use("/api", limiter);
 
+// --- Routes ---
+app.get("/health", (req, res) => res.status(200).json({ status: "UP", timestamp: new Date() }));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/organization", organizationRoutes);
 app.use("/api/v1/neworganization", organizationExtrasRoutes);
-app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/branches", branchRoutes);
 app.use("/api/v1/products", productRoutes);
-app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/customers", customerRoutes);
 app.use("/api/v1/suppliers", supplierRoutes);
-app.use("/api/v1/users", userRoutes);
-app.use("/api/v1/invoices/pdf", invoicePDFRoutes);
 app.use("/api/v1/invoices", invoiceRoutes);
-app.use("/api/v1/notes", noteRoutes);
-app.use("/api/v1/roles", roleRoutes);
-app.use("/api/v1/notifications", notificationRoutes);
-app.use("/api/v1/master-list", masterListRoutes);
-app.use("/api/v1/transactions", transactionRouter);
-app.use("/api/v1/partytransactions", partyTransactionRouter);
-app.use("/api/v1/admin", adminRouter);
-app.use("/api/v1/statements", statementsRouter);
-app.use("/api/v1/master", masterRoutes);
-app.use("/api/v1/master-types", masterTypeRoutes);
-app.use("/api/v1/ledgers", ledgersRoutes);
-app.use("/api/v1/dashboard", dashboard);
-app.use("/api/v1/emi", emiRoutes);
-app.use("/api/v1/logs", logRoutes);
-app.use("/api/v1/sessions", sessionRoutes);
-app.use("/api/v1/sales", salesRoutes);
-app.use("/api/v1/ai-agent", aiAgent);
+app.use("/api/v1/invoices/pdf", invoicePDFRoutes);
 app.use("/api/v1/purchases", purchaseRoutes);
+app.use("/api/v1/payments", paymentRoutes);
+app.use("/api/v1/sales", salesRoutes);
+app.use("/api/v1/transactions", transactionRoutes);
+app.use("/api/v1/ledgers", ledgerRoutes);
+app.use("/api/v1/statements", statementsRoutes);
+app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
-app.use("/api/v1/chat", chatRoutes);
-app.use("/api/v1/search", require("./routes/v1/searchRoutes"));
-app.use("/api/v1/announcements", require("./routes/v1/announcementRoutes"));
-app.use('/api/v1/accounts', require('./routes/v1/accountRoutes'));
-app.use('/api/v1/ownership', require('./routes/v1/ownership.routes'));
-// ---------------------- 404 ----------------------
-app.use((req, res, next) => {
+app.use("/api/v1/emi", emiRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/sessions", sessionRoutes);
+
+// --- Errors ---
+app.all("*", (req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
 });
 
-// ---------------------- GLOBAL ERROR HANDLER ----------------------
 app.use((err, req, res, next) => {
-  logger.error(err.message || "Unhandled error", {
-    stack: err.stack,
-    path: req.originalUrl,
-    method: req.method,
-    user: req.user?._id,
-  });
-
+  logger.error(err.message || "Error", { path: req.originalUrl, user: req.user?._id });
   globalErrorHandler(err, req, res, next);
 });
 
 module.exports = app;
+// const qs = require("qs");
+// const express = require("express");
+// const morgan = require("morgan");
+// const rateLimit = require("express-rate-limit");
+// const helmet = require("helmet");
+// const mongoSanitize = require("express-mongo-sanitize");
+// const xss = require("xss-clean");
+// const hpp = require("hpp");
+// const cors = require("cors");
+// const compression = require("compression");
+// const swaggerUi = require("swagger-ui-express");
+// const swaggerSpec = require("./config/swaggerConfig");
+// const globalErrorHandler = require("./middleware/errorController");
+// const AppError = require("./utils/appError");
+// const logger = require("./config/logger");
+// const { updateSessionActivity } = require("./middleware/sessionActivity");
+
+// // ---------------------- ROUTES ----------------------
+// const organizationRoutes = require("./routes/v1/organizationRoutes");
+// const organizationExtrasRoutes = require("./routes/v1/organizationExtrasRoutes");
+// const authRoutes = require("./routes/v1/authRoutes");
+// const branchRoutes = require("./routes/v1/branchRoutes");
+// const supplierRoutes = require("./routes/v1/supplierRoutes");
+// const productRoutes = require("./routes/v1/productRoutes");
+// const customerRoutes = require("./routes/v1/customerRoutes");
+// const paymentRoutes = require("./routes/v1/paymentRoutes");
+// const userRoutes = require("./routes/v1/userRoutes");
+// const invoicePDFRoutes = require("./routes/v1/invoicePDFRoutes");
+// const notificationRoutes = require("./routes/v1/notificationRoutes");
+// const invoiceRoutes = require("./routes/v1/invoiceRoutes");
+// const roleRoutes = require("./routes/v1/rolesRoutes");
+// const noteRoutes = require("./routes/v1/noteRoutes");
+// const masterListRoutes = require("./routes/v1/masterListRoutes");
+// const transactionRouter = require("./routes/v1/transactionRoutes");
+// const partyTransactionRouter = require("./routes/v1/partyTransactionRoutes");
+// const adminRouter = require("./routes/v1/adminRoutes");
+// const emiRoutes = require("./routes/v1/emiRoutes");
+// const statementsRouter = require("./routes/v1/statementsRoutes");
+// const masterRoutes = require("./routes/v1/masterRoutes");
+// const masterTypeRoutes = require("./routes/v1/masterTypeRoutes");
+// const ledgersRoutes = require("./routes/v1/ledgerRoutes");
+// const dashboard = require("./routes/v1/dashboardRoutes");
+// const salesRoutes = require("./routes/v1/salesRoutes");
+// const logRoutes = require("./routes/v1/logRoutes");
+// const aiAgent = require("./routes/v1/AiAgentRoutes");
+// const purchaseRoutes = require("./routes/v1/purchaseRoutes");
+// const analyticsRoutes = require("./routes/v1/analyticsRoutes");
+// const sessionRoutes = require("./routes/v1/sessionRoutes");
+// const chatRoutes = require("./routes/v1/chatRoutes");
+// const cookieParser = require("cookie-parser");
+
+// const app = express();
+// app.set("trust proxy", 1);
+// app.set("query parser", (str) => qs.parse(str, { defaultCharset: "utf-8" }));
+
+// // ---------------------- CORS FIRST ----------------------
+// app.use(
+//   cors({
+//     origin: process.env.CORS_ORIGIN
+//       ? process.env.CORS_ORIGIN.split(",")
+//       : ["http://localhost:4200", "https://apex-infinity.vercel.app"],
+//     credentials: true,
+//     allowedHeaders: ["Content-Type", "Authorization"],
+//     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"]
+//   })
+// );
+// app.options("*", cors());
+// app.use(cookieParser());
+
+// // ---------------------- FIX: BYPASS AUTH ON PREFLIGHT ----------------------
+// app.use((req, res, next) => {
+//   if (req.method === "OPTIONS") return res.sendStatus(204);
+//   next();
+// });
+
+// // ---------------------- SECURITY ----------------------
+// app.use(helmet());
+// app.use(express.json({ limit: "10mb" }));
+// app.use(mongoSanitize());
+// app.use(xss());
+// app.use(hpp());
+// app.use(compression());
+// app.use(updateSessionActivity);
+
+// // ---------------------- LOGGER ----------------------
+// if (process.env.NODE_ENV === "development") {
+//   app.use(morgan("dev"));
+// } else {
+//   app.use(
+//     morgan("combined", {
+//       stream: {
+//         write: (msg) => logger.info(msg.trim())
+//       }
+//     })
+//   );
+// }
+
+// // ---------------------- RATE LIMITER ----------------------
+// app.use(
+//   "/api/v1",
+//   rateLimit({
+//     limit: 2000,
+//     windowMs: 60 * 60 * 1000,
+//     standardHeaders: true,
+//     legacyHeaders: false
+//   })
+// );
+
+// // ---------------------- ROUTES ----------------------
+// app.get("/health", (req, res) => {
+//   res.status(200).json({
+//     status: "UP",
+//     env: process.env.NODE_ENV,
+//     ts: new Date().toISOString(),
+//   });
+// });
+
+// app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// app.use("/api/v1/organization", organizationRoutes);
+// app.use("/api/v1/neworganization", organizationExtrasRoutes);
+// app.use("/api/v1/auth", authRoutes);
+// app.use("/api/v1/branches", branchRoutes);
+// app.use("/api/v1/products", productRoutes);
+// app.use("/api/v1/payments", paymentRoutes);
+// app.use("/api/v1/customers", customerRoutes);
+// app.use("/api/v1/suppliers", supplierRoutes);
+// app.use("/api/v1/users", userRoutes);
+// app.use("/api/v1/invoices/pdf", invoicePDFRoutes);
+// app.use("/api/v1/invoices", invoiceRoutes);
+// app.use("/api/v1/notes", noteRoutes);
+// app.use("/api/v1/roles", roleRoutes);
+// app.use("/api/v1/notifications", notificationRoutes);
+// app.use("/api/v1/master-list", masterListRoutes);
+// app.use("/api/v1/transactions", transactionRouter);
+// app.use("/api/v1/partytransactions", partyTransactionRouter);
+// app.use("/api/v1/admin", adminRouter);
+// app.use("/api/v1/statements", statementsRouter);
+// app.use("/api/v1/master", masterRoutes);
+// app.use("/api/v1/master-types", masterTypeRoutes);
+// app.use("/api/v1/ledgers", ledgersRoutes);
+// app.use("/api/v1/dashboard", dashboard);
+// app.use("/api/v1/emi", emiRoutes);
+// app.use("/api/v1/logs", logRoutes);
+// app.use("/api/v1/sessions", sessionRoutes);
+// app.use("/api/v1/sales", salesRoutes);
+// app.use("/api/v1/ai-agent", aiAgent);
+// app.use("/api/v1/purchases", purchaseRoutes);
+// app.use("/api/v1/analytics", analyticsRoutes);
+// app.use("/api/v1/chat", chatRoutes);
+// app.use("/api/v1/search", require("./routes/v1/searchRoutes"));
+// app.use("/api/v1/announcements", require("./routes/v1/announcementRoutes"));
+// app.use('/api/v1/accounts', require('./routes/v1/accountRoutes'));
+// app.use('/api/v1/ownership', require('./routes/v1/ownership.routes'));
+// // ---------------------- 404 ----------------------
+// app.use((req, res, next) => {
+//   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
+// });
+
+// // ---------------------- GLOBAL ERROR HANDLER ----------------------
+// app.use((err, req, res, next) => {
+//   logger.error(err.message || "Unhandled error", {
+//     stack: err.stack,
+//     path: req.originalUrl,
+//     method: req.method,
+//     user: req.user?._id,
+//   });
+
+//   globalErrorHandler(err, req, res, next);
+// });
+
+// module.exports = app;
