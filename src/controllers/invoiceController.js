@@ -277,7 +277,109 @@ exports.exportInvoices = catchAsync(async (req, res, next) => {
 
   res.status(200).json({ status: 'success', results: docs.length, data: { invoices: docs } });
 });
+/* ==========================================================
+   CANCEL INVOICE (Sales Return)
+   ----------------------------------------------------------
+   1. Restocks Inventory (Adds items back)
+   2. Reverses Customer Balance
+   3. Creates Reversal Accounting Entries
+========================================================== */
+exports.cancelInvoice = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { reason } = req.body;
 
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const invoice = await Invoice.findOne({ _id: id, organizationId: req.user.organizationId }).session(session);
+    if (!invoice) throw new AppError("Invoice not found", 404);
+
+    if (invoice.status === 'cancelled') {
+        throw new AppError("Invoice is already cancelled", 400);
+    }
+
+    // 1. RESTOCK INVENTORY (Add items back to shelf)
+    for (const item of invoice.items) {
+      const product = await Product.findById(item.productId).session(session);
+      if (product) {
+        let inventory = product.inventory.find(
+            inv => inv.branchId.toString() === invoice.branchId.toString()
+        );
+        if (!inventory) {
+            // Edge case: Branch inventory record was deleted? Re-create it.
+            product.inventory.push({ branchId: invoice.branchId, quantity: 0 });
+            inventory = product.inventory[product.inventory.length - 1];
+        }
+        inventory.quantity += item.quantity;
+        await product.save({ session });
+      }
+    }
+
+    // 2. REVERSE CUSTOMER BALANCE
+    const outstandingReversal = invoice.grandTotal - (invoice.paidAmount || 0);
+    if (outstandingReversal > 0) {
+        await Customer.findByIdAndUpdate(
+            invoice.customerId,
+            { $inc: { outstandingBalance: -outstandingReversal } },
+            { session }
+        );
+    }
+
+    // 3. REVERSAL ACCOUNTING ENTRIES (Debit Sales, Credit AR)
+    // Note: Usually we debit "Sales Returns and Allowances", but for simple cancellation, debiting "Sales" works.
+    const orgId = req.user.organizationId;
+    const arAcc = await Account.findOne({ organizationId: orgId, code: '1200' }).session(session) // Accounts Receivable
+               || await Account.findOne({ organizationId: orgId, name: 'Accounts Receivable' }).session(session);
+    const salesAcc = await Account.findOne({ organizationId: orgId, code: '4000' }).session(session) // Sales
+                  || await Account.findOne({ organizationId: orgId, name: 'Sales' }).session(session);
+
+    if (arAcc && salesAcc) {
+        // Debit Sales (Decrease Income)
+        await AccountEntry.create([{
+            organizationId: orgId,
+            branchId: invoice.branchId,
+            accountId: salesAcc._id,
+            date: new Date(),
+            debit: invoice.grandTotal, // Debit Income = Decrease
+            credit: 0,
+            description: `Invoice Cancelled: ${invoice.invoiceNumber} - ${reason || ''}`,
+            referenceType: 'invoice',
+            referenceId: invoice._id,
+            createdBy: req.user._id
+        }], { session });
+
+        // Credit AR (Decrease Asset/Receivable)
+        await AccountEntry.create([{
+            organizationId: orgId,
+            branchId: invoice.branchId,
+            accountId: arAcc._id,
+            customerId: invoice.customerId,
+            date: new Date(),
+            debit: 0,
+            credit: invoice.grandTotal, // Credit Asset = Decrease
+            description: `Sales Reversal: ${invoice.invoiceNumber}`,
+            referenceType: 'invoice',
+            referenceId: invoice._id,
+            createdBy: req.user._id
+        }], { session });
+    }
+
+    // 4. MARK AS CANCELLED
+    invoice.status = 'cancelled';
+    invoice.notes = `${invoice.notes || ''} \n[Cancelled on ${new Date().toLocaleDateString()}: ${reason}]`;
+    await invoice.save({ session });
+
+    await session.commitTransaction();
+    res.status(200).json({ status: "success", message: "Invoice cancelled and stock restored." });
+
+  } catch (err) {
+    await session.abortTransaction();
+    next(err);
+  } finally {
+    session.endSession();
+  }
+});
 /* -------------------------------------------------------------
  * PROFIT SUMMARY
 ------------------------------------------------------------- */
