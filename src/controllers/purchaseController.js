@@ -214,7 +214,113 @@ exports.deletePurchase = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", message: "Purchase deleted." });
 });
 
+/* ==========================================================
+   CANCEL PURCHASE (Purchase Return)
+   ----------------------------------------------------------
+   1. Reverses Inventory (Deducts stock)
+   2. Reverses Supplier Balance
+   3. Creates Reversal Accounting Entries
+========================================================== */
+exports.cancelPurchase = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { reason } = req.body;
 
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const purchase = await Purchase.findOne({ _id: id, organizationId: req.user.organizationId }).session(session);
+    if (!purchase) throw new AppError("Purchase not found", 404);
+
+    if (purchase.status === 'cancelled') {
+        throw new AppError("Purchase is already cancelled", 400);
+    }
+
+    // 1. REVERSE INVENTORY (Check if we have enough stock to return)
+    for (const item of purchase.items) {
+      const product = await Product.findById(item.productId).session(session);
+      if (product) {
+        const inventory = product.inventory.find(
+            inv => inv.branchId.toString() === purchase.branchId.toString()
+        );
+        
+        if (inventory) {
+            // Safety Check: Can't return what you don't have
+            if (inventory.quantity < item.quantity) {
+                throw new AppError(`Cannot cancel: Product '${product.name}' stock (${inventory.quantity}) is lower than purchase quantity (${item.quantity}). Items may have already been sold.`, 400);
+            }
+            inventory.quantity -= item.quantity;
+            await product.save({ session });
+        }
+      }
+    }
+
+    // 2. REVERSE SUPPLIER BALANCE
+    // We deduct the FULL grandTotal because we are cancelling the obligation to pay
+    const outstandingReversal = purchase.grandTotal - (purchase.paidAmount || 0);
+    
+    // Note: If you already paid, you have a credit with the supplier. 
+    // This logic assumes we reverse the *remaining* debt. 
+    // Ideally, paidAmount remains as "Unused Credit" for the supplier.
+    if (outstandingReversal > 0) {
+        await Supplier.findByIdAndUpdate(
+            purchase.supplierId,
+            { $inc: { outstandingBalance: -outstandingReversal } },
+            { session }
+        );
+    }
+
+    // 3. REVERSAL ACCOUNTING ENTRIES (Debit AP, Credit Inventory)
+    const orgId = req.user.organizationId;
+    const inventoryAcc = await Account.findOne({ organizationId: orgId, name: 'Inventory Asset' }).session(session);
+    const apAcc = await Account.findOne({ organizationId: orgId, name: 'Accounts Payable' }).session(session);
+
+    if (inventoryAcc && apAcc) {
+        // Debit AP (Decrease Liability)
+        await AccountEntry.create([{
+            organizationId: orgId,
+            branchId: purchase.branchId,
+            accountId: apAcc._id,
+            supplierId: purchase.supplierId,
+            date: new Date(),
+            debit: purchase.grandTotal, // Reverse full amount
+            credit: 0,
+            description: `Purchase Cancelled: ${purchase.invoiceNumber} - ${reason || ''}`,
+            referenceType: 'purchase',
+            referenceId: purchase._id,
+            createdBy: req.user._id
+        }], { session });
+
+        // Credit Inventory (Decrease Asset)
+        await AccountEntry.create([{
+            organizationId: orgId,
+            branchId: purchase.branchId,
+            accountId: inventoryAcc._id,
+            date: new Date(),
+            debit: 0,
+            credit: purchase.grandTotal,
+            description: `Stock Reversal: ${purchase.invoiceNumber}`,
+            referenceType: 'purchase',
+            referenceId: purchase._id,
+            createdBy: req.user._id
+        }], { session });
+    }
+
+    // 4. MARK AS CANCELLED
+    purchase.status = 'cancelled';
+    purchase.notes = `${purchase.notes || ''} \n[Cancelled on ${new Date().toLocaleDateString()}: ${reason}]`;
+    await purchase.save({ session });
+
+    await session.commitTransaction();
+    res.status(200).json({ status: "success", message: "Purchase cancelled and accounting reversed." });
+
+  } catch (err) {
+    await session.abortTransaction();
+    next(err);
+  } finally {
+    session.endSession();
+  }
+});
 // const mongoose = require("mongoose");
 // const Purchase = require("../models/purchaseModel");
 // const Supplier = require("../models/supplierModel");
