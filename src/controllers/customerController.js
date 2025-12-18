@@ -25,6 +25,7 @@ exports.getCustomer = factory.getOne(Customer);
 exports.updateCustomer = factory.updateOne(Customer);
 exports.deleteCustomer = factory.deleteOne(Customer);
 exports.restoreCustomer = factory.restoreOne(Customer);
+exports.createBulkCustomer = factory.bulkCreate(Customer);
 
 // ======================================================
 // SEARCH CUSTOMERS

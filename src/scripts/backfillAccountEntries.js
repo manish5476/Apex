@@ -1,189 +1,589 @@
+const path = require('path');
+const dotenv = require('dotenv');
 
-require('dotenv').config();
+// 1. Load .env
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 const mongoose = require('mongoose');
+
+// --- Import Real Models ---
 const Invoice = require('../models/invoiceModel');
 const Purchase = require('../models/purchaseModel');
 const Payment = require('../models/paymentModel');
-const Ledger = require('../models/ledgerModel');
+const Product = require('../models/productModel'); // ✅ Added Product
 const AccountEntry = require('../models/accountEntryModel');
-const { postJournalEntries } = require('../services/accountingService');
+const Account = require('../models/accountModel');
+
+const DB_URI = process.env.DATABASE;
+
+// --- Temp Ledger Model ---
+const ledgerSchema = new mongoose.Schema({
+  organizationId: mongoose.Schema.Types.ObjectId,
+  entryDate: Date,
+  amount: Number,
+  type: String, 
+  description: String,
+  referenceNumber: String,
+  customerId: mongoose.Schema.Types.ObjectId,
+  supplierId: mongoose.Schema.Types.ObjectId
+}, { strict: false });
+
+const OldLedger = mongoose.model('OldLedger', ledgerSchema, 'ledgers'); 
 
 async function connect() {
-  await mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
-  console.log('Connected to MongoDB');
-}
-
-function accountCodeFor(type) {
-  // Map logical short codes to COA codes. Adjust these to your seeded COA codes.
-  // Make sure your organization COA contains these codes or update mapping.
-  return {
-    AR: '1100',
-    CASH: '1000',
-    AP: '2000',
-    SALES: '4000',
-    PURCHASES: '5000'
-  }[type];
-}
-
-async function backfillInvoices(orgId, batchSize = 200) {
-  console.log('Backfilling invoices...');
-  const cursor = Invoice.find({ organizationId: orgId }).cursor();
-  let processed = 0;
-
-  for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
-    const refId = doc._id;
-    const exists = await AccountEntry.findOne({ organizationId: orgId, referenceType: 'invoice', referenceId: refId }).lean();
-    if (exists) { processed++; continue; }
-
-    const date = doc.invoiceDate || doc.createdAt || new Date();
-    const amt = Number(doc.grandTotal || 0);
-    if (amt === 0) { processed++; continue; }
-
-    // Debit AR, Credit Sales
-    const entries = [
-      { accountCode: accountCodeFor('AR'), debit: amt, credit: 0, description: `Invoice ${doc.invoiceNumber}`, referenceType: 'invoice', referenceId: refId },
-      { accountCode: accountCodeFor('SALES'), debit: 0, credit: amt, description: `Invoice ${doc.invoiceNumber}`, referenceType: 'invoice', referenceId: refId }
-    ];
-
-    try {
-      await postJournalEntries(orgId, date, entries, { updateBalances: true });
-    } catch (err) {
-      console.error('Failed invoice', doc._id, err.message);
-    }
-    processed++;
-    if (processed % batchSize === 0) console.log(`Invoices processed: ${processed}`);
+  if (!DB_URI) {
+      console.error('❌ FATAL ERROR: DATABASE env var is missing.');
+      process.exit(1);
   }
-  console.log('Invoices backfilled complete');
+  await mongoose.connect(DB_URI);
+  console.log('✅ Connected to MongoDB');
 }
 
-async function backfillPurchases(orgId, batchSize = 200) {
-  console.log('Backfilling purchases...');
-  const cursor = Purchase.find({ organizationId: orgId }).cursor();
-  let processed = 0;
-  for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
-    const refId = doc._id;
-    const exists = await AccountEntry.findOne({ organizationId: orgId, referenceType: 'purchase', referenceId: refId }).lean();
-    if (exists) { processed++; continue; }
-    const date = doc.purchaseDate || doc.createdAt || new Date();
-    const amt = Number(doc.grandTotal || 0);
-    if (amt === 0) { processed++; continue; }
+// --- Helper: Get Account ID ---
+const accountCache = {};
+async function getAccountId(orgId, type) {
+  const key = `${orgId}_${type}`;
+  if (accountCache[key]) return accountCache[key];
 
-    // Debit Purchases (or Inventory depending on your COA), Credit AP
-    const entries = [
-      { accountCode: accountCodeFor('PURCHASES'), debit: amt, credit: 0, description: `Purchase ${doc.invoiceNumber || ''}`, referenceType: 'purchase', referenceId: refId },
-      { accountCode: accountCodeFor('AP'), debit: 0, credit: amt, description: `Purchase ${doc.invoiceNumber || ''}`, referenceType: 'purchase', referenceId: refId }
-    ];
+  let criteria = { organizationId: orgId };
+  
+  if (type === 'AR') criteria.$or = [{ name: 'Accounts Receivable' }, { code: '1200' }];
+  if (type === 'AP') criteria.$or = [{ name: 'Accounts Payable' }, { code: '2000' }];
+  if (type === 'SALES') criteria.$or = [{ name: 'Sales' }, { code: '4000' }];
+  if (type === 'PURCHASES') criteria.$or = [{ name: 'Inventory Asset' }, { name: 'Purchases' }]; // Prefer Asset
+  if (type === 'CASH') criteria.$or = [{ name: 'Cash' }, { name: 'Cash in Hand' }];
+  if (type === 'EQUITY') criteria.$or = [{ name: 'Opening Balance Equity' }, { name: 'Inventory Gain' }]; // ✅ For Products
 
-    try {
-      await postJournalEntries(orgId, date, entries, { updateBalances: true });
-    } catch (err) {
-      console.error('Failed purchase', doc._id, err.message);
-    }
-    processed++;
-    if (processed % batchSize === 0) console.log(`Purchases processed: ${processed}`);
+  let account = await Account.findOne(criteria);
+
+  // Fallback creation logic...
+  if (!account) {
+    console.log(`⚠️ Account ${type} missing. Creating...`);
+    account = await Account.create({
+      organizationId: orgId,
+      name: type === 'EQUITY' ? 'Opening Balance Equity' : (type === 'AR' ? 'Accounts Receivable' : type),
+      code: '9999',
+      type: type === 'AR' || type === 'PURCHASES' ? 'asset' : type === 'EQUITY' ? 'equity' : 'expense',
+      isGroup: false
+    });
   }
-  console.log('Purchases backfilled complete');
+
+  accountCache[key] = account._id;
+  return account._id;
 }
 
-async function backfillPayments(orgId, batchSize = 200) {
-  console.log('Backfilling payments...');
-  const cursor = Payment.find({ organizationId: orgId }).cursor();
-  let processed = 0;
-  for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
-    const refId = doc._id;
-    const exists = await AccountEntry.findOne({ organizationId: orgId, referenceType: 'payment', referenceId: refId }).lean();
-    if (exists) { processed++; continue; }
-    const date = doc.paymentDate || doc.createdAt || new Date();
-    const amt = Number(doc.amount || 0);
-    if (amt === 0) { processed++; continue; }
+// --- 1. INVOICES ---
+async function backfillInvoices(orgId) {
+  console.log('🔄 Processing Invoices...');
+  const invoices = await Invoice.find({ organizationId: orgId });
+  const arId = await getAccountId(orgId, 'AR');
+  const salesId = await getAccountId(orgId, 'SALES');
 
-    // Map payment type: inflow = receipt from customer, outflow = payment to supplier
-    let entries = [];
+  let count = 0;
+  for (const doc of invoices) {
+    // SAFETY CHECK: Skip if already done
+    const exists = await AccountEntry.exists({ referenceId: doc._id, referenceType: 'invoice' });
+    if (exists) continue;
+
+    await AccountEntry.create({
+      organizationId: orgId, branchId: doc.branchId, accountId: arId, customerId: doc.customerId,
+      date: doc.invoiceDate, debit: doc.grandTotal, credit: 0,
+      description: `Inv #${doc.invoiceNumber}`, referenceType: 'invoice', referenceNumber: doc.invoiceNumber, referenceId: doc._id
+    });
+    await AccountEntry.create({
+      organizationId: orgId, branchId: doc.branchId, accountId: salesId,
+      date: doc.invoiceDate, debit: 0, credit: doc.grandTotal,
+      description: `Rev #${doc.invoiceNumber}`, referenceType: 'invoice', referenceNumber: doc.invoiceNumber, referenceId: doc._id
+    });
+    count++;
+  }
+  console.log(`✅ Backfilled ${count} Invoices.`);
+}
+
+// --- 2. PURCHASES ---
+async function backfillPurchases(orgId) {
+  console.log('🔄 Processing Purchases...');
+  const purchases = await Purchase.find({ organizationId: orgId });
+  const purchaseId = await getAccountId(orgId, 'PURCHASES');
+  const apId = await getAccountId(orgId, 'AP');
+
+  let count = 0;
+  for (const doc of purchases) {
+    const exists = await AccountEntry.exists({ referenceId: doc._id, referenceType: 'purchase' });
+    if (exists) continue;
+
+    await AccountEntry.create({
+      organizationId: orgId, branchId: doc.branchId, accountId: purchaseId,
+      date: doc.purchaseDate, debit: doc.grandTotal, credit: 0,
+      description: `Pur #${doc.invoiceNumber}`, referenceType: 'purchase', referenceNumber: doc.invoiceNumber, referenceId: doc._id
+    });
+    await AccountEntry.create({
+      organizationId: orgId, branchId: doc.branchId, accountId: apId, supplierId: doc.supplierId,
+      date: doc.purchaseDate, debit: 0, credit: doc.grandTotal,
+      description: `Bill #${doc.invoiceNumber}`, referenceType: 'purchase', referenceNumber: doc.invoiceNumber, referenceId: doc._id
+    });
+    count++;
+  }
+  console.log(`✅ Backfilled ${count} Purchases.`);
+}
+
+// --- 3. PAYMENTS ---
+async function backfillPayments(orgId) {
+  console.log('🔄 Processing Payments...');
+  const payments = await Payment.find({ organizationId: orgId });
+  const cashId = await getAccountId(orgId, 'CASH');
+  const arId = await getAccountId(orgId, 'AR');
+  const apId = await getAccountId(orgId, 'AP');
+
+  let count = 0;
+  for (const doc of payments) {
+    const exists = await AccountEntry.exists({ referenceId: doc._id, referenceType: 'payment' });
+    if (exists) continue;
+
     if (doc.type === 'inflow') {
-      // Debit Cash, Credit AR (if invoiceId) else credit Sales/CashSale
-      entries = [
-        { accountCode: accountCodeFor('CASH'), debit: amt, credit: 0, description: `Payment ${doc.referenceNumber}`, referenceType: 'payment', referenceId: refId },
-        { accountCode: accountCodeFor('AR'), debit: 0, credit: amt, description: `Payment ${doc.referenceNumber}`, referenceType: 'payment', referenceId: refId }
-      ];
+      await AccountEntry.create({
+        organizationId: orgId, branchId: doc.branchId, accountId: cashId,
+        date: doc.paymentDate, debit: doc.amount, credit: 0,
+        description: `Pay Recv`, referenceType: 'payment', referenceId: doc._id
+      });
+      await AccountEntry.create({
+        organizationId: orgId, branchId: doc.branchId, accountId: arId, customerId: doc.customerId,
+        date: doc.paymentDate, debit: 0, credit: doc.amount,
+        description: `Pay Recv`, referenceType: 'payment', referenceId: doc._id
+      });
     } else {
-      // outflow: Debit AP (or expense), Credit Cash
-      entries = [
-        { accountCode: accountCodeFor('AP'), debit: amt, credit: 0, description: `Payment ${doc.referenceNumber}`, referenceType: 'payment', referenceId: refId },
-        { accountCode: accountCodeFor('CASH'), debit: 0, credit: amt, description: `Payment ${doc.referenceNumber}`, referenceType: 'payment', referenceId: refId }
-      ];
+      await AccountEntry.create({
+        organizationId: orgId, branchId: doc.branchId, accountId: apId, supplierId: doc.supplierId,
+        date: doc.paymentDate, debit: doc.amount, credit: 0,
+        description: `Paid Supplier`, referenceType: 'payment', referenceId: doc._id
+      });
+      await AccountEntry.create({
+        organizationId: orgId, branchId: doc.branchId, accountId: cashId,
+        date: doc.paymentDate, debit: 0, credit: doc.amount,
+        description: `Paid Supplier`, referenceType: 'payment', referenceId: doc._id
+      });
     }
-
-    try {
-      await postJournalEntries(orgId, date, entries, { updateBalances: true });
-    } catch (err) {
-      console.error('Failed payment', doc._id, err.message);
-    }
-    processed++;
-    if (processed % batchSize === 0) console.log(`Payments processed: ${processed}`);
+    count++;
   }
-  console.log('Payments backfilled complete');
+  console.log(`✅ Backfilled ${count} Payments.`);
 }
 
-async function backfillLedger(orgId, batchSize = 200) {
-  console.log('Backfilling ledger adjustments...');
-  const cursor = Ledger.find({ organizationId: orgId }).cursor();
-  let processed = 0;
-  for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
-    const refId = doc._id;
-    const exists = await AccountEntry.findOne({ organizationId: orgId, referenceType: 'ledger', referenceId: refId }).lean();
-    if (exists) { processed++; continue; }
-    const date = doc.entryDate || doc.createdAt || new Date();
-    const amt = Number(doc.amount || 0);
-    if (amt === 0) { processed++; continue; }
+// --- 4. MANUAL LEDGERS ---
+async function backfillManualLedgers(orgId) {
+  console.log('🔄 Processing Manual Journals...');
+  const ledgers = await OldLedger.find({ organizationId: orgId, invoiceId: null, paymentId: null, purchaseId: null });
+  const cashId = await getAccountId(orgId, 'CASH'); 
 
-    // Ledger documents should ideally include accountCode; if not, assign based on accountType mapping
-    const accountCode = doc.accountCode || (doc.accountType === 'expense' ? accountCodeFor('PURCHASES') : accountCodeFor('CASH'));
+  let count = 0;
+  for (const doc of ledgers) {
+    const exists = await AccountEntry.exists({ description: doc.description, date: doc.entryDate, $or: [{ debit: doc.amount }, { credit: doc.amount }] });
+    if (exists) continue;
 
-    if (!accountCode) {
-      console.warn('Skipping ledger without accountCode', doc._id);
-      processed++;
-      continue;
-    }
-
-    // Depending on doc.type (credit|debit) create one entry that posts to the specified account and balancing to CASH for simplicity
-    const entries = [];
-    if (doc.type === 'debit') {
-      entries.push({ accountCode: accountCode, debit: amt, credit: 0, description: doc.description || 'Ledger entry', referenceType: 'ledger', referenceId: refId });
-      entries.push({ accountCode: accountCodeFor('CASH'), debit: 0, credit: amt, description: 'Balancing entry', referenceType: 'ledger', referenceId: refId });
-    } else {
-      entries.push({ accountCode: accountCodeFor('CASH'), debit: amt, credit: 0, description: 'Balancing entry', referenceType: 'ledger', referenceId: refId });
-      entries.push({ accountCode: accountCode, debit: 0, credit: amt, description: doc.description || 'Ledger entry', referenceType: 'ledger', referenceId: refId });
-    }
-
-    try {
-      await postJournalEntries(orgId, date, entries, { updateBalances: true });
-    } catch (err) {
-      console.error('Failed ledger', doc._id, err.message);
-    }
-    processed++;
-    if (processed % batchSize === 0) console.log(`Ledger processed: ${processed}`);
+    await AccountEntry.create({
+      organizationId: orgId, branchId: doc.branchId, accountId: cashId,
+      customerId: doc.customerId, supplierId: doc.supplierId,
+      date: doc.entryDate,
+      debit: doc.type === 'debit' ? doc.amount : 0,
+      credit: doc.type === 'credit' ? doc.amount : 0,
+      description: doc.description || 'Manual Adjustment', referenceType: 'manual', referenceNumber: doc.referenceNumber
+    });
+    count++;
   }
-  console.log('Ledger backfilled complete');
+  console.log(`✅ Backfilled ${count} Manual Ledgers.`);
+}
+
+// --- 5. EXISTING PRODUCTS (Opening Stock) ---
+async function backfillProducts(orgId) {
+  console.log('🔄 Processing Product Inventory (Opening Stock)...');
+  const products = await Product.find({ organizationId: orgId });
+  
+  const inventoryId = await getAccountId(orgId, 'PURCHASES'); // Use Inventory Asset
+  const equityId = await getAccountId(orgId, 'EQUITY');
+
+  let count = 0;
+  for (const doc of products) {
+    // Check if we already have an entry for this product
+    const exists = await AccountEntry.exists({ referenceId: doc._id });
+    if (exists) continue;
+
+    // Calculate Value
+    let totalValue = 0;
+    if (doc.inventory && doc.inventory.length > 0) {
+        const qty = doc.inventory.reduce((acc, i) => acc + (i.quantity || 0), 0);
+        totalValue = qty * (doc.purchasePrice || 0);
+    }
+
+    if (totalValue > 0) {
+        // Dr Inventory
+        await AccountEntry.create({
+            organizationId: orgId,
+            branchId: doc.inventory?.[0]?.branchId, // Use first branch found
+            accountId: inventoryId,
+            date: doc.createdAt,
+            debit: totalValue,
+            credit: 0,
+            description: `Opening Stock: ${doc.name}`,
+            referenceType: 'manual',
+            referenceId: doc._id,
+            referenceNumber: 'OPEN-STOCK'
+        });
+
+        // Cr Equity
+        await AccountEntry.create({
+            organizationId: orgId,
+            branchId: doc.inventory?.[0]?.branchId,
+            accountId: equityId,
+            date: doc.createdAt,
+            debit: 0,
+            credit: totalValue,
+            description: `Opening Stock Equity: ${doc.name}`,
+            referenceType: 'manual',
+            referenceId: doc._id,
+            referenceNumber: 'OPEN-STOCK'
+        });
+        count++;
+    }
+  }
+  console.log(`✅ Backfilled ${count} Products (Opening Stock).`);
 }
 
 (async () => {
   try {
     await connect();
-    const orgId = process.env.BACKFILL_ORG_ID || process.env.SEED_ORG_ID;
-    if (!orgId) throw new Error('Set BACKFILL_ORG_ID env var to organization id');
+    const orgId = process.env.BACKFILL_ORG_ID; 
+    
+    if (!orgId) {
+        console.error('❌ Please set BACKFILL_ORG_ID env var.');
+        process.exit(1);
+    }
 
-    console.log(`Starting backfill for org ${orgId}`);
+    console.log(`🚀 Starting Migration for Org: ${orgId}`);
+    
     await backfillInvoices(orgId);
     await backfillPurchases(orgId);
     await backfillPayments(orgId);
-    await backfillLedger(orgId);
+    await backfillManualLedgers(orgId);
+    await backfillProducts(orgId); // ✅ Runs the new product logic
 
-    console.log('Backfill completed');
+    console.log('🎉 Migration Complete!');
   } catch (err) {
-    console.error('Backfill error:', err);
+    console.error('❌ Migration Failed:', err);
   } finally {
-    await mongoose.disconnect();
-    console.log('Disconnected');
+    if (mongoose.connection.readyState !== 0) {
+        await mongoose.disconnect();
+    }
     process.exit(0);
   }
 })();
+
+// const path = require('path');
+// const dotenv = require('dotenv');
+
+// // 1. Load .env from the 'src' folder (same logic as server.js)
+// dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// const mongoose = require('mongoose');
+
+// // --- Import Real Models ---
+// const Invoice = require('../models/invoiceModel');
+// const Purchase = require('../models/purchaseModel');
+// const Payment = require('../models/paymentModel');
+// const AccountEntry = require('../models/accountEntryModel');
+// const Account = require('../models/accountModel');
+
+// // 2. Use the correct variable name: 'DATABASE'
+// const DB_URI = process.env.DATABASE;
+
+// // --- Define Temporary Ledger Model (To read old data) ---
+// const ledgerSchema = new mongoose.Schema({
+//   organizationId: mongoose.Schema.Types.ObjectId,
+//   entryDate: Date,
+//   amount: Number,
+//   type: String, // debit/credit
+//   description: String,
+//   referenceNumber: String,
+//   customerId: mongoose.Schema.Types.ObjectId,
+//   supplierId: mongoose.Schema.Types.ObjectId,
+//   transactionMode: String // manual vs auto
+// }, { strict: false });
+
+// const OldLedger = mongoose.model('OldLedger', ledgerSchema, 'ledgers'); 
+
+// async function connect() {
+//   if (!DB_URI) {
+//       console.error('❌ FATAL ERROR: DATABASE env var is missing.');
+//       process.exit(1);
+//   }
+//   await mongoose.connect(DB_URI);
+//   console.log('✅ Connected to MongoDB');
+// }
+
+// // --- Helper: Get or Create Standard Accounts ---
+// const accountCache = {};
+// async function getAccountId(orgId, type) {
+//   const key = `${orgId}_${type}`;
+//   if (accountCache[key]) return accountCache[key];
+
+//   let criteria = { organizationId: orgId };
+  
+//   if (type === 'AR') criteria.$or = [{ name: 'Accounts Receivable' }, { code: '1200' }];
+//   if (type === 'AP') criteria.$or = [{ name: 'Accounts Payable' }, { code: '2000' }];
+//   if (type === 'SALES') criteria.$or = [{ name: 'Sales' }, { code: '4000' }];
+//   if (type === 'PURCHASES') criteria.$or = [{ name: 'Purchases' }, { name: 'Inventory Asset' }];
+//   if (type === 'CASH') criteria.$or = [{ name: 'Cash' }, { name: 'Cash in Hand' }];
+
+//   let account = await Account.findOne(criteria);
+
+//   if (!account) {
+//     console.log(`⚠️ Account ${type} missing. Creating default...`);
+//     account = await Account.create({
+//       organizationId: orgId,
+//       name: type === 'AR' ? 'Accounts Receivable' : type === 'AP' ? 'Accounts Payable' : type,
+//       code: type === 'AR' ? '1200' : type === 'AP' ? '2000' : '9999',
+//       type: type === 'AR' || type === 'CASH' ? 'asset' : type === 'AP' ? 'liability' : type === 'SALES' ? 'income' : 'expense',
+//       isGroup: false
+//     });
+//   }
+
+//   accountCache[key] = account._id;
+//   return account._id;
+// }
+
+// // --- 1. INVOICES ---
+// async function backfillInvoices(orgId) {
+//   console.log('🔄 Processing Invoices...');
+//   const invoices = await Invoice.find({ organizationId: orgId });
+  
+//   const arId = await getAccountId(orgId, 'AR');
+//   const salesId = await getAccountId(orgId, 'SALES');
+
+//   let count = 0;
+//   for (const doc of invoices) {
+//     const exists = await AccountEntry.exists({ referenceId: doc._id, referenceType: 'invoice' });
+//     if (exists) continue;
+
+//     // Dr AR
+//     await AccountEntry.create({
+//       organizationId: orgId,
+//       branchId: doc.branchId,
+//       accountId: arId,
+//       customerId: doc.customerId,
+//       date: doc.invoiceDate,
+//       debit: doc.grandTotal,
+//       credit: 0,
+//       description: `Inv #${doc.invoiceNumber}`,
+//       referenceType: 'invoice',
+//       referenceNumber: doc.invoiceNumber,
+//       referenceId: doc._id
+//     });
+
+//     // Cr Sales
+//     await AccountEntry.create({
+//       organizationId: orgId,
+//       branchId: doc.branchId,
+//       accountId: salesId,
+//       date: doc.invoiceDate,
+//       debit: 0,
+//       credit: doc.grandTotal,
+//       description: `Rev #${doc.invoiceNumber}`,
+//       referenceType: 'invoice',
+//       referenceNumber: doc.invoiceNumber,
+//       referenceId: doc._id
+//     });
+//     count++;
+//   }
+//   console.log(`✅ Backfilled ${count} Invoices.`);
+// }
+
+// // --- 2. PURCHASES ---
+// async function backfillPurchases(orgId) {
+//   console.log('🔄 Processing Purchases...');
+//   const purchases = await Purchase.find({ organizationId: orgId });
+
+//   const purchaseId = await getAccountId(orgId, 'PURCHASES');
+//   const apId = await getAccountId(orgId, 'AP');
+
+//   let count = 0;
+//   for (const doc of purchases) {
+//     const exists = await AccountEntry.exists({ referenceId: doc._id, referenceType: 'purchase' });
+//     if (exists) continue;
+
+//     // Dr Purchases
+//     await AccountEntry.create({
+//       organizationId: orgId,
+//       branchId: doc.branchId,
+//       accountId: purchaseId,
+//       date: doc.purchaseDate,
+//       debit: doc.grandTotal,
+//       credit: 0,
+//       description: `Pur #${doc.invoiceNumber}`,
+//       referenceType: 'purchase',
+//       referenceNumber: doc.invoiceNumber,
+//       referenceId: doc._id
+//     });
+
+//     // Cr AP
+//     await AccountEntry.create({
+//       organizationId: orgId,
+//       branchId: doc.branchId,
+//       accountId: apId,
+//       supplierId: doc.supplierId,
+//       date: doc.purchaseDate,
+//       debit: 0,
+//       credit: doc.grandTotal,
+//       description: `Bill #${doc.invoiceNumber}`,
+//       referenceType: 'purchase',
+//       referenceNumber: doc.invoiceNumber,
+//       referenceId: doc._id
+//     });
+//     count++;
+//   }
+//   console.log(`✅ Backfilled ${count} Purchases.`);
+// }
+
+// // --- 3. PAYMENTS ---
+// async function backfillPayments(orgId) {
+//   console.log('🔄 Processing Payments...');
+//   const payments = await Payment.find({ organizationId: orgId });
+
+//   const cashId = await getAccountId(orgId, 'CASH');
+//   const arId = await getAccountId(orgId, 'AR');
+//   const apId = await getAccountId(orgId, 'AP');
+
+//   let count = 0;
+//   for (const doc of payments) {
+//     const exists = await AccountEntry.exists({ referenceId: doc._id, referenceType: 'payment' });
+//     if (exists) continue;
+
+//     if (doc.type === 'inflow') {
+//       // Dr Cash
+//       await AccountEntry.create({
+//         organizationId: orgId,
+//         branchId: doc.branchId,
+//         accountId: cashId,
+//         date: doc.paymentDate,
+//         debit: doc.amount,
+//         credit: 0,
+//         description: `Pay Recv ${doc.referenceNumber || ''}`,
+//         referenceType: 'payment',
+//         referenceNumber: doc.referenceNumber,
+//         referenceId: doc._id
+//       });
+//       // Cr AR
+//       await AccountEntry.create({
+//         organizationId: orgId,
+//         branchId: doc.branchId,
+//         accountId: arId,
+//         customerId: doc.customerId,
+//         date: doc.paymentDate,
+//         debit: 0,
+//         credit: doc.amount,
+//         description: `Pay Recv ${doc.referenceNumber || ''}`,
+//         referenceType: 'payment',
+//         referenceNumber: doc.referenceNumber,
+//         referenceId: doc._id
+//       });
+//     } else {
+//       // Dr AP
+//       await AccountEntry.create({
+//         organizationId: orgId,
+//         branchId: doc.branchId,
+//         accountId: apId,
+//         supplierId: doc.supplierId,
+//         date: doc.paymentDate,
+//         debit: doc.amount,
+//         credit: 0,
+//         description: `Paid Supplier ${doc.referenceNumber || ''}`,
+//         referenceType: 'payment',
+//         referenceNumber: doc.referenceNumber,
+//         referenceId: doc._id
+//       });
+//       // Cr Cash
+//       await AccountEntry.create({
+//         organizationId: orgId,
+//         branchId: doc.branchId,
+//         accountId: cashId,
+//         date: doc.paymentDate,
+//         debit: 0,
+//         credit: doc.amount,
+//         description: `Paid Supplier ${doc.referenceNumber || ''}`,
+//         referenceType: 'payment',
+//         referenceNumber: doc.referenceNumber,
+//         referenceId: doc._id
+//       });
+//     }
+//     count++;
+//   }
+//   console.log(`✅ Backfilled ${count} Payments.`);
+// }
+
+// // --- 4. MANUAL LEDGERS ---
+// async function backfillManualLedgers(orgId) {
+//   console.log('🔄 Processing Manual Journals...');
+  
+//   const ledgers = await OldLedger.find({ 
+//     organizationId: orgId,
+//     invoiceId: null, 
+//     paymentId: null, 
+//     purchaseId: null 
+//   });
+
+//   const cashId = await getAccountId(orgId, 'CASH'); 
+
+//   let count = 0;
+//   for (const doc of ledgers) {
+//     // Only migrate if not already exists (check description + amount + date)
+//     const exists = await AccountEntry.exists({ 
+//         description: doc.description, 
+//         date: doc.entryDate,
+//         $or: [{ debit: doc.amount }, { credit: doc.amount }]
+//     });
+//     if (exists) continue;
+
+//     await AccountEntry.create({
+//       organizationId: orgId,
+//       branchId: doc.branchId,
+//       accountId: cashId, // Defaulting to Cash for manual migration safety
+//       customerId: doc.customerId,
+//       supplierId: doc.supplierId,
+//       date: doc.entryDate,
+//       debit: doc.type === 'debit' ? doc.amount : 0,
+//       credit: doc.type === 'credit' ? doc.amount : 0,
+//       description: doc.description || 'Manual Adjustment',
+//       referenceType: 'manual',
+//       referenceNumber: doc.referenceNumber
+//     });
+//     count++;
+//   }
+//   console.log(`✅ Backfilled ${count} Manual Ledgers.`);
+// }
+
+// (async () => {
+//   try {
+//     await connect();
+//     // You can hardcode this ID for a single run if env var is annoying:
+//     const orgId = process.env.BACKFILL_ORG_ID; 
+    
+//     if (!orgId) {
+//         console.error('❌ Please set BACKFILL_ORG_ID in your .env file or command line.');
+//         console.log('Example: BACKFILL_ORG_ID=65df... node src/scripts/backfillAccountEntries.js');
+//         process.exit(1);
+//     }
+
+//     console.log(`🚀 Starting Migration for Org: ${orgId}`);
+    
+//     await backfillInvoices(orgId);
+//     await backfillPurchases(orgId);
+//     await backfillPayments(orgId);
+//     await backfillManualLedgers(orgId);
+
+//     console.log('🎉 Migration Complete!');
+//   } catch (err) {
+//     console.error('❌ Migration Failed:', err);
+//   } finally {
+//     if (mongoose.connection.readyState !== 0) {
+//         await mongoose.disconnect();
+//     }
+//     process.exit(0);
+//   }
+// })();

@@ -83,17 +83,17 @@ app.use(compression());
 app.use(updateSessionActivity);
 
 // ---------------------- LOGGER ----------------------
-// if (process.env.NODE_ENV === "development") {
-//   app.use(morgan("dev"));
-// } else {
-//   app.use(
-//     morgan("combined", {
-//       stream: {
-//         write: (msg) => logger.info(msg.trim())
-//       }
-//     })
-//   );
-// }
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+} else {
+  app.use(
+    morgan("combined", {
+      stream: {
+        write: (msg) => logger.info(msg.trim())
+      }
+    })
+  );
+}
 
 // ---------------------- RATE LIMITER ----------------------
 app.use(
@@ -158,12 +158,12 @@ app.use((req, res, next) => {
 
 // ---------------------- GLOBAL ERROR HANDLER ----------------------
 app.use((err, req, res, next) => {
-  // logger.error(err.message || "Unhandled error", {
-  //   stack: err.stack,
-  //   path: req.originalUrl,
-  //   method: req.method,
-  //   user: req.user?._id,
-  // });
+  logger.error(err.message || "Unhandled error", {
+    stack: err.stack,
+    path: req.originalUrl,
+    method: req.method,
+    user: req.user?._id,
+  });
 
   globalErrorHandler(err, req, res, next);
 });
