@@ -4,7 +4,7 @@ const paymentController = require("../../controllers/paymentController");
 const authController = require("../../controllers/authController");
 const { checkPermission } = require("../../middleware/permissionMiddleware");
 const { PERMISSIONS } = require("../../config/permissions");
-
+const { checkIdempotency } = require('../../middleware/idempotency'); // <--- IMPORT
 router.use(authController.protect);
 
 router.get("/customer/:customerId", checkPermission(PERMISSIONS.PAYMENT.READ), paymentController.getPaymentsByCustomer);
@@ -14,7 +14,7 @@ router.post("/:id/receipt/email", checkPermission(PERMISSIONS.PAYMENT.READ), pay
 
 router.route("/")
   .get(checkPermission(PERMISSIONS.PAYMENT.READ), paymentController.getAllPayments)
-  .post(checkPermission(PERMISSIONS.PAYMENT.CREATE), paymentController.createPayment);
+  .post(checkPermission(PERMISSIONS.PAYMENT.CREATE), checkIdempotency,paymentController.createPayment);
 
 router.route("/:id")
   .get(checkPermission(PERMISSIONS.PAYMENT.READ), paymentController.getPayment)
