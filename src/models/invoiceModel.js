@@ -164,7 +164,6 @@ const invoiceSchema = new mongoose.Schema(
             enum: ["cash", "bank", "credit", "upi", "other"],
             default: "cash",
         },
-
         // --- E-Invoice / Tax Metadata ---
         gstType: {
             type: String,

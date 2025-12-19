@@ -7,13 +7,13 @@ const accountSchema = new mongoose.Schema({
   type: { type: String, required: true, enum: ['asset', 'liability', 'equity', 'income', 'expense', 'other'] },
   parent: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', default: null },
   
-  // ✅ NEW: Safety Flags
-  isGroup: { type: Boolean, default: false }, // If true, cannot contain entries
-  cachedBalance: { type: Number, default: 0 }, // Renamed from 'balance' to show it is calculated
-
+  // ✅ Safety Flags
+  isGroup: { type: Boolean, default: false }, 
+  cachedBalance: { type: Number, default: 0 }, // Correct field name
   metadata: { type: mongoose.Schema.Types.Mixed }
 }, { timestamps: true });
 
+// Compound unique index per Org
 accountSchema.index({ organizationId: 1, code: 1 }, { unique: true });
 
 module.exports = mongoose.model('Account', accountSchema);

@@ -1,13 +1,3 @@
-// // -----------------------------------------------------------------------------
-// // FILE: src/routes/chatRoutes.js
-// // Minimal express routes wiring for the controllers above
-// const express = require('express');
-// const router = express.Router();
-// const channelCtrl = require('../../controllers/channelController');
-// const messageCtrl = require('../../controllers/messageController');
-// const authController = require('../../controllers/authController');
-// router.use(authController.protect);
-
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');

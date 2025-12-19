@@ -3,12 +3,21 @@ const router = express.Router();
 const notificationController = require("../../controllers/notificationController");
 const authController = require("../../controllers/authController");
 
-// Notifications are fundamental to the user, typically no specific permission needed
-// beyond authentication, but you could add NOTIFICATION.READ if strict.
 router.use(authController.protect);
 
-router.get("/my-notifications", notificationController.getMyNotifications);
-router.patch('/:id/read', notificationController.markAsRead);
-router.patch('/read-all', notificationController.markAllRead);
+// Badge Count (Lightweight)
+router.get("/unread-count", notificationController.getUnreadCount);
+
+// Global Actions
+router.patch("/mark-all-read", notificationController.markAllRead);
+router.delete("/clear-all", notificationController.clearAll);
+
+// CRUD
+router.route("/")
+  .get(notificationController.getMyNotifications);
+
+router.route("/:id")
+  .patch(notificationController.markAsRead)
+  .delete(notificationController.deleteNotification);
 
 module.exports = router;
