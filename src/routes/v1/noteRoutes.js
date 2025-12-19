@@ -8,10 +8,8 @@ router.use(authController.protect);
 
 // --- Search & Meta ---
 router.get("/search", noteController.searchNotes);
-router.get("/calendar", noteController.getNotesForMonth); // Summary counts for calendar view
-
+router.get("/calendar", noteController.getNotesForMonth);
 // --- Attachments ---
-// Uses the 'uploadMedia' method we created
 router.post("/upload", upload.array("attachments", 5), noteController.uploadMedia);
 
 // --- Tags ---

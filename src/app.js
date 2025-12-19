@@ -54,6 +54,7 @@ const sessionRoutes = require("./routes/v1/sessionRoutes");
 const chatRoutes = require("./routes/v1/chatRoutes");
 const inventoryRoutes = require("./routes/v1/inventoryRoutes");
 const feedRoutes = require("./routes/v1/feedRoutes");
+const chartRoutes = require("./routes/v1/chartRoutes");
 const app = express();
 
 // 1. GLOBAL SETTINGS
@@ -172,6 +173,7 @@ app.use('/api/v1/accounts', require('./routes/v1/accountRoutes'));
 // Reporting & Dashboard
 app.use("/api/v1/dashboard", dashboard);
 app.use("/api/v1/analytics", analyticsRoutes);
+app.use("/api/v1/chart", chartRoutes);
 app.use("/api/v1/admin", adminRouter);
 
 // Communication & Tools
