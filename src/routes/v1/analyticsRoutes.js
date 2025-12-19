@@ -15,8 +15,8 @@ router.get('/branch-comparison', checkPermission(PERMISSIONS.ANALYTICS.VIEW_BRAN
 router.get('/financials', checkPermission(PERMISSIONS.ANALYTICS.VIEW_FINANCIAL), analyticsController.getFinancialReport);
 router.get('/profitability', checkPermission(PERMISSIONS.ANALYTICS.VIEW_PROFITABILITY), analyticsController.getProfitabilityReport);
 router.get('/cash-flow', checkPermission(PERMISSIONS.ANALYTICS.VIEW_CASHFLOW), analyticsController.getCashFlowReport);
-router.get('/debtor-aging', checkPermission(PERMISSIONS.ANALYTICS.VIEW_DEBTOR_AGING), analyticsController.getDebtorAgingReport);
 router.get('/tax-report', checkPermission(PERMISSIONS.ANALYTICS.VIEW_TAX), analyticsController.getTaxReport);
+router.get('/debtor-aging', checkPermission(PERMISSIONS.ANALYTICS.VIEW_DEBTOR_AGING), analyticsController.getDebtorAgingReport);
 
 // 3. OPERATIONAL & STAFF
 router.get('/staff-performance', checkPermission(PERMISSIONS.ANALYTICS.VIEW_STAFF_PERFORMANCE), analyticsController.getStaffPerformance);
