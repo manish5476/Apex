@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const { z } = require("zod");
 const { format } = require('fast-csv');
+const { invalidateOpeningBalance } = require("../services/ledgerCache");
 
 const Invoice = require("../models/invoiceModel");
 const Payment = require("../models/paymentModel");
@@ -106,6 +107,8 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
       items: enrichedItems, 
     }], { session });
     newInvoice = invoiceArr[0];
+    
+await invalidateOpeningBalance(req.user.organizationId);
 
     // ---------------------------------------------------------
     // C. ACCOUNTING (Audit-Proof Logic)
@@ -116,10 +119,15 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
     // 1. DEBIT AR (Total Customer Owes)
     await AccountEntry.create([{
       organizationId: req.user.organizationId, branchId: req.user.branchId,
-      accountId: arAccount._id, customerId: body.customerId,
-      date: newInvoice.invoiceDate, debit: newInvoice.grandTotal, credit: 0,
+      accountId: arAccount._id, 
+      customerId: body.customerId,
+      date: newInvoice.invoiceDate, 
+      debit: newInvoice.grandTotal, 
+      credit: 0,
       description: `Invoice #${newInvoice.invoiceNumber}`,
-      referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, referenceId: newInvoice._id,
+      referenceType: 'invoice',
+       referenceNumber: newInvoice.invoiceNumber, 
+       invoiceId: newInvoice._id,
       createdBy: req.user._id
     }], { session });
 
@@ -132,7 +140,7 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
       accountId: salesAccount._id,
       date: newInvoice.invoiceDate, debit: 0, credit: netRevenue,
       description: `Revenue #${newInvoice.invoiceNumber}`,
-      referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, referenceId: newInvoice._id,
+      referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, invoiceId: newInvoice._id,
       createdBy: req.user._id
     }], { session });
 
@@ -144,7 +152,7 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
             accountId: taxAccount._id,
             date: newInvoice.invoiceDate, debit: 0, credit: newInvoice.totalTax,
             description: `Tax Collected #${newInvoice.invoiceNumber}`,
-            referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, referenceId: newInvoice._id,
+            referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, invoiceId: newInvoice._id,
             createdBy: req.user._id
         }], { session });
     }
@@ -178,7 +186,7 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
             organizationId: req.user.organizationId, branchId: req.user.branchId,
             accountId: bankAccount._id, paymentId: newPayment._id,
             date: newInvoice.invoiceDate, debit: body.paidAmount, credit: 0,
-            description: `Pmt Recv: #${newInvoice.invoiceNumber}`, referenceType: 'payment', referenceId: newPayment._id, createdBy: req.user._id
+            description: `Pmt Recv: #${newInvoice.invoiceNumber}`, referenceType: 'payment', invoiceId: newPayment._id, createdBy: req.user._id
         }], { session });
 
         // Credit AR
@@ -186,7 +194,7 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
             organizationId: req.user.organizationId, branchId: req.user.branchId,
             accountId: arAccount._id, customerId: body.customerId, paymentId: newPayment._id,
             date: newInvoice.invoiceDate, debit: 0, credit: body.paidAmount,
-            description: `Pmt Recv: #${newInvoice.invoiceNumber}`, referenceType: 'payment', referenceId: newPayment._id, createdBy: req.user._id
+            description: `Pmt Recv: #${newInvoice.invoiceNumber}`, referenceType: 'payment', invoiceId: newPayment._id, createdBy: req.user._id
         }], { session });
     }
 
@@ -239,7 +247,7 @@ exports.updateInvoice = catchAsync(async (req, res, next) => {
             );
         }
         // B. Reverse Financials (Wipe old entries)
-        await AccountEntry.deleteMany({ referenceId: oldInvoice._id, referenceType: 'invoice' }, { session });
+        await AccountEntry.deleteMany({ invoiceId: oldInvoice._id, referenceType: 'invoice' }, { session });
         await Customer.findByIdAndUpdate(oldInvoice.customerId, { $inc: { outstandingBalance: -oldInvoice.grandTotal } }, { session });
 
         // C. Apply New Inventory (Take items from shelf)
@@ -265,7 +273,7 @@ exports.updateInvoice = catchAsync(async (req, res, next) => {
         await AccountEntry.create([{
             organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: arAccount._id, customerId: updatedInvoice.customerId,
             date: updatedInvoice.invoiceDate, debit: updatedInvoice.grandTotal, credit: 0,
-            description: `Invoice #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, referenceId: updatedInvoice._id, createdBy: req.user._id
+            description: `Invoice #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, invoiceId: updatedInvoice._id, createdBy: req.user._id
         }], { session });
 
         // Re-book Sales
@@ -275,7 +283,7 @@ exports.updateInvoice = catchAsync(async (req, res, next) => {
         await AccountEntry.create([{
             organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: salesAccount._id,
             date: updatedInvoice.invoiceDate, debit: 0, credit: netRevenue,
-            description: `Rev: #${updatedInvoice.invoiceNumber}`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, referenceId: updatedInvoice._id, createdBy: req.user._id
+            description: `Rev: #${updatedInvoice.invoiceNumber}`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, invoiceId: updatedInvoice._id, createdBy: req.user._id
         }], { session });
 
         // Re-book Tax
@@ -284,7 +292,7 @@ exports.updateInvoice = catchAsync(async (req, res, next) => {
             await AccountEntry.create([{
                 organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: taxAccount._id,
                 date: updatedInvoice.invoiceDate, debit: 0, credit: updatedInvoice.totalTax,
-                description: `GST: #${updatedInvoice.invoiceNumber}`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, referenceId: updatedInvoice._id, createdBy: req.user._id
+                description: `GST: #${updatedInvoice.invoiceNumber}`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, invoiceId: updatedInvoice._id, createdBy: req.user._id
             }], { session });
         }
 
@@ -340,7 +348,7 @@ exports.cancelInvoice = catchAsync(async (req, res, next) => {
         organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: salesAccount._id,
         date: new Date(), debit: netRevenue, credit: 0, 
         description: `Cancel: #${invoice.invoiceNumber}`,
-        referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, referenceId: invoice._id, createdBy: req.user._id
+        referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, invoiceId: invoice._id, createdBy: req.user._id
     }], { session });
 
     // Dr Tax (Reduce Liability)
@@ -350,7 +358,7 @@ exports.cancelInvoice = catchAsync(async (req, res, next) => {
             organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: taxAccount._id,
             date: new Date(), debit: invoice.totalTax, credit: 0,
             description: `Cancel Tax: #${invoice.invoiceNumber}`,
-            referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, referenceId: invoice._id, createdBy: req.user._id
+            referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, invoiceId: invoice._id, createdBy: req.user._id
         }], { session });
     }
 
@@ -359,7 +367,7 @@ exports.cancelInvoice = catchAsync(async (req, res, next) => {
         organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: arAccount._id, customerId: invoice.customerId,
         date: new Date(), debit: 0, credit: invoice.grandTotal, 
         description: `Cancel: #${invoice.invoiceNumber}`,
-        referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, referenceId: invoice._id, createdBy: req.user._id
+        referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, invoiceId: invoice._id, createdBy: req.user._id
     }], { session });
 
     invoice.status = 'cancelled';
@@ -555,7 +563,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // //       accountId: arAccount._id, customerId: body.customerId,
 // //       date: newInvoice.invoiceDate, debit: newInvoice.grandTotal, credit: 0,
 // //       description: `Invoice #${newInvoice.invoiceNumber}`,
-// //       referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, referenceId: newInvoice._id,
+// //       referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, invoiceId: newInvoice._id,
 // //       createdBy: req.user._id
 // //     }], { session });
 
@@ -568,7 +576,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // //       accountId: salesAccount._id,
 // //       date: newInvoice.invoiceDate, debit: 0, credit: netRevenue,
 // //       description: `Revenue #${newInvoice.invoiceNumber}`,
-// //       referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, referenceId: newInvoice._id,
+// //       referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, invoiceId: newInvoice._id,
 // //       createdBy: req.user._id
 // //     }], { session });
 
@@ -580,7 +588,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // //             accountId: taxAccount._id,
 // //             date: newInvoice.invoiceDate, debit: 0, credit: newInvoice.totalTax,
 // //             description: `Tax Collected #${newInvoice.invoiceNumber}`,
-// //             referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, referenceId: newInvoice._id,
+// //             referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, invoiceId: newInvoice._id,
 // //             createdBy: req.user._id
 // //         }], { session });
 // //     }
@@ -614,7 +622,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // //             organizationId: req.user.organizationId, branchId: req.user.branchId,
 // //             accountId: bankAccount._id, paymentId: newPayment._id,
 // //             date: newInvoice.invoiceDate, debit: body.paidAmount, credit: 0,
-// //             description: `Pmt Recv: #${newInvoice.invoiceNumber}`, referenceType: 'payment', referenceId: newPayment._id, createdBy: req.user._id
+// //             description: `Pmt Recv: #${newInvoice.invoiceNumber}`, referenceType: 'payment', invoiceId: newPayment._id, createdBy: req.user._id
 // //         }], { session });
 
 // //         // Credit AR
@@ -622,7 +630,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // //             organizationId: req.user.organizationId, branchId: req.user.branchId,
 // //             accountId: arAccount._id, customerId: body.customerId, paymentId: newPayment._id,
 // //             date: newInvoice.invoiceDate, debit: 0, credit: body.paidAmount,
-// //             description: `Pmt Recv: #${newInvoice.invoiceNumber}`, referenceType: 'payment', referenceId: newPayment._id, createdBy: req.user._id
+// //             description: `Pmt Recv: #${newInvoice.invoiceNumber}`, referenceType: 'payment', invoiceId: newPayment._id, createdBy: req.user._id
 // //         }], { session });
 // //     }
 
@@ -673,7 +681,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // //             );
 // //         }
 // //         // B. Reverse Financials (Wipe old entries)
-// //         await AccountEntry.deleteMany({ referenceId: oldInvoice._id, referenceType: 'invoice' }, { session });
+// //         await AccountEntry.deleteMany({ invoiceId: oldInvoice._id, referenceType: 'invoice' }, { session });
 // //         await Customer.findByIdAndUpdate(oldInvoice.customerId, { $inc: { outstandingBalance: -oldInvoice.grandTotal } }, { session });
 
 // //         // C. Apply New Inventory (Take items from shelf)
@@ -699,7 +707,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // //         await AccountEntry.create([{
 // //             organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: arAccount._id, customerId: updatedInvoice.customerId,
 // //             date: updatedInvoice.invoiceDate, debit: updatedInvoice.grandTotal, credit: 0,
-// //             description: `Invoice #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, referenceId: updatedInvoice._id, createdBy: req.user._id
+// //             description: `Invoice #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, invoiceId: updatedInvoice._id, createdBy: req.user._id
 // //         }], { session });
 
 // //         // Re-book Sales
@@ -709,7 +717,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // //         await AccountEntry.create([{
 // //             organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: salesAccount._id,
 // //             date: updatedInvoice.invoiceDate, debit: 0, credit: netRevenue,
-// //             description: `Rev: #${updatedInvoice.invoiceNumber}`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, referenceId: updatedInvoice._id, createdBy: req.user._id
+// //             description: `Rev: #${updatedInvoice.invoiceNumber}`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, invoiceId: updatedInvoice._id, createdBy: req.user._id
 // //         }], { session });
 
 // //         // Re-book Tax
@@ -718,7 +726,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // //             await AccountEntry.create([{
 // //                 organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: taxAccount._id,
 // //                 date: updatedInvoice.invoiceDate, debit: 0, credit: updatedInvoice.totalTax,
-// //                 description: `GST: #${updatedInvoice.invoiceNumber}`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, referenceId: updatedInvoice._id, createdBy: req.user._id
+// //                 description: `GST: #${updatedInvoice.invoiceNumber}`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, invoiceId: updatedInvoice._id, createdBy: req.user._id
 // //             }], { session });
 // //         }
 
@@ -774,7 +782,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // //         organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: salesAccount._id,
 // //         date: new Date(), debit: netRevenue, credit: 0, 
 // //         description: `Cancel: #${invoice.invoiceNumber}`,
-// //         referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, referenceId: invoice._id, createdBy: req.user._id
+// //         referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, invoiceId: invoice._id, createdBy: req.user._id
 // //     }], { session });
 
 // //     // Dr Tax (Reduce Liability)
@@ -785,7 +793,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // //             organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: taxAccount._id,
 // //             date: new Date(), debit: invoice.totalTax, credit: 0,
 // //             description: `Cancel Tax: #${invoice.invoiceNumber}`,
-// //             referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, referenceId: invoice._id, createdBy: req.user._id
+// //             referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, invoiceId: invoice._id, createdBy: req.user._id
 // //         }], { session });
 // //     }
 
@@ -794,7 +802,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // //         organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: arAccount._id, customerId: invoice.customerId,
 // //         date: new Date(), debit: 0, credit: invoice.grandTotal, 
 // //         description: `Cancel: #${invoice.invoiceNumber}`,
-// //         referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, referenceId: invoice._id, createdBy: req.user._id
+// //         referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, invoiceId: invoice._id, createdBy: req.user._id
 // //     }], { session });
 
 // //     invoice.status = 'cancelled';
@@ -984,7 +992,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // //       accountId: arAccount._id, customerId: body.customerId,
 // // //       date: newInvoice.invoiceDate, debit: newInvoice.grandTotal, credit: 0,
 // // //       description: `Invoice #${newInvoice.invoiceNumber}`,
-// // //       referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, referenceId: newInvoice._id,
+// // //       referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, invoiceId: newInvoice._id,
 // // //       createdBy: req.user._id
 // // //     }], { session });
 
@@ -995,7 +1003,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // //       accountId: salesAccount._id,
 // // //       date: newInvoice.invoiceDate, debit: 0, credit: netRevenue,
 // // //       description: `Sales Revenue #${newInvoice.invoiceNumber}`,
-// // //       referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, referenceId: newInvoice._id,
+// // //       referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, invoiceId: newInvoice._id,
 // // //       createdBy: req.user._id
 // // //     }], { session });
 
@@ -1007,7 +1015,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // //             accountId: taxAccount._id,
 // // //             date: newInvoice.invoiceDate, debit: 0, credit: newInvoice.totalTax,
 // // //             description: `GST Collected #${newInvoice.invoiceNumber}`,
-// // //             referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, referenceId: newInvoice._id,
+// // //             referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, invoiceId: newInvoice._id,
 // // //             createdBy: req.user._id
 // // //         }], { session });
 // // //     }
@@ -1049,7 +1057,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // //             accountId: bankAccount._id, paymentId: newPayment._id,
 // // //             date: newInvoice.invoiceDate, debit: body.paidAmount, credit: 0,
 // // //             description: `Payment: ${newInvoice.invoiceNumber}`,
-// // //             referenceType: 'payment', referenceNumber: newInvoice.invoiceNumber, referenceId: newPayment._id,
+// // //             referenceType: 'payment', referenceNumber: newInvoice.invoiceNumber, invoiceId: newPayment._id,
 // // //             createdBy: req.user._id
 // // //         }], { session });
 
@@ -1059,7 +1067,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // //             accountId: arAccount._id, customerId: body.customerId, paymentId: newPayment._id,
 // // //             date: newInvoice.invoiceDate, debit: 0, credit: body.paidAmount,
 // // //             description: `Payment: ${newInvoice.invoiceNumber}`,
-// // //             referenceType: 'payment', referenceNumber: newInvoice.invoiceNumber, referenceId: newPayment._id,
+// // //             referenceType: 'payment', referenceNumber: newInvoice.invoiceNumber, invoiceId: newPayment._id,
 // // //             createdBy: req.user._id
 // // //         }], { session });
 // // //     }
@@ -1112,7 +1120,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // //             );
 // // //         }
 // // //         // B. Reverse Financials (Delete old entries for cleanliness on re-book)
-// // //         await AccountEntry.deleteMany({ referenceId: oldInvoice._id, referenceType: 'invoice' }, { session });
+// // //         await AccountEntry.deleteMany({ invoiceId: oldInvoice._id, referenceType: 'invoice' }, { session });
 // // //         await Customer.findByIdAndUpdate(oldInvoice.customerId, { $inc: { outstandingBalance: -oldInvoice.grandTotal } }, { session });
 
 // // //         // C. Apply New Inventory
@@ -1138,7 +1146,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // //         await AccountEntry.create([{
 // // //             organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: arAccount._id, customerId: updatedInvoice.customerId,
 // // //             date: updatedInvoice.invoiceDate, debit: updatedInvoice.grandTotal, credit: 0,
-// // //             description: `Invoice #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, referenceId: updatedInvoice._id, createdBy: req.user._id
+// // //             description: `Invoice #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, invoiceId: updatedInvoice._id, createdBy: req.user._id
 // // //         }], { session });
 
 // // //         // Re-book Sales
@@ -1147,7 +1155,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // //         await AccountEntry.create([{
 // // //             organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: salesAccount._id,
 // // //             date: updatedInvoice.invoiceDate, debit: 0, credit: netRevenue,
-// // //             description: `Rev: #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, referenceId: updatedInvoice._id, createdBy: req.user._id
+// // //             description: `Rev: #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, invoiceId: updatedInvoice._id, createdBy: req.user._id
 // // //         }], { session });
 
 // // //         // Re-book Tax (if any)
@@ -1156,7 +1164,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // //             await AccountEntry.create([{
 // // //                 organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: taxAccount._id,
 // // //                 date: updatedInvoice.invoiceDate, debit: 0, credit: updatedInvoice.totalTax,
-// // //                 description: `GST: #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, referenceId: updatedInvoice._id, createdBy: req.user._id
+// // //                 description: `GST: #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, invoiceId: updatedInvoice._id, createdBy: req.user._id
 // // //             }], { session });
 // // //         }
 
@@ -1212,7 +1220,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // //         organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: salesAccount._id,
 // // //         date: new Date(), debit: invoice.grandTotal, credit: 0, 
 // // //         description: `Return/Cancel: #${invoice.invoiceNumber}`,
-// // //         referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, referenceId: invoice._id, createdBy: req.user._id
+// // //         referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, invoiceId: invoice._id, createdBy: req.user._id
 // // //     }], { session });
 
 // // //     // Cr AR (Reduce Debt)
@@ -1220,7 +1228,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // //         organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: arAccount._id, customerId: invoice.customerId,
 // // //         date: new Date(), debit: 0, credit: invoice.grandTotal, 
 // // //         description: `Return/Cancel: #${invoice.invoiceNumber}`,
-// // //         referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, referenceId: invoice._id, createdBy: req.user._id
+// // //         referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, invoiceId: invoice._id, createdBy: req.user._id
 // // //     }], { session });
 
 // // //     invoice.status = 'cancelled';
@@ -1391,7 +1399,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // // //       accountId: arAccount._id, customerId: body.customerId,
 // // // //       date: newInvoice.invoiceDate, debit: newInvoice.grandTotal, credit: 0,
 // // // //       description: `Invoice #${newInvoice.invoiceNumber}`,
-// // // //       referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, referenceId: newInvoice._id,
+// // // //       referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, invoiceId: newInvoice._id,
 // // // //       createdBy: req.user._id
 // // // //     }], { session });
 
@@ -1400,7 +1408,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // // //       accountId: salesAccount._id,
 // // // //       date: newInvoice.invoiceDate, debit: 0, credit: newInvoice.grandTotal,
 // // // //       description: `Rev: #${newInvoice.invoiceNumber}`,
-// // // //       referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, referenceId: newInvoice._id,
+// // // //       referenceType: 'invoice', referenceNumber: newInvoice.invoiceNumber, invoiceId: newInvoice._id,
 // // // //       createdBy: req.user._id
 // // // //     }], { session });
 
@@ -1443,7 +1451,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // // //             paymentId: newPayment._id,
 // // // //             date: newInvoice.invoiceDate, debit: body.paidAmount, credit: 0,
 // // // //             description: `Payment: ${newInvoice.invoiceNumber}`,
-// // // //             referenceType: 'payment', referenceNumber: newInvoice.invoiceNumber, referenceId: newPayment._id,
+// // // //             referenceType: 'payment', referenceNumber: newInvoice.invoiceNumber, invoiceId: newPayment._id,
 // // // //             createdBy: req.user._id
 // // // //         }], { session });
 
@@ -1454,7 +1462,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // // //             paymentId: newPayment._id,
 // // // //             date: newInvoice.invoiceDate, debit: 0, credit: body.paidAmount,
 // // // //             description: `Payment: ${newInvoice.invoiceNumber}`,
-// // // //             referenceType: 'payment', referenceNumber: newInvoice.invoiceNumber, referenceId: newPayment._id,
+// // // //             referenceType: 'payment', referenceNumber: newInvoice.invoiceNumber, invoiceId: newPayment._id,
 // // // //             createdBy: req.user._id
 // // // //         }], { session });
 // // // //     }
@@ -1517,7 +1525,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // // //         }
 
 // // // //         // B. REVERSE FINANCIALS (Delete Old Ledger Entries for this invoice)
-// // // //         await AccountEntry.deleteMany({ referenceId: oldInvoice._id, referenceType: 'invoice' }, { session });
+// // // //         await AccountEntry.deleteMany({ invoiceId: oldInvoice._id, referenceType: 'invoice' }, { session });
 // // // //         await Customer.findByIdAndUpdate(oldInvoice.customerId, { $inc: { outstandingBalance: -oldInvoice.grandTotal } }, { session });
 
 // // // //         // C. APPLY NEW INVENTORY
@@ -1547,11 +1555,11 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // // //         await AccountEntry.create([{
 // // // //             organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: arAccount._id, customerId: updatedInvoice.customerId,
 // // // //             date: updatedInvoice.invoiceDate, debit: updatedInvoice.grandTotal, credit: 0,
-// // // //             description: `Invoice #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, referenceId: updatedInvoice._id, createdBy: req.user._id
+// // // //             description: `Invoice #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, invoiceId: updatedInvoice._id, createdBy: req.user._id
 // // // //         }, {
 // // // //             organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: salesAccount._id,
 // // // //             date: updatedInvoice.invoiceDate, debit: 0, credit: updatedInvoice.grandTotal,
-// // // //             description: `Rev: #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, referenceId: updatedInvoice._id, createdBy: req.user._id
+// // // //             description: `Rev: #${updatedInvoice.invoiceNumber} (Updated)`, referenceType: 'invoice', referenceNumber: updatedInvoice.invoiceNumber, invoiceId: updatedInvoice._id, createdBy: req.user._id
 // // // //         }], { session });
 
 // // // //         await Customer.findByIdAndUpdate(updatedInvoice.customerId, { $inc: { outstandingBalance: updatedInvoice.grandTotal } }, { session });
@@ -1605,11 +1613,11 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // // //     await AccountEntry.create([{
 // // // //         organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: salesAccount._id,
 // // // //         date: new Date(), debit: invoice.grandTotal, credit: 0, description: `Cancel: #${invoice.invoiceNumber}`,
-// // // //         referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, referenceId: invoice._id, createdBy: req.user._id
+// // // //         referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, invoiceId: invoice._id, createdBy: req.user._id
 // // // //     }, {
 // // // //         organizationId: req.user.organizationId, branchId: req.user.branchId, accountId: arAccount._id, customerId: invoice.customerId,
 // // // //         date: new Date(), debit: 0, credit: invoice.grandTotal, description: `Cancel: #${invoice.invoiceNumber}`,
-// // // //         referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, referenceId: invoice._id, createdBy: req.user._id
+// // // //         referenceType: 'credit_note', referenceNumber: `CN-${invoice.invoiceNumber}`, invoiceId: invoice._id, createdBy: req.user._id
 // // // //     }], { session });
 
 // // // //     // 4. IMPORTANT: If there were payments attached, we don't auto-refund them here.
@@ -1808,7 +1816,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // // // //         description: `Invoice #${newInvoice.invoiceNumber}`,
 // // // // //         referenceType: 'invoice',
 // // // // //         referenceNumber: newInvoice.invoiceNumber, // Searchable
-// // // // //         referenceId: newInvoice._id,
+// // // // //         invoiceId: newInvoice._id,
 // // // // //         createdBy: req.user._id
 // // // // //       }], { session });
 
@@ -1823,7 +1831,7 @@ exports.deleteInvoice = factory.deleteOne(Invoice);
 // // // // //         description: `Revenue - Inv #${newInvoice.invoiceNumber}`,
 // // // // //         referenceType: 'invoice',
 // // // // //         referenceNumber: newInvoice.invoiceNumber,
-// // // // //         referenceId: newInvoice._id,
+// // // // //         invoiceId: newInvoice._id,
 // // // // //         createdBy: req.user._id
 // // // // //       }], { session });
 // // // // //     } else {

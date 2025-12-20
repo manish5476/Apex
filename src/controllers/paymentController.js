@@ -12,6 +12,8 @@ const factory = require('../utils/handlerFactory');
 const emiService = require('../services/emiService');
 const paymentPDFService = require("../services/paymentPDFService");
 const automationService = require('../services/automationService');
+const { invalidateOpeningBalance } = require("../services/ledgerCache");
+
 /* ==========================================================
    AUDIT CORE: Apply or Reverse Financial Effects
    ----------------------------------------------------------
@@ -293,6 +295,8 @@ automationService.triggerEvent('payment.received', payment, req.user.organizatio
       message: 'Payment recorded successfully',
       data: { payment },
     });
+    await invalidateOpeningBalance(req.user.organizationId);
+
   } catch (err) {
     await session.abortTransaction();
     next(err);
