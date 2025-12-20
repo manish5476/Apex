@@ -80,22 +80,3 @@ router
   );
 
 module.exports = router;
-
-// const express = require('express');
-// const router = express.Router();
-// const salesController = require('../../controllers/salesController');
-// const authController = require('../../controllers/authController');
-// const { checkPermission } = require("../../middleware/permissionMiddleware");
-// const { PERMISSIONS } = require("../../config/permissions");
-
-// router.use(authController.protect); 
-// // Direct Sales Management
-// router.post('/', checkPermission(PERMISSIONS.SALES.MANAGE), salesController.createSales); 
-// router.get('/', checkPermission(PERMISSIONS.SALES.MANAGE), salesController.getAllSales);
-// router.post('/from-invoice/:invoiceId', checkPermission(PERMISSIONS.SALES.MANAGE), salesController.createFromInvoice);
-// router.get('/:id', checkPermission(PERMISSIONS.SALES.MANAGE), salesController.getSales);
-// router.put('/:id', checkPermission(PERMISSIONS.SALES.MANAGE), salesController.updateSales);
-// router.delete('/:id', checkPermission(PERMISSIONS.SALES.MANAGE), salesController.deleteSales);
-// router.delete('/:id', checkPermission(PERMISSIONS.SALES.MANAGE), salesController.getSalesStats);
-// router.delete('/:id', checkPermission(PERMISSIONS.SALES.MANAGE), salesController.exportSales);
-// module.exports = router;

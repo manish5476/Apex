@@ -6,7 +6,7 @@ const authController = require("../../controllers/authController");
 
 const router = express.Router();
 
-router.use(authController.protect);
+router.use(checkPermission(PERMISSIONS.LOGS.VIEW));
 router.use(authController.restrictTo("superadmin"));
 
 // Supported log files
