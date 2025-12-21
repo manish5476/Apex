@@ -249,8 +249,35 @@ exports.deleteAttachment = catchAsync(async (req, res, next) => {
 exports.deletePurchase = catchAsync(async (req, res, next) => {
     return next(new AppError("SECURITY ALERT: Cannot delete purchase. Use 'Cancel / Return' instead.", 403));
 });
+exports.getAllPurchases = factory.getAll(Purchase, {
+  searchFields: [
+    'invoiceNumber',
+    'status',
+    'paymentStatus',
+    'paymentMethod',
+    'notes',
+    'items.name'
+  ],
+  populate: [
+    {
+      path: 'supplierId',
+      select: `
+        companyName
+        contactPerson
+        email
+        phone
+        altPhone
+        openingBalance
+        outstandingBalance
+      `
+    },
+    {
+      path: 'branchId',
+      select: 'name'
+    }
+  ]
+});
 
-exports.getAllPurchases = factory.getAll(Purchase);
 exports.getPurchase = factory.getOne(Purchase, [{ path: "items.productId" }]);
 
 // const mongoose = require("mongoose");

@@ -3,6 +3,8 @@ const router = express.Router();
 const noteController = require("../../controllers/noteController");
 const authController = require("../../controllers/authController");
 const { upload } = require("../../middleware/uploadMiddleware"); // Assuming you have this, or use multer config directly
+const { checkPermission } = require("../../middleware/permissionMiddleware");
+const { PERMISSIONS } = require("../../config/permissions");
 
 
 router.use(authController.protect);

@@ -24,7 +24,7 @@ const accountEntrySchema = new mongoose.Schema(
     credit: { type: Number, required: true, default: 0, min: 0 },
 
     description: { type: String, trim: true },
-    referenceNumber: { type: String, trim: true, uppercase: true, index: true }, // important
+    referenceNumber: { type: String, trim: true, uppercase: true }, // important
 
     referenceType: { type: String, enum: ['invoice', 'purchase', 'payment', 'journal', 'manual', null], default: null },
 
