@@ -10,6 +10,7 @@ const factory = require('../utils/handlerFactory');
 const { runInTransaction } = require("../utils/runInTransaction");
 const fileUploadService = require("../services/uploads/fileUploadService");
 const cloudinary = require("cloudinary").v2;
+const { invalidateOpeningBalance } = require("../services/ledgerCache");
 
 async function getOrInitAccount(orgId, type, name, code, session) {
   let account = await Account.findOne({ organizationId: orgId, code }).session(session);
@@ -55,6 +56,7 @@ exports.createPurchase = catchAsync(async (req, res, next) => {
         notes, status: status || "received", createdBy: req.user._id, attachedFiles
     }], { session });
     const purchase = purchaseDocs[0];
+await invalidateOpeningBalance(req.user.organizationId);
 
     // Stock & Supplier Debt
     for (const item of items) {
@@ -247,8 +249,35 @@ exports.deleteAttachment = catchAsync(async (req, res, next) => {
 exports.deletePurchase = catchAsync(async (req, res, next) => {
     return next(new AppError("SECURITY ALERT: Cannot delete purchase. Use 'Cancel / Return' instead.", 403));
 });
+exports.getAllPurchases = factory.getAll(Purchase, {
+  searchFields: [
+    'invoiceNumber',
+    'status',
+    'paymentStatus',
+    'paymentMethod',
+    'notes',
+    'items.name'
+  ],
+  populate: [
+    {
+      path: 'supplierId',
+      select: `
+        companyName
+        contactPerson
+        email
+        phone
+        altPhone
+        openingBalance
+        outstandingBalance
+      `
+    },
+    {
+      path: 'branchId',
+      select: 'name'
+    }
+  ]
+});
 
-exports.getAllPurchases = factory.getAll(Purchase);
 exports.getPurchase = factory.getOne(Purchase, [{ path: "items.productId" }]);
 
 // const mongoose = require("mongoose");

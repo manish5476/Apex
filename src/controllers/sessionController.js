@@ -8,20 +8,76 @@ const mongoose = require("mongoose");
  * GET /api/v1/sessions
  * Admin view: Populates user data
  */
+// exports.listSessions = catchAsync(async (req, res, next) => {
+//   const orgId = req.user.organizationId;
+//   const { userId } = req.query;
+
+//   const filter = { organizationId: orgId };
+//   if (userId) filter.userId = mongoose.Types.ObjectId(userId);
+
+//   const sessions = await Session.find(filter)
+//     .populate("userId", "name email avatar role") // <--- POPULATE ADDED HERE
+//     .sort({ lastActivityAt: -1 })
+//     .limit(200)
+//     .lean();
+
+//   res.status(200).json({ status: "success", results: sessions.length, data: sessions });
+// });
+/**
+ * GET /api/v1/sessions
+ * Advanced Filtering & Pagination
+ */
 exports.listSessions = catchAsync(async (req, res, next) => {
   const orgId = req.user.organizationId;
-  const { userId } = req.query;
+  const { userId, isValid, device, browser, ipAddress, startDate, endDate } = req.query;
 
+  // 1. Build Dynamic Filter
   const filter = { organizationId: orgId };
-  if (userId) filter.userId = mongoose.Types.ObjectId(userId);
+
+  if (userId) filter.userId = userId;
+  if (isValid) filter.isValid = isValid === 'true';
+  if (device) filter.device = { $regex: device, $options: 'i' }; // Case-insensitive partial match
+  if (browser) filter.browser = browser;
+  if (ipAddress) filter.ipAddress = ipAddress;
+
+  // Date Range Filtering
+  if (startDate || endDate) {
+    filter.lastActivityAt = {};
+    if (startDate) filter.lastActivityAt.$gte = new Date(startDate);
+    if (endDate) filter.lastActivityAt.$lte = new Date(endDate);
+  }
 
   const sessions = await Session.find(filter)
-    .populate("userId", "name email avatar role") // <--- POPULATE ADDED HERE
+    .populate("userId", "name email avatar role")
     .sort({ lastActivityAt: -1 })
     .limit(200)
     .lean();
 
   res.status(200).json({ status: "success", results: sessions.length, data: sessions });
+});
+
+/**
+ * DELETE /api/v1/sessions/bulk-delete
+ * Body: { ids: ["id1", "id2"] }
+ */
+exports.bulkDeleteSessions = catchAsync(async (req, res, next) => {
+  const { ids } = req.body;
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return next(new AppError("Please provide an array of session IDs", 400));
+  }
+
+  // Security: Only delete sessions belonging to the user's organization
+  const result = await Session.deleteMany({
+    _id: { $in: ids },
+    organizationId: req.user.organizationId
+  });
+
+  res.status(200).json({
+    status: "success",
+    message: `${result.deletedCount} sessions deleted permanently`,
+    data: { deletedCount: result.deletedCount }
+  });
 });
 
 exports.mySessions = catchAsync(async (req, res, next) => {
