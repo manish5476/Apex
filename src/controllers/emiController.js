@@ -44,10 +44,21 @@ exports.createEmiPlan = catchAsync(async (req, res, next) => {
 /* -------------------------------------------------------------
    Get All EMIs
 ------------------------------------------------------------- */
+// const popOptions = [
+//   { 
+//     path: 'customerId', 
+//     select: 'name email phone avatar'
+//   },
+//   {
+//     path: 'invoiceId',
+//     select: 'invoiceNumber grandTotal balanceAmount'
+//   }
+// ];
 const popOptions = [
   { 
     path: 'customerId', 
-    select: 'name email phone avatar'
+    // Updated to include address, tax info, and balance based on your new Schema
+    select: 'name email phone avatar billingAddress gstNumber panNumber type outstandingBalance'
   },
   {
     path: 'invoiceId',
