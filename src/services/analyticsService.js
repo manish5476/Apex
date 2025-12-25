@@ -2,7 +2,9 @@ const mongoose = require('mongoose');
 const Invoice = require('../models/invoiceModel');
 const Purchase = require('../models/purchaseModel');
 const Product = require('../models/productModel');
+const Sales = require('../models/salesModel');
 const Payment = require('../models/paymentModel');
+const AccountEntry = require('../models/accountEntryModel');
 const AuditLog = require('../models/auditLogModel');
 const Customer = require('../models/customerModel');
 const User = require('../models/userModel'); // Added for Staff Performance
@@ -833,6 +835,205 @@ exports.getSecurityPulse = async (orgId, startDate, endDate) => {
     });
 
     return { recentEvents: logs, riskyActions: riskCount };
+};
+
+/* -------------------------------------------------------------
+ * 1. Calculate Customer Lifetime Value (LTV)
+ * Formula: Avg Purchase Value * Purchase Freq * Lifespan
+ ------------------------------------------------------------- */
+exports.calculateLTV = async (orgId, branchId) => {
+    const match = { organizationId: new mongoose.Types.ObjectId(orgId), status: 'active' };
+    if (branchId) match.branchId = new mongoose.Types.ObjectId(branchId);
+
+    const stats = await Sales.aggregate([
+        { $match: match },
+        {
+            $group: {
+                _id: "$customerId",
+                totalSpent: { $sum: "$totalAmount" },
+                transactionCount: { $sum: 1 },
+                firstPurchase: { $min: "$createdAt" },
+                lastPurchase: { $max: "$createdAt" }
+            }
+        },
+        {
+            $project: {
+                totalSpent: 1,
+                transactionCount: 1,
+                lifespanDays: {
+                    $divide: [{ $subtract: ["$lastPurchase", "$firstPurchase"] }, 1000 * 60 * 60 * 24]
+                },
+                avgOrderValue: { $divide: ["$totalSpent", "$transactionCount"] }
+            }
+        },
+        {
+            $lookup: { from: 'customers', localField: '_id', foreignField: '_id', as: 'customer' }
+        },
+        { $unwind: "$customer" },
+        { $sort: { totalSpent: -1 } }
+    ]);
+
+    return stats.map(s => ({
+        name: s.customer.name,
+        email: s.customer.email,
+        totalSpent: s.totalSpent,
+        avgOrderValue: Math.round(s.avgOrderValue),
+        lifespanDays: Math.round(s.lifespanDays),
+        // Simple Historic LTV
+        ltv: s.totalSpent 
+    })).slice(0, 50); // Top 50 High Value Customers
+};
+
+/* -------------------------------------------------------------
+ * 2. Analyze Churn Risk (Customers "cooling down")
+ ------------------------------------------------------------- */
+exports.analyzeChurnRisk = async (orgId, thresholdDays = 90) => {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - thresholdDays);
+
+    return await Customer.aggregate([
+        { $match: { organizationId: new mongoose.Types.ObjectId(orgId) } },
+        {
+            $lookup: {
+                from: 'invoices',
+                let: { custId: '$_id' },
+                pipeline: [
+                    { $match: { $expr: { $eq: ['$customerId', '$$custId'] } } },
+                    { $sort: { invoiceDate: -1 } },
+                    { $limit: 1 }
+                ],
+                as: 'lastInvoice'
+            }
+        },
+        { $unwind: { path: '$lastInvoice', preserveNullAndEmptyArrays: false } }, // Only customers who bought before
+        {
+            $project: {
+                name: 1,
+                phone: 1,
+                lastPurchaseDate: '$lastInvoice.invoiceDate',
+                totalPurchases: 1,
+                daysSinceLastPurchase: {
+                    $divide: [{ $subtract: [new Date(), '$lastInvoice.invoiceDate'] }, 1000 * 60 * 60 * 24]
+                }
+            }
+        },
+        { $match: { daysSinceLastPurchase: { $gte: thresholdDays } } }, // The Risk Threshold
+        { $sort: { daysSinceLastPurchase: -1 } }
+    ]);
+};
+
+/* -------------------------------------------------------------
+ * 3. Market Basket Analysis (What sells together?)
+ ------------------------------------------------------------- */
+exports.performBasketAnalysis = async (orgId, minSupport = 2) => {
+    // 1. Get all items in invoices
+    const data = await Invoice.aggregate([
+        { $match: { organizationId: new mongoose.Types.ObjectId(orgId), status: { $nin: ['cancelled', 'draft'] } } },
+        { $project: { items: "$items.productId" } }
+    ]);
+
+    // 2. Simple Co-occurrence counting (In-memory for speed on smaller datasets)
+    const pairs = {};
+    
+    data.forEach(inv => {
+        const uniqueItems = [...new Set(inv.items.map(String))].sort(); // Remove dupes, sort for consistency
+        for (let i = 0; i < uniqueItems.length; i++) {
+            for (let j = i + 1; j < uniqueItems.length; j++) {
+                const pair = `${uniqueItems[i]}|${uniqueItems[j]}`;
+                pairs[pair] = (pairs[pair] || 0) + 1;
+            }
+        }
+    });
+
+    // 3. Format & Enrich
+    const results = [];
+    for (const [pair, count] of Object.entries(pairs)) {
+        if (count >= minSupport) {
+            const [p1, p2] = pair.split('|');
+            results.push({ p1, p2, count });
+        }
+    }
+
+    // Populate Names (Optional Optimization: Do this in aggregation if possible, but this is cleaner for complex logic)
+    const topPairs = results.sort((a, b) => b.count - a.count).slice(0, 10);
+    
+    // Fetch product names for the IDs
+    const productIds = [...new Set(topPairs.flatMap(p => [p.p1, p.p2]))];
+    const products = await Product.find({ _id: { $in: productIds } }).select('name').lean();
+    const productMap = products.reduce((acc, p) => ({ ...acc, [String(p._id)]: p.name }), {});
+
+    return topPairs.map(p => ({
+        productA: productMap[p.p1] || 'Unknown',
+        productB: productMap[p.p2] || 'Unknown',
+        timesBoughtTogether: p.count
+    }));
+};
+
+/* -------------------------------------------------------------
+ * 4. Payment Behavior (DSO Analysis)
+ ------------------------------------------------------------- */
+exports.analyzePaymentHabits = async (orgId, branchId) => {
+    const match = { 
+        organizationId: new mongoose.Types.ObjectId(orgId), 
+        referenceType: 'payment',
+        paymentId: { $ne: null } // Only actual payments
+    };
+    if (branchId) match.branchId = new mongoose.Types.ObjectId(branchId);
+
+    // Join Payments with Invoices to find the date difference
+    return await AccountEntry.aggregate([
+        { $match: match },
+        {
+            $lookup: {
+                from: 'invoices',
+                localField: 'invoiceId',
+                foreignField: '_id',
+                as: 'invoice'
+            }
+        },
+        { $unwind: "$invoice" },
+        {
+            $project: {
+                customerId: 1,
+                paymentDate: "$date",
+                invoiceDate: "$invoice.invoiceDate",
+                amount: "$credit", // Payment is credit to AR
+                daysToPay: {
+                    $divide: [{ $subtract: ["$date", "$invoice.invoiceDate"] }, 1000 * 60 * 60 * 24]
+                }
+            }
+        },
+        // Filter out immediate payments (0 days) if you want only credit customers, or keep them to see efficiency
+        {
+            $group: {
+                _id: "$customerId",
+                avgDaysToPay: { $avg: "$daysToPay" },
+                totalPaid: { $sum: "$amount" },
+                paymentsCount: { $sum: 1 }
+            }
+        },
+        {
+            $lookup: { from: 'customers', localField: '_id', foreignField: '_id', as: 'customer' }
+        },
+        { $unwind: "$customer" },
+        {
+            $project: {
+                customer: "$customer.name",
+                avgDaysToPay: { $round: ["$avgDaysToPay", 1] },
+                rating: {
+                    $switch: {
+                        branches: [
+                            { case: { $lte: ["$avgDaysToPay", 7] }, then: "Excellent" },
+                            { case: { $lte: ["$avgDaysToPay", 30] }, then: "Good" },
+                            { case: { $lte: ["$avgDaysToPay", 60] }, then: "Fair" }
+                        ],
+                        default: "Poor"
+                    }
+                }
+            }
+        },
+        { $sort: { avgDaysToPay: 1 } }
+    ]);
 };
 
 // ===========================================================================

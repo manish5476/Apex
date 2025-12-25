@@ -1,10 +1,192 @@
+// src/scripts/verifyBackfillReport.js
+require('dotenv').config();
+const mongoose = require('mongoose');
+const Invoice = require('../models/invoiceModel');
+const Purchase = require('../models/purchaseModel');
+const Payment = require('../models/paymentModel');
+const AccountEntry = require('../models/accountEntryModel');
+
+// Define Temp Schema for verification against old data
+const ledgerSchema = new mongoose.Schema({}, { strict: false });
+const OldLedger = mongoose.model('OldLedger', ledgerSchema, 'ledgers');
+
+async function connect() {
+  await mongoose.connect(process.env.MONGO_URI);
+  console.log('✅ Connected to MongoDB');
+}
+
+/**
+ * Sum helpers
+ */
+async function sumInvoices(orgId) {
+  const agg = [
+    { $match: { organizationId: new mongoose.Types.ObjectId(orgId) } },
+    { $group: { _id: null, total: { $sum: { $ifNull: ['$grandTotal', 0] } }, count: { $sum: 1 } } }
+  ];
+  const r = await Invoice.aggregate(agg);
+  return r[0] || { total: 0, count: 0 };
+}
+
+async function sumPurchases(orgId) {
+  const agg = [
+    { $match: { organizationId: new mongoose.Types.ObjectId(orgId) } },
+    { $group: { _id: null, total: { $sum: { $ifNull: ['$grandTotal', 0] } }, count: { $sum: 1 } } }
+  ];
+  const r = await Purchase.aggregate(agg);
+  return r[0] || { total: 0, count: 0 };
+}
+
+async function sumPayments(orgId) {
+  const agg = [
+    { $match: { organizationId: new mongoose.Types.ObjectId(orgId) } },
+    { $group: { _id: '$type', total: { $sum: { $ifNull: ['$amount', 0] } }, count: { $sum: 1 } } }
+  ];
+  const r = await Payment.aggregate(agg);
+  const map = {};
+  (r || []).forEach(x => map[x._id || 'unknown'] = x);
+  return map;
+}
+
+async function sumOldLedger(orgId) {
+  const agg = [
+    { $match: { organizationId: new mongoose.Types.ObjectId(orgId) } },
+    { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } }, count: { $sum: 1 } } }
+  ];
+  const r = await OldLedger.aggregate(agg);
+  return r[0] || { total: 0, count: 0 };
+}
+
+/**
+ * Aggregate AccountEntry totals grouped by referenceType
+ */
+async function sumAccountEntriesByReference(orgId) {
+  const agg = [
+    { $match: { organizationId: new mongoose.Types.ObjectId(orgId), referenceType: { $exists: true, $ne: null } } },
+    { $group: {
+        _id: { referenceType: '$referenceType', referenceId: '$referenceId' },
+        totalDebit: { $sum: '$debit' },
+        totalCredit: { $sum: '$credit' }
+    } },
+    { $project: {
+        referenceType: '$_id.referenceType',
+        referenceId: '$_id.referenceId',
+        totalDebit: 1,
+        totalCredit: 1
+    } }
+  ];
+  const rows = await AccountEntry.aggregate(agg);
+  return rows;
+}
+
+async function runVerification(orgId) {
+  console.log('🔍 Verifying backfill for org:', orgId);
+  const invoicesSum = await sumInvoices(orgId);
+  const purchasesSum = await sumPurchases(orgId);
+  const paymentsMap = await sumPayments(orgId);
+  const ledgerSum = await sumOldLedger(orgId);
+  const entryRows = await sumAccountEntriesByReference(orgId);
+
+  // totals of AccountEntry by referenceType
+  const totalsByType = {};
+  entryRows.forEach(r => {
+    const t = r.referenceType || 'unknown';
+    totalsByType[t] = totalsByType[t] || { debit: 0, credit: 0, count: 0 };
+    totalsByType[t].debit += Number(r.totalDebit || 0);
+    totalsByType[t].credit += Number(r.totalCredit || 0);
+    totalsByType[t].count++;
+  });
+
+  const report = {
+    sourceTotals: {
+      invoices: { total: invoicesSum.total || 0, count: invoicesSum.count || 0 },
+      purchases: { total: purchasesSum.total || 0, count: purchasesSum.count || 0 },
+      payments: Object.keys(paymentsMap).reduce((acc, k) => { acc[k] = { total: paymentsMap[k].total || 0, count: paymentsMap[k].count || 0 }; return acc; }, {}),
+      oldLedger: { total: ledgerSum.total || 0, count: ledgerSum.count || 0 }
+    },
+    postedTotals: totalsByType,
+    discrepancies: []
+  };
+
+  // --- CHECKS ---
+
+  // 1. Invoices (Double Entry Check)
+  // Expected: Debit + Credit = 2 * Invoice Total
+  const invPost = totalsByType['invoice'] || { debit: 0, credit: 0 };
+  const invCombined = (invPost.debit || 0) + (invPost.credit || 0);
+  const invExpectedCombined = (invoicesSum.total || 0) * 2;
+  
+  if (Math.abs(invCombined - invExpectedCombined) > 1) { // Tolerance of 1.00
+    report.discrepancies.push({
+      type: 'Invoice Mismatch',
+      expected: invExpectedCombined,
+      actual: invCombined,
+      diff: invCombined - invExpectedCombined
+    });
+  }
+
+  // 2. Purchases
+  const purPost = totalsByType['purchase'] || { debit: 0, credit: 0 };
+  const purCombined = (purPost.debit || 0) + (purPost.credit || 0);
+  const purExpectedCombined = (purchasesSum.total || 0) * 2;
+
+  if (Math.abs(purCombined - purExpectedCombined) > 1) {
+    report.discrepancies.push({
+      type: 'Purchase Mismatch',
+      expected: purExpectedCombined,
+      actual: purCombined,
+      diff: purCombined - purExpectedCombined
+    });
+  }
+
+  // 3. Payments
+  const payPost = totalsByType['payment'] || { debit: 0, credit: 0 };
+  const payCombined = (payPost.debit || 0) + (payPost.credit || 0);
+  
+  let totalPayments = 0;
+  for(let key in report.sourceTotals.payments) {
+      totalPayments += report.sourceTotals.payments[key].total;
+  }
+  const payExpectedCombined = totalPayments * 2;
+
+  if (Math.abs(payCombined - payExpectedCombined) > 1) {
+    report.discrepancies.push({
+      type: 'Payment Mismatch',
+      expected: payExpectedCombined,
+      actual: payCombined,
+      diff: payCombined - payExpectedCombined
+    });
+  }
+
+  console.log('--- VERIFICATION REPORT ---');
+  console.log(JSON.stringify(report, null, 2));
+  
+  if(report.discrepancies.length === 0) {
+      console.log("✅ All Systems Balanced.");
+  } else {
+      console.log("⚠️ Discrepancies Found. Run backfill script again.");
+  }
+}
+
+(async () => {
+  try {
+    await connect();
+    const orgId = process.env.BACKFILL_ORG_ID;
+    if (!orgId) throw new Error('Set BACKFILL_ORG_ID env var');
+    await runVerification(orgId);
+  } catch (err) {
+    console.error('Verification error:', err);
+  } finally {
+    await mongoose.disconnect();
+    process.exit(0);
+  }
+})();
+
 // // scripts/verifyBackfillReport.js
 // require('dotenv').config();
 // const mongoose = require('mongoose');
 // const Invoice = require('../models/invoiceModel');
 // const Purchase = require('../models/purchaseModel');
 // const Payment = require('../models/paymentModel');
-// const Ledger = require('../models/ledgerModel');
 // const AccountEntry = require('../models/accountEntryModel');
 
 // async function connect() {

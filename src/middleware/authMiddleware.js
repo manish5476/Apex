@@ -1,7 +1,7 @@
 // src/middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 // Ensure this path matches your actual file structure (check uppercase/lowercase!)
-const User = require('../models/user'); 
+const User = require('../models/userModel'); 
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 

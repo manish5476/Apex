@@ -21,7 +21,7 @@ const noteSchema = new Schema({
     index: true,
   },
 
-  // --- Note content ---
+  // --- Content ---
   title: {
     type: String,
     trim: true,
@@ -31,32 +31,44 @@ const noteSchema = new Schema({
     required: [true, 'A note must have some content'],
   },
 
-  // UPDATED: Store both URL and Public ID
+  // ✅ NEW: Date Handling (For Calendar / Timeline)
+  // 'createdAt' is when you typed it. 'noteDate' is the actual date of the event/note.
+  noteDate: {
+    type: Date,
+    default: Date.now,
+    index: true 
+  },
+
+  // ✅ NEW: Enterprise Visibility
+  // 'public': Visible to everyone in Org
+  // 'private': Visible ONLY to Owner
+  // 'team': Visible to Branch/Team (Scalable)
+  visibility: { 
+      type: String, 
+      enum: ['public', 'private', 'team'], 
+      default: 'public' 
+  },
+
+  // ✅ NEW: Priority Flag
+  importance: {
+    type: String,
+    enum: ['low', 'normal', 'high'],
+    default: 'normal'
+  },
+
+  // --- Attachments ---
   attachments: [{
     url: { type: String, required: true },
     publicId: { type: String, required: true },
-    fileType: { type: String, default: 'image' } // Optional: useful if you upload PDFs later
+    fileType: { type: String, default: 'image' }
   }],
-
-  // // --- Note content ---
-  // title: {
-  //   type: String,
-  //   trim: true,
-  // },
-  // content: {
-  //   type: String,
-  //   required: [true, 'A note must have some content'],
-  // },
-  // attachments: [{
-  //   type: String,
-  //   trim: true,
-  // }],
 
   tags: [{
     type: String,
     trim: true,
   }],
-  // --- References ---
+
+  // --- References (Polymorphic) ---
   relatedTo: {
     type: String,
     enum: ['customer', 'product', 'invoice', 'purchase', 'other'],
@@ -67,7 +79,7 @@ const noteSchema = new Schema({
     refPath: 'relatedTo',
   },
 
-  // --- Pin / Delete ---
+  // --- Meta ---
   isPinned: {
     type: Boolean,
     default: false,
@@ -85,10 +97,11 @@ const noteSchema = new Schema({
   timestamps: true,
 });
 
-// Index for faster searching by owner and content
-noteSchema.index({ owner: 1, title: 'text', content: 'text' });
+// Indexes for High Performance
+noteSchema.index({ organizationId: 1, noteDate: 1 });
+noteSchema.index({ organizationId: 1, title: 'text', content: 'text' }); // Full Text Search
 
-// Hide soft-deleted documents
+// Soft Delete Hiding
 noteSchema.pre(/^find/, function (next) {
   this.where({ isDeleted: { $ne: true } });
   next();
@@ -96,4 +109,105 @@ noteSchema.pre(/^find/, function (next) {
 
 const Note = mongoose.model('Note', noteSchema);
 module.exports = Note;
+
+
+
+// const mongoose = require('mongoose');
+// const { Schema } = mongoose;
+
+// const noteSchema = new Schema({
+//   // --- Core Links ---
+//   organizationId: {
+//     type: Schema.Types.ObjectId,
+//     ref: 'Organization',
+//     required: true,
+//     index: true,
+//   },
+//   branchId: {
+//     type: Schema.Types.ObjectId,
+//     ref: 'Branch',
+//     index: true,
+//   },
+//   owner: {
+//     type: Schema.Types.ObjectId,
+//     ref: 'User',
+//     required: true,
+//     index: true,
+//   },
+
+//   // --- Note content ---
+//   title: {
+//     type: String,
+//     trim: true,
+//   },
+//   content: {
+//     type: String,
+//     required: [true, 'A note must have some content'],
+//   },
+
+//   // UPDATED: Store both URL and Public ID
+//   attachments: [{
+//     url: { type: String, required: true },
+//     publicId: { type: String, required: true },
+//     fileType: { type: String, default: 'image' } // Optional: useful if you upload PDFs later
+//   }],
+
+//   // // --- Note content ---
+//   // title: {
+//   //   type: String,
+//   //   trim: true,
+//   // },
+//   // content: {
+//   //   type: String,
+//   //   required: [true, 'A note must have some content'],
+//   // },
+//   // attachments: [{
+//   //   type: String,
+//   //   trim: true,
+//   // }],
+
+//   tags: [{
+//     type: String,
+//     trim: true,
+//   }],
+//   // --- References ---
+//   relatedTo: {
+//     type: String,
+//     enum: ['customer', 'product', 'invoice', 'purchase', 'other'],
+//     default: 'other',
+//   },
+//   relatedId: {
+//     type: Schema.Types.ObjectId,
+//     refPath: 'relatedTo',
+//   },
+
+//   // --- Pin / Delete ---
+//   isPinned: {
+//     type: Boolean,
+//     default: false,
+//   },
+//   isDeleted: {
+//     type: Boolean,
+//     default: false,
+//     select: false,
+//   },
+//   deletedAt: {
+//     type: Date,
+//     select: false,
+//   },
+// }, {
+//   timestamps: true,
+// });
+
+// // Index for faster searching by owner and content
+// noteSchema.index({ owner: 1, title: 'text', content: 'text' });
+
+// // Hide soft-deleted documents
+// noteSchema.pre(/^find/, function (next) {
+//   this.where({ isDeleted: { $ne: true } });
+//   next();
+// });
+
+// const Note = mongoose.model('Note', noteSchema);
+// module.exports = Note;
 
