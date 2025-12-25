@@ -5,9 +5,7 @@ const invoicePDFController = require("../../controllers/invoicePDFController");
 const authController = require("../../controllers/authController");
 const { checkPermission } = require("../../middleware/permissionMiddleware");
 const { PERMISSIONS } = require("../../config/permissions");
-
 router.use(authController.protect);
-
 // PDF & Email
 router.get("/:id/download",
   checkPermission(PERMISSIONS.INVOICE.DOWNLOAD),

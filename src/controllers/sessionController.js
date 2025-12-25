@@ -4,29 +4,7 @@ const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const mongoose = require("mongoose");
 
-/**
- * GET /api/v1/sessions
- * Admin view: Populates user data
- */
-// exports.listSessions = catchAsync(async (req, res, next) => {
-//   const orgId = req.user.organizationId;
-//   const { userId } = req.query;
 
-//   const filter = { organizationId: orgId };
-//   if (userId) filter.userId = mongoose.Types.ObjectId(userId);
-
-//   const sessions = await Session.find(filter)
-//     .populate("userId", "name email avatar role") // <--- POPULATE ADDED HERE
-//     .sort({ lastActivityAt: -1 })
-//     .limit(200)
-//     .lean();
-
-//   res.status(200).json({ status: "success", results: sessions.length, data: sessions });
-// });
-/**
- * GET /api/v1/sessions
- * Advanced Filtering & Pagination
- */
 exports.listSessions = catchAsync(async (req, res, next) => {
   const orgId = req.user.organizationId;
   const { userId, isValid, device, browser, ipAddress, startDate, endDate } = req.query;
