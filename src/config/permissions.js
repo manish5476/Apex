@@ -1,59 +1,49 @@
-/**
- * ===============================================================
- * ROLE-BASED ACCESS CONTROL (RBAC)
- * ---------------------------------------------------------------
- * This file defines:
- *  - PERMISSIONS_LIST    → full metadata for UI, DB seeding, docs
- *  - PERMISSIONS         → structured constants used in code
- *  - VALID_TAGS          → flat array for validation
- *
- * Naming standard:
- *      "<resource>:<action>"
- *
- * Example:
- *      customer:read
- *      invoice:create
- *
- * ===============================================================
- */
 
 const PERMISSIONS_LIST = [
 
-  // -----------------------------------------------------------
-  // ANALYTICS — EXECUTIVE & STRATEGIC
-  // -----------------------------------------------------------
-  { tag: "analytics:view_executive", group: "Analytics", description: "Access Executive Dashboards & KPIs" },
-  { tag: "analytics:view_branch_comparison", group: "Analytics", description: "Compare Branch-Level Performance" },
-  { tag: "analytics:view_forecast", group: "Analytics", description: "Access Forecasting & Predictive Analysis" },
-  { tag: "analytics:view_alerts", group: "Analytics", description: "View Critical Stock & Business Alerts" },
-  { tag: "analytics:read", group: "Analytics", description: "General Analytics Access" },
+ // -----------------------------------------------------------
+    // ANALYTICS — EXECUTIVE & STRATEGIC
+    // -----------------------------------------------------------
+    { tag: "analytics:view_executive", group: "Analytics", description: "Access Executive Dashboards & KPIs" },
+    { tag: "analytics:view_branch_comparison", group: "Analytics", description: "Compare Branch-Level Performance" },
+    { tag: "analytics:view_forecast", group: "Analytics", description: "Access Forecasting & Predictive Analysis" },
+    { tag: "analytics:view_alerts", group: "Analytics", description: "View Critical Stock & Business Alerts" },
+    { tag: "analytics:read", group: "Analytics", description: "General Analytics Access" },
 
-  // FINANCIAL INSIGHT MODULES
-  { tag: "analytics:view_financial", group: "Analytics", description: "View Financial Metrics & P&L" },
-  { tag: "analytics:view_cashflow", group: "Analytics", description: "View Cash Flow" },
-  { tag: "analytics:view_tax", group: "Analytics", description: "View GST/Tax Reports" },
-  { tag: "analytics:view_debtor_aging", group: "Analytics", description: "Debtor Ageing Analysis" },
-  { tag: "analytics:view_profitability", group: "Analytics", description: "Product/Invoice Profitability" },
+    // FINANCIAL INSIGHT MODULES
+    { tag: "analytics:view_financial", group: "Analytics", description: "View Financial Metrics & P&L" },
+    { tag: "analytics:view_cashflow", group: "Analytics", description: "View Cash Flow" },
+    { tag: "analytics:view_tax", group: "Analytics", description: "View GST/Tax Reports" },
+    { tag: "analytics:view_debtor_aging", group: "Analytics", description: "Debtor Ageing Analysis" },
+    { tag: "analytics:view_profitability", group: "Analytics", description: "Product/Invoice Profitability" },
 
-  // OPERATIONAL
-  { tag: "analytics:view_operational", group: "Analytics", description: "Operational KPIs" },
-  { tag: "analytics:view_staff_performance", group: "Analytics", description: "Employee Performance Metrics" },
-  { tag: "analytics:view_peak_hours", group: "Analytics", description: "Peak Business Windows" },
-  { tag: "analytics:view_procurement", group: "Analytics", description: "Procurement & Supplier Spend" },
+    // OPERATIONAL
+    { tag: "analytics:view_operational", group: "Analytics", description: "Operational KPIs" },
+    { tag: "analytics:view_staff_performance", group: "Analytics", description: "Employee Performance Metrics" },
+    { tag: "analytics:view_peak_hours", group: "Analytics", description: "Peak Business Windows" },
+    { tag: "analytics:view_procurement", group: "Analytics", description: "Procurement & Supplier Spend" },
+    { tag: "analytics:view_customer_insights", group: "Analytics", description: "General Customer Risk & Insights" },
 
-  // INVENTORY INTELLIGENCE
-  { tag: "analytics:view_inventory", group: "Analytics", description: "Inventory Valuation" },
-  { tag: "analytics:view_product_performance", group: "Analytics", description: "Product Performance" },
-  { tag: "analytics:view_dead_stock", group: "Analytics", description: "Dead Stock Reporting" },
-  { tag: "analytics:view_stock_forecast", group: "Analytics", description: "Stock-Out Forecasting" },
+    // INVENTORY INTELLIGENCE
+    { tag: "analytics:view_inventory", group: "Analytics", description: "Inventory Valuation" },
+    { tag: "analytics:view_product_performance", group: "Analytics", description: "Product Performance" },
+    { tag: "analytics:view_dead_stock", group: "Analytics", description: "Dead Stock Reporting" },
+    { tag: "analytics:view_stock_forecast", group: "Analytics", description: "Stock-Out Forecasting" },
 
-  // CUSTOMER INTELLIGENCE — NEW
-  { tag: "analytics:view_customer_ltv", group: "Analytics", description: "Customer Lifetime Value" },
-  { tag: "analytics:view_churn", group: "Analytics", description: "Churn Risk Reporting" },
-  { tag: "analytics:view_market_basket", group: "Analytics", description: "Market Basket Analysis" },
-  { tag: "analytics:view_payment_behavior", group: "Analytics", description: "Payment Pattern Metrics" },
+    // PREDICTIVE / ADVANCED (Added missing ones)
+    { tag: "analytics:view_customer_segmentation", group: "Analytics", description: "RFM Segmentation Analysis" },
+    { tag: "analytics:view_customer_retention", group: "Analytics", description: "Cohort & Retention Analysis" },
 
-  // SECURITY & EXPORT
+    // CUSTOMER INTELLIGENCE — NEW
+    { tag: "analytics:view_customer_ltv", group: "Analytics", description: "Customer Lifetime Value" },
+    { tag: "analytics:view_churn", group: "Analytics", description: "Churn Risk Reporting" },
+    { tag: "analytics:view_market_basket", group: "Analytics", description: "Market Basket Analysis" },
+    { tag: "analytics:view_payment_behavior", group: "Analytics", description: "Payment Pattern Metrics" },
+
+    // SECURITY & EXPORT
+    { tag: "analytics:view_security_audit", group: "Analytics", description: "Audit Log Access" },
+    { tag: "analytics:export_data", group: "Analytics", description: "Export Analytics Reports" },
+      // SECURITY & EXPORT
   { tag: "analytics:view_security_audit", group: "Analytics", description: "Audit Log Access" },
   { tag: "analytics:export_data", group: "Analytics", description: "Export Analytics Reports" },
 
@@ -176,7 +166,6 @@ const PERMISSIONS_LIST = [
   { tag: "org:transfer", group: "Organization", description: "Transfer Ownership" },
   { tag: "org:manage_platform", group: "Platform", description: "SuperAdmin — Manage Orgs" }
 ];
-
 
 const PERMISSIONS = {};
 PERMISSIONS_LIST.forEach(p => {
