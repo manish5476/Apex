@@ -54,10 +54,21 @@ exports.createEmiPlan = catchAsync(async (req, res, next) => {
 //     select: 'invoiceNumber grandTotal balanceAmount'
 //   }
 // ];
+// const popOptions = [
+//   { 
+//     path: 'customerId', 
+//     // Updated to include address, tax info, and balance based on your new Schema
+//     select: 'name email phone avatar billingAddress gstNumber panNumber type outstandingBalance'
+//   },
+//   {
+//     path: 'invoiceId',
+//     select: 'invoiceNumber grandTotal balanceAmount'
+//   }
+// ];
+// exports.getAllEmis = factory.getAll(EMI, popOptions);
 const popOptions = [
   { 
     path: 'customerId', 
-    // Updated to include address, tax info, and balance based on your new Schema
     select: 'name email phone avatar billingAddress gstNumber panNumber type outstandingBalance'
   },
   {
@@ -65,8 +76,12 @@ const popOptions = [
     select: 'invoiceNumber grandTotal balanceAmount'
   }
 ];
-exports.getAllEmis = factory.getAll(EMI, popOptions);
 
+// WRONG WAY (What caused the issue):
+// exports.getAllEmis = factory.getAll(EMI, popOptions);
+
+// CORRECT WAY (Wrap it in an object):
+exports.getAllEmis = factory.getAll(EMI, { populate: popOptions });
 /* -------------------------------------------------------------
    Get EMI by Invoice ID
 ------------------------------------------------------------- */
