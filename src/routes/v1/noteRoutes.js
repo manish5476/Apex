@@ -15,7 +15,6 @@ router.get(
   checkPermission(PERMISSIONS.NOTE.READ), 
   noteController.getNotesForMonth
 );
-
 router.get(
   '/search',
   checkPermission(PERMISSIONS.NOTE.READ),
