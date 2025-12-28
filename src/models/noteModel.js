@@ -1,115 +1,55 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
-const noteSchema = new Schema({
-  // --- Core Links ---
-  organizationId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Organization',
-    required: true,
-    index: true,
-  },
-  branchId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Branch',
-    index: true,
-  },
-  owner: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-    index: true,
-  },
+const noteSchema = new Schema(
+  {
+    organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', index: true },
+    branchId: { type: Schema.Types.ObjectId, ref: 'Branch', index: true },
+    owner: { type: Schema.Types.ObjectId, ref: 'User', index: true },
 
-  // --- Content ---
-  title: {
-    type: String,
-    trim: true,
-  },
-  content: {
-    type: String,
-    required: [true, 'A note must have some content'],
-  },
+    title: String,
+    content: { type: String, required: true },
 
-  // ✅ NEW: Date Handling (For Calendar / Timeline)
-  // 'createdAt' is when you typed it. 'noteDate' is the actual date of the event/note.
-  noteDate: {
-    type: Date,
-    default: Date.now,
-    index: true 
-  },
+    noteDate: { type: Date, default: Date.now, index: true },
 
-  // ✅ NEW: Enterprise Visibility
-  // 'public': Visible to everyone in Org
-  // 'private': Visible ONLY to Owner
-  // 'team': Visible to Branch/Team (Scalable)
-  visibility: { 
-      type: String, 
-      enum: ['public', 'private', 'team'], 
-      default: 'public' 
-  },
+    visibility: {
+      type: String,
+      enum: ['public', 'private', 'team'],
+      default: 'public',
+      index: true,
+    },
 
-  // ✅ NEW: Priority Flag
-  importance: {
-    type: String,
-    enum: ['low', 'normal', 'high'],
-    default: 'normal'
-  },
+    importance: {
+      type: String,
+      enum: ['low', 'normal', 'high'],
+      default: 'normal',
+      index: true,
+    },
 
-  // --- Attachments ---
-  attachments: [{
-    url: { type: String, required: true },
-    publicId: { type: String, required: true },
-    fileType: { type: String, default: 'image' }
-  }],
+    attachments: [
+      {
+        url: String,
+        publicId: String,
+        fileType: String,
+      },
+    ],
 
-  tags: [{
-    type: String,
-    trim: true,
-  }],
+    tags: [{ type: String, index: true }],
 
-  // --- References (Polymorphic) ---
-  relatedTo: {
-    type: String,
-    enum: ['customer', 'product', 'invoice', 'purchase', 'other'],
-    default: 'other',
-  },
-  relatedId: {
-    type: Schema.Types.ObjectId,
-    refPath: 'relatedTo',
-  },
+    relatedTo: String,
+    relatedId: Schema.Types.ObjectId,
 
-  // --- Meta ---
-  isPinned: {
-    type: Boolean,
-    default: false,
+    isPinned: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false, index: true },
+    deletedAt: Date,
   },
-  isDeleted: {
-    type: Boolean,
-    default: false,
-    select: false,
-  },
-  deletedAt: {
-    type: Date,
-    select: false,
-  },
-}, {
-  timestamps: true,
-});
+  { timestamps: true }
+);
 
-// Indexes for High Performance
+noteSchema.index({ title: 'text', content: 'text', tags: 'text' });
 noteSchema.index({ organizationId: 1, noteDate: 1 });
-noteSchema.index({ organizationId: 1, title: 'text', content: 'text' }); // Full Text Search
 
-// Soft Delete Hiding
-noteSchema.pre(/^find/, function (next) {
-  this.where({ isDeleted: { $ne: true } });
-  next();
-});
-
-const Note = mongoose.model('Note', noteSchema);
-module.exports = Note;
-
+module.exports = mongoose.model('Note', noteSchema);
 
 
 // const mongoose = require('mongoose');
@@ -135,7 +75,7 @@ module.exports = Note;
 //     index: true,
 //   },
 
-//   // --- Note content ---
+//   // --- Content ---
 //   title: {
 //     type: String,
 //     trim: true,
@@ -145,32 +85,44 @@ module.exports = Note;
 //     required: [true, 'A note must have some content'],
 //   },
 
-//   // UPDATED: Store both URL and Public ID
+//   // ✅ NEW: Date Handling (For Calendar / Timeline)
+//   // 'createdAt' is when you typed it. 'noteDate' is the actual date of the event/note.
+//   noteDate: {
+//     type: Date,
+//     default: Date.now,
+//     index: true 
+//   },
+
+//   // ✅ NEW: Enterprise Visibility
+//   // 'public': Visible to everyone in Org
+//   // 'private': Visible ONLY to Owner
+//   // 'team': Visible to Branch/Team (Scalable)
+//   visibility: { 
+//       type: String, 
+//       enum: ['public', 'private', 'team'], 
+//       default: 'public' 
+//   },
+
+//   // ✅ NEW: Priority Flag
+//   importance: {
+//     type: String,
+//     enum: ['low', 'normal', 'high'],
+//     default: 'normal'
+//   },
+
+//   // --- Attachments ---
 //   attachments: [{
 //     url: { type: String, required: true },
 //     publicId: { type: String, required: true },
-//     fileType: { type: String, default: 'image' } // Optional: useful if you upload PDFs later
+//     fileType: { type: String, default: 'image' }
 //   }],
-
-//   // // --- Note content ---
-//   // title: {
-//   //   type: String,
-//   //   trim: true,
-//   // },
-//   // content: {
-//   //   type: String,
-//   //   required: [true, 'A note must have some content'],
-//   // },
-//   // attachments: [{
-//   //   type: String,
-//   //   trim: true,
-//   // }],
 
 //   tags: [{
 //     type: String,
 //     trim: true,
 //   }],
-//   // --- References ---
+
+//   // --- References (Polymorphic) ---
 //   relatedTo: {
 //     type: String,
 //     enum: ['customer', 'product', 'invoice', 'purchase', 'other'],
@@ -181,7 +133,7 @@ module.exports = Note;
 //     refPath: 'relatedTo',
 //   },
 
-//   // --- Pin / Delete ---
+//   // --- Meta ---
 //   isPinned: {
 //     type: Boolean,
 //     default: false,
@@ -199,10 +151,11 @@ module.exports = Note;
 //   timestamps: true,
 // });
 
-// // Index for faster searching by owner and content
-// noteSchema.index({ owner: 1, title: 'text', content: 'text' });
+// // Indexes for High Performance
+// noteSchema.index({ organizationId: 1, noteDate: 1 });
+// noteSchema.index({ organizationId: 1, title: 'text', content: 'text' }); // Full Text Search
 
-// // Hide soft-deleted documents
+// // Soft Delete Hiding
 // noteSchema.pre(/^find/, function (next) {
 //   this.where({ isDeleted: { $ne: true } });
 //   next();
@@ -210,4 +163,3 @@ module.exports = Note;
 
 // const Note = mongoose.model('Note', noteSchema);
 // module.exports = Note;
-
