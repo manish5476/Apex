@@ -9,7 +9,6 @@ const SalesItemSchema = new Schema({
   productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
   sku: { type: String, default: "" },
   name: { type: String, default: "" },
-
   qty: { type: Number, required: true, min: 1 },
   rate: { type: Number, required: true, min: 0 },
   discount: { type: Number, default: 0 },

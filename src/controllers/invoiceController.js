@@ -211,7 +211,6 @@ const createInvoiceSchema = z.object({
 
 //   try { emitToOrg(req.user.organizationId, "newNotification", { title: "New Sale", message: `#${newInvoice.invoiceNumber}`, type: "success" }); } catch (e) { }
 
-//   automationService.triggerEvent('invoice.created', newInvoice.toObject(), req.user.organizationId);
 
 //   res.status(201).json({ status: "success", data: { invoice: newInvoice, sales: salesDoc, payment: newPayment } });
 // });
@@ -219,12 +218,38 @@ const createInvoiceSchema = z.object({
 const { postInvoiceJournal } = require('../services/salesJournalService');
 
 /* CREATE INVOICE */
+// exports.createInvoice = catchAsync(async (req, res) => {
+//   let invoice;
+
+//   await runInTransaction(async (session) => {
+//     // inventory deduction stays same
+
+//     invoice = (await Invoice.create([{
+//       ...req.body,
+//       organizationId: req.user.organizationId,
+//       branchId: req.user.branchId,
+//       createdBy: req.user._id
+//     }], { session }))[0];
+
+//     await postInvoiceJournal({
+//       orgId: req.user.organizationId,
+//       branchId: req.user.branchId,
+//       invoice,
+//       customerId: invoice.customerId,
+//       items: invoice.items,
+//       userId: req.user._id,
+//       session
+//     });
+//   });
+
+//   automationService.triggerEvent('invoice.created', newInvoice.toObject(), req.user.organizationId);
+
+//   res.status(201).json({ status: 'success', data: invoice });
+// });
 exports.createInvoice = catchAsync(async (req, res) => {
   let invoice;
 
   await runInTransaction(async (session) => {
-    // inventory deduction stays same
-
     invoice = (await Invoice.create([{
       ...req.body,
       organizationId: req.user.organizationId,
@@ -242,7 +267,18 @@ exports.createInvoice = catchAsync(async (req, res) => {
       session
     });
   });
-  res.status(201).json({ status: 'success', data: invoice });
+
+  // ✅ AFTER transaction commit
+  automationService.triggerEvent(
+    'invoice.created',
+    invoice.toObject(),
+    req.user.organizationId
+  );
+
+  res.status(201).json({
+    status: 'success',
+    data: invoice
+  });
 });
 
 

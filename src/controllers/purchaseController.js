@@ -396,7 +396,12 @@ exports.deletePurchase = () => {
 };
 
 exports.getAllPurchases = factory.getAll(Purchase);
-exports.getPurchase = factory.getOne(Purchase, [{ path: "items.productId" }]);
+exports.getPurchase = factory.getOne(Purchase, {
+  populate: [
+    { path: 'items.productId' },
+    { path: 'supplierId' }
+  ]
+});
 
 
 // const mongoose = require("mongoose");
