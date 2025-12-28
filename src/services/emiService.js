@@ -1,3 +1,475 @@
+// const mongoose = require('mongoose');
+// const AppError = require('../utils/appError');
+
+// const EMI = require('../models/emiModel');
+// const Invoice = require('../models/invoiceModel');
+// const Customer = require('../models/customerModel');
+// const Payment = require('../models/paymentModel');
+// const Account = require('../models/accountModel');
+// const AccountEntry = require('../models/accountEntryModel');
+
+// /* ======================================================
+//    INTERNAL: APPLY EMI ACCOUNTING (SINGLE SOURCE)
+// ====================================================== */
+// async function applyEmiAccounting({
+//   organizationId,
+//   branchId,
+//   amount,
+//   paymentId,
+//   customerId,
+//   invoiceId,
+//   paymentMethod,
+//   referenceNumber,
+//   createdBy
+// }, session) {
+
+//   const bankAccount = await Account.findOne({
+//     organizationId,
+//     code: paymentMethod === 'cash' ? '1001' : '1002'
+//   }).session(session);
+
+//   const arAccount = await Account.findOne({
+//     organizationId,
+//     code: '1200'
+//   }).session(session);
+
+//   if (!bankAccount || !arAccount) {
+//     throw new AppError('Missing Cash/Bank or AR account', 500);
+//   }
+
+//   const invoice = await Invoice.findOne({ _id: invoiceId, organizationId }).session(session);
+//   if (!invoice) throw new AppError('Invoice not found', 404);
+
+//   invoice.paidAmount += amount;
+//   invoice.balanceAmount = Math.round((invoice.grandTotal - invoice.paidAmount) * 100) / 100;
+//   invoice.paymentStatus = invoice.balanceAmount <= 0 ? 'paid' : 'partial';
+//   await invoice.save({ session });
+
+//   await Customer.findOneAndUpdate(
+//     { _id: customerId, organizationId },
+//     { $inc: { outstandingBalance: -amount } },
+//     { session }
+//   );
+
+//   await AccountEntry.create([
+//     {
+//       organizationId,
+//       branchId,
+//       accountId: bankAccount._id,
+//       paymentId,
+//       debit: amount,
+//       credit: 0,
+//       description: `EMI Payment`,
+//       referenceType: 'emi_payment',
+//       referenceId: paymentId,
+//       createdBy
+//     },
+//     {
+//       organizationId,
+//       branchId,
+//       accountId: arAccount._id,
+//       customerId,
+//       paymentId,
+//       debit: 0,
+//       credit: amount,
+//       description: `EMI Payment`,
+//       referenceType: 'emi_payment',
+//       referenceId: paymentId,
+//       createdBy
+//     }
+//   ], { session });
+// }
+
+// exports.createEmiPlan = async ({
+//   organizationId,
+//   branchId,
+//   invoiceId,
+//   createdBy,
+//   downPayment = 0,
+//   numberOfInstallments,
+//   interestRate = 0,
+//   emiStartDate
+// }) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     // 1️⃣ Fetch invoice
+//     const invoice = await Invoice.findOne({
+//       _id: invoiceId,
+//       organizationId
+//     }).session(session);
+
+//     if (!invoice) {
+//       throw new AppError('Invoice not found', 404);
+//     }
+
+//     // 2️⃣ Prevent duplicate EMI
+//     const existing = await EMI.findOne({ invoiceId }).session(session);
+//     if (existing) {
+//       throw new AppError('EMI already exists for this invoice', 400);
+//     }
+
+//     // 3️⃣ Handle DOWN PAYMENT (Accounting + Invoice + Customer)
+//     if (downPayment > 0) {
+//       const cashAccount = await Account.findOne({
+//         organizationId,
+//         code: '1001'
+//       }).session(session);
+
+//       const arAccount = await Account.findOne({
+//         organizationId,
+//         code: '1200'
+//       }).session(session);
+
+//       if (!cashAccount || !arAccount) {
+//         throw new AppError('Missing Cash or Accounts Receivable account', 500);
+//       }
+
+//       await AccountEntry.create(
+//         [
+//           {
+//             organizationId,
+//             branchId,
+//             accountId: cashAccount._id,
+//             debit: downPayment,
+//             credit: 0,
+//             description: 'EMI Down Payment',
+//             referenceType: 'emi_down_payment',
+//             referenceId: invoiceId,
+//             createdBy
+//           },
+//           {
+//             organizationId,
+//             branchId,
+//             accountId: arAccount._id,
+//             debit: 0,
+//             credit: downPayment,
+//             description: 'EMI Down Payment',
+//             referenceType: 'emi_down_payment',
+//             referenceId: invoiceId,
+//             createdBy
+//           }
+//         ],
+//         { session }
+//       );
+
+//       invoice.paidAmount += downPayment;
+//       invoice.balanceAmount = Math.round(
+//         (invoice.grandTotal - invoice.paidAmount) * 100
+//       ) / 100;
+//       invoice.paymentStatus =
+//         invoice.balanceAmount <= 0 ? 'paid' : 'partial';
+
+//       await invoice.save({ session });
+
+//       await Customer.findByIdAndUpdate(
+//         invoice.customerId,
+//         { $inc: { outstandingBalance: -downPayment } },
+//         { session }
+//       );
+//     }
+
+//     // 4️⃣ Calculate EMI values
+//     const balanceAmount = invoice.balanceAmount;
+//     const principalPerInstallment = Math.round(
+//       (balanceAmount / numberOfInstallments) * 100
+//     ) / 100;
+
+//     // 5️⃣ Generate INSTALLMENTS (FIXED)
+//     const installments = Array.from({ length: numberOfInstallments }).map(
+//       (_, i) => {
+//         const dueDate = new Date(emiStartDate);
+//         dueDate.setMonth(dueDate.getMonth() + i);
+
+//         return {
+//           installmentNumber: i + 1,
+//           dueDate,
+//           principalAmount: principalPerInstallment, // ✅ REQUIRED
+//           interestAmount: 0,                        // (extend later)
+//           totalAmount: principalPerInstallment,     // ✅ REQUIRED
+//           paidAmount: 0,
+//           paymentStatus: 'pending'                  // ✅ VALID ENUM
+//         };
+//       }
+//     );
+
+//     // 6️⃣ Calculate EMI END DATE
+//     const emiEndDate = new Date(emiStartDate);
+//     emiEndDate.setMonth(
+//       emiEndDate.getMonth() + numberOfInstallments - 1
+//     );
+
+//     // 7️⃣ Create EMI document
+//     const [emi] = await EMI.create(
+//       [
+//         {
+//           organizationId,
+//           branchId,
+//           invoiceId,
+//           customerId: invoice.customerId,
+//           totalAmount: invoice.grandTotal,
+//           downPayment,
+//           balanceAmount,
+//           numberOfInstallments,
+//           interestRate,
+//           emiStartDate,
+//           emiEndDate,
+//           installments,
+//           createdBy
+//         }
+//       ],
+//       { session }
+//     );
+
+//     // 8️⃣ Commit
+//     await session.commitTransaction();
+//     return emi;
+
+//   } catch (err) {
+//     await session.abortTransaction();
+//     throw err;
+//   } finally {
+//     session.endSession();
+//   }
+// };
+
+// exports.payEmiInstallment = async ({
+//   emiId,
+//   installmentNumber,
+//   amount,
+//   paymentMethod,
+//   referenceNumber,
+//   remarks,
+//   organizationId,
+//   branchId,
+//   createdBy
+// }) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const emi = await EMI.findOne({ _id: emiId, organizationId }).session(session);
+//     if (!emi) throw new AppError('EMI not found', 404);
+
+//     const inst = emi.installments.find(i => i.installmentNumber === Number(installmentNumber));
+//     if (!inst) throw new AppError('Invalid installment', 400);
+//     if (inst.paymentStatus === 'paid') {
+//       throw new AppError('Installment already paid', 400);
+//     }
+
+//     const [payment] = await Payment.create([{
+//       organizationId,
+//       branchId,
+//       type: 'inflow',
+//       customerId: emi.customerId,
+//       invoiceId: emi.invoiceId,
+//       amount,
+//       paymentMethod,
+//       referenceNumber,
+//       remarks,
+//       status: 'completed',
+//       transactionMode: 'auto',
+//       createdBy
+//     }], { session });
+
+//     inst.paidAmount += amount;
+//     inst.paymentStatus = inst.paidAmount >= inst.totalAmount ? 'paid' : 'partial';
+//     inst.paymentId = payment._id;
+
+//     if (emi.installments.every(i => i.paymentStatus === 'paid')) {
+//       emi.status = 'completed';
+//     }
+
+//     await emi.save({ session });
+
+//     await applyEmiAccounting({
+//       organizationId,
+//       branchId,
+//       amount,
+//       paymentId: payment._id,
+//       customerId: emi.customerId,
+//       invoiceId: emi.invoiceId,
+//       paymentMethod,
+//       referenceNumber,
+//       createdBy
+//     }, session);
+
+//     await session.commitTransaction();
+//     return { emi, payment };
+
+//   } catch (err) {
+//     await session.abortTransaction();
+//     throw err;
+//   } finally {
+//     session.endSession();
+//   }
+// };
+
+// exports.getEmiById = async (emiId, organizationId) => {
+//   return EMI.findOne({
+//     _id: emiId,
+//     organizationId
+//   })
+//     .populate('customerId', 'name phone email avatar')
+//     .populate('invoiceId', 'invoiceNumber grandTotal paidAmount balanceAmount paymentStatus')
+//     .populate('createdBy', 'name email')
+//     .lean();
+// };
+
+// exports.getEmiByInvoice = async (invoiceId, organizationId) => {
+//   return EMI.findOne({
+//     invoiceId,
+//     organizationId
+//   })
+//     .populate('customerId', 'name phone email avatar')
+//     .populate('invoiceId', 'invoiceNumber grandTotal paidAmount balanceAmount paymentStatus')
+//     .populate('createdBy', 'name email')
+//     .lean();
+// };
+
+// /* ======================================================
+//    LIST EMIs (FILTERABLE)
+// ====================================================== */
+// exports.getEmis = async ({
+//   organizationId,
+//   branchId,
+//   customerId,
+//   status
+// }) => {
+//   const filter = { organizationId };
+
+//   if (branchId) filter.branchId = branchId;
+//   if (customerId) filter.customerId = customerId;
+//   if (status) filter.status = status;
+
+//   return EMI.find(filter)
+//     .sort({ createdAt: -1 })
+//     .populate('customerId', 'name phone')
+//     .populate('invoiceId', 'invoiceNumber grandTotal')
+//     .lean();
+// };
+
+// /* ======================================================
+//    EMI SUMMARY (DASHBOARD)
+// ====================================================== */
+// exports.getEmiSummary = async (organizationId) => {
+//   const summary = await EMI.aggregate([
+//     { $match: { organizationId: new mongoose.Types.ObjectId(organizationId) } },
+//     {
+//       $group: {
+//         _id: '$status',
+//         count: { $sum: 1 },
+//         totalBalance: { $sum: '$balanceAmount' }
+//       }
+//     }
+//   ]);
+
+//   return summary;
+// };
+// /* ======================================================
+//    MARK OVERDUE EMIs AS DEFAULTED
+// ====================================================== */
+// exports.markDefaultedEmis = async () => {
+//   const today = new Date();
+
+//   return EMI.updateMany(
+//     {
+//       status: 'active',
+//       installments: {
+//         $elemMatch: {
+//           dueDate: { $lt: today },
+//           paymentStatus: { $ne: 'paid' }
+//         }
+//       }
+//     },
+//     { $set: { status: 'defaulted' } }
+//   );
+// };
+
+// exports.markOverdueInstallments = async () => {
+//   const today = new Date();
+
+//   const emis = await EMI.find({
+//     status: 'active',
+//     'installments.paymentStatus': { $in: ['pending', 'partial'] }
+//   });
+
+//   for (const emi of emis) {
+//     let updated = false;
+
+//     emi.installments.forEach(inst => {
+//       if (
+//         inst.paymentStatus !== 'paid' &&
+//         inst.dueDate < today
+//       ) {
+//         inst.paymentStatus = 'overdue';
+//         updated = true;
+//       }
+//     });
+
+//     if (updated) {
+//       await emi.save();
+//     }
+//   }
+
+//   return { updatedEmis: emis.length };
+// };
+
+// exports.getEmiAnalytics = async (organizationId) => {
+//   const emis = await EMI.find({ organizationId });
+
+//   let stats = {
+//     totalEmis: emis.length,
+//     active: 0,
+//     completed: 0,
+//     defaulted: 0,
+//     totalOutstanding: 0,
+//     installments: {
+//       pending: 0,
+//       paid: 0,
+//       partial: 0,
+//       overdue: 0
+//     }
+//   };
+
+//   for (const emi of emis) {
+//     stats[emi.status]++;
+
+//     stats.totalOutstanding += emi.balanceAmount;
+
+//     emi.installments.forEach(inst => {
+//       stats.installments[inst.paymentStatus]++;
+//     });
+//   }
+
+//   return stats;
+// };
+
+// exports.getEmiLedgerReconciliation = async ({
+//   organizationId,
+//   fromDate,
+//   toDate
+// }) => {
+//   const match = {
+//     organizationId,
+//     referenceType: 'emi_payment'
+//   };
+
+//   if (fromDate && toDate) {
+//     match.createdAt = {
+//       $gte: new Date(fromDate),
+//       $lte: new Date(toDate)
+//     };
+//   }
+
+//   const entries = await AccountEntry.find(match)
+//     .populate('accountId', 'name code')
+//     .populate('paymentId', 'amount paymentMethod')
+//     .sort({ createdAt: -1 });
+
+//   return entries;
+// };
 const mongoose = require('mongoose');
 const AppError = require('../utils/appError');
 
@@ -9,7 +481,7 @@ const Account = require('../models/accountModel');
 const AccountEntry = require('../models/accountEntryModel');
 
 /* ======================================================
-   INTERNAL: APPLY EMI ACCOUNTING (SINGLE SOURCE)
+   INTERNAL: APPLY EMI ACCOUNTING
 ====================================================== */
 async function applyEmiAccounting({
   organizationId,
@@ -40,18 +512,21 @@ async function applyEmiAccounting({
   const invoice = await Invoice.findOne({ _id: invoiceId, organizationId }).session(session);
   if (!invoice) throw new AppError('Invoice not found', 404);
 
+  // Update invoice amounts
   invoice.paidAmount += amount;
   invoice.balanceAmount = Math.round((invoice.grandTotal - invoice.paidAmount) * 100) / 100;
   invoice.paymentStatus = invoice.balanceAmount <= 0 ? 'paid' : 'partial';
   await invoice.save({ session });
 
+  // Update customer outstanding
   await Customer.findOneAndUpdate(
     { _id: customerId, organizationId },
     { $inc: { outstandingBalance: -amount } },
     { session }
   );
 
-  await AccountEntry.create([
+  // Create ledger entries
+  await AccountEntry.insertMany([
     {
       organizationId,
       branchId,
@@ -77,7 +552,7 @@ async function applyEmiAccounting({
       referenceId: paymentId,
       createdBy
     }
-  ], { session });
+  ], { session, ordered: true });
 }
 
 /* ======================================================
@@ -100,20 +575,20 @@ exports.createEmiPlan = async ({
     const invoice = await Invoice.findOne({ _id: invoiceId, organizationId }).session(session);
     if (!invoice) throw new AppError('Invoice not found', 404);
 
-    const existing = await EMI.findOne({ invoiceId });
+    const existing = await EMI.findOne({ invoiceId }).session(session);
     if (existing) throw new AppError('EMI already exists for this invoice', 400);
 
-    /* DOWN PAYMENT ACCOUNTING */
+    // Down payment accounting
     if (downPayment > 0) {
-      const bank = await Account.findOne({ organizationId, code: '1001' }).session(session);
-      const ar = await Account.findOne({ organizationId, code: '1200' }).session(session);
-      if (!bank || !ar) throw new AppError('Missing Cash/AR account', 500);
+      const cashAccount = await Account.findOne({ organizationId, code: '1001' }).session(session);
+      const arAccount = await Account.findOne({ organizationId, code: '1200' }).session(session);
+      if (!cashAccount || !arAccount) throw new AppError('Missing Cash or AR account', 500);
 
-      await AccountEntry.create([
+      await AccountEntry.insertMany([
         {
           organizationId,
           branchId,
-          accountId: bank._id,
+          accountId: cashAccount._id,
           debit: downPayment,
           credit: 0,
           description: 'EMI Down Payment',
@@ -124,7 +599,7 @@ exports.createEmiPlan = async ({
         {
           organizationId,
           branchId,
-          accountId: ar._id,
+          accountId: arAccount._id,
           debit: 0,
           credit: downPayment,
           description: 'EMI Down Payment',
@@ -132,29 +607,36 @@ exports.createEmiPlan = async ({
           referenceId: invoiceId,
           createdBy
         }
-      ], { session });
+      ], { session, ordered: true });
 
       invoice.paidAmount += downPayment;
-      invoice.balanceAmount -= downPayment;
+      invoice.balanceAmount = Math.round((invoice.grandTotal - invoice.paidAmount) * 100) / 100;
+      invoice.paymentStatus = invoice.balanceAmount <= 0 ? 'paid' : 'partial';
       await invoice.save({ session });
 
-      await Customer.findByIdAndUpdate(
-        invoice.customerId,
-        { $inc: { outstandingBalance: -downPayment } },
-        { session }
-      );
+      await Customer.findByIdAndUpdate(invoice.customerId, { $inc: { outstandingBalance: -downPayment } }, { session });
     }
 
-    const balance = invoice.balanceAmount;
-    const emiAmount = Math.round((balance / numberOfInstallments) * 100) / 100;
+    // EMI calculation
+    const balanceAmount = invoice.balanceAmount;
+    const principalPerInstallment = Math.round((balanceAmount / numberOfInstallments) * 100) / 100;
 
-    const installments = Array.from({ length: numberOfInstallments }).map((_, i) => ({
-      installmentNumber: i + 1,
-      dueDate: new Date(new Date(emiStartDate).setMonth(new Date(emiStartDate).getMonth() + i)),
-      totalAmount: emiAmount,
-      paidAmount: 0,
-      paymentStatus: 'unpaid'
-    }));
+    const installments = Array.from({ length: numberOfInstallments }).map((_, i) => {
+      const dueDate = new Date(emiStartDate);
+      dueDate.setMonth(dueDate.getMonth() + i);
+      return {
+        installmentNumber: i + 1,
+        dueDate,
+        principalAmount: principalPerInstallment,
+        interestAmount: 0,
+        totalAmount: principalPerInstallment,
+        paidAmount: 0,
+        paymentStatus: 'pending'
+      };
+    });
+
+    const emiEndDate = new Date(emiStartDate);
+    emiEndDate.setMonth(emiEndDate.getMonth() + numberOfInstallments - 1);
 
     const [emi] = await EMI.create([{
       organizationId,
@@ -163,10 +645,11 @@ exports.createEmiPlan = async ({
       customerId: invoice.customerId,
       totalAmount: invoice.grandTotal,
       downPayment,
-      balanceAmount: balance,
+      balanceAmount,
       numberOfInstallments,
       interestRate,
       emiStartDate,
+      emiEndDate,
       installments,
       createdBy
     }], { session });
@@ -183,8 +666,74 @@ exports.createEmiPlan = async ({
 };
 
 /* ======================================================
-   PAY EMI INSTALLMENT (IDEMPOTENT + SAFE)
+   PAY EMI INSTALLMENT
 ====================================================== */
+// exports.payEmiInstallment = async ({
+//   emiId,
+//   installmentNumber,
+//   amount,
+//   paymentMethod,
+//   referenceNumber,
+//   remarks,
+//   organizationId,
+//   branchId,
+//   createdBy
+// }) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const emi = await EMI.findOne({ _id: emiId, organizationId }).session(session);
+//     if (!emi) throw new AppError('EMI not found', 404);
+
+//     const inst = emi.installments.find(i => i.installmentNumber === Number(installmentNumber));
+//     if (!inst) throw new AppError('Invalid installment', 400);
+//     if (inst.paymentStatus === 'paid') throw new AppError('Installment already paid', 400);
+
+//     const payment = await Payment.create({
+//       organizationId,
+//       branchId,
+//       type: 'inflow',
+//       customerId: emi.customerId,
+//       invoiceId: emi.invoiceId,
+//       amount,
+//       paymentMethod,
+//       referenceNumber,
+//       remarks,
+//       status: 'completed',
+//       transactionMode: 'auto',
+//       createdBy
+//     }, { session });
+
+//     inst.paidAmount += amount;
+//     inst.paymentStatus = inst.paidAmount >= inst.totalAmount ? 'paid' : 'partial';
+//     inst.paymentId = payment._id;
+
+//     if (emi.installments.every(i => i.paymentStatus === 'paid')) emi.status = 'completed';
+//     await emi.save({ session });
+
+//     await applyEmiAccounting({
+//       organizationId,
+//       branchId,
+//       amount,
+//       paymentId: payment._id,
+//       customerId: emi.customerId,
+//       invoiceId: emi.invoiceId,
+//       paymentMethod,
+//       referenceNumber,
+//       createdBy
+//     }, session);
+
+//     await session.commitTransaction();
+//     return { emi, payment };
+
+//   } catch (err) {
+//     await session.abortTransaction();
+//     throw err;
+//   } finally {
+//     session.endSession();
+//   }
+// };
 exports.payEmiInstallment = async ({
   emiId,
   installmentNumber,
@@ -196,48 +745,84 @@ exports.payEmiInstallment = async ({
   branchId,
   createdBy
 }) => {
+
+  // 🔐 HARD VALIDATION (prevents silent failures)
+  if (!organizationId) throw new AppError('organizationId missing', 500);
+  if (!emiId) throw new AppError('emiId required', 400);
+  if (!installmentNumber) throw new AppError('installmentNumber required', 400);
+  if (!amount || amount <= 0) throw new AppError('Amount must be > 0', 400);
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const emi = await EMI.findOne({ _id: emiId, organizationId }).session(session);
+    const emi = await EMI.findOne({
+      _id: emiId,
+      organizationId
+    }).session(session);
+
     if (!emi) throw new AppError('EMI not found', 404);
 
-    const inst = emi.installments.find(i => i.installmentNumber === Number(installmentNumber));
-    if (!inst) throw new AppError('Invalid installment', 400);
-    if (inst.paymentStatus === 'paid') {
+    const installment = emi.installments.find(
+      i => i.installmentNumber === Number(installmentNumber)
+    );
+
+    if (!installment) throw new AppError('Invalid installment', 400);
+    if (installment.paymentStatus === 'paid') {
       throw new AppError('Installment already paid', 400);
     }
 
-    const [payment] = await Payment.create([{
-      organizationId,
-      branchId,
-      type: 'inflow',
-      customerId: emi.customerId,
-      invoiceId: emi.invoiceId,
-      amount,
-      paymentMethod,
-      referenceNumber,
-      remarks,
-      status: 'completed',
-      transactionMode: 'auto',
-      createdBy
-    }], { session });
+    /* ----------------------------------------
+       CREATE PAYMENT (SCHEMA-ALIGNED)
+    ---------------------------------------- */
+    const [payment] = await Payment.create(
+      [
+        {
+          organizationId,
+          branchId,
+          type: 'inflow',                // ✅ REQUIRED
+          customerId: emi.customerId,
+          invoiceId: emi.invoiceId,
+          amount: Number(amount),        // ✅ REQUIRED
+          paymentMethod,
+          referenceNumber,
+          remarks,
+          transactionMode: 'auto',
+          status: 'completed',
+          createdBy
+        }
+      ],
+      { session, ordered: true }
+    );
 
-    inst.paidAmount += amount;
-    inst.paymentStatus = inst.paidAmount >= inst.totalAmount ? 'paid' : 'partial';
-    inst.paymentId = payment._id;
+    /* ----------------------------------------
+       UPDATE INSTALLMENT
+    ---------------------------------------- */
+    installment.paidAmount += Number(amount);
 
+    installment.paymentStatus =
+      installment.paidAmount >= installment.totalAmount
+        ? 'paid'
+        : 'partial';
+
+    installment.paymentId = payment._id;
+
+    /* ----------------------------------------
+       UPDATE EMI STATUS
+    ---------------------------------------- */
     if (emi.installments.every(i => i.paymentStatus === 'paid')) {
       emi.status = 'completed';
     }
 
     await emi.save({ session });
 
+    /* ----------------------------------------
+       ACCOUNTING ENTRIES
+    ---------------------------------------- */
     await applyEmiAccounting({
       organizationId,
       branchId,
-      amount,
+      amount: Number(amount),
       paymentId: payment._id,
       customerId: emi.customerId,
       invoiceId: emi.invoiceId,
@@ -247,6 +832,7 @@ exports.payEmiInstallment = async ({
     }, session);
 
     await session.commitTransaction();
+
     return { emi, payment };
 
   } catch (err) {
@@ -256,6 +842,128 @@ exports.payEmiInstallment = async ({
     session.endSession();
   }
 };
+
+/* ======================================================
+   FETCH EMI
+====================================================== */
+exports.getEmiById = async (emiId, organizationId) => {
+  return EMI.findOne({ _id: emiId, organizationId })
+    .populate('customerId', 'name phone email avatar')
+    .populate('invoiceId', 'invoiceNumber grandTotal paidAmount balanceAmount paymentStatus')
+    .populate('createdBy', 'name email')
+    .lean();
+};
+
+exports.getEmiByInvoice = async (invoiceId, organizationId) => {
+  return EMI.findOne({ invoiceId, organizationId })
+    .populate('customerId', 'name phone email avatar')
+    .populate('invoiceId', 'invoiceNumber grandTotal paidAmount balanceAmount paymentStatus')
+    .populate('createdBy', 'name email')
+    .lean();
+};
+
+/* ======================================================
+   LIST & FILTER EMIs
+====================================================== */
+exports.getEmis = async ({ organizationId, branchId, customerId, status }) => {
+  const filter = { organizationId };
+  if (branchId) filter.branchId = branchId;
+  if (customerId) filter.customerId = customerId;
+  if (status) filter.status = status;
+
+  return EMI.find(filter)
+    .sort({ createdAt: -1 })
+    .populate('customerId', 'name phone')
+    .populate('invoiceId', 'invoiceNumber grandTotal')
+    .lean();
+};
+
+/* ======================================================
+   EMI DASHBOARD ANALYTICS
+====================================================== */
+exports.getEmiSummary = async (organizationId) => {
+  return EMI.aggregate([
+    { $match: { organizationId: new mongoose.Types.ObjectId(organizationId) } },
+    { $group: { _id: '$status', count: { $sum: 1 }, totalBalance: { $sum: '$balanceAmount' } } }
+  ]);
+};
+
+exports.getEmiAnalytics = async (organizationId) => {
+  const emis = await EMI.find({ organizationId });
+  const stats = {
+    totalEmis: emis.length,
+    active: 0,
+    completed: 0,
+    defaulted: 0,
+    totalOutstanding: 0,
+    installments: { pending: 0, paid: 0, partial: 0, overdue: 0 }
+  };
+
+  for (const emi of emis) {
+    stats[emi.status]++;
+    stats.totalOutstanding += emi.balanceAmount;
+    emi.installments.forEach(i => stats.installments[i.paymentStatus]++);
+  }
+
+  return stats;
+};
+
+/* ======================================================
+   MARK OVERDUE & DEFAULTED EMIs
+====================================================== */
+exports.markOverdueInstallments = async () => {
+  const today = new Date();
+  const emis = await EMI.find({ status: 'active', 'installments.paymentStatus': { $in: ['pending', 'partial'] } });
+
+  for (const emi of emis) {
+    let updated = false;
+    emi.installments.forEach(inst => {
+      if (inst.paymentStatus !== 'paid' && inst.dueDate < today) {
+        inst.paymentStatus = 'overdue';
+        updated = true;
+      }
+    });
+    if (updated) await emi.save();
+  }
+
+  return { updatedEmis: emis.length };
+};
+
+exports.markDefaultedEmis = async () => {
+  const today = new Date();
+  return EMI.updateMany(
+    {
+      status: 'active',
+      installments: { $elemMatch: { dueDate: { $lt: today }, paymentStatus: { $ne: 'paid' } } }
+    },
+    { $set: { status: 'defaulted' } }
+  );
+};
+
+/* ======================================================
+   EMI LEDGER RECONCILIATION
+====================================================== */
+exports.getEmiLedgerReconciliation = async ({ organizationId, fromDate, toDate }) => {
+  const match = { organizationId, referenceType: 'emi_payment' };
+  if (fromDate && toDate) match.createdAt = { $gte: new Date(fromDate), $lte: new Date(toDate) };
+
+  return AccountEntry.find(match)
+    .populate('accountId', 'name code')
+    .populate('paymentId', 'amount paymentMethod')
+    .sort({ createdAt: -1 });
+};
+
+// ✅ Refactoring Notes / Fixes
+
+// insertMany([...], { session, ordered: true }) used for multiple documents.
+
+// Payment.create(doc, { session }) used for single doc to avoid session errors.
+
+// installments now always have principalAmount, totalAmount, and paymentStatus fields.
+
+// Transactions (session) ensure atomicity: any failure rolls back.
+
+// Overdue and defaulted EMIs handled separately (markOverdueInstallments, markDefaultedEmis).
 
 
 // const mongoose = require('mongoose');
