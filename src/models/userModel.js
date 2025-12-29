@@ -95,7 +95,13 @@ const userSchema = new mongoose.Schema({
     isAttendanceEnabled: { 
       type: Boolean, 
       default: true 
-    }
+    },
+    allowWebPunch: { type: Boolean, default: false }, // Default FALSE for security
+    allowMobilePunch: { type: Boolean, default: false },
+    
+    // If true, they MUST be within X meters of their Branch location
+    enforceGeoFence: { type: Boolean, default: true }, 
+    geoFenceRadius: { type: Number, default: 100 } // Meters
   }
 
 }, { timestamps: true });
