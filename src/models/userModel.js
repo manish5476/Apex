@@ -87,10 +87,16 @@ const userSchema = new mongoose.Schema({
       sparse: true // Allows multiple users to have undefined/null, but unique if set
     },
     // Assigned Shift Pattern
+    // shiftId: { 
+    //   type: mongoose.Schema.Types.ObjectId, 
+    //   ref: 'Shift' 
+    // },
     shiftId: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'Shift' 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Shift',
+        required: false // Every employee MUST have a shift
     },
+    
     // Master switch to ignore logs for specific users (e.g., external consultants)
     isAttendanceEnabled: { 
       type: Boolean, 
