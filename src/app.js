@@ -195,6 +195,11 @@ app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1/feed", feedRoutes);
 app.use("/api/v1/reconciliation", require("./routes/v1/reconciliationRoutes"));
 app.use("/api/v1/automation", require("./routes/v1/automationRoutes"));
+// Import
+const attendanceRoutes = require('./routes/v1/attendanceRoutes');
+
+// Use
+app.use('/api/v1/attendance', attendanceRoutes);
 // ---------------------- 5. ERROR HANDLING ----------------------
 app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
