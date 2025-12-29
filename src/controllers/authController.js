@@ -201,12 +201,6 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   if (user.changedPasswordAfter(decoded.iat))
     return next(new AppError("Password changed recently.", 401));
-  // ❗❗❗❗changes this because refresh token
-  // const session = await Session.findOne({
-  //   token,
-  //   userId: user._id,
-  //   isValid: true,
-  // });
   const session = await Session.findOne({
     userId: user._id,
     isValid: true,

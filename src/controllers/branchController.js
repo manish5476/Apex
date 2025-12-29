@@ -5,32 +5,18 @@ const catchAsync = require('../utils/catchAsync');
 const factory = require('../utils/handlerFactory');
 
 // // GET /branches
-// exports.getAllBranches = factory.getAll(Branch, {
-//   searchFields: ['name', 'branchCode', 'phoneNumber', 'address.city', 'address.state'],
-//   populate: [
-//     { path: 'managerId', select: 'name email' },
-//     { path: 'organizationId', select: 'name' }
-//   ]
-// });
+exports.getAllBranches = factory.getAll(Branch, {
+  searchFields: ['name', 'branchCode', 'phoneNumber', 'address.city', 'address.state'],
+  populate: [
+    { path: 'managerId', select: 'name email' },
+    { path: 'organizationId', select: 'name' }
+  ]
+});
+
 /* -------------------------------------------------------------
    Get All EMIs
 ------------------------------------------------------------- */
-exports.getAllEmis = factory.getAll(EMI, {
-  // Optional: Add search fields if you want to search by these properties
-  searchFields: ['status', 'paymentMethod'], 
-  
-  // The critical part: 'populate' must be a key in this object
-  populate: [
-    { 
-      path: 'customerId', 
-      select: 'name email phone avatar billingAddress gstNumber panNumber type outstandingBalance'
-    },
-    {
-      path: 'invoiceId',
-      select: 'invoiceNumber grandTotal balanceAmount'
-    }
-  ]
-});
+
 // GET /branches/my
 exports.getMyBranches = factory.getAll(Branch, {
   fields: 'name branchCode isActive',
