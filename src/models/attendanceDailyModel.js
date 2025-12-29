@@ -39,7 +39,7 @@ const attendanceDailySchema = new mongoose.Schema({
   calendarEvents: [{
     type: String, // 'sunday', 'diwali', 'election_day'
     priority: Number // 1=Low, 10=High
-  }]
+  }],
   isLate: { type: Boolean, default: false },
   isOvertime: { type: Boolean, default: false },
   
