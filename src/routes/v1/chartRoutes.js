@@ -67,34 +67,3 @@ router.get('/heatmap',
 );
 
 module.exports = router;
-
-// const express = require('express');
-// const router = express.Router();
-// const chartController = require('../../controllers/chartController');
-// const authController = require('../../controllers/authController');
-// const { checkPermission } = require('../../middleware/permissionMiddleware');
-// const { PERMISSIONS } = require('../../config/permissions');
-
-// router.use(authController.protect);
-
-// router.get('/financial-trend',
-//   checkPermission(PERMISSIONS.ANALYTICS.READ),
-//   chartController.getFinancialTrend
-// );
-
-// router.get('/sales-distribution',
-//   checkPermission(PERMISSIONS.ANALYTICS.READ),
-//   chartController.getSalesDistribution
-// );
-
-// router.get('/branch-radar',
-//   checkPermission(PERMISSIONS.ANALYTICS.READ),
-//   chartController.getBranchPerformanceRadar
-// );
-
-// router.get('/order-funnel',
-//   checkPermission(PERMISSIONS.ANALYTICS.READ),
-//   chartController.getOrderFunnel
-// );
-
-// module.exports = router;

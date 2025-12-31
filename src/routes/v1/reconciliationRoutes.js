@@ -1,13 +1,17 @@
-const express = require('express');
-const router = express.Router();
-const recon = require('../../controllers/reconciliationController');
-const auth = require('../../controllers/authController');
-const { checkPermission } = require("../../middleware/permissionMiddleware");
-const { PERMISSIONS } = require("../../config/permissions");
+// routes/reconciliationRoutes.js
+const router = require('express').Router();
+const reconciliationController = require('../../controllers/reconciliationController');
+const paymentWebhookController = require('../../controllers/paymentWebhookController');
+const { checkPermission } = require('../../middleware/permissionMiddleware');
 
-router.use(auth.protect);
+// Webhook (no auth required)
+router.post('/webhook/payment', paymentWebhookController.paymentGatewayWebhook);
 
-router.get('/top', checkPermission(PERMISSIONS.RECONCILIATION.READ), recon.topMismatches);
-router.get('/detail', checkPermission(PERMISSIONS.RECONCILIATION.READ), recon.detail);
+// Manual reconciliation (admin only)
+router.use(checkPermission(['FINANCE_RECONCILE']));
+
+router.get('/pending', reconciliationController.getPendingReconciliations);
+router.post('/manual', reconciliationController.manualReconcilePayment);
+router.get('/summary', reconciliationController.getReconciliationSummary);
 
 module.exports = router;

@@ -6,6 +6,10 @@ const Customer = require('../models/customerModel');
 const AccountEntry = require('../models/accountEntryModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+// controllers/reconciliationController.js
+const emiService = require('../services/emiService');
+const PendingReconciliation = require('../models/pendingReconciliationModel');
+const EMI = require('../models/emiModel');
 
 /**
  * 1. TOP MISMATCHES
@@ -198,3 +202,159 @@ async function checkCustomerBalanceIntegrity(orgId) {
 
     return mismatches;
 }
+
+
+// Get pending reconciliations
+exports.getPendingReconciliations = catchAsync(async (req, res, next) => {
+  const pending = await PendingReconciliation.find({
+    organizationId: req.user.organizationId,
+    status: 'pending'
+  })
+  .populate('invoiceId', 'invoiceNumber grandTotal customerId')
+  .populate('customerId', 'name email')
+  .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    status: 'success',
+    results: pending.length,
+    data: pending
+  });
+});
+
+// Manual reconciliation
+exports.manualReconcilePayment = catchAsync(async (req, res, next) => {
+  const { reconciliationId, installments } = req.body;
+  
+  const pending = await PendingReconciliation.findById(reconciliationId);
+  if (!pending || pending.organizationId.toString() !== req.user.organizationId.toString()) {
+    return next(new AppError('Reconciliation record not found', 404));
+  }
+
+  // Find EMI for the invoice
+  const emi = await EMI.findOne({ 
+    invoiceId: pending.invoiceId,
+    organizationId: req.user.organizationId 
+  });
+
+  if (!emi) {
+    return next(new AppError('No EMI plan found for this invoice', 404));
+  }
+
+  // Apply to specific installments
+  let remainingAmount = pending.amount;
+  const appliedInstallments = [];
+
+  if (installments && Array.isArray(installments)) {
+    // Apply to specified installments
+    for (const instNum of installments.sort((a, b) => a - b)) {
+      if (remainingAmount <= 0) break;
+      
+      const installment = emi.installments.find(i => i.installmentNumber === instNum);
+      if (installment && installment.paymentStatus !== 'paid') {
+        const pendingAmount = installment.totalAmount - installment.paidAmount;
+        const amountToApply = Math.min(remainingAmount, pendingAmount);
+        
+        installment.paidAmount += amountToApply;
+        remainingAmount -= amountToApply;
+        
+        installment.paymentStatus = 
+          installment.paidAmount >= installment.totalAmount ? 'paid' : 'partial';
+        
+        appliedInstallments.push({
+          installmentNumber: instNum,
+          appliedAmount: amountToApply,
+          newStatus: installment.paymentStatus
+        });
+      }
+    }
+  } else {
+    // Auto-apply (oldest first)
+    for (const installment of emi.installments.sort((a, b) => a.installmentNumber - b.installmentNumber)) {
+      if (remainingAmount <= 0) break;
+      
+      if (installment.paymentStatus !== 'paid') {
+        const pendingAmount = installment.totalAmount - installment.paidAmount;
+        const amountToApply = Math.min(remainingAmount, pendingAmount);
+        
+        installment.paidAmount += amountToApply;
+        remainingAmount -= amountToApply;
+        
+        installment.paymentStatus = 
+          installment.paidAmount >= installment.totalAmount ? 'paid' : 'partial';
+        
+        appliedInstallments.push({
+          installmentNumber: installment.installmentNumber,
+          appliedAmount: amountToApply,
+          newStatus: installment.paymentStatus
+        });
+      }
+    }
+  }
+
+  // Handle any excess
+  if (remainingAmount > 0) {
+    emi.advanceBalance = (emi.advanceBalance || 0) + remainingAmount;
+    appliedInstallments.push({
+      type: 'advance',
+      amount: remainingAmount
+    });
+  }
+
+  // Update EMI status
+  if (emi.installments.every(i => i.paymentStatus === 'paid')) {
+    emi.status = 'completed';
+  }
+
+  await emi.save();
+
+  // Update reconciliation record
+  pending.status = 'matched';
+  pending.matchedEmiId = emi._id;
+  pending.matchedInstallments = appliedInstallments.map(i => i.installmentNumber).filter(Boolean);
+  pending.reconciledBy = req.user._id;
+  pending.reconciledAt = new Date();
+  pending.notes = req.body.notes;
+  await pending.save();
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Payment manually reconciled',
+    data: {
+      reconciliation: pending,
+      appliedInstallments,
+      remainingAdvance: emi.advanceBalance || 0
+    }
+  });
+});
+
+// Get reconciliation summary
+exports.getReconciliationSummary = catchAsync(async (req, res, next) => {
+  const summary = await PendingReconciliation.aggregate([
+    { $match: { organizationId: req.user.organizationId } },
+    { $group: {
+      _id: '$status',
+      count: { $sum: 1 },
+      totalAmount: { $sum: '$amount' }
+    }},
+    { $sort: { _id: 1 } }
+  ]);
+
+  const emiSummary = await EMI.aggregate([
+    { $match: { organizationId: req.user.organizationId } },
+    { $unwind: '$installments' },
+    { $group: {
+      _id: '$installments.paymentStatus',
+      count: { $sum: 1 },
+      totalAmount: { $sum: '$installments.totalAmount' },
+      paidAmount: { $sum: '$installments.paidAmount' }
+    }}
+  ]);
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      reconciliation: summary,
+      installments: emiSummary
+    }
+  });
+});

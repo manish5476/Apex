@@ -3,12 +3,12 @@ const mongoose = require('mongoose');
 const installmentSchema = new mongoose.Schema({
   installmentNumber: { type: Number, required: true },
   dueDate: { type: Date, required: true },
-  
+
   // Financials
   principalAmount: { type: Number, required: true },
   interestAmount: { type: Number, default: 0 },
   totalAmount: { type: Number, required: true },
-  
+
   // Status
   paidAmount: { type: Number, default: 0 },
   paymentStatus: {
@@ -16,12 +16,12 @@ const installmentSchema = new mongoose.Schema({
     enum: ['pending', 'partial', 'paid', 'overdue'],
     default: 'pending',
   },
-  
+
   // Link to the actual financial transaction
-  paymentId: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'Payment', 
-      default: null 
+  paymentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Payment',
+    default: null
   }
 });
 
@@ -29,7 +29,7 @@ const emiSchema = new mongoose.Schema(
   {
     organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
-    
+
     // Linking
     invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice', required: true, unique: true },
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true, index: true },
@@ -38,21 +38,40 @@ const emiSchema = new mongoose.Schema(
     totalAmount: { type: Number, required: true }, // Grand Total (incl Interest)
     downPayment: { type: Number, default: 0 },
     balanceAmount: { type: Number, required: true }, // Amount to be paid via installments
-    
+
     numberOfInstallments: { type: Number, required: true },
     interestRate: { type: Number, default: 0 }, // Annual %
-    
+
     emiStartDate: { type: Date, required: true },
     emiEndDate: { type: Date },
-    
+
     installments: [installmentSchema],
-    
+
     status: {
       type: String,
       enum: ['active', 'completed', 'defaulted'],
       default: 'active',
     },
-    
+    externalPayments: [{
+      transactionId: String,
+      gateway: String,
+      amount: Number,
+      paymentDate: Date,
+      reconciledAt: Date,
+      status: {
+        type: String,
+        enum: ['pending', 'reconciled', 'failed'],
+        default: 'pending'
+      }
+    }],
+
+    advanceBalance: {
+      type: Number,
+      default: 0
+    },
+
+    lastReconciledAt: Date
+    ,
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }

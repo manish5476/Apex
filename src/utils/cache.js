@@ -1,83 +1,99 @@
-const { getRedisClient } = require("./redis");
+// src/middlewares/cacheMiddleware.js
 
-async function getCache(key) {
-  const client = getRedisClient();
-  if (!client) return null;
+const { safeCache, isRedisAvailable } = require('../config/redis');
 
-  try {
-    const value = await client.get(key);
-    return value ? JSON.parse(value) : null;
-  } catch (err) {
-    console.error("Cache read error:", err.message);
-    return null;
-  }
-}
+const cacheMiddleware = (duration = 300) => {
+  return async (req, res, next) => {
+    // Cache only GET requests
+    if (req.method !== 'GET') return next();
 
-async function setCache(key, value, ttl = 60) {
-  const client = getRedisClient();
-  if (!client) return;
+    const key = `cache:${req.originalUrl || req.url}`;
 
-  try {
-    await client.set(key, JSON.stringify(value), "EX", ttl);
-    console.log(`📦 Cache set (TTL: ${ttl}s):`, key);
-  } catch (err) {
-    console.error("Cache write error:", err.message);
-  }
-}
+    try {
+      // Skip if Redis is unavailable
+      const redisAvailable = await isRedisAvailable();
+      if (!redisAvailable) return next();
 
-async function delCache(key) {
-  const client = getRedisClient();
-  if (!client) return;
+      // Try cache lookup
+      const cachedResponse = await safeCache.get(key);
 
-  try {
-    await client.del(key);
-  } catch (err) {
-    console.error("Cache delete error:", err.message);
-  }
-}
+      if (cachedResponse) {
+        return res.status(200).json({
+          ...cachedResponse,
+          _meta: {
+            cached: true,
+            cacheKey: key,
+            cachedAt: new Date().toISOString(),
+          },
+        });
+      }
 
-module.exports = {
-  getCache,
-  setCache,
-  delCache
+      // Intercept res.json to cache response
+      const originalJson = res.json.bind(res);
+
+      res.json = (body) => {
+        // Cache response asynchronously (non-blocking)
+        safeCache
+          .set(key, body, duration)
+          .catch(err =>
+            console.error('🟡 Redis cache set error (ignored):', err.message)
+          );
+
+        return originalJson(body);
+      };
+
+      next();
+    } catch (error) {
+      // Redis failure should NEVER break API
+      console.error('🟡 Cache middleware error (ignored):', error.message);
+      next();
+    }
+  };
 };
 
-// // src/utils/cache.js
-// const Redis = require('ioredis');
+module.exports = cacheMiddleware;
 
-// const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-// const redis = new Redis(redisUrl, { lazyConnect: true });
 
-// redis.on('connect', () => console.log('Redis connected'));
-// redis.on('error', (err) => console.error('Redis error:', err.message));
+// const { getRedisClient } = require("./redis");
 
-// /**
-//  * getCache / setCache for JSON payloads
-//  */
 // async function getCache(key) {
+//   const client = getRedisClient();
+//   if (!client) return null;
+
 //   try {
-//     const data = await redis.get(key);
-//     return data ? JSON.parse(data) : null;
+//     const value = await client.get(key);
+//     return value ? JSON.parse(value) : null;
 //   } catch (err) {
-//     console.error('Cache read error', err.message);
+//     console.error("Cache read error:", err.message);
 //     return null;
 //   }
 // }
 
-// async function setCache(key, value, ttlSeconds = 60) {
+// async function setCache(key, value, ttl = 60) {
+//   const client = getRedisClient();
+//   if (!client) return;
+
 //   try {
-//     await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
+//     await client.set(key, JSON.stringify(value), "EX", ttl);
+//     console.log(`📦 Cache set (TTL: ${ttl}s):`, key);
 //   } catch (err) {
-//     console.error('Cache write error', err.message);
+//     console.error("Cache write error:", err.message);
 //   }
 // }
 
 // async function delCache(key) {
+//   const client = getRedisClient();
+//   if (!client) return;
+
 //   try {
-//     await redis.del(key);
+//     await client.del(key);
 //   } catch (err) {
-//     console.error('Cache delete error', err.message);
+//     console.error("Cache delete error:", err.message);
 //   }
 // }
 
-// module.exports = { redis, getCache, setCache, delCache };
+// module.exports = {
+//   getCache,
+//   setCache,
+//   delCache
+// };

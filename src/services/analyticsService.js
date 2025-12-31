@@ -1,5 +1,21 @@
+// const mongoose = require('mongoose');
+// const Redis = require('ioredis');
+// const Invoice = require('../models/invoiceModel');
+// const Purchase = require('../models/purchaseModel');
+// const Product = require('../models/productModel');
+// const Customer = require('../models/customerModel');
+// const User = require('../models/userModel');
+// const Branch = require('../models/branchModel');
+// const AuditLog = require('../models/auditLogModel');
+// const Sales = require('../models/salesModel');
+// const AccountEntry = require('../models/accountEntryModel');
+// const Payment = require('../models/paymentModel');
+// const AttendanceDaily = require('../models/attendanceDailyModel');
+// const EMI = require('../models/emiModel');
+// const SalesReturn = require('../models/salesReturnModel');
+// const { performance } = require('perf_hooks');
+
 const mongoose = require('mongoose');
-const Redis = require('ioredis');
 const Invoice = require('../models/invoiceModel');
 const Purchase = require('../models/purchaseModel');
 const Product = require('../models/productModel');
@@ -15,41 +31,6 @@ const EMI = require('../models/emiModel');
 const SalesReturn = require('../models/salesReturnModel');
 const { performance } = require('perf_hooks');
 const { safeCache } = require('../config/redis'); 
-
-
-exports.cacheData = async (key, data, ttl = 300) => {
-    return safeCache.set(key, data, ttl);
-};
-
-exports.getCachedData = async (key) => {
-    return safeCache.get(key);
-};
-
-exports.clearCache = async (pattern) => {
-    return safeCache.clear(pattern);
-};
-
-// Redis Cache Setup (Optional - fallback if not configured)
-let redis;
-try {
-    redis = new Redis({
-        host: process.env.REDIS_HOST || 'localhost',
-        port: process.env.REDIS_PORT || 6379,
-        retryStrategy: (times) => Math.min(times * 50, 2000),
-        maxRetriesPerRequest: 1,
-        enableOfflineQueue: false
-    });
-
-    // redis.on('error', (error) => {
-    //     console.warn('Redis connection error, continuing without cache:', error.message);
-    //     redis = null;
-    // });
-} catch (error) {
-    console.warn('Redis not available, continuing without cache:', error.message);
-    redis = null;
-}
-
-// Helper Functions
 const toObjectId = (id) => id ? new mongoose.Types.ObjectId(id) : null;
 
 const calculateGrowth = (current, previous) => {
@@ -63,60 +44,181 @@ const calculatePercentage = (part, total) => {
 };
 
 /* ==========================================================================
-   1. CACHE MANAGEMENT
+   1. CACHE MANAGEMENT - FIXED VERSION
+   ========================================================================== */
+exports.cacheData = async (key, data, ttl = 300) => {  return safeCache.set(key, data, ttl);};
+
+exports.getCachedData = async (key) => {
+    return safeCache.get(key);
+};
+
+exports.clearCache = async (pattern) => {
+    return safeCache.clear(pattern);
+};
+
+/* ==========================================================================
+   2. ENHANCED CACHE WITH FALLBACK
    ========================================================================== */
 
-exports.cacheData = async (key, data, ttl = 300) => {
-    if (!redis) return false;
+// Simple in-memory fallback cache
+const memoryCache = new Map();
 
+exports.cacheDataInMemory = async (key, data, ttl = 300) => {
     try {
-        await redis.setex(
-            key, 
-            ttl, 
-            JSON.stringify({ data, cachedAt: Date.now() })
-        );
+        const cacheItem = {
+            data,
+            cachedAt: Date.now(),
+            expiresAt: Date.now() + (ttl * 1000)
+        };
+        memoryCache.set(key, cacheItem);
         return true;
     } catch (error) {
-        console.warn('Cache set error:', error.message);
+        console.warn('Memory cache error:', error.message);
         return false;
     }
 };
 
-exports.getCachedData = async (key) => {
-    if (!redis) return null;
-
+exports.getCachedDataFromMemory = async (key) => {
     try {
-        const cached = await redis.get(key);
-        if (cached) {
-            const parsed = JSON.parse(cached);
-            // Check if cache is still valid
-            const age = Date.now() - parsed.cachedAt;
-            if (age < 300000) { // 5 minutes
-                return parsed.data;
+        const cached = memoryCache.get(key);
+        if (cached && Date.now() < cached.expiresAt) {
+            return cached.data;
+        } else if (cached) {
+            memoryCache.delete(key); // Clean expired
+        }
+        return null;
+    } catch (error) {
+        console.warn('Memory cache error:', error.message);
+        return null;
+    }
+};
+
+/* ==========================================================================
+   3. SMART CACHE FUNCTIONS
+   ========================================================================== */
+
+exports.smartCache = {
+    /**
+     * Smart cache that tries Redis first, then memory
+     */
+    set: async (key, data, ttl = 300) => {
+        // Try Redis first
+        try {
+            const redisResult = await safeCache.set(key, data, ttl);
+            if (redisResult) {
+                console.debug(`✅ Redis cache set: ${key}`);
+                return true;
+            }
+        } catch (redisError) {
+            console.warn(`Redis cache failed: ${redisError.message}`);
+        }
+        
+        // Fallback to memory
+        console.debug(`🟡 Falling back to memory cache: ${key}`);
+        return await this.cacheDataInMemory(key, data, ttl);
+    },
+
+    get: async (key) => {
+        // Try Redis first
+        try {
+            const redisData = await safeCache.get(key);
+            if (redisData) {
+                console.debug(`✅ Redis cache hit: ${key}`);
+                return redisData;
+            }
+        } catch (redisError) {
+            console.warn(`Redis cache failed: ${redisError.message}`);
+        }
+        
+        // Fallback to memory
+        console.debug(`🟡 Checking memory cache: ${key}`);
+        return await this.getCachedDataFromMemory(key);
+    },
+
+    clear: async (pattern) => {
+        let totalCleared = 0;
+        
+        // Clear Redis cache
+        try {
+            const redisCleared = await safeCache.clear(pattern);
+            totalCleared += redisCleared;
+            console.debug(`✅ Cleared ${redisCleared} Redis keys matching: ${pattern}`);
+        } catch (redisError) {
+            console.warn(`Failed to clear Redis cache: ${redisError.message}`);
+        }
+        
+        // Clear memory cache
+        let memoryCleared = 0;
+        for (const key of memoryCache.keys()) {
+            if (key.includes(pattern)) {
+                memoryCache.delete(key);
+                memoryCleared++;
             }
         }
-        return null;
-    } catch (error) {
-        console.warn('Cache get error:', error.message);
-        return null;
-    }
-};
-
-exports.clearCache = async (pattern) => {
-    if (!redis) return 0;
-
-    try {
-        const keys = await redis.keys(pattern);
-        if (keys.length > 0) {
-            await redis.del(...keys);
+        totalCleared += memoryCleared;
+        
+        if (memoryCleared > 0) {
+            console.debug(`✅ Cleared ${memoryCleared} memory keys matching: ${pattern}`);
         }
-        return keys.length;
-    } catch (error) {
-        console.warn('Cache clear error:', error.message);
-        return 0;
+        
+        return totalCleared;
     }
 };
 
+/* ==========================================================================
+   4. ANALYTICS-SPECIFIC CACHE HELPERS
+   ========================================================================== */
+
+/**
+ * Generate cache key for analytics queries
+ */
+exports.generateAnalyticsCacheKey = (endpoint, orgId, branchId, startDate, endDate, extraParams = {}) => {
+    const paramsString = JSON.stringify({
+        orgId,
+        branchId: branchId || 'all',
+        start: startDate.toISOString().split('T')[0],
+        end: endDate.toISOString().split('T')[0],
+        ...extraParams
+    });
+    
+    // Simple hash for shorter keys
+    const hash = require('crypto')
+        .createHash('md5')
+        .update(paramsString)
+        .digest('hex')
+        .substring(0, 8);
+    
+    return `analytics:${endpoint}:${hash}`;
+};
+
+/**
+ * Get data with caching
+ */
+exports.getWithCache = async (cacheKey, fetchFunction, ttl = 300) => {
+    // Try cache first
+    const cached = await this.getCachedData(cacheKey);
+    if (cached) {
+        return {
+            data: cached,
+            cached: true,
+            source: 'redis'
+        };
+    }
+    
+    // Fetch fresh data
+    const freshData = await fetchFunction();
+    
+    // Cache it (fire and forget)
+    this.cacheData(cacheKey, freshData, ttl).catch(err => 
+        console.warn('Failed to cache data:', err.message)
+    );
+    
+    return {
+        data: freshData,
+        cached: false,
+        source: 'database'
+    };
+};
 /* ==========================================================================
    2. SMART EXECUTIVE DASHBOARD
    ========================================================================== */

@@ -11,16 +11,6 @@ const sendDuplicateErorDB = (err) => {
   const message = `Duplicate field value: "${value}". Please use another value.`;
   return new AppError(message, 400);
 };
-// const sendDuplicateErorDB = (err) => {
-//   // const value = Object.values(err.keyValue).join(", ");
-//   // const message = `Duplicate field value: ${value}. Please use another value.`;
-//   // return new AppError(message, 400);
-//   const value = err.errmsg.match(/(["])(\\?.)*?\1/)[0];
-//   console.log(value, err);
-//   const message = `Duplicate filed value :${value} use another value`;
-//   return new AppError(message, 400);
-// };
-//
 const sendTokenError = (err) => {
   return new AppError("invalid token log in Again", 401);
 };
