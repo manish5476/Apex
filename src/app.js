@@ -55,9 +55,9 @@ const chatRoutes = require("./routes/v1/chatRoutes");
 const inventoryRoutes = require("./routes/v1/inventoryRoutes");
 const feedRoutes = require("./routes/v1/feedRoutes");
 const chartRoutes = require("./routes/v1/chartRoutes");
-const attendanceRoutes = require('./routes/v1/attendanceRoutes');
-const shiftRoutes = require('./routes/v1/shiftRoutes');
-const holidayRoutes = require('./routes/v1/holidayRoutes');
+const attendanceRoutes = require("./routes/v1/attendanceRoutes");
+const shiftRoutes = require("./routes/v1/shiftRoutes");
+const holidayRoutes = require("./routes/v1/holidayRoutes");
 const app = express();
 
 // 1. GLOBAL SETTINGS
@@ -66,7 +66,7 @@ app.set("query parser", (str) => qs.parse(str, { defaultCharset: "utf-8" }));
 
 // 2. MIDDLEWARE CHAIN
 // A. Request ID (First, so logs can use it)
-app.use(assignRequestId); 
+app.use(assignRequestId);
 
 // B. CORS
 app.use(
@@ -76,8 +76,8 @@ app.use(
       : ["http://localhost:4200", "https://apex-infinity.vercel.app"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"], // Added X-Request-Id
-    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"]
-  })
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+  }),
 );
 app.options("*", cors());
 
@@ -97,14 +97,17 @@ app.use(hpp());
 app.use(compression());
 
 // E. Logging (Enhanced with ID)
-morgan.token('id', (req) => req.id);
+morgan.token("id", (req) => req.id);
 if (process.env.NODE_ENV === "development") {
   app.use(morgan(":id :method :url :status :response-time ms"));
 } else {
   app.use(
-    morgan(':id :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length]', {
-      stream: { write: (msg) => logger.info(msg.trim()) }
-    })
+    morgan(
+      ':id :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length]',
+      {
+        stream: { write: (msg) => logger.info(msg.trim()) },
+      },
+    ),
   );
 }
 
@@ -119,26 +122,31 @@ app.use(
     windowMs: 60 * 60 * 1000,
     standardHeaders: true,
     legacyHeaders: false,
-    message: "Too many requests, please try again later."
-  })
+    message: "Too many requests, please try again later.",
+  }),
 );
 
 // ---------------------- 3. REAL HEALTH CHECK ----------------------
 app.get("/health", (req, res) => {
   const dbStatus = mongoose.connection.readyState;
-  const statusMap = { 0: "DISCONNECTED", 1: "CONNECTED", 2: "CONNECTING", 3: "DISCONNECTING" };
-  
+  const statusMap = {
+    0: "DISCONNECTED",
+    1: "CONNECTED",
+    2: "CONNECTING",
+    3: "DISCONNECTING",
+  };
+
   const isHealthy = dbStatus === 1; // Only healthy if DB is connected
-  
+
   const response = {
     status: isHealthy ? "UP" : "DEGRADED",
     timestamp: new Date().toISOString(),
     services: {
       database: statusMap[dbStatus] || "UNKNOWN",
-      server: "RUNNING"
+      server: "RUNNING",
     },
     uptime: process.uptime(),
-    requestId: req.id
+    requestId: req.id,
   };
 
   res.status(isHealthy ? 200 : 503).json(response);
@@ -171,7 +179,7 @@ app.use("/api/v1/transactions", transactionRouter);
 app.use("/api/v1/partytransactions", partyTransactionRouter);
 app.use("/api/v1/ledgers", ledgersRoutes);
 app.use("/api/v1/statements", statementsRouter);
-app.use('/api/v1/accounts', require('./routes/v1/accountRoutes'));
+app.use("/api/v1/accounts", require("./routes/v1/accountRoutes"));
 
 // Reporting & Dashboard
 app.use("/api/v1/dashboard", dashboard);
@@ -193,16 +201,16 @@ app.use("/api/v1/master-list", masterListRoutes);
 app.use("/api/v1/master-types", masterTypeRoutes);
 app.use("/api/v1/logs", logRoutes);
 app.use("/api/v1/sessions", sessionRoutes);
-app.use('/api/v1/ownership', require('./routes/v1/ownership.routes'));
+app.use("/api/v1/ownership", require("./routes/v1/ownership.routes"));
 app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1/feed", feedRoutes);
 app.use("/api/v1/reconciliation", require("./routes/v1/reconciliationRoutes"));
 app.use("/api/v1/automation", require("./routes/v1/automationRoutes"));
 // ... under your other routes ...
-app.use('/api/v1/shifts', shiftRoutes);
-app.use('/api/v1/holidays', holidayRoutes);
+app.use("/api/v1/shifts", shiftRoutes);
+app.use("/api/v1/holidays", holidayRoutes);
 // Use
-app.use('/api/v1/attendance', attendanceRoutes);
+app.use("/api/v1/attendance", attendanceRoutes);
 // ---------------------- 5. ERROR HANDLING ----------------------
 app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
