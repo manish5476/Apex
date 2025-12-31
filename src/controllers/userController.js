@@ -107,9 +107,20 @@ exports.uploadUserPhotoByAdmin = catchAsync(async (req, res, next) => {
 // ======================================================
 
 // ✅ GET ALL: Automatically supports pagination, sort, filter, and search
+// exports.getAllUsers = factory.getAll(User, {
+//   searchFields: ['name', 'email', 'phone'], 
+//   populate: { path: 'role branchId', select: 'name' }
+// });
 exports.getAllUsers = factory.getAll(User, {
-  searchFields: ['name', 'email', 'phone'], 
-  populate: { path: 'role branchId', select: 'name' }
+  searchFields: ['name', 'email', 'phone'],
+  populate: [
+    { path: 'role', select: 'name' },
+    { path: 'branchId', select: 'name' },
+    {
+      path: 'attendanceConfig.shiftId',
+      select: 'name startTime endTime duration isNightShift'
+    }
+  ]
 });
 
 // ✅ GET ONE: Fetches user with Roles and Branch populated

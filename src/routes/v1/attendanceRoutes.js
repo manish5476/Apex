@@ -3,15 +3,11 @@ const attendanceController = require('../../controllers/attendanceController'); 
 const attendanceWebController = require('../../controllers/attendanceWebController'); // Web Punch
 const attendanceActionsController = require('../../controllers/attendanceActionsController'); // Management
 const authController = require('../../controllers/authController');
-
 const router = express.Router();
-
 // --- MACHINE (Public/API Key) ---
 router.post('/machine-push', attendanceController.pushMachineData);
-
 // --- PROTECTED ROUTES ---
 router.use(authController.protect);
-
 // 1. PUNCHING
 router.post('/punch', attendanceWebController.markAttendance);
 
@@ -32,7 +28,11 @@ router.patch('/regularize/:id',
     attendanceActionsController.decideRegularization
 );
 
-module.exports = router;// const express = require('express');
+module.exports = router;
+
+
+
+// const express = require('express');
 // const attendanceController = require('../../controllers/attendanceController'); // Machine
 // const attendanceWebController = require('../../controllers/attendanceWebController'); // New UI
 // const authController = require('../../controllers/authController');
