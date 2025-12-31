@@ -1,6 +1,6 @@
-const AppError = require('../utils/appError');
-const ApiFeatures = require('../utils/ApiFeatures');
-const catchAsync = require('../utils/catchAsync');
+const AppError = require("../utils/appError");
+const ApiFeatures = require("../utils/ApiFeatures");
+const catchAsync = require("../utils/catchAsync");
 
 /**
  * ===========================================================
@@ -21,19 +21,19 @@ exports.getAll = (Model, options = {}) =>
     };
 
     // 2. Exclude soft-deleted docs if applicable
-    if (Model.schema.path('isDeleted')) {
+    if (Model.schema.path("isDeleted")) {
       filter.isDeleted = { $ne: true };
     }
 
     // 3. Exclude inactive docs if applicable
-    if (Model.schema.path('isActive')) {
+    if (Model.schema.path("isActive")) {
       filter.isActive = { $ne: false };
     }
 
     // 4. Build query using ApiFeatures utility
     const features = new ApiFeatures(Model.find(filter), req.query)
       .filter()
-      .search(options.searchFields || ['name', 'title', 'description'])
+      .search(options.searchFields || ["name", "title", "description"])
       .sort()
       .limitFields()
       .paginate();
@@ -48,7 +48,7 @@ exports.getAll = (Model, options = {}) =>
 
     // 7. Send response
     res.status(200).json({
-      status: 'success',
+      status: "success",
       results: result.results,
       pagination: result.pagination,
       data: {
@@ -79,12 +79,12 @@ exports.getOne = (Model, options = {}) =>
 
     // 4. Check if document exists
     if (!doc) {
-      return next(new AppError('No document found with that ID', 404));
+      return next(new AppError("No document found with that ID", 404));
     }
 
     // 5. Send response
     res.status(200).json({
-      status: 'success',
+      status: "success",
       data: {
         data: doc,
       },
@@ -102,7 +102,7 @@ exports.createOne = (Model) =>
     req.body.createdBy = req.user.id;
 
     // 2. Set default status if applicable
-    if (Model.schema.path('isActive') && req.body.isActive === undefined) {
+    if (Model.schema.path("isActive") && req.body.isActive === undefined) {
       req.body.isActive = true;
     }
 
@@ -111,7 +111,7 @@ exports.createOne = (Model) =>
 
     // 4. Send response
     res.status(201).json({
-      status: 'success',
+      status: "success",
       data: {
         data: doc,
       },
@@ -140,17 +140,17 @@ exports.updateOne = (Model) =>
     const doc = await Model.findOneAndUpdate(conditions, req.body, {
       new: true,
       runValidators: true,
-      context: 'query',
+      context: "query",
     });
 
     // 4. Check if document exists
     if (!doc) {
-      return next(new AppError('No document found with that ID', 404));
+      return next(new AppError("No document found with that ID", 404));
     }
 
     // 5. Send response
     res.status(200).json({
-      status: 'success',
+      status: "success",
       data: {
         data: doc,
       },
@@ -164,8 +164,8 @@ exports.updateOne = (Model) =>
 exports.deleteOne = (Model) =>
   catchAsync(async (req, res, next) => {
     // 1. Check if model supports soft delete
-    const hasSoftDelete = !!Model.schema.path('isDeleted');
-    
+    const hasSoftDelete = !!Model.schema.path("isDeleted");
+
     // 2. Build query conditions
     const conditions = {
       _id: req.params.id,
@@ -184,9 +184,9 @@ exports.deleteOne = (Model) =>
           deletedBy: req.user.id,
           deletedAt: Date.now(),
         },
-        { new: true }
+        { new: true },
       );
-    } 
+    }
     // 4. Perform hard delete
     else {
       doc = await Model.findOneAndDelete(conditions);
@@ -194,12 +194,12 @@ exports.deleteOne = (Model) =>
 
     // 5. Check if document exists
     if (!doc) {
-      return next(new AppError('No document found with that ID', 404));
+      return next(new AppError("No document found with that ID", 404));
     }
 
     // 6. Send response
     res.status(204).json({
-      status: 'success',
+      status: "success",
       data: null,
     });
   });
@@ -212,11 +212,11 @@ exports.bulkCreate = (Model) =>
   catchAsync(async (req, res, next) => {
     // Validate that req.body is an array
     if (!Array.isArray(req.body)) {
-      return next(new AppError('Request body must be an array', 400));
+      return next(new AppError("Request body must be an array", 400));
     }
 
     // Add organization and creator info to each document
-    const documents = req.body.map(item => ({
+    const documents = req.body.map((item) => ({
       ...item,
       organizationId: req.user.organizationId,
       createdBy: req.user.id,
@@ -228,7 +228,7 @@ exports.bulkCreate = (Model) =>
 
     // Send response
     res.status(201).json({
-      status: 'success',
+      status: "success",
       results: docs.length,
       data: {
         data: docs,
@@ -246,11 +246,11 @@ exports.bulkUpdate = (Model) =>
 
     // Validate input
     if (!Array.isArray(ids) || ids.length === 0) {
-      return next(new AppError('IDs array is required', 400));
+      return next(new AppError("IDs array is required", 400));
     }
 
-    if (!updates || typeof updates !== 'object') {
-      return next(new AppError('Updates object is required', 400));
+    if (!updates || typeof updates !== "object") {
+      return next(new AppError("Updates object is required", 400));
     }
 
     // Add audit info
@@ -264,12 +264,12 @@ exports.bulkUpdate = (Model) =>
         organizationId: req.user.organizationId,
       },
       updates,
-      { runValidators: true }
+      { runValidators: true },
     );
 
     // Send response
     res.status(200).json({
-      status: 'success',
+      status: "success",
       data: {
         matchedCount: result.matchedCount,
         modifiedCount: result.modifiedCount,
@@ -287,10 +287,10 @@ exports.bulkDelete = (Model) =>
 
     // Validate input
     if (!Array.isArray(ids) || ids.length === 0) {
-      return next(new AppError('IDs array is required', 400));
+      return next(new AppError("IDs array is required", 400));
     }
 
-    const hasSoftDelete = !!Model.schema.path('isDeleted');
+    const hasSoftDelete = !!Model.schema.path("isDeleted");
     let result;
 
     // Build query conditions
@@ -305,15 +305,12 @@ exports.bulkDelete = (Model) =>
       result = await Model.deleteMany(conditions);
     } else if (hasSoftDelete) {
       // Soft delete
-      result = await Model.updateMany(
-        conditions,
-        {
-          isDeleted: true,
-          isActive: false,
-          deletedBy: req.user.id,
-          deletedAt: Date.now(),
-        }
-      );
+      result = await Model.updateMany(conditions, {
+        isDeleted: true,
+        isActive: false,
+        deletedBy: req.user.id,
+        deletedAt: Date.now(),
+      });
     } else {
       // Hard delete for non-soft-delete models
       result = await Model.deleteMany(conditions);
@@ -321,7 +318,7 @@ exports.bulkDelete = (Model) =>
 
     // Send response
     res.status(200).json({
-      status: 'success',
+      status: "success",
       data: {
         deletedCount: result.deletedCount || result.modifiedCount,
       },
@@ -335,8 +332,8 @@ exports.bulkDelete = (Model) =>
 exports.restoreOne = (Model) =>
   catchAsync(async (req, res, next) => {
     // Check if model supports soft delete
-    if (!Model.schema.path('isDeleted')) {
-      return next(new AppError('This model does not support restoration', 400));
+    if (!Model.schema.path("isDeleted")) {
+      return next(new AppError("This model does not support restoration", 400));
     }
 
     // Build query conditions
@@ -355,17 +352,19 @@ exports.restoreOne = (Model) =>
         restoredBy: req.user.id,
         restoredAt: Date.now(),
       },
-      { new: true }
+      { new: true },
     );
 
     // Check if document exists
     if (!doc) {
-      return next(new AppError('No soft-deleted document found with that ID', 404));
+      return next(
+        new AppError("No soft-deleted document found with that ID", 404),
+      );
     }
 
     // Send response
     res.status(200).json({
-      status: 'success',
+      status: "success",
       data: {
         data: doc,
       },
@@ -384,7 +383,7 @@ exports.count = (Model) =>
     };
 
     // Exclude soft-deleted
-    if (Model.schema.path('isDeleted')) {
+    if (Model.schema.path("isDeleted")) {
       filter.isDeleted = { $ne: true };
     }
 
@@ -397,7 +396,7 @@ exports.count = (Model) =>
 
     // Send response
     res.status(200).json({
-      status: 'success',
+      status: "success",
       data: {
         count,
       },
@@ -416,14 +415,14 @@ exports.exportData = (Model, options = {}) =>
     };
 
     // Exclude soft-deleted
-    if (Model.schema.path('isDeleted')) {
+    if (Model.schema.path("isDeleted")) {
       filter.isDeleted = { $ne: true };
     }
 
     // Build query with all filters but no pagination
     const features = new ApiFeatures(Model.find(filter), req.query)
       .filter()
-      .search(options.searchFields || ['name', 'title', 'description'])
+      .search(options.searchFields || ["name", "title", "description"])
       .sort()
       .limitFields();
 
@@ -437,7 +436,7 @@ exports.exportData = (Model, options = {}) =>
 
     // Send response
     res.status(200).json({
-      status: 'success',
+      status: "success",
       results: data.length,
       data: {
         data,
@@ -456,12 +455,15 @@ exports.getStats = (Model) =>
     };
 
     // Exclude soft-deleted
-    if (Model.schema.path('isDeleted')) {
+    if (Model.schema.path("isDeleted")) {
       matchStage.isDeleted = { $ne: true };
     }
 
     // Apply additional filters
-    const features = new ApiFeatures(Model.find(matchStage), req.query).filter();
+    const features = new ApiFeatures(
+      Model.find(matchStage),
+      req.query,
+    ).filter();
     const filter = features.query.getFilter();
 
     // Get statistics
@@ -472,30 +474,25 @@ exports.getStats = (Model) =>
           _id: null,
           total: { $sum: 1 },
           active: {
-            $sum: { $cond: [{ $eq: ['$isActive', true] }, 1, 0] }
+            $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] },
           },
           inactive: {
-            $sum: { $cond: [{ $eq: ['$isActive', false] }, 1, 0] }
+            $sum: { $cond: [{ $eq: ["$isActive", false] }, 1, 0] },
           },
           // Add more aggregations as needed
-        }
-      }
+        },
+      },
     ]);
 
     // Send response
     res.status(200).json({
-      status: 'success',
+      status: "success",
       data: {
         stats: stats[0] || { total: 0, active: 0, inactive: 0 },
       },
     });
   });
 
-
-
-
-
-  
 // const AppError = require('../utils/appError');
 // const ApiFeatures = require('../utils/ApiFeatures');
 // const catchAsync = require('../utils/catchAsync');
@@ -698,7 +695,6 @@ exports.getStats = (Model) =>
 //       },
 //     });
 //   });
-
 
 // // const AppError = require('./appError');
 // // const APIFeatures = require('./apiFeatures'); // Assuming you copied this
