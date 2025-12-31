@@ -987,6 +987,549 @@ exports.meetingRSVP = catchAsync(async (req, res, next) => {
   });
 });
 
+// Additional controller methods for the new routes
+
+// Get shared notes with me
+exports.getSharedNotesWithMe = catchAsync(async (req, res) => {
+  const notes = await Note.find({
+    sharedWith: req.user._id,
+    isDeleted: false,
+  })
+    .populate("owner", "name email avatar")
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  res.status(200).json({
+    status: "success",
+    data: { notes },
+  });
+});
+
+// Get notes shared by me
+exports.getNotesSharedByMe = catchAsync(async (req, res) => {
+  const notes = await Note.find({
+    owner: req.user._id,
+    sharedWith: { $exists: true, $ne: [] },
+    isDeleted: false,
+  })
+    .populate("sharedWith", "name email")
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  res.status(200).json({
+    status: "success",
+    data: { notes },
+  });
+});
+
+// Update share permissions
+exports.updateSharePermissions = catchAsync(async (req, res, next) => {
+  const { noteId } = req.params;
+  const { userId, permission } = req.body;
+
+  const note = await Note.findOne({
+    _id: noteId,
+    owner: req.user._id,
+    isDeleted: false,
+  });
+
+  if (!note) {
+    return next(new AppError("Note not found or you are not the owner", 404));
+  }
+
+  // Find and update participant role
+  const participantIndex = note.participants.findIndex(
+    (p) => p.user.toString() === userId,
+  );
+
+  if (participantIndex > -1) {
+    note.participants[participantIndex].role = permission;
+  }
+
+  await note.save();
+
+  res.status(200).json({
+    status: "success",
+    message: "Share permissions updated",
+  });
+});
+
+// Remove user from shared note
+exports.removeUserFromSharedNote = catchAsync(async (req, res, next) => {
+  const { noteId, userId } = req.params;
+
+  const note = await Note.findOne({
+    _id: noteId,
+    owner: req.user._id,
+    isDeleted: false,
+  });
+
+  if (!note) {
+    return next(new AppError("Note not found or you are not the owner", 404));
+  }
+
+  // Remove from sharedWith array
+  note.sharedWith = note.sharedWith.filter((id) => id.toString() !== userId);
+
+  // Remove from participants
+  note.participants = note.participants.filter(
+    (p) => p.user.toString() !== userId,
+  );
+
+  await note.save();
+
+  res.status(200).json({
+    status: "success",
+    message: "User removed from shared note",
+  });
+});
+
+// Create note template
+exports.createNoteTemplate = catchAsync(async (req, res) => {
+  const { title, content, category, tags } = req.body;
+
+  const template = await Note.create({
+    owner: req.user._id,
+    organizationId: req.user.organizationId,
+    title,
+    content,
+    category,
+    tags: tags || [],
+    isTemplate: true,
+    visibility: "private",
+  });
+
+  res.status(201).json({
+    status: "success",
+    data: { template },
+  });
+});
+
+// Get note templates
+exports.getNoteTemplates = catchAsync(async (req, res) => {
+  const templates = await Note.find({
+    $or: [
+      { owner: req.user._id, isTemplate: true },
+      {
+        organizationId: req.user.organizationId,
+        isTemplate: true,
+        visibility: "organization",
+      },
+    ],
+    isDeleted: false,
+  })
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  res.status(200).json({
+    status: "success",
+    data: { templates },
+  });
+});
+
+// Update note template
+exports.updateNoteTemplate = catchAsync(async (req, res, next) => {
+  const { templateId } = req.params;
+
+  const template = await Note.findOneAndUpdate(
+    {
+      _id: templateId,
+      owner: req.user._id,
+      isTemplate: true,
+      isDeleted: false,
+    },
+    req.body,
+    { new: true, runValidators: true },
+  );
+
+  if (!template) {
+    return next(
+      new AppError("Template not found or you are not the owner", 404),
+    );
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: { template },
+  });
+});
+
+// Delete note template
+exports.deleteNoteTemplate = catchAsync(async (req, res, next) => {
+  const { templateId } = req.params;
+
+  const template = await Note.findOneAndUpdate(
+    {
+      _id: templateId,
+      owner: req.user._id,
+      isTemplate: true,
+    },
+    { isDeleted: true, deletedAt: new Date() },
+  );
+
+  if (!template) {
+    return next(
+      new AppError("Template not found or you are not the owner", 404),
+    );
+  }
+
+  res.status(200).json({
+    status: "success",
+    message: "Template deleted successfully",
+  });
+});
+
+// Export note data
+exports.exportNoteData = catchAsync(async (req, res) => {
+  const { format = "json", startDate, endDate } = req.query;
+
+  const filter = {
+    owner: req.user._id,
+    isDeleted: false,
+  };
+
+  if (startDate || endDate) {
+    filter.createdAt = {};
+    if (startDate) filter.createdAt.$gte = new Date(startDate);
+    if (endDate) filter.createdAt.$lte = new Date(endDate);
+  }
+
+  const notes = await Note.find(filter)
+    .select("-__v -isDeleted -deletedAt")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (format === "csv") {
+    // Convert to CSV (you'll need to implement this based on your needs)
+    const csv = convertToCSV(notes);
+    res.header("Content-Type", "text/csv");
+    res.attachment(`notes-export-${Date.now()}.csv`);
+    return res.send(csv);
+  }
+
+  // Default to JSON
+  res.status(200).json({
+    status: "success",
+    data: notes,
+    count: notes.length,
+    exportedAt: new Date(),
+  });
+});
+
+// Helper function for CSV export
+function convertToCSV(data) {
+  if (!data || data.length === 0) return "";
+
+  const headers = Object.keys(data[0]);
+  const csvRows = [];
+
+  // Add headers
+  csvRows.push(headers.join(","));
+
+  // Add data rows
+  for (const row of data) {
+    const values = headers.map((header) => {
+      const value = row[header];
+      if (value === null || value === undefined) return "";
+      if (typeof value === "object")
+        return JSON.stringify(value).replace(/"/g, '""');
+      return `"${String(value).replace(/"/g, '""')}"`;
+    });
+    csvRows.push(values.join(","));
+  }
+
+  return csvRows.join("\n");
+}
+
+// Get note statistics
+exports.getNoteStatistics = catchAsync(async (req, res) => {
+  const stats = await Note.aggregate([
+    {
+      $match: {
+        owner: req.user._id,
+        isDeleted: false,
+      },
+    },
+    {
+      $facet: {
+        totalNotes: [{ $count: "count" }],
+        byType: [{ $group: { _id: "$noteType", count: { $sum: 1 } } }],
+        byStatus: [{ $group: { _id: "$status", count: { $sum: 1 } } }],
+        byPriority: [{ $group: { _id: "$priority", count: { $sum: 1 } } }],
+        recentActivity: [
+          { $sort: { updatedAt: -1 } },
+          { $limit: 10 },
+          { $project: { title: 1, noteType: 1, updatedAt: 1 } },
+        ],
+      },
+    },
+  ]);
+
+  res.status(200).json({
+    status: "success",
+    data: stats[0],
+  });
+});
+
+// Get recent activity
+exports.getRecentActivity = catchAsync(async (req, res) => {
+  const { limit = 20 } = req.query;
+
+  const notes = await Note.find({
+    $or: [{ owner: req.user._id }, { sharedWith: req.user._id }],
+    isDeleted: false,
+  })
+    .select("title noteType status priority updatedAt activityLog")
+    .sort({ updatedAt: -1 })
+    .limit(parseInt(limit))
+    .lean();
+
+  res.status(200).json({
+    status: "success",
+    data: { notes },
+  });
+});
+
+// Add these methods to your existing noteController.js
+
+// Archive note
+exports.archiveNote = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const note = await Note.findOneAndUpdate(
+    {
+      _id: id,
+      owner: req.user._id,
+      isDeleted: false,
+    },
+    {
+      status: "archived",
+    },
+    { new: true },
+  );
+
+  if (!note) {
+    return next(new AppError("Note not found or you are not the owner", 404));
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: { note },
+  });
+});
+
+// Restore archived note
+exports.restoreNote = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const note = await Note.findOneAndUpdate(
+    {
+      _id: id,
+      owner: req.user._id,
+      status: "archived",
+    },
+    {
+      status: "active",
+    },
+    { new: true },
+  );
+
+  if (!note) {
+    return next(
+      new AppError("Archived note not found or you are not the owner", 404),
+    );
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: { note },
+  });
+});
+
+// Duplicate note
+exports.duplicateNote = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const originalNote = await Note.findOne({
+    _id: id,
+    $or: [{ owner: req.user._id }, { sharedWith: req.user._id }],
+    isDeleted: false,
+  });
+
+  if (!originalNote) {
+    return next(new AppError("Note not found or you do not have access", 404));
+  }
+
+  // Create duplicate
+  const duplicateNote = await Note.create({
+    ...originalNote.toObject(),
+    _id: undefined,
+    title: `Copy of ${originalNote.title}`,
+    owner: req.user._id,
+    isTemplate: false,
+    isPinned: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  res.status(201).json({
+    status: "success",
+    data: { note: duplicateNote },
+  });
+});
+
+// Toggle pin note
+exports.togglePinNote = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const note = await Note.findOne({
+    _id: id,
+    owner: req.user._id,
+    isDeleted: false,
+  });
+
+  if (!note) {
+    return next(new AppError("Note not found or you are not the owner", 404));
+  }
+
+  note.isPinned = !note.isPinned;
+  await note.save();
+
+  res.status(200).json({
+    status: "success",
+    data: { note },
+  });
+});
+
+// Bulk update notes
+exports.bulkUpdateNotes = catchAsync(async (req, res) => {
+  const { noteIds, updates } = req.body;
+
+  if (!noteIds || !Array.isArray(noteIds) || noteIds.length === 0) {
+    return next(new AppError("Please provide note IDs to update", 400));
+  }
+
+  const result = await Note.updateMany(
+    {
+      _id: { $in: noteIds },
+      owner: req.user._id,
+      isDeleted: false,
+    },
+    updates,
+    { runValidators: true },
+  );
+
+  res.status(200).json({
+    status: "success",
+    message: `Updated ${result.modifiedCount} notes`,
+    data: result,
+  });
+});
+
+// Bulk delete notes
+exports.bulkDeleteNotes = catchAsync(async (req, res) => {
+  const { noteIds } = req.body;
+
+  if (!noteIds || !Array.isArray(noteIds) || noteIds.length === 0) {
+    return next(new AppError("Please provide note IDs to delete", 400));
+  }
+
+  const result = await Note.updateMany(
+    {
+      _id: { $in: noteIds },
+      owner: req.user._id,
+    },
+    {
+      isDeleted: true,
+      deletedAt: new Date(),
+      deletedBy: req.user._id,
+    },
+  );
+
+  res.status(200).json({
+    status: "success",
+    message: `Deleted ${result.modifiedCount} notes`,
+    data: result,
+  });
+});
+
+// Get all organization notes (for owners/super admins)
+exports.getAllOrganizationNotes = catchAsync(async (req, res) => {
+  // Only owners/super admins can access this
+  if (!req.user.isOwner && !req.user.isSuperAdmin) {
+    return res.status(403).json({
+      status: "error",
+      message: "Only organization owners or super admins can access all notes",
+    });
+  }
+
+  const notes = await Note.find({
+    organizationId: req.user.organizationId,
+    isDeleted: false,
+  })
+    .populate("owner", "name email")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  res.status(200).json({
+    status: "success",
+    data: { notes },
+  });
+});
+
+// Helper function for CSV export (you already have this)
+function convertToCSV(data) {
+  if (!data || data.length === 0) return "";
+
+  const headers = Object.keys(data[0]);
+  const csvRows = [];
+
+  // Add headers
+  csvRows.push(headers.join(","));
+
+  // Add data rows
+  for (const row of data) {
+    const values = headers.map((header) => {
+      const value = row[header];
+      if (value === null || value === undefined) return "";
+      if (typeof value === "object")
+        return JSON.stringify(value).replace(/"/g, '""');
+      return `"${String(value).replace(/"/g, '""')}"`;
+    });
+    csvRows.push(values.join(","));
+  }
+
+  return csvRows.join("\n");
+}
+
+// Export all user notes
+exports.exportAllUserNotes = catchAsync(async (req, res) => {
+  const { format = "json" } = req.query;
+
+  const notes = await Note.find({
+    owner: req.user._id,
+    isDeleted: false,
+  })
+    .select("-__v -isDeleted -deletedAt -deletedBy")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (format === "csv") {
+    const csv = convertToCSV(notes);
+    res.header("Content-Type", "text/csv");
+    res.attachment(`notes-export-${Date.now()}.csv`);
+    return res.send(csv);
+  }
+
+  // Default to JSON
+  res.status(200).json({
+    status: "success",
+    data: notes,
+    count: notes.length,
+    exportedAt: new Date(),
+  });
+});
+
 module.exports = exports;
 // const mongoose = require('mongoose');
 // const Note = require('../models/noteModel');
