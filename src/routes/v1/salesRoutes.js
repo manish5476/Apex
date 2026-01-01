@@ -1,10 +1,12 @@
 const express = require('express');
 const salesController = require('../../controllers/salesController');
+const salesReturnController = require('../../controllers/salesReturnController');
 const authController = require('../../controllers/authController');
 const { checkPermission } = require("../../middleware/permissionMiddleware");
 const { PERMISSIONS } = require("../../config/permissions");
 // const { validate } = require("../../middleware/validationMiddleware"); // Assuming you have this helper
 const { createSalesSchema, updateSalesSchema } = require('../../validations/salesValidation');
+const { checkStockBeforeSale } = require("../../middleware/stockValidationMiddleware");
 
 const router = express.Router();
 
@@ -38,6 +40,14 @@ router.get(
  * CORE SALES OPERATIONS
  * =============================================================
  */
+
+// In your sales routes
+router.post(
+  '/',
+  authController.protect,
+  checkStockBeforeSale,
+  salesController.createSales
+);
 
 router
   .route('/')
@@ -79,4 +89,16 @@ router
     salesController.deleteSales
   );
 
+  // Add permissions to sales return routes:
+// router.use(authController.protect);
+
+router.post('/', 
+  checkPermission(PERMISSIONS.SALES_RETURN.MANAGE), 
+  salesReturnController.createReturn
+);
+
+router.get('/', 
+  checkPermission(PERMISSIONS.SALES_RETURN.READ), 
+  salesReturnController.getReturns
+);
 module.exports = router;

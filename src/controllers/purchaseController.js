@@ -14,6 +14,101 @@ const fileUploadService = require("../services/uploads/fileUploadService");
 const cloudinary = require("cloudinary").v2;
 const { invalidateOpeningBalance } = require("../services/ledgerCache");
 
+const StockValidationService = require('../services/stockValidationService');
+
+/* ======================================================
+   3. CANCEL PURCHASE (RETURN TO SUPPLIER) - ENHANCED
+====================================================== */
+exports.cancelPurchase = catchAsync(async (req, res, next) => {
+  const { reason } = req.body;
+
+  await runInTransaction(async (session) => {
+    const purchase = await Purchase.findOne({
+      _id: req.params.id,
+      organizationId: req.user.organizationId
+    }).populate('items.productId').session(session);
+
+    if (!purchase) throw new AppError("Purchase not found", 404);
+    if (purchase.status === "cancelled") throw new AppError("Already cancelled", 400);
+    
+    // Enhanced stock validation
+    const stockValidation = await StockValidationService.validatePurchaseCancellation(
+      purchase,
+      session
+    );
+    
+    if (!stockValidation.isValid) {
+      throw new AppError(stockValidation.errors.join(', '), 400);
+    }
+
+    // Reduce inventory
+    for (const item of purchase.items) {
+      const product = await Product.findById(item.productId).session(session);
+      const inv = product.inventory.find(
+        i => String(i.branchId) === String(purchase.branchId)
+      );
+
+      if (inv) {
+        inv.quantity -= item.quantity;
+        await product.save({ session });
+      }
+    }
+
+    // Update supplier balance
+    await Supplier.findByIdAndUpdate(
+      purchase.supplierId,
+      { $inc: { outstandingBalance: -purchase.grandTotal } },
+      { session }
+    );
+
+    // Accounting entries
+    const inventoryAcc = await getOrInitAccount(
+      req.user.organizationId, "asset", "Inventory Asset", "1500", session
+    );
+    const apAcc = await getOrInitAccount(
+      req.user.organizationId, "liability", "Accounts Payable", "2000", session
+    );
+
+    await AccountEntry.create([
+      {
+        organizationId: req.user.organizationId,
+        branchId: req.user.branchId,
+        accountId: apAcc._id,
+        supplierId: purchase.supplierId,
+        date: new Date(),
+        debit: purchase.grandTotal,
+        credit: 0,
+        description: `Purchase Cancelled: ${reason}`,
+        referenceType: "purchase_return",
+        referenceId: purchase._id,
+        createdBy: req.user._id
+      },
+      {
+        organizationId: req.user.organizationId,
+        branchId: req.user.branchId,
+        accountId: inventoryAcc._id,
+        date: new Date(),
+        debit: 0,
+        credit: purchase.grandTotal,
+        description: `Inventory Returned: ${purchase.invoiceNumber}`,
+        referenceType: "purchase_return",
+        referenceId: purchase._id,
+        createdBy: req.user._id
+      }
+    ], { session });
+
+    // Update purchase status
+    purchase.status = "cancelled";
+    purchase.notes = `${purchase.notes || ""}\nCancelled: ${reason}`;
+    await purchase.save({ session });
+  }, 3, { action: "CANCEL_PURCHASE", userId: req.user._id });
+
+  res.status(200).json({ 
+    status: "success", 
+    message: "Purchase cancelled successfully" 
+  });
+});
+
 /* ======================================================
    ACCOUNT HELPER (IDEMPOTENT)
 ====================================================== */

@@ -123,6 +123,5 @@ exports.reparentAccount = catchAsync(async (req, res, next) => {
     { new: true }
   );
   if (!updated) return next(new AppError('Account not found', 404));
-
   res.status(200).json({ status: 'success', data: updated });
 });
