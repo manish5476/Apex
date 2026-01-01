@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const transactionController = require('../../controllers/transactionController');
 const monitorController = require('../../controllers/monitorController');
-const authController = require('../../controllers/authController');
+const authController = require('@modules/auth/core/auth.controller');
 const { checkPermission } = require("../../middleware/permissionMiddleware");
 const { PERMISSIONS } = require("../../config/permissions");
 

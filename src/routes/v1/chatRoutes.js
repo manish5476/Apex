@@ -5,7 +5,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const channelCtrl = require('../../controllers/channelController');
 const messageCtrl = require('../../controllers/messageController');
-const authController = require('../../controllers/authController');
+const authController = require('@modules/auth/core/auth.controller');
 const { checkPermission } = require('../../middleware/permissionMiddleware');
 const { PERMISSIONS } = require('../../config/permissions');
 

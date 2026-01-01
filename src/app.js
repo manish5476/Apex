@@ -13,15 +13,15 @@ const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
 
 const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./config/swaggerConfig");
-const globalErrorHandler = require("./middleware/errorController");
-const AppError = require("./utils/appError");
-const logger = require("./config/logger");
-const { updateSessionActivity } = require("./middleware/sessionActivity");
-const assignRequestId = require("./middleware/assignRequestId");
+const swaggerSpec = require("./bootstrap/swagger");
+const globalErrorHandler = require("./core/error/errorController");
+const AppError = require("./core/utils/appError");
+const logger = require("./bootstrap/logger");
+const { updateSessionActivity } = require("./core/middleware/session.middleware");
+const assignRequestId = require("./core/middleware/requestId.middleware");
 
 // Import route manager
-const routeManager = require("./middleware/routeManager");
+const routeManager = require("./core/middleware/routeManager.middleware");
 
 const app = express();
 

@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const roleController = require("../../controllers/roleControllers");
-const authController = require("../../controllers/authController");
+const authController = require("@modules/auth/core/auth.controller");
 const {
     checkPermission,
     checkIsOwner,
@@ -40,7 +40,7 @@ module.exports = router;
 // const express = require("express");
 // const router = express.Router();
 // const roleController = require("../../controllers/roleControllers");
-// const authController = require("../../controllers/authController");
+// const authController = require("@modules/auth/core/auth.controller");
 // const {
 //     checkPermission,
 //     checkIsOwner,

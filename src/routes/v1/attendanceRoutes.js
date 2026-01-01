@@ -2,7 +2,7 @@
 const express = require('express');
 const attendanceController = require('../../controllers/attendanceController');
 const attendanceWebController = require('../../controllers/attendanceWebController'); // For web punches
-const authController = require('../../controllers/authController');
+const authController = require('@modules/auth/core/auth.controller');
 const { checkPermission, checkAnyPermission } = require("../../middleware/permissionMiddleware");
 const { PERMISSIONS } = require('../../config/permissions');
 
@@ -175,7 +175,7 @@ module.exports = router;
 // // routes/attendanceRoutes.js
 // const express = require('express');
 // const attendanceController = require('../../controllers/attendanceController'); // Machine + Web + Actions combined
-// const authController = require('../../controllers/authController');
+// const authController = require('@modules/auth/core/auth.controller');
 // const { checkPermission, checkRole } = require("../../middleware/permissionMiddleware");
 // const { PERMISSIONS } = require('../../config/permissions');
 
@@ -366,7 +366,7 @@ module.exports = router;
 // // const attendanceController = require('../../controllers/attendanceController'); // Machine Ingestion
 // // const attendanceWebController = require('../../controllers/attendanceWebController'); // Web Punch
 // // const attendanceActionsController = require('../../controllers/attendanceActionsController'); // Management
-// // const authController = require('../../controllers/authController');
+// // const authController = require('@modules/auth/core/auth.controller');
 // // const { checkPermission, } = require("../../middleware/permissionMiddleware");
 // // const { PERMISSIONS } = require('../../config/permissions');
 

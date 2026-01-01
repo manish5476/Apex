@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const branchController = require('../../controllers/branchController');
-const authController = require('../../controllers/authController');
+const authController = require('@modules/auth/core/auth.controller');
 const { checkPermission } = require("../../middleware/permissionMiddleware");
 const { PERMISSIONS } = require("../../config/permissions");
 

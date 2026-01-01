@@ -1,6 +1,6 @@
 const express = require('express');
 const shiftController = require('../../controllers/shiftController');
-const authController = require('../../controllers/authController');
+const authController = require('@modules/auth/core/auth.controller');
 const { checkPermission, } = require("../../middleware/permissionMiddleware");
 const { PERMISSIONS } = require('../../config/permissions');
 

@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const noteController = require("../../controllers/noteController");
-const authController = require("../../controllers/authController");
+const authController = require("@modules/auth/core/auth.controller");
 const { upload } = require("../../middleware/uploadMiddleware");
 const {
   checkPermission,
@@ -257,7 +257,7 @@ module.exports = router;
 // const router = express.Router();
 
 // const noteController = require("../../controllers/noteController");
-// const authController = require("../../controllers/authController");
+// const authController = require("@modules/auth/core/auth.controller");
 // const { upload } = require("../../middleware/uploadMiddleware");
 // const {
 //   checkPermission,

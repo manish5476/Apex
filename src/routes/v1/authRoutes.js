@@ -1,6 +1,6 @@
 // Standard Auth - No permission changes needed
 const express = require('express');
-const authController = require('../../controllers/authController');
+const authController = require('@modules/auth/core/auth.controller');
 const router = express.Router();
 const forgotPasswordLimiter = require("../../middleware/forgotPasswordLimiter");
 

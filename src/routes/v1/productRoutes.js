@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const productController = require("../../controllers/productController");
-const authController = require("../../controllers/authController");
+const authController = require("@modules/auth/core/auth.controller");
 const { checkPermission } = require("../../middleware/permissionMiddleware");
 const { PERMISSIONS } = require("../../config/permissions");
 const { upload } = require("../../middleware/uploadMiddleware");

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const authController = require("../../controllers/authController");
+const authController = require("@modules/auth/core/auth.controller");
 const userController = require("../../controllers/userController");
 const { checkPermission } = require("../../middleware/permissionMiddleware");
 const { PERMISSIONS } = require("../../config/permissions");

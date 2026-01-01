@@ -1,40 +1,51 @@
 # ======================================================
-# APEX CRM – COMPLETE MIGRATION SCRIPT (FINAL)
+# APEX CRM - MODULAR MIGRATION SCRIPT
+# Creates newSrc/ with modular structure from src/
 # ======================================================
 
 $ErrorActionPreference = "Stop"
 
+# Color functions for better output
+function Write-Info { Write-Host "[INFO] $args" -ForegroundColor Cyan }
+function Write-Success { Write-Host "[SUCCESS] $args" -ForegroundColor Green }
+function Write-Warning { Write-Host "[WARNING] $args" -ForegroundColor Yellow }
+function Write-Error { Write-Host "[ERROR] $args" -ForegroundColor Red }
+function Write-Detail { Write-Host "  $args" -ForegroundColor Gray }
+
 # -------------------------------
-# CHECK IF newSrc EXISTS AND HANDLE IT
+# CHECK AND PREPARE
 # -------------------------------
+Write-Info "Starting Modular Migration"
+
 if (Test-Path "newSrc") {
-    Write-Host "Warning: newSrc already exists." -ForegroundColor Yellow
-    $response = Read-Host "Do you want to (O)verwrite, (B)ackup and create new, or (C)ancel? [O/B/C]"
+    Write-Warning "newSrc already exists"
+    $choice = Read-Host "Choose: (O)verwrite, (B)ackup, (C)ancel [O/B/C]"
     
-    switch ($response.ToUpper()) {
+    switch ($choice.ToUpper()) {
         "O" {
-            Write-Host "Overwriting existing newSrc folder..." -ForegroundColor Yellow
+            Write-Warning "Overwriting newSrc..."
             Remove-Item -Path "newSrc" -Recurse -Force
         }
         "B" {
             $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
             $backupName = "newSrc_backup_$timestamp"
-            Write-Host "Backing up existing newSrc to $backupName..." -ForegroundColor Yellow
+            Write-Info "Backing up to: $backupName"
             Rename-Item -Path "newSrc" -NewName $backupName
         }
         default {
-            Write-Host "Migration cancelled." -ForegroundColor Red
+            Write-Error "Migration cancelled"
             exit 1
         }
     }
 }
 
-Write-Host "Starting complete migration" -ForegroundColor Green
+# -------------------------------
+# CREATE MODULAR DIRECTORY STRUCTURE
+# -------------------------------
+Write-Info "Creating modular directory structure..."
 
-# -------------------------------
-# BASE STRUCTURE (ENHANCED)
-# -------------------------------
-$dirs = @(
+$moduleStructure = @(
+    # Core framework
     "newSrc",
     "newSrc/bootstrap",
     "newSrc/config",
@@ -44,753 +55,930 @@ $dirs = @(
     "newSrc/core/utils/_legacy",
     "newSrc/core/jobs",
     "newSrc/core/jobs/_legacy",
-    "newSrc/modules",
+    
+    # Business Modules
     "newSrc/modules/accounting/core",
     "newSrc/modules/accounting/billing",
     "newSrc/modules/accounting/payments",
+    "newSrc/modules/accounting/reports",
+    "newSrc/modules/accounting/ledger",
+    "newSrc/modules/accounting/transactions",
+    
     "newSrc/modules/hr/attendance",
     "newSrc/modules/hr/attendance/models",
     "newSrc/modules/hr/holiday",
     "newSrc/modules/hr/shift",
     "newSrc/modules/hr/leave",
-    "newSrc/modules/inventory",
+    "newSrc/modules/hr/payroll",
+    
     "newSrc/modules/inventory/core",
-    "newSrc/modules/master",
-    "newSrc/modules/master/core",
-    "newSrc/modules/notification",
-    "newSrc/modules/notification/core",
-    "newSrc/modules/organization",
+    "newSrc/modules/inventory/products",
+    "newSrc/modules/inventory/sales",
+    "newSrc/modules/inventory/purchases",
+    "newSrc/modules/inventory/stock",
+    "newSrc/modules/inventory/returns",
+    
     "newSrc/modules/organization/core",
-    "newSrc/modules/sales",
-    "newSrc/modules/sales/core",
-    "newSrc/modules/auth",
+    "newSrc/modules/organization/branches",
+    "newSrc/modules/organization/customers",
+    "newSrc/modules/organization/suppliers",
+    "newSrc/modules/organization/channels",
+    
     "newSrc/modules/auth/core",
+    "newSrc/modules/auth/roles",
+    "newSrc/modules/auth/sessions",
+    "newSrc/modules/auth/users",
+    
+    "newSrc/modules/notification/core",
+    "newSrc/modules/notification/announcements",
+    "newSrc/modules/notification/messages",
+    "newSrc/modules/notification/feeds",
+    
+    "newSrc/modules/master/core",
+    "newSrc/modules/master/types",
+    "newSrc/modules/master/lists",
+    
+    "newSrc/modules/analytics/dashboard",
+    "newSrc/modules/analytics/reports",
+    "newSrc/modules/analytics/charts",
+    "newSrc/modules/analytics/insights",
+    
+    "newSrc/modules/communication/channels",
+    "newSrc/modules/communication/feeds",
+    
+    "newSrc/modules/admin/core",
+    "newSrc/modules/admin/monitoring",
+    "newSrc/modules/admin/logs",
+    "newSrc/modules/admin/automation",
+    
+    "newSrc/modules/utilities/uploads",
+    "newSrc/modules/utilities/ai",
+    "newSrc/modules/utilities/search",
+    "newSrc/modules/utilities/notes",
+    
+    # Legacy for unmapped files
     "newSrc/modules/_legacy/controllers",
     "newSrc/modules/_legacy/services",
     "newSrc/modules/_legacy/models",
+    
+    # Supporting directories
     "newSrc/routes",
     "newSrc/routes/v1",
-    "newSrc/shared/validations",
     "newSrc/shared/middleware",
+    "newSrc/shared/validations",
+    "newSrc/shared/utils",
     "newSrc/scripts",
     "newSrc/public",
     "newSrc/public/fonts",
     "newSrc/logs",
-    "newSrc/tests"
+    "newSrc/tests",
+    "newSrc/tests/unit",
+    "newSrc/tests/integration",
+    "newSrc/socketHandlers"
 )
 
-foreach ($d in $dirs) {
-    if (-not (Test-Path $d)) {
-        New-Item -ItemType Directory -Path $d -Force | Out-Null
-        Write-Host "Created directory: $d" -ForegroundColor DarkGray
-    }
-}
-
-# -------------------------------
-# ROOT FILES (COMPLETE)
-# -------------------------------
-$rootFiles = @(".env", ".env.example", ".gitignore", "app.js", "server.js", "debug-ai.js")
-foreach ($file in $rootFiles) {
-    $srcPath = "src\$file"
-    $destPath = "newSrc\$file"
-    if (Test-Path $srcPath) {
-        Copy-Item $srcPath $destPath -ErrorAction SilentlyContinue
-        Write-Host "Copied: $file" -ForegroundColor DarkGray
-    } else {
-        Write-Host "Warning: $srcPath not found" -ForegroundColor Yellow
-    }
-}
-
-# -------------------------------
-# BOOTSTRAP (COMPLETE)
-# -------------------------------
-$bootstrapFiles = @(
-    @("config\db.js", "bootstrap\db.js"),
-    @("config\logger.js", "bootstrap\logger.js"),
-    @("config\swaggerConfig.js", "bootstrap\swagger.js")
-)
-
-foreach ($filePair in $bootstrapFiles) {
-    $src = "src\$($filePair[0])"
-    $dest = "newSrc\$($filePair[1])"
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "Copied: $($filePair[0]) -> $($filePair[1])" -ForegroundColor DarkGray
-    }
-}
-
-# -------------------------------
-# CONFIG (COMPLETE)
-# -------------------------------
-if (Test-Path "src\config\permissions.js") {
-    Copy-Item "src\config\permissions.js" "newSrc\config\permissions.js"
-    Write-Host "Copied: config\permissions.js" -ForegroundColor DarkGray
-}
-
-# -------------------------------
-# ERROR HANDLING (COMPLETE)
-# -------------------------------
-$errorFiles = @(
-    @("middleware\errorHandler.js", "core\error\errorHandler.js"),
-    @("middleware\errorController.js", "core\error\errorController.js")
-)
-
-foreach ($filePair in $errorFiles) {
-    $src = "src\$($filePair[0])"
-    $dest = "newSrc\$($filePair[1])"
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "Copied: $($filePair[0]) -> $($filePair[1])" -ForegroundColor DarkGray
-    }
-}
-
-# -------------------------------
-# CORE MIDDLEWARE (COMPLETE)
-# -------------------------------
-$middlewareMap = @{
-    "assignRequestId.js"      = "requestId.middleware.js"
-    "authMiddleware.js"       = "auth.middleware.js"
-    "permissionMiddleware.js" = "permission.middleware.js"
-    "cacheMiddleware.js"      = "cache.middleware.js"
-    "uploadMiddleware.js"     = "upload.middleware.js"
-    "sessionActivity.js"      = "session.middleware.js"
-    "periodLock.js"           = "periodLock.middleware.js"
-    "forgotPasswordLimiter.js" = "rateLimit.middleware.js"
-}
-
-foreach ($m in $middlewareMap.Keys) {
-    $src = "src\middleware\$m"
-    $dest = "newSrc\core\middleware\" + $middlewareMap[$m]
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "Copied: middleware\$m -> core\middleware\$($middlewareMap[$m])" -ForegroundColor DarkGray
-    } else {
-        Write-Host "Warning: $src not found" -ForegroundColor Yellow
-    }
-}
-
-# Copy Multer config separately as it's not middleware
-if (Test-Path "src\middleware\multerConfig.js") {
-    Copy-Item "src\middleware\multerConfig.js" "newSrc\core\utils\_legacy\multerConfig.js" -ErrorAction SilentlyContinue
-    Write-Host "Copied: middleware\multerConfig.js -> core\utils\_legacy\multerConfig.js" -ForegroundColor DarkGray
-}
-
-# -------------------------------
-# SHARED MIDDLEWARE
-# -------------------------------
-if (Test-Path "src\middleware\assignRequestId.js") {
-    Copy-Item "src\middleware\assignRequestId.js" "newSrc\shared\middleware\requestId.js"
-    Write-Host "Copied: middleware\assignRequestId.js -> shared\middleware\requestId.js" -ForegroundColor DarkGray
-}
-
-# -------------------------------
-# ACCOUNTING MODULES
-# -------------------------------
-Write-Host "`nMigrating Accounting Module..." -ForegroundColor Cyan
-
-# Core Accounting
-$accountingFiles = @(
-    @("models\accountModel.js", "modules\accounting\core\account.model.js"),
-    @("models\accountEntryModel.js", "modules\accounting\core\accountEntry.model.js"),
-    @("controllers\accountController.js", "modules\accounting\core\account.controller.js"),
-    @("controllers\ledgerController.js", "modules\accounting\core\ledger.controller.js"),
-    @("controllers\transactionController.js", "modules\accounting\core\transaction.controller.js"),
-    @("controllers\reconciliationController.js", "modules\accounting\core\reconciliation.controller.js"),
-    
-    # Billing/Invoice
-    @("models\invoiceModel.js", "modules\accounting\billing\invoice.model.js"),
-    @("models\invoiceAuditModel.js", "modules\accounting\billing\invoiceAudit.model.js"),
-    @("controllers\invoiceController.js", "modules\accounting\billing\invoice.controller.js"),
-    @("controllers\invoicePDFController.js", "modules\accounting\billing\invoicePDF.controller.js"),
-    
-    # Payments
-    @("models\paymentModel.js", "modules\accounting\payments\payment.model.js"),
-    @("models\emiModel.js", "modules\accounting\payments\emi.model.js"),
-    @("controllers\paymentController.js", "modules\accounting\payments\payment.controller.js"),
-    @("controllers\emiController.js", "modules\accounting\payments\emi.controller.js")
-)
-
-foreach ($filePair in $accountingFiles) {
-    $src = "src\$($filePair[0])"
-    $dest = "newSrc\$($filePair[1])"
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied: $($filePair[0])" -ForegroundColor DarkGray
-    } else {
-        Write-Host "  Warning: $src not found" -ForegroundColor DarkYellow
-    }
-}
-
-# -------------------------------
-# HR MODULES
-# -------------------------------
-Write-Host "`nMigrating HR Module..." -ForegroundColor Cyan
-
-$hrFiles = @(
-    # Attendance
-    @("models\attendanceDailyModel.js", "modules\hr\attendance\models\attendanceDaily.model.js"),
-    @("models\attendanceLogModel.js", "modules\hr\attendance\models\attendanceLog.model.js"),
-    @("models\attendanceMachineModel.js", "modules\hr\attendance\models\attendanceMachine.model.js"),
-    @("models\attendanceRequestModel.js", "modules\hr\attendance\models\attendanceRequest.model.js"),
-    @("controllers\attendanceController.js", "modules\hr\attendance\attendance.controller.js"),
-    @("controllers\attendanceActionsController.js", "modules\hr\attendance\attendanceActions.controller.js"),
-    @("controllers\attendanceWebController.js", "modules\hr\attendance\attendanceWeb.controller.js"),
-    
-    # Holiday
-    @("models\holidayModel.js", "modules\hr\holiday\holiday.model.js"),
-    @("controllers\holidayController.js", "modules\hr\holiday\holiday.controller.js"),
-    
-    # Shift
-    @("models\shiftModel.js", "modules\hr\shift\shift.model.js"),
-    @("controllers\shiftController.js", "modules\hr\shift\shift.controller.js"),
-    
-    # Leave
-    @("models\leaveRequestModel.js", "modules\hr\leave\leaveRequest.model.js")
-)
-
-foreach ($filePair in $hrFiles) {
-    $src = "src\$($filePair[0])"
-    $dest = "newSrc\$($filePair[1])"
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied: $($filePair[0])" -ForegroundColor DarkGray
-    } else {
-        Write-Host "  Warning: $src not found" -ForegroundColor DarkYellow
-    }
-}
-
-# -------------------------------
-# INVENTORY MODULE
-# -------------------------------
-Write-Host "`nMigrating Inventory Module..." -ForegroundColor Cyan
-
-$inventoryFiles = @(
-    @("models\productModel.js", "modules\inventory\core\product.model.js"),
-    @("models\purchaseModel.js", "modules\inventory\core\purchase.model.js"),
-    @("models\salesModel.js", "modules\inventory\core\sales.model.js"),
-    @("controllers\inventoryController.js", "modules\inventory\core\inventory.controller.js"),
-    @("controllers\productController.js", "modules\inventory\core\product.controller.js"),
-    @("controllers\purchaseController.js", "modules\inventory\core\purchase.controller.js"),
-    @("controllers\salesController.js", "modules\inventory\core\sales.controller.js"),
-    @("controllers\salesReturnController.js", "modules\inventory\core\salesReturn.controller.js")
-)
-
-foreach ($filePair in $inventoryFiles) {
-    $src = "src\$($filePair[0])"
-    $dest = "newSrc\$($filePair[1])"
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied: $($filePair[0])" -ForegroundColor DarkGray
-    } else {
-        Write-Host "  Warning: $src not found" -ForegroundColor DarkYellow
-    }
-}
-
-# Handle salesReturnModel.js in the nested location
-$salesReturnSrc1 = "src\models\salesReturnModel.js"
-$salesReturnSrc2 = "src\models\src\models\salesReturnModel.js"
-$salesReturnDest = "newSrc\modules\inventory\core\salesReturn.model.js"
-
-if (Test-Path $salesReturnSrc1) {
-    Copy-Item $salesReturnSrc1 $salesReturnDest -ErrorAction SilentlyContinue
-    Write-Host "  Copied: models\salesReturnModel.js" -ForegroundColor DarkGray
-} elseif (Test-Path $salesReturnSrc2) {
-    Copy-Item $salesReturnSrc2 $salesReturnDest -ErrorAction SilentlyContinue
-    Write-Host "  Copied: models\src\models\salesReturnModel.js" -ForegroundColor DarkGray
-} else {
-    Write-Host "  Warning: salesReturnModel.js not found in either location" -ForegroundColor DarkYellow
-}
-
-# -------------------------------
-# MASTER MODULE
-# -------------------------------
-Write-Host "`nMigrating Master Module..." -ForegroundColor Cyan
-
-$masterFiles = @(
-    @("models\masterModel.js", "modules\master\core\master.model.js"),
-    @("models\masterTypeModel.js", "modules\master\core\masterType.model.js"),
-    @("controllers\masterController.js", "modules\master\core\master.controller.js"),
-    @("controllers\masterTypeController.js", "modules\master\core\masterType.controller.js"),
-    @("controllers\masterListController.js", "modules\master\core\masterList.controller.js")
-)
-
-foreach ($filePair in $masterFiles) {
-    $src = "src\$($filePair[0])"
-    $dest = "newSrc\$($filePair[1])"
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied: $($filePair[0])" -ForegroundColor DarkGray
-    } else {
-        Write-Host "  Warning: $src not found" -ForegroundColor DarkYellow
-    }
-}
-
-# -------------------------------
-# NOTIFICATION MODULE
-# -------------------------------
-Write-Host "`nMigrating Notification Module..." -ForegroundColor Cyan
-
-$notificationFiles = @(
-    @("models\notificationModel.js", "modules\notification\core\notification.model.js"),
-    @("models\announcementModel.js", "modules\notification\core\announcement.model.js"),
-    @("models\messageModel.js", "modules\notification\core\message.model.js"),
-    @("controllers\notificationController.js", "modules\notification\core\notification.controller.js"),
-    @("controllers\announcementController.js", "modules\notification\core\announcement.controller.js"),
-    @("controllers\messageController.js", "modules\notification\core\message.controller.js")
-)
-
-foreach ($filePair in $notificationFiles) {
-    $src = "src\$($filePair[0])"
-    $dest = "newSrc\$($filePair[1])"
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied: $($filePair[0])" -ForegroundColor DarkGray
-    } else {
-        Write-Host "  Warning: $src not found" -ForegroundColor DarkYellow
-    }
-}
-
-# -------------------------------
-# ORGANIZATION MODULE
-# -------------------------------
-Write-Host "`nMigrating Organization Module..." -ForegroundColor Cyan
-
-$orgFiles = @(
-    @("models\organizationModel.js", "modules\organization\core\organization.model.js"),
-    @("models\branchModel.js", "modules\organization\core\branch.model.js"),
-    @("models\channelModel.js", "modules\organization\core\channel.model.js"),
-    @("models\customerModel.js", "modules\organization\core\customer.model.js"),
-    @("models\supplierModel.js", "modules\organization\core\supplier.model.js"),
-    @("controllers\organizationController.js", "modules\organization\core\organization.controller.js"),
-    @("controllers\branchController.js", "modules\organization\core\branch.controller.js"),
-    @("controllers\channelController.js", "modules\organization\core\channel.controller.js"),
-    @("controllers\customerController.js", "modules\organization\core\customer.controller.js"),
-    @("controllers\supplierController.js", "modules\organization\core\supplier.controller.js"),
-    @("controllers\organizationExtrasController.js", "modules\organization\core\organizationExtras.controller.js")
-)
-
-foreach ($filePair in $orgFiles) {
-    $src = "src\$($filePair[0])"
-    $dest = "newSrc\$($filePair[1])"
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied: $($filePair[0])" -ForegroundColor DarkGray
-    } else {
-        Write-Host "  Warning: $src not found" -ForegroundColor DarkYellow
-    }
-}
-
-# -------------------------------
-# AUTH MODULE
-# -------------------------------
-Write-Host "`nMigrating Auth Module..." -ForegroundColor Cyan
-
-$authFiles = @(
-    @("models\userModel.js", "modules\auth\core\user.model.js"),
-    @("models\roleModel.js", "modules\auth\core\role.model.js"),
-    @("models\sessionModel.js", "modules\auth\core\session.model.js"),
-    @("controllers\authController.js", "modules\auth\core\auth.controller.js"),
-    @("controllers\userController.js", "modules\auth\core\user.controller.js"),
-    @("controllers\roleControllers.js", "modules\auth\core\role.controller.js"),
-    @("controllers\sessionController.js", "modules\auth\core\session.controller.js")
-)
-
-foreach ($filePair in $authFiles) {
-    $src = "src\$($filePair[0])"
-    $dest = "newSrc\$($filePair[1])"
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied: $($filePair[0])" -ForegroundColor DarkGray
-    } else {
-        Write-Host "  Warning: $src not found" -ForegroundColor DarkYellow
-    }
-}
-
-# -------------------------------
-# LOGS AND AUDIT MODELS
-# -------------------------------
-Write-Host "`nMigrating Logs and Audit..." -ForegroundColor DarkGray
-
-$logFiles = @(
-    @("models\activityLogModel.js", "modules\_legacy\models\activityLogModel.js"),
-    @("models\auditLogModel.js", "modules\_legacy\models\auditLogModel.js"),
-    @("controllers\logs.controller.js", "modules\_legacy\controllers\logs.controller.js")
-)
-
-foreach ($filePair in $logFiles) {
-    $src = "src\$($filePair[0])"
-    $dest = "newSrc\$($filePair[1])"
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied: $($filePair[0])" -ForegroundColor DarkGray
-    }
-}
-
-# -------------------------------
-# OTHER CONTROLLERS TO LEGACY
-# -------------------------------
-Write-Host "`nMigrating remaining controllers to legacy..." -ForegroundColor DarkGray
-
-$legacyControllers = @(
-    "dashboardController.js",
-    "analyticsController.js",
-    "chartController.js",
-    "searchController.js",
-    "feedController.js",
-    "statementsController.js",
-    "monitorController.js",
-    "adminController.js",
-    "automationController.js",
-    "noteController.js",
-    "ownership.controller.js",
-    "uploadController.js",
-    "partyTransactionController.js"
-)
-
-foreach ($controller in $legacyControllers) {
-    $src = "src\controllers\$controller"
-    $dest = "newSrc\modules\_legacy\controllers\$controller"
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied: controllers\$controller" -ForegroundColor DarkGray
-    }
-}
-
-# -------------------------------
-# MIGRATE REMAINING MODELS TO LEGACY
-# -------------------------------
-Write-Host "`nMigrating remaining models to legacy..." -ForegroundColor DarkGray
-
-$excludeModels = @(
-    "accountModel.js",
-    "accountEntryModel.js",
-    "invoiceModel.js",
-    "invoiceAuditModel.js",
-    "paymentModel.js",
-    "emiModel.js",
-    "attendanceDailyModel.js",
-    "attendanceLogModel.js",
-    "attendanceMachineModel.js",
-    "attendanceRequestModel.js",
-    "holidayModel.js",
-    "shiftModel.js",
-    "leaveRequestModel.js",
-    "productModel.js",
-    "purchaseModel.js",
-    "salesModel.js",
-    "masterModel.js",
-    "masterTypeModel.js",
-    "notificationModel.js",
-    "announcementModel.js",
-    "messageModel.js",
-    "organizationModel.js",
-    "branchModel.js",
-    "channelModel.js",
-    "customerModel.js",
-    "supplierModel.js",
-    "userModel.js",
-    "roleModel.js",
-    "sessionModel.js",
-    "activityLogModel.js",
-    "auditLogModel.js",
-    "salesReturnModel.js"
-)
-
-$models = Get-ChildItem "src\models" -File | Where-Object { $_.Name -notin $excludeModels }
-foreach ($model in $models) {
-    $src = $model.FullName
-    $dest = "newSrc\modules\_legacy\models\$($model.Name)"
-    Copy-Item $src $dest -ErrorAction SilentlyContinue
-    Write-Host "  Copied: models\$($model.Name)" -ForegroundColor DarkGray
-}
-
-# Handle TransferRequest.js (with .js extension)
-if (Test-Path "src\models\TransferRequest.js") {
-    Copy-Item "src\models\TransferRequest.js" "newSrc\modules\_legacy\models\TransferRequest.js"
-    Write-Host "  Copied: models\TransferRequest.js" -ForegroundColor DarkGray
-}
-
-# -------------------------------
-# SERVICES ORGANIZATION
-# -------------------------------
-Write-Host "`nMigrating Services..." -ForegroundColor Cyan
-
-# Create services directories
-$serviceDirs = @(
-    "newSrc\modules\accounting\core",
-    "newSrc\modules\accounting\payments",
-    "newSrc\modules\inventory\core",
-    "newSrc\modules\notification\core",
-    "newSrc\modules\_legacy\services\analytics",
-    "newSrc\modules\_legacy\services\ai",
-    "newSrc\modules\_legacy\services\uploads"
-)
-
-foreach ($dir in $serviceDirs) {
+foreach ($dir in $moduleStructure) {
     if (-not (Test-Path $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        Write-Detail "Created: $dir"
+    }
+}
+
+Write-Success "Directory structure created"
+
+# -------------------------------
+# MIGRATE ROOT FILES
+# -------------------------------
+Write-Info "Migrating root files..."
+
+$rootFiles = @(".env", ".env.example", ".gitignore", "app.js", "debug-ai.js", "server.js")
+foreach ($file in $rootFiles) {
+    if (Test-Path "src\$file") {
+        Copy-Item "src\$file" "newSrc\$file"
+        Write-Detail "Root: $file"
+    }
+}
+
+# -------------------------------
+# MIGRATE CONFIG/BOOTSTRAP FILES
+# -------------------------------
+Write-Info "Migrating config files..."
+
+$configFiles = @(
+    @("config\db.js", "bootstrap\db.js"),
+    @("config\logger.js", "bootstrap\logger.js"),
+    @("config\swaggerConfig.js", "bootstrap\swagger.js"),
+    @("config\permissions.js", "config\permissions.js"),
+    @("config\redis.js", "config\redis.js"),
+    @("config\middlewareConfig.js", "config\middlewareConfig.js")
+)
+
+foreach ($pair in $configFiles) {
+    $src = "src\$($pair[0])"
+    $dest = "newSrc\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Config: $($pair[0]) -> $($pair[1])"
+    }
+}
+
+# -------------------------------
+# MIGRATE CORE FILES
+# -------------------------------
+Write-Info "Migrating core files..."
+
+# Error handling
+Copy-Item "src\middleware\errorHandler.js" "newSrc\core\error\errorHandler.js" -ErrorAction SilentlyContinue
+Copy-Item "src\middleware\errorController.js" "newSrc\core\error\errorController.js" -ErrorAction SilentlyContinue
+
+# Core middleware
+$middlewareMap = @{
+    "authMiddleware.js" = "auth.middleware.js"
+    "permissionMiddleware.js" = "permission.middleware.js"
+    "cacheMiddleware.js" = "cache.middleware.js"
+    "sessionActivity.js" = "session.middleware.js"
+    "periodLock.js" = "periodLock.middleware.js"
+    "forgotPasswordLimiter.js" = "rateLimit.middleware.js"
+    "assignRequestId.js" = "requestId.middleware.js"
+    "security.js" = "security.middleware.js"
+    "stockValidationMiddleware.js" = "stockValidation.middleware.js"
+    "routeManager.js" = "routeManager.middleware.js"
+    "uploadMiddleware.js" = "upload.middleware.js"
+}
+
+foreach ($oldName in $middlewareMap.Keys) {
+    $src = "src\middleware\$oldName"
+    $newName = $middlewareMap[$oldName]
+    $dest = "newSrc\core\middleware\$newName"
+    
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Middleware: $oldName -> $newName"
+    }
+}
+
+# Multer config
+if (Test-Path "src\middleware\multerConfig.js") {
+    Copy-Item "src\middleware\multerConfig.js" "newSrc\core\utils\_legacy\multerConfig.js"
+    Write-Detail "Middleware: multerConfig.js -> core/utils/_legacy"
+}
+
+# Core utilities - keep original names for handleFactorynew.js and newApiFeatures.js
+$coreUtils = @("appError.js", "catchAsync.js", "ApiFeatures.js", "runInTransaction.js", 
+               "auditLogger.js", "authUtils.js", "handlerFactory.js", "socket.js", 
+               "newApiFeatures.js", "parseJson.js", "redis.js", "txnLogger.js",
+               "transactionLogger.js", "calendar.utils.js", "date.utils.js",
+               "cache.js", "email.js", "geocoder.js", "cron.js", 
+               "announcementCron.js", "emiReminderCron.js")
+
+foreach ($util in $coreUtils) {
+    if (Test-Path "src\utils\$util") {
+        Copy-Item "src\utils\$util" "newSrc\core\utils\$util"
+        Write-Detail "Core util: $util"
+    }
+}
+
+# Handle Factory - Keep original name
+if (Test-Path "src\utils\handleFactorynew.js") {
+    Copy-Item "src\utils\handleFactorynew.js" "newSrc\core\utils\handleFactorynew.js"
+    Write-Detail "Core util: handleFactorynew.js (keeping original name)"
+}
+
+# Template files (not directory)
+if (Test-Path "src\utils\invoiceEmailTemplate.js") {
+    Copy-Item "src\utils\invoiceEmailTemplate.js" "newSrc\core\utils\_legacy\invoiceEmailTemplate.js"
+    Write-Detail "Template: invoiceEmailTemplate.js -> core/utils/_legacy"
+}
+
+if (Test-Path "src\utils\invoiceTemplate.js") {
+    Copy-Item "src\utils\invoiceTemplate.js" "newSrc\core\utils\_legacy\invoiceTemplate.js"
+    Write-Detail "Template: invoiceTemplate.js -> core/utils/_legacy"
+}
+
+if (Test-Path "src\utils\paymentSlipTemplate.js") {
+    Copy-Item "src\utils\paymentSlipTemplate.js" "newSrc\core\utils\_legacy\paymentSlipTemplate.js"
+    Write-Detail "Template: paymentSlipTemplate.js -> core/utils/_legacy"
+}
+
+# Jobs
+if (Test-Path "src\jobs") {
+    Copy-Item "src\jobs\*" "newSrc\core\jobs\" -Recurse -Force
+    Write-Detail "Jobs: Copied jobs folder"
+}
+
+# -------------------------------
+# MODULE 1: ACCOUNTING
+# -------------------------------
+Write-Info "Migrating Accounting Module..."
+
+# Accounting Models
+$accountingModels = @(
+    @("accountModel.js", "core/account.model.js"),
+    @("accountEntryModel.js", "core/accountEntry.model.js"),
+    @("invoiceModel.js", "billing/invoice.model.js"),
+    @("invoiceAuditModel.js", "billing/invoiceAudit.model.js"),
+    @("paymentModel.js", "payments/payment.model.js"),
+    @("emiModel.js", "payments/emi.model.js"),
+    @("pendingReconciliationModel.js", "reports/reconciliation.model.js")
+)
+
+foreach ($pair in $accountingModels) {
+    $src = "src\models\$($pair[0])"
+    $dest = "newSrc\modules\accounting\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Accounting Model: $($pair[0])"
+    }
+}
+
+# Accounting Controllers
+$accountingControllers = @(
+    @("accountController.js", "core/account.controller.js"),
+    @("ledgerController.js", "ledger/ledger.controller.js"),
+    @("transactionController.js", "transactions/transaction.controller.js"),
+    @("reconciliationController.js", "reports/reconciliation.controller.js"),
+    @("invoiceController.js", "billing/invoice.controller.js"),
+    @("invoicePDFController.js", "billing/invoicePDF.controller.js"),
+    @("paymentController.js", "payments/payment.controller.js"),
+    @("emiController.js", "payments/emi.controller.js"),
+    @("partyTransactionController.js", "transactions/partyTransaction.controller.js"),
+    @("statementsController.js", "reports/statements.controller.js")
+)
+
+foreach ($pair in $accountingControllers) {
+    $src = "src\controllers\$($pair[0])"
+    $dest = "newSrc\modules\accounting\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Accounting Controller: $($pair[0])"
     }
 }
 
 # Accounting Services
 $accountingServices = @(
-    @("services\accountService.js", "modules\accounting\core\account.service.js"),
-    @("services\journalService.js", "modules\accounting\core\journal.service.js"),
-    @("services\accountingService.js", "modules\accounting\core\accounting.service.js"),
-    @("services\transactionService.js", "modules\accounting\core\transaction.service.js"),
-    @("services\ledgerCache.js", "modules\accounting\core\ledgerCache.service.js"),
-    @("services\payrollService.js", "modules\accounting\payments\payroll.service.js"),
-    @("services\paymentPDFService.js", "modules\accounting\payments\paymentPDF.service.js")
+    @("accountService.js", "core/account.service.js"),
+    @("accountingService.js", "core/accounting.service.js"),
+    @("journalService.js", "core/journal.service.js"),
+    @("transactionService.js", "transactions/transaction.service.js"),
+    @("ledgerCache.js", "ledger/ledgerCache.service.js"),
+    @("invoicePDFService.js", "billing/invoicePDF.service.js"),
+    @("paymentPDFService.js", "payments/paymentPDF.service.js"),
+    @("payrollService.js", "payments/payroll.service.js"),
+    @("emiService.js", "payments/emi.service.js"),
+    @("statementsService.js", "reports/statements.service.js")
 )
 
-foreach ($servicePair in $accountingServices) {
-    $src = "src\$($servicePair[0])"
-    $dest = "newSrc\$($servicePair[1])"
+foreach ($pair in $accountingServices) {
+    $src = "src\services\$($pair[0])"
+    $dest = "newSrc\modules\accounting\$($pair[1])"
     if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied: $($servicePair[0])" -ForegroundColor DarkGray
+        Copy-Item $src $dest
+        Write-Detail "Accounting Service: $($pair[0])"
+    }
+}
+
+# -------------------------------
+# MODULE 2: HR
+# -------------------------------
+Write-Info "Migrating HR Module..."
+
+# HR Models
+$hrModels = @(
+    @("attendanceDailyModel.js", "attendance/models/attendanceDaily.model.js"),
+    @("attendanceLogModel.js", "attendance/models/attendanceLog.model.js"),
+    @("attendanceMachineModel.js", "attendance/models/attendanceMachine.model.js"),
+    @("attendanceRequestModel.js", "attendance/models/attendanceRequest.model.js"),
+    @("attendanceSummaryModel.js", "attendance/models/attendanceSummary.model.js"),
+    @("holidayModel.js", "holiday/holiday.model.js"),
+    @("shiftModel.js", "shift/shift.model.js"),
+    @("leaveRequestModel.js", "leave/leaveRequest.model.js")
+)
+
+foreach ($pair in $hrModels) {
+    $src = "src\models\$($pair[0])"
+    $dest = "newSrc\modules\hr\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "HR Model: $($pair[0])"
+    }
+}
+
+# HR Controllers
+$hrControllers = @(
+    @("attendanceController.js", "attendance/attendance.controller.js"),
+    @("attendanceActionsController.js", "attendance/attendanceActions.controller.js"),
+    @("attendanceWebController.js", "attendance/attendanceWeb.controller.js"),
+    @("attendanceMachineController.js", "attendance/attendanceMachine.controller.js"),
+    @("holidayController.js", "holiday/holiday.controller.js"),
+    @("shiftController.js", "shift/shift.controller.js")
+)
+
+foreach ($pair in $hrControllers) {
+    $src = "src\controllers\$($pair[0])"
+    $dest = "newSrc\modules\hr\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "HR Controller: $($pair[0])"
+    }
+}
+
+# HR Services - attendance subfolder
+if (Test-Path "src\services\attendance\dailyProcessor.js") {
+    Copy-Item "src\services\attendance\dailyProcessor.js" "newSrc\modules\hr\attendance\dailyProcessor.service.js"
+    Write-Detail "HR Service: dailyProcessor.js"
+}
+
+# -------------------------------
+# MODULE 3: INVENTORY
+# -------------------------------
+Write-Info "Migrating Inventory Module..."
+
+# Inventory Models
+$inventoryModels = @(
+    @("productModel.js", "products/product.model.js"),
+    @("purchaseModel.js", "purchases/purchase.model.js"),
+    @("salesModel.js", "sales/sales.model.js"),
+    @("salesReturnModel.js", "returns/salesReturn.model.js"),
+    @("stockTransferModel.js", "stock/stockTransfer.model.js")
+)
+
+foreach ($pair in $inventoryModels) {
+    $src = "src\models\$($pair[0])"
+    $dest = "newSrc\modules\inventory\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Inventory Model: $($pair[0])"
+    }
+}
+
+# Inventory Controllers
+$inventoryControllers = @(
+    @("inventoryController.js", "core/inventory.controller.js"),
+    @("productController.js", "products/product.controller.js"),
+    @("purchaseController.js", "purchases/purchase.controller.js"),
+    @("salesController.js", "sales/sales.controller.js"),
+    @("salesReturnController.js", "returns/salesReturn.controller.js"),
+    @("stockController.js", "stock/stock.controller.js")
+)
+
+foreach ($pair in $inventoryControllers) {
+    $src = "src\controllers\$($pair[0])"
+    $dest = "newSrc\modules\inventory\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Inventory Controller: $($pair[0])"
     }
 }
 
 # Inventory Services
 $inventoryServices = @(
-    @("services\inventoryJournalService.js", "modules\inventory\core\inventoryJournal.service.js"),
-    @("services\inventoryAlertService.js", "modules\inventory\core\inventoryAlert.service.js"),
-    @("services\salesJournalService.js", "modules\inventory\core\salesJournal.service.js"),
-    @("services\salesService.js", "modules\inventory\core\sales.service.js")
+    @("inventoryAlertService.js", "core/inventoryAlert.service.js"),
+    @("inventoryJournalService.js", "core/inventoryJournal.service.js"),
+    @("salesJournalService.js", "sales/salesJournal.service.js"),
+    @("salesService.js", "sales/sales.service.js"),
+    @("stockValidationService.js", "stock/stockValidation.service.js")
 )
 
-foreach ($servicePair in $inventoryServices) {
-    $src = "src\$($servicePair[0])"
-    $dest = "newSrc\$($servicePair[1])"
+foreach ($pair in $inventoryServices) {
+    $src = "src\services\$($pair[0])"
+    $dest = "newSrc\modules\inventory\$($pair[1])"
     if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied: $($servicePair[0])" -ForegroundColor DarkGray
+        Copy-Item $src $dest
+        Write-Detail "Inventory Service: $($pair[0])"
+    }
+}
+
+# -------------------------------
+# MODULE 4: ORGANIZATION
+# -------------------------------
+Write-Info "Migrating Organization Module..."
+
+# Organization Models
+$orgModels = @(
+    @("organizationModel.js", "core/organization.model.js"),
+    @("branchModel.js", "branches/branch.model.js"),
+    @("customerModel.js", "customers/customer.model.js"),
+    @("supplierModel.js", "suppliers/supplier.model.js"),
+    @("channelModel.js", "channels/channel.model.js")
+)
+
+foreach ($pair in $orgModels) {
+    $src = "src\models\$($pair[0])"
+    $dest = "newSrc\modules\organization\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Organization Model: $($pair[0])"
+    }
+}
+
+# Organization Controllers
+$orgControllers = @(
+    @("organizationController.js", "core/organization.controller.js"),
+    @("organizationExtrasController.js", "core/organizationExtras.controller.js"),
+    @("branchController.js", "branches/branch.controller.js"),
+    @("customerController.js", "customers/customer.controller.js"),
+    @("supplierController.js", "suppliers/supplier.controller.js"),
+    @("channelController.js", "channels/channel.controller.js")
+)
+
+foreach ($pair in $orgControllers) {
+    $src = "src\controllers\$($pair[0])"
+    $dest = "newSrc\modules\organization\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Organization Controller: $($pair[0])"
+    }
+}
+
+# Organization Services
+$orgServices = @(
+    @("customerService.js", "customers/customer.service.js")
+)
+
+foreach ($pair in $orgServices) {
+    $src = "src\services\$($pair[0])"
+    $dest = "newSrc\modules\organization\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Organization Service: $($pair[0])"
+    }
+}
+
+# -------------------------------
+# MODULE 5: AUTH
+# -------------------------------
+Write-Info "Migrating Auth Module..."
+
+# Auth Models
+$authModels = @(
+    @("userModel.js", "users/user.model.js"),
+    @("roleModel.js", "roles/role.model.js"),
+    @("sessionModel.js", "sessions/session.model.js")
+)
+
+foreach ($pair in $authModels) {
+    $src = "src\models\$($pair[0])"
+    $dest = "newSrc\modules\auth\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Auth Model: $($pair[0])"
+    }
+}
+
+# Auth Controllers
+$authControllers = @(
+    @("authController.js", "core/auth.controller.js"),
+    @("userController.js", "users/user.controller.js"),
+    @("roleControllers.js", "roles/role.controller.js"),
+    @("sessionController.js", "sessions/session.controller.js")
+)
+
+foreach ($pair in $authControllers) {
+    $src = "src\controllers\$($pair[0])"
+    $dest = "newSrc\modules\auth\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Auth Controller: $($pair[0])"
+    }
+}
+
+# -------------------------------
+# MODULE 6: NOTIFICATION
+# -------------------------------
+Write-Info "Migrating Notification Module..."
+
+# Notification Models
+$notificationModels = @(
+    @("notificationModel.js", "core/notification.model.js"),
+    @("announcementModel.js", "announcements/announcement.model.js"),
+    @("messageModel.js", "messages/message.model.js")
+)
+
+foreach ($pair in $notificationModels) {
+    $src = "src\models\$($pair[0])"
+    $dest = "newSrc\modules\notification\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Notification Model: $($pair[0])"
+    }
+}
+
+# Notification Controllers
+$notificationControllers = @(
+    @("notificationController.js", "core/notification.controller.js"),
+    @("announcementController.js", "announcements/announcement.controller.js"),
+    @("messageController.js", "messages/message.controller.js")
+)
+
+foreach ($pair in $notificationControllers) {
+    $src = "src\controllers\$($pair[0])"
+    $dest = "newSrc\modules\notification\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Notification Controller: $($pair[0])"
     }
 }
 
 # Notification Services
 $notificationServices = @(
-    @("services\notificationService.js", "modules\notification\core\notification.service.js"),
-    @("services\overdueReminderService.js", "modules\notification\core\overdueReminder.service.js"),
-    @("services\paymentReminderService.js", "modules\notification\core\paymentReminder.service.js")
+    @("notificationService.js", "core/notification.service.js"),
+    @("overdueReminderService.js", "core/overdueReminder.service.js"),
+    @("paymentReminderService.js", "core/paymentReminder.service.js")
 )
 
-foreach ($servicePair in $notificationServices) {
-    $src = "src\$($servicePair[0])"
-    $dest = "newSrc\$($servicePair[1])"
+foreach ($pair in $notificationServices) {
+    $src = "src\services\$($pair[0])"
+    $dest = "newSrc\modules\notification\$($pair[1])"
     if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied: $($servicePair[0])" -ForegroundColor DarkGray
+        Copy-Item $src $dest
+        Write-Detail "Notification Service: $($pair[0])"
     }
 }
 
-# HR Service
-if (Test-Path "src\services\attendance\dailyProcessor.js") {
-    Copy-Item "src\services\attendance\dailyProcessor.js" "newSrc\modules\hr\attendance\dailyProcessor.service.js"
-    Write-Host "  Copied: services\attendance\dailyProcessor.js" -ForegroundColor DarkGray
+# -------------------------------
+# MODULE 7: MASTER
+# -------------------------------
+Write-Info "Migrating Master Module..."
+
+# Master Models
+$masterModels = @(
+    @("masterModel.js", "core/master.model.js"),
+    @("masterTypeModel.js", "types/masterType.model.js")
+)
+
+foreach ($pair in $masterModels) {
+    $src = "src\models\$($pair[0])"
+    $dest = "newSrc\modules\master\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Master Model: $($pair[0])"
+    }
+}
+
+# Master Controllers
+$masterControllers = @(
+    @("masterController.js", "core/master.controller.js"),
+    @("masterTypeController.js", "types/masterType.controller.js"),
+    @("masterListController.js", "lists/masterList.controller.js")
+)
+
+foreach ($pair in $masterControllers) {
+    $src = "src\controllers\$($pair[0])"
+    $dest = "newSrc\modules\master\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Master Controller: $($pair[0])"
+    }
+}
+
+# -------------------------------
+# MODULE 8: ANALYTICS
+# -------------------------------
+Write-Info "Migrating Analytics Module..."
+
+# Analytics Models (if any)
+# Currently none in your structure
+
+# Analytics Controllers
+$analyticsControllers = @(
+    @("analyticsController.js", "insights/analytics.controller.js"),
+    @("dashboardController.js", "dashboard/dashboard.controller.js"),
+    @("chartController.js", "charts/chart.controller.js"),
+    @("searchController.js", "insights/search.controller.js")
+)
+
+foreach ($pair in $analyticsControllers) {
+    $src = "src\controllers\$($pair[0])"
+    $dest = "newSrc\modules\analytics\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Analytics Controller: $($pair[0])"
+    }
 }
 
 # Analytics Services
+$analyticsServices = @(
+    @("analyticsService.js", "insights/analytics.service.js"),
+    @("dashboardService.js", "dashboard/dashboard.service.js"),
+    @("chartService.js", "charts/chart.service.js")
+)
+
+foreach ($pair in $analyticsServices) {
+    $src = "src\services\$($pair[0])"
+    $dest = "newSrc\modules\analytics\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Analytics Service: $($pair[0])"
+    }
+}
+
+# Analytics folder
 if (Test-Path "src\services\analytics") {
-    Copy-Item "src\services\analytics\*" -Recurse "newSrc\modules\_legacy\services\analytics\" -ErrorAction SilentlyContinue
-    Write-Host "  Copied: services\analytics folder" -ForegroundColor DarkGray
+    New-Item -ItemType Directory -Path "newSrc\modules\analytics\insights\helpers" -Force | Out-Null
+    Copy-Item "src\services\analytics\*.js" "newSrc\modules\analytics\insights\" -Force
+    Copy-Item "src\services\analytics\helpers\*.js" "newSrc\modules\analytics\insights\helpers\" -Force -ErrorAction SilentlyContinue
+    Write-Detail "Analytics: Copied analytics folder"
+}
+
+# -------------------------------
+# MODULE 9: COMMUNICATION
+# -------------------------------
+Write-Info "Migrating Communication Module..."
+
+# Communication Models
+$commModels = @(
+    @("meetingModel.js", "channels/meeting.model.js")
+)
+
+foreach ($pair in $commModels) {
+    $src = "src\models\$($pair[0])"
+    $dest = "newSrc\modules\communication\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Communication Model: $($pair[0])"
+    }
+}
+
+# Communication Controllers
+$commControllers = @(
+    @("feedController.js", "feeds/feed.controller.js")
+)
+
+foreach ($pair in $commControllers) {
+    $src = "src\controllers\$($pair[0])"
+    $dest = "newSrc\modules\communication\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Communication Controller: $($pair[0])"
+    }
+}
+
+# -------------------------------
+# MODULE 10: ADMIN
+# -------------------------------
+Write-Info "Migrating Admin Module..."
+
+# Admin Models
+$adminModels = @(
+    @("activityLogModel.js", "logs/activityLog.model.js"),
+    @("auditLogModel.js", "logs/auditLog.model.js"),
+    @("automationModel.js", "automation/automation.model.js"),
+    @("meetingModel.js", "core/meeting.model.js"),
+    @("noteModel.js", "core/note.model.js")
+)
+
+foreach ($pair in $adminModels) {
+    $src = "src\models\$($pair[0])"
+    $dest = "newSrc\modules\admin\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Admin Model: $($pair[0])"
+    }
+}
+
+# Admin Controllers
+$adminControllers = @(
+    @("adminController.js", "core/admin.controller.js"),
+    @("logs.controller.js", "logs/logs.controller.js"),
+    @("automationController.js", "automation/automation.controller.js"),
+    @("monitorController.js", "monitoring/monitor.controller.js"),
+    @("noteController.js", "core/note.controller.js"),
+    @("ownership.controller.js", "core/ownership.controller.js")
+)
+
+foreach ($pair in $adminControllers) {
+    $src = "src\controllers\$($pair[0])"
+    $dest = "newSrc\modules\admin\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Admin Controller: $($pair[0])"
+    }
+}
+
+# Admin Services
+$adminServices = @(
+    @("adminService.js", "core/admin.service.js"),
+    @("activityLogService.js", "logs/activityLog.service.js"),
+    @("automationService.js", "automation/automation.service.js"),
+    @("ownership.service.js", "core/ownership.service.js")
+)
+
+foreach ($pair in $adminServices) {
+    $src = "src\services\$($pair[0])"
+    $dest = "newSrc\modules\admin\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Admin Service: $($pair[0])"
+    }
+}
+
+# -------------------------------
+# MODULE 11: UTILITIES
+# -------------------------------
+Write-Info "Migrating Utilities Module..."
+
+# Utilities Controllers
+$utilsControllers = @(
+    @("uploadController.js", "uploads/upload.controller.js"),
+    @("paymentWebhookController.js", "uploads/paymentWebhook.controller.js")
+)
+
+foreach ($pair in $utilsControllers) {
+    $src = "src\controllers\$($pair[0])"
+    $dest = "newSrc\modules\utilities\$($pair[1])"
+    if (Test-Path $src) {
+        Copy-Item $src $dest
+        Write-Detail "Utilities Controller: $($pair[0])"
+    }
 }
 
 # AI Services
 if (Test-Path "src\services\ai") {
-    Copy-Item "src\services\ai\*" -Recurse "newSrc\modules\_legacy\services\ai\" -ErrorAction SilentlyContinue
-    Write-Host "  Copied: services\ai folder" -ForegroundColor DarkGray
+    Copy-Item "src\services\ai\*" -Recurse "newSrc\modules\utilities\ai\" -Force
+    Write-Detail "Utilities: Copied AI folder"
 }
 
 # Upload Services
 if (Test-Path "src\services\uploads") {
-    Copy-Item "src\services\uploads\*" -Recurse "newSrc\modules\_legacy\services\uploads\" -ErrorAction SilentlyContinue
-    Write-Host "  Copied: services\uploads folder" -ForegroundColor DarkGray
+    Copy-Item "src\services\uploads\*" -Recurse "newSrc\modules\utilities\uploads\" -Force
+    Write-Detail "Utilities: Copied uploads folder"
 }
 
-# Copy remaining services to legacy
-$excludeServices = @(
-    "accountService.js",
-    "journalService.js",
-    "accountingService.js",
-    "transactionService.js",
-    "ledgerCache.js",
-    "payrollService.js",
-    "paymentPDFService.js",
-    "inventoryJournalService.js",
-    "inventoryAlertService.js",
-    "salesJournalService.js",
-    "salesService.js",
-    "notificationService.js",
-    "overdueReminderService.js",
-    "paymentReminderService.js"
-)
+# TransferRequest model
+if (Test-Path "src\models\TransferRequest.js") {
+    Copy-Item "src\models\TransferRequest.js" "newSrc\modules\utilities\uploads\TransferRequest.model.js"
+    Write-Detail "Utilities: TransferRequest.js"
+}
 
-$services = Get-ChildItem "src\services" -File | Where-Object { $_.Name -notin $excludeServices }
-foreach ($service in $services) {
-    $src = $service.FullName
+# -------------------------------
+# MIGRATE REMAINING FILES TO LEGACY
+# -------------------------------
+Write-Info "Migrating remaining files to legacy..."
+
+# Remaining Models to Legacy
+$modelFiles = Get-ChildItem "src\models" -File
+foreach ($model in $modelFiles) {
+    $dest = "newSrc\modules\_legacy\models\$($model.Name)"
+    if (-not (Test-Path $dest)) {
+        Copy-Item $model.FullName $dest
+        Write-Detail "Legacy Model: $($model.Name)"
+    }
+}
+
+# Remaining Controllers to Legacy
+$controllerFiles = Get-ChildItem "src\controllers" -File
+foreach ($controller in $controllerFiles) {
+    $dest = "newSrc\modules\_legacy\controllers\$($controller.Name)"
+    if (-not (Test-Path $dest)) {
+        Copy-Item $controller.FullName $dest
+        Write-Detail "Legacy Controller: $($controller.Name)"
+    }
+}
+
+# Remaining Services to Legacy
+$serviceFiles = Get-ChildItem "src\services" -File -ErrorAction SilentlyContinue
+foreach ($service in $serviceFiles) {
     $dest = "newSrc\modules\_legacy\services\$($service.Name)"
-    Copy-Item $src $dest -ErrorAction SilentlyContinue
-    Write-Host "  Copied: services\$($service.Name)" -ForegroundColor DarkGray
-}
-
-# -------------------------------
-# CORE UTILS
-# -------------------------------
-Write-Host "`nMigrating Utils..." -ForegroundColor Cyan
-
-$coreUtils = @(
-    "appError.js",
-    "catchAsync.js",
-    "ApiFeatures.js",
-    "runInTransaction.js",
-    "auditLogger.js",
-    "authUtils.js",
-    "handlerFactory.js"
-)
-
-foreach ($util in $coreUtils) {
-    $src = "src\utils\$util"
-    $dest = "newSrc\core\utils\$util"
-    if (Test-Path $src) {
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied to core: utils\$util" -ForegroundColor DarkGray
+    if (-not (Test-Path $dest)) {
+        Copy-Item $service.FullName $dest
+        Write-Detail "Legacy Service: $($service.Name)"
     }
 }
 
-# Legacy utils
-$utils = Get-ChildItem "src\utils" -File
-foreach ($util in $utils) {
-    if ($coreUtils -notcontains $util.Name) {
-        $src = $util.FullName
-        $dest = "newSrc\core\utils\_legacy\$($util.Name)"
-        Copy-Item $src $dest -ErrorAction SilentlyContinue
-        Write-Host "  Copied to legacy: utils\$($util.Name)" -ForegroundColor DarkGray
+# Remaining service folders to Legacy
+$serviceFolders = Get-ChildItem "src\services" -Directory -ErrorAction SilentlyContinue
+foreach ($folder in $serviceFolders) {
+    if ($folder.Name -notin @("ai", "analytics", "attendance", "uploads")) {
+        Copy-Item "src\services\$($folder.Name)" -Recurse "newSrc\modules\_legacy\services\$($folder.Name)\" -Force
+        Write-Detail "Legacy Service Folder: $($folder.Name)"
     }
 }
 
-# Copy templates folder
-if (Test-Path "src\utils\templates") {
-    Copy-Item "src\utils\templates" -Recurse "newSrc\core\utils\_legacy\templates" -Force
-    Write-Host "  Copied: utils\templates folder" -ForegroundColor DarkGray
-}
-
 # -------------------------------
-# JOBS
+# MIGRATE REMAINING FOLDERS
 # -------------------------------
-Write-Host "`nMigrating Jobs..." -ForegroundColor DarkGray
+Write-Info "Migrating remaining folders..."
 
-if (Test-Path "src\jobs") {
-    Copy-Item "src\jobs\*" "newSrc\core\jobs\_legacy" -Recurse -ErrorAction SilentlyContinue
-    Write-Host "  Copied: jobs folder" -ForegroundColor DarkGray
-}
-
-# -------------------------------
-# ROUTES
-# -------------------------------
-Write-Host "`nMigrating Routes..." -ForegroundColor Cyan
-
+# Routes
 if (Test-Path "src\routes") {
-    Copy-Item "src\routes\*" "newSrc\routes" -Recurse -ErrorAction SilentlyContinue
-    Write-Host "  Copied: routes folder" -ForegroundColor DarkGray
+    Copy-Item "src\routes\*" -Recurse "newSrc\routes\" -Force
+    Write-Detail "Routes: Copied routes folder"
 }
 
-# -------------------------------
-# VALIDATIONS
-# -------------------------------
-Write-Host "`nMigrating Validations..." -ForegroundColor DarkGray
-
+# Validations
 if (Test-Path "src\validations") {
-    Copy-Item "src\validations\*" "newSrc\shared\validations" -Recurse -ErrorAction SilentlyContinue
-    Write-Host "  Copied: validations folder" -ForegroundColor DarkGray
+    Copy-Item "src\validations\*" -Recurse "newSrc\shared\validations\" -Force
+    Write-Detail "Validations: Copied validations folder"
 }
 
-# -------------------------------
-# SCRIPTS
-# -------------------------------
-Write-Host "`nMigrating Scripts..." -ForegroundColor DarkGray
-
+# Scripts
 if (Test-Path "src\scripts") {
-    Copy-Item "src\scripts\*" "newSrc\scripts" -Recurse -ErrorAction SilentlyContinue
-    Write-Host "  Copied: scripts folder" -ForegroundColor DarkGray
+    Copy-Item "src\scripts\*" -Recurse "newSrc\scripts\" -Force
+    Write-Detail "Scripts: Copied scripts folder"
 }
 
-# -------------------------------
-# PUBLIC ASSETS
-# -------------------------------
-Write-Host "`nMigrating Public Assets..." -ForegroundColor DarkGray
-
+# Public
 if (Test-Path "src\public") {
-    Copy-Item "src\public\*" "newSrc\public" -Recurse -ErrorAction SilentlyContinue
-    Write-Host "  Copied: public folder" -ForegroundColor DarkGray
+    Copy-Item "src\public\*" -Recurse "newSrc\public\" -Force
+    Write-Detail "Public: Copied public folder"
 }
 
-# -------------------------------
-# LOGS
-# -------------------------------
-Write-Host "`nMigrating Logs..." -ForegroundColor DarkGray
-
+# Logs (empty directory)
 if (Test-Path "src\logs") {
-    Copy-Item "src\logs\*" "newSrc\logs" -Recurse -ErrorAction SilentlyContinue
-    Write-Host "  Copied: logs folder" -ForegroundColor DarkGray
+    Copy-Item "src\logs\*" -Recurse "newSrc\logs\" -Force -ErrorAction SilentlyContinue
+    Write-Detail "Logs: Copied logs folder"
+}
+
+# Socket Handlers
+if (Test-Path "src\socketHandlers") {
+    Copy-Item "src\socketHandlers\*" -Recurse "newSrc\socketHandlers\" -Force
+    Write-Detail "Socket Handlers: Copied socket handlers"
 }
 
 # -------------------------------
-# CREATE INDEX FILES
+# CREATE MODULE INDEX FILES
 # -------------------------------
-Write-Host "`nCreating module index files..." -ForegroundColor Cyan
+Write-Info "Creating module index files..."
 
-# Accounting Module Index
-@"
-// Accounting Module Export
+# Accounting index
+$accountingIndex = @"
+// Accounting Module
 module.exports = {
-    // Core
+    // Models
     Account: require('./core/account.model'),
     AccountEntry: require('./core/accountEntry.model'),
-    
-    // Billing
     Invoice: require('./billing/invoice.model'),
-    InvoiceAudit: require('./billing/invoiceAudit.model'),
-    
-    // Payments
     Payment: require('./payments/payment.model'),
-    EMI: require('./payments/emi.model')
+    
+    // Controllers
+    accountController: require('./core/account.controller'),
+    invoiceController: require('./billing/invoice.controller'),
+    paymentController: require('./payments/payment.controller'),
+    
+    // Services
+    accountService: require('./core/account.service')
 };
-"@ | Out-File -FilePath "newSrc\modules\accounting\index.js" -Encoding UTF8
-Write-Host "  Created: modules\accounting\index.js" -ForegroundColor DarkGray
+"@
+
+$accountingIndex | Out-File -FilePath "newSrc\modules\accounting\index.js" -Encoding UTF8
+Write-Detail "Created: modules/accounting/index.js"
+
+# HR index
+$hrIndex = @"
+// HR Module
+module.exports = {
+    // Attendance
+    AttendanceDaily: require('./attendance/models/attendanceDaily.model'),
+    AttendanceRequest: require('./attendance/models/attendanceRequest.model'),
+    
+    // Controllers
+    attendanceController: require('./attendance/attendance.controller'),
+    holidayController: require('./holiday/holiday.controller')
+};
+"@
+
+$hrIndex | Out-File -FilePath "newSrc\modules\hr\index.js" -Encoding UTF8
+Write-Detail "Created: modules/hr/index.js"
 
 # -------------------------------
 # SUMMARY
 # -------------------------------
+Write-Info "Migration complete!"
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "MIGRATION COMPLETED SUCCESSFULLY!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Migration Summary:" -ForegroundColor Cyan
-Write-Host "✓ All root files migrated" -ForegroundColor Gray
-Write-Host "✓ All config files migrated" -ForegroundColor Gray
-Write-Host "✓ All controllers organized by module" -ForegroundColor Gray
-Write-Host "✓ All models organized by module" -ForegroundColor Gray
-Write-Host "✓ All services organized by module" -ForegroundColor Gray
-Write-Host "✓ All utils migrated" -ForegroundColor Gray
-Write-Host "✓ All routes preserved" -ForegroundColor Gray
-Write-Host "✓ All scripts, validations, and public assets copied" -ForegroundColor Gray
+Write-Host "Summary:" -ForegroundColor Cyan
+Write-Host "• Created 11 modular business domains" -ForegroundColor Gray
+Write-Host "• Organized all controllers by module" -ForegroundColor Gray
+Write-Host "• Organized all models by module" -ForegroundColor Gray
+Write-Host "• Organized all services by module" -ForegroundColor Gray
+Write-Host "• Preserved all original files in src/" -ForegroundColor Gray
+Write-Host ""
+Write-Host "Key Changes Made:" -ForegroundColor Cyan
+Write-Host "• Kept handleFactorynew.js and newApiFeatures.js with original names" -ForegroundColor Gray
+Write-Host "• Fixed template file handling (they were files, not a directory)" -ForegroundColor Gray
+Write-Host "• Organized analytics helpers folder properly" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Modules Created:" -ForegroundColor Cyan
-Write-Host "1. Accounting (with submodules: core, billing, payments)" -ForegroundColor Gray
-Write-Host "2. HR (with submodules: attendance, holiday, shift, leave)" -ForegroundColor Gray
+Write-Host "1. Accounting" -ForegroundColor Gray
+Write-Host "2. HR (Attendance, Holiday, Shift, Leave)" -ForegroundColor Gray
 Write-Host "3. Inventory" -ForegroundColor Gray
-Write-Host "4. Master" -ForegroundColor Gray
-Write-Host "5. Notification" -ForegroundColor Gray
-Write-Host "6. Organization" -ForegroundColor Gray
-Write-Host "7. Sales" -ForegroundColor Gray
-Write-Host "8. Auth" -ForegroundColor Gray
-Write-Host "9. Legacy (for unmigrated code)" -ForegroundColor Gray
+Write-Host "4. Organization" -ForegroundColor Gray
+Write-Host "5. Auth" -ForegroundColor Gray
+Write-Host "6. Notification" -ForegroundColor Gray
+Write-Host "7. Master" -ForegroundColor Gray
+Write-Host "8. Analytics" -ForegroundColor Gray
+Write-Host "9. Communication" -ForegroundColor Gray
+Write-Host "10. Admin" -ForegroundColor Gray
+Write-Host "11. Utilities" -ForegroundColor Gray
 Write-Host ""
-Write-Host "Next Steps:" -ForegroundColor Cyan
-Write-Host "1. Update imports in your new files" -ForegroundColor Gray
+Write-Host "Next Steps:" -ForegroundColor Yellow
+Write-Host "1. Update imports in files (run import fixer)" -ForegroundColor Gray
 Write-Host "2. Update server.js to use new structure" -ForegroundColor Gray
-Write-Host "3. Test thoroughly" -ForegroundColor Gray
+Write-Host "3. Test one module at a time" -ForegroundColor Gray
+Write-Host ""
+Write-Host "Your original src/ folder is preserved!" -ForegroundColor Green
+Write-Host "New modular structure at: newSrc/" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ownership = require('../../controllers/ownership.controller');
-const authController = require('../../controllers/authController'); // Your auth middleware
+const authController = require('@modules/auth/core/auth.controller'); // Your auth middleware
 const { checkPermission, } = require("../../middleware/permissionMiddleware");
 const { PERMISSIONS } = require('../../config/permissions');
 
