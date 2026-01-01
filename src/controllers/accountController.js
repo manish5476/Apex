@@ -3,16 +3,14 @@ const AccountEntry = require('../models/accountEntryModel'); // ✅ Needed for d
 const catchAsync = require('../utils/catchAsync'); // Using your project's standard util
 const AppError = require('../utils/appError');
 const { listAccountsWithBalance, getAccountHierarchy } = require('../services/accountService');
-
 // Helper
 function validateAccountPayload(body) {
   const { code, name, type } = body;
   if (!code || !String(code).trim()) throw new Error('Account code is required');
   if (!name || !String(name).trim()) throw new Error('Account name is required');
-  if (!type || !['asset','liability','equity','income','expense','other'].includes(type))
+  if (!type || !['asset', 'liability', 'equity', 'income', 'expense', 'other'].includes(type))
     throw new Error('Invalid account type');
 }
-
 exports.createAccount = catchAsync(async (req, res, next) => {
   const orgId = req.user.organizationId;
   validateAccountPayload(req.body);
@@ -63,30 +61,25 @@ exports.updateAccount = catchAsync(async (req, res, next) => {
     parent: req.body.parent || null,
     metadata: req.body.metadata || {}
   };
-  
+
   const acc = await Account.findOneAndUpdate(
-    { _id: req.params.id, organizationId: req.user.organizationId }, 
-    update, 
+    { _id: req.params.id, organizationId: req.user.organizationId },
+    update,
     { new: true }
   );
   if (!acc) return next(new AppError('Account not found', 404));
-  
+
   res.status(200).json({ status: 'success', data: acc });
 });
-
 exports.deleteAccount = catchAsync(async (req, res, next) => {
   const orgId = req.user.organizationId;
   const accountId = req.params.id;
-
-  // 1. Check for child accounts
   const child = await Account.findOne({ parent: accountId, organizationId: orgId });
   if (child) return next(new AppError('Cannot delete account with child accounts', 400));
   const entry = await AccountEntry.findOne({ accountId: accountId, organizationId: orgId });
   if (entry) return next(new AppError('Cannot delete account with posted entries. Archive it instead.', 400));
-
   const acc = await Account.findOneAndDelete({ _id: accountId, organizationId: orgId });
   if (!acc) return next(new AppError('Account not found', 404));
-
   res.status(200).json({ status: 'success', message: 'Deleted' });
 });
 
@@ -94,20 +87,11 @@ exports.reparentAccount = catchAsync(async (req, res, next) => {
   const orgId = req.user.organizationId;
   const accountId = req.params.id;
   const newParentId = req.body.parent || null;
-
-  if (newParentId && String(newParentId) === String(accountId)) {
-    return next(new AppError('Account cannot be parent of itself', 400));
-  }
-
-  // Prevent cycles and invalid parents
+  if (newParentId && String(newParentId) === String(accountId)) { return next(new AppError('Account cannot be parent of itself', 400)) }
   const accounts = await Account.find({ organizationId: orgId }).lean();
   const map = {};
   accounts.forEach(a => { map[String(a._id)] = a; });
-
-  if (newParentId && !map[String(newParentId)]) {
-    return next(new AppError('New parent not found', 404));
-  }
-
+  if (newParentId && !map[String(newParentId)]) { return next(new AppError('New parent not found', 404)) }
   let cur = newParentId;
   while (cur) {
     if (String(cur) === String(accountId)) {
@@ -118,8 +102,8 @@ exports.reparentAccount = catchAsync(async (req, res, next) => {
   }
 
   const updated = await Account.findOneAndUpdate(
-    { _id: accountId, organizationId: orgId }, 
-    { parent: newParentId || null }, 
+    { _id: accountId, organizationId: orgId },
+    { parent: newParentId || null },
     { new: true }
   );
   if (!updated) return next(new AppError('Account not found', 404));

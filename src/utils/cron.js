@@ -9,5 +9,7 @@ require("../jobs/inventoryAlertCronJob"); // Low stock alert emails
 require("../jobs/paymentReminderCronJob"); // Sends reminders before due date
 require("../jobs/overdueReminderCronJob"); // Sends overdue notices after due date
 require('../utils/emiReminderCron');
+require('../utils/announcementCron');
+
 
 console.log("✅ All cron jobs initialized successfully!");

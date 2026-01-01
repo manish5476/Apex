@@ -13,10 +13,7 @@ const AppError = require("../utils/appError");
 const sendEmail = require("../utils/email");
 const { signAccessToken, signRefreshToken } = require("../utils/authUtils");
 const { createNotification } = require("../services/notificationService");
-// ✅ IMPORT SOCKET HELPER
 const { emitToUser } = require("../utils/socket");
-
-
 const getClientIp = (req) => {
   return (
     req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
@@ -30,13 +27,10 @@ const getClientIp = (req) => {
 const getDeviceInfo = (req) => {
   try {
     const parser = new UAParser(req.headers["user-agent"] || "");
-
     const browser = parser.getBrowser()?.name || "unknown";
     const os = parser.getOS()?.name || "unknown";
     const dev = parser.getDevice();
-
     const device = dev?.model || dev?.type || "unknown";
-
     return { browser, os, device };
   } catch {
     return { browser: "unknown", os: "unknown", device: "unknown" };
@@ -45,26 +39,18 @@ const getDeviceInfo = (req) => {
 
 exports.signup = catchAsync(async (req, res, next) => {
   const { name, email, password, passwordConfirm, uniqueShopId } = req.body;
-
   if (!name || !email || !password || !passwordConfirm || !uniqueShopId)
     return next(new AppError("All fields are required", 400));
-
   if (password !== passwordConfirm)
     return next(new AppError("Passwords do not match", 400));
-
   const existingUser = await User.findOne({ email });
   if (existingUser && existingUser.status !== "pending")
     return next(new AppError("Email already in use", 400));
-
-  // Populate owner so we can get their ID for the notification
   const organization = await Organization.findOne({ uniqueShopId }).populate(
     "owner",
     "name email",
   );
-
   if (!organization) return next(new AppError("Invalid Shop ID", 404));
-
-  // 1. Create the user with 'pending' status linked to the organization
   const newUser = await User.create({
     name,
     email,
@@ -73,12 +59,6 @@ exports.signup = catchAsync(async (req, res, next) => {
     organizationId: organization._id,
     status: "pending",
   });
-
-  // ❌ REMOVED: potentially dangerous array push to organization document
-  // organization.approvalRequests.push(newUser._id); 
-  // await organization.save();
-
-  // 2. Real-time Notification to Owner via Socket.IO
   if (organization.owner && organization.owner._id) {
     const ownerId = organization.owner._id.toString();
     emitToUser(ownerId, "newNotification", {
@@ -88,9 +68,6 @@ exports.signup = catchAsync(async (req, res, next) => {
       createdAt: new Date().toISOString(),
     });
   }
-
-  // 3. Persist notification in DB (for History/Bell icon)
-  // Note: Ensure createNotification handles the IO internally or pass it if required by your service signature
   const io = req.app.get("io");
   await createNotification(
     organization._id,
@@ -100,8 +77,6 @@ exports.signup = catchAsync(async (req, res, next) => {
     `${name} (${email}) is waiting for approval.`,
     io,
   );
-
-  // 4. Send Email Notification
   try {
     if (organization.owner?.email) {
       await sendEmail({
@@ -112,7 +87,6 @@ exports.signup = catchAsync(async (req, res, next) => {
     }
   } catch (err) {
     console.error("Email notification failed:", err.message);
-    // Don't block signup success response if email fails
   }
 
   res.status(201).json({
@@ -120,39 +94,65 @@ exports.signup = catchAsync(async (req, res, next) => {
     message: "Signup successful. Awaiting approval.",
   });
 });
-// ======================================================
-//  LOGIN
-// ======================================================
+
 exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
 
   if (!email || !password)
     return next(new AppError("Email and password required.", 400));
 
-  // const user = await User.findOne({ email }).select("+password");
-    const user = await User.findOne({ email })
+  // Find user with populated role
+  const user = await User.findOne({ email })
     .select('+password')
-    .populate('role');
+    .populate({
+      path: 'role',
+      select: 'name permissions isSuperAdmin isActive'
+    });
+
   if (!user || !(await user.correctPassword(password, user.password)))
     return next(new AppError("Invalid credentials.", 401));
 
   if (user.status !== "approved")
     return next(new AppError("Account is not approved.", 401));
 
+  // Check if user is owner of the organization
+  let isOwner = false;
+  try {
+    const organization = await Organization.findById(user.organizationId);
+    if (organization) {
+      isOwner = organization.owner.toString() === user._id.toString();
+    }
+  } catch (error) {
+    console.error("Error checking organization ownership:", error);
+    // Continue even if ownership check fails
+  }
+
+  // Remove password from user object
   user.password = undefined;
 
   // CREATE ACCESS + REFRESH TOKENS
-  // const accessToken = signAccessToken(user._id);
-  // const refreshToken = signRefreshToken(user._id);
+  // Create a user object with all necessary flags for token signing
+  const userForToken = {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    organizationId: user.organizationId,
+    branchId: user.branchId,
+    role: user.role,
+    // Add flags for token
+    isOwner: isOwner,
+    isSuperAdmin: user.role?.isSuperAdmin || false
+  };
 
-  const accessToken = signAccessToken(user);
+  const accessToken = signAccessToken(userForToken);
   const refreshToken = signRefreshToken(user._id);
+
   // SET REFRESH TOKEN COOKIE
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: false,
-    sameSite: "lax",
-    maxAge: 30 * 24 * 60 * 60 * 1000
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
   });
 
   // CREATE SESSION RECORD
@@ -171,17 +171,37 @@ exports.login = catchAsync(async (req, res, next) => {
     userAgent: req.headers["user-agent"] || null,
   });
 
+  // Prepare user response object with all flags
+  const userResponse = {
+    ...user.toObject(),
+    isOwner: isOwner,
+    isSuperAdmin: user.role?.isSuperAdmin || false,
+    permissions: user.role?.permissions || []
+  };
+
+  // Debug logging (remove in production)
+  if (process.env.NODE_ENV === "development") {
+    console.log("🔐 Login successful:", {
+      userId: user._id,
+      email: user.email,
+      isOwner: isOwner,
+      isSuperAdmin: user.role?.isSuperAdmin,
+      roleName: user.role?.name,
+      permissions: user.role?.permissions?.length || 0
+    });
+  }
+
   // SEND RESPONSE
   res.status(200).json({
     status: "success",
     token: accessToken,
-    data: { user, session }
+    data: { 
+      user: userResponse, 
+      session 
+    }
   });
 });
 
-// ======================================================
-//  PROTECT (JWT AUTH)
-// ======================================================
 exports.protect = catchAsync(async (req, res, next) => {
   let token;
   if (req.headers.authorization?.startsWith("Bearer"))
@@ -196,11 +216,18 @@ exports.protect = catchAsync(async (req, res, next) => {
     return next(new AppError("Invalid or expired token.", 401));
   }
 
-  const user = await User.findById(decoded.id).populate("role");
+  // Get user with populated role
+  const user = await User.findById(decoded.id)
+    .populate({
+      path: 'role',
+      select: 'name permissions isSuperAdmin isActive'
+    });
+
   if (!user) return next(new AppError("User no longer exists.", 401));
 
   if (user.changedPasswordAfter(decoded.iat))
     return next(new AppError("Password changed recently.", 401));
+
   const session = await Session.findOne({
     userId: user._id,
     isValid: true,
@@ -211,13 +238,151 @@ exports.protect = catchAsync(async (req, res, next) => {
   session.lastActivityAt = new Date();
   await session.save();
 
-  req.user = user;
+  // 🔴 CRITICAL FIX: Re-check organization ownership on each request
+  // The isOwner flag from JWT might be outdated if organization ownership changed
+  let currentIsOwner = false;
+  try {
+    const organization = await Organization.findById(user.organizationId);
+    if (organization) {
+      currentIsOwner = organization.owner.toString() === user._id.toString();
+    }
+  } catch (error) {
+    console.error("Error checking organization ownership in protect:", error);
+    // Fallback to JWT value if check fails
+    currentIsOwner = decoded.isOwner || false;
+  }
+
+  // Build the user object for the request
+  req.user = {
+    // Basic user info
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    organizationId: user.organizationId,
+    branchId: user.branchId,
+    status: user.status,
+    isActive: user.isActive,
+    
+    // Role info
+    role: user.role,
+    
+    // Special privilege flags - use current check, not just JWT
+    isOwner: currentIsOwner, // Use freshly checked value
+    isSuperAdmin: user.role?.isSuperAdmin || decoded.isSuperAdmin || false,
+    
+    // Permissions from role
+    permissions: user.role?.permissions || [],
+    
+    // Profile data
+    avatar: user.avatar,
+    preferences: user.preferences,
+    attendanceConfig: user.attendanceConfig,
+  };
+
   req.session = session;
-  req.user.permissions = user.role?.permissions || [];
+
+  // Debug logging
+  if (process.env.NODE_ENV === "development") {
+    console.log("🔐 User authenticated:", {
+      userId: req.user._id,
+      email: req.user.email,
+      role: req.user.role?.name,
+      isOwner: req.user.isOwner,
+      isSuperAdmin: req.user.isSuperAdmin,
+      permissionsCount: req.user.permissions.length,
+      fromJWT: {
+        isOwner: decoded.isOwner,
+        isSuperAdmin: decoded.isSuperAdmin
+      },
+      fromDB: {
+        isOwner: currentIsOwner,
+        isSuperAdmin: user.role?.isSuperAdmin
+      }
+    });
+  }
 
   next();
 });
 
+// exports.protect = catchAsync(async (req, res, next) => {
+//   let token;
+//   if (req.headers.authorization?.startsWith("Bearer"))
+//     token = req.headers.authorization.split(" ")[1];
+
+//   if (!token) return next(new AppError("Not authenticated.", 401));
+
+//   let decoded;
+//   try {
+//     decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+//   } catch {
+//     return next(new AppError("Invalid or expired token.", 401));
+//   }
+
+//   // Get user with populated role
+//   const user = await User.findById(decoded.id)
+//     .populate({
+//       path: 'role',
+//       select: 'name permissions isSuperAdmin isActive'
+//     });
+
+//   if (!user) return next(new AppError("User no longer exists.", 401));
+
+//   if (user.changedPasswordAfter(decoded.iat))
+//     return next(new AppError("Password changed recently.", 401));
+
+//   const session = await Session.findOne({
+//     userId: user._id,
+//     isValid: true,
+//   });
+
+//   if (!session) return next(new AppError("Session revoked. Login again.", 401));
+
+//   session.lastActivityAt = new Date();
+//   await session.save();
+
+//   // Build the user object for the request
+//   req.user = {
+//     // Basic user info
+//     _id: user._id,
+//     name: user.name,
+//     email: user.email,
+//     organizationId: user.organizationId,
+//     branchId: user.branchId,
+//     status: user.status,
+//     isActive: user.isActive,
+    
+//     // Role info
+//     role: user.role,
+    
+//     // Special privilege flags - from JWT or database
+//     isOwner: decoded.isOwner || false,
+//     isSuperAdmin: decoded.isSuperAdmin || user.role?.isSuperAdmin || false,
+    
+//     // Permissions from role
+//     permissions: user.role?.permissions || [],
+    
+//     // Profile data
+//     avatar: user.avatar,
+//     preferences: user.preferences,
+//     attendanceConfig: user.attendanceConfig,
+//   };
+
+//   req.session = session;
+
+//   // Debug logging
+//   if (process.env.NODE_ENV === "development") {
+//     console.log("🔐 User authenticated:", {
+//       userId: req.user._id,
+//       email: req.user.email,
+//       role: req.user.role?.name,
+//       isOwner: req.user.isOwner,
+//       isSuperAdmin: req.user.isSuperAdmin,
+//       permissionsCount: req.user.permissions.length
+//     });
+//   }
+
+//   next();
+// });
 // ======================================================
 //  RESTRICT TO
 // ======================================================
@@ -439,6 +604,31 @@ const createSendToken = async (user, statusCode, res) => {
 // ======================================================
 
 // 👇 FIX 2: Update refreshToken to pass full user object
+// exports.refreshToken = catchAsync(async (req, res, next) => {
+//   const refreshToken = req.cookies.refreshToken;
+//   if (!refreshToken) return next(new AppError("No refresh token provided", 401));
+
+//   let decoded;
+//   try {
+//     decoded = await promisify(jwt.verify)(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+//   } catch (err) {
+//     return next(new AppError("Invalid refresh token", 401));
+//   }
+
+//   const user = await User.findById(decoded.id);
+//   if (!user) return next(new AppError("User does not exist anymore", 401));
+
+//   const sessionExists = await Session.findOne({ userId: user._id, isValid: true });
+//   if (!sessionExists) {
+//     res.cookie("refreshToken", "", { httpOnly: true, expires: new Date(0) });
+//     return next(new AppError("Session expired. Please login again.", 401));
+//   }
+//   const newAccessToken = signAccessToken(user);
+//   sessionExists.lastActivityAt = new Date();
+//   await sessionExists.save();
+
+//   res.status(200).json({ status: "success", token: newAccessToken });
+// });
 exports.refreshToken = catchAsync(async (req, res, next) => {
   const refreshToken = req.cookies.refreshToken;
   if (!refreshToken) return next(new AppError("No refresh token provided", 401));
@@ -450,7 +640,7 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
     return next(new AppError("Invalid refresh token", 401));
   }
 
-  const user = await User.findById(decoded.id);
+  const user = await User.findById(decoded.id).populate('role');
   if (!user) return next(new AppError("User does not exist anymore", 401));
 
   const sessionExists = await Session.findOne({ userId: user._id, isValid: true });
@@ -458,16 +648,48 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
     res.cookie("refreshToken", "", { httpOnly: true, expires: new Date(0) });
     return next(new AppError("Session expired. Please login again.", 401));
   }
-
-  // ❌ OLD: const newAccessToken = signAccessToken(user._id);
-  // ✅ NEW: Pass the FULL user object
-  const newAccessToken = signAccessToken(user);
-
+  
+  // Check organization ownership for refresh
+  let isOwner = false;
+  try {
+    const organization = await Organization.findById(user.organizationId);
+    if (organization) {
+      isOwner = organization.owner.toString() === user._id.toString();
+    }
+  } catch (error) {
+    console.error("Error checking ownership during refresh:", error);
+  }
+  
+  const userForToken = {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    organizationId: user.organizationId,
+    role: user.role,
+    isOwner: isOwner,
+    isSuperAdmin: user.role?.isSuperAdmin || false
+  };
+  
+  const newAccessToken = signAccessToken(userForToken);
+  
   sessionExists.lastActivityAt = new Date();
+  sessionExists.token = newAccessToken; // Update token in session
   await sessionExists.save();
 
-  res.status(200).json({ status: "success", token: newAccessToken });
+  res.status(200).json({ 
+    status: "success", 
+    token: newAccessToken,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      isOwner: isOwner,
+      isSuperAdmin: user.role?.isSuperAdmin,
+      role: user.role?.name
+    }
+  });
 });
+
 exports.logout = catchAsync(async (req, res, next) => {
   res.cookie("refreshToken", "", {
     httpOnly: true,
@@ -477,4 +699,3 @@ exports.logout = catchAsync(async (req, res, next) => {
   });
   res.status(200).json({ status: "success", message: "Logged out successfully." });
 });
-

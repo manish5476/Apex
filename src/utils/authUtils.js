@@ -1,16 +1,11 @@
 const jwt = require('jsonwebtoken');
 
-/**
- * Signs a JWT token for a user.
- * @param {object} user - The user object
- * @returns {string} A signed JWT token
- */
 exports.signToken = (user) => {
   const payload = {
     id: user._id,
     organizationId: user.organizationId,
     branchId: user.branchId,
-    role: user.role, // This will be the Role ID
+    role: user.role?._id || user.role,
   };
 
   return jwt.sign(payload, process.env.JWT_SECRET, {
@@ -19,14 +14,24 @@ exports.signToken = (user) => {
 };
 
 exports.signAccessToken = (user) => {
-  console.log(user,"😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎😎")
+  console.log("🔐 Signing access token for user:", {
+    userId: user._id,
+    email: user.email,
+    roleName: user.role?.name,
+    isSuperAdmin: user.isSuperAdmin || user.role?.isSuperAdmin,
+    isOwner: user.isOwner
+  });
+  
   return jwt.sign(
     {
       id: user._id,
-      name:user.name,
-      sub: user._id, // Standard JWT subject
-      organizationId: user.organizationId, // ✅ REQUIRED for Socket
-      role: user.role
+      name: user.name,
+      email: user.email,
+      sub: user._id,
+      organizationId: user.organizationId,
+      role: user.role?._id || user.role,
+      isSuperAdmin: user.isSuperAdmin || user.role?.isSuperAdmin || false,
+      isOwner: user.isOwner || false
     },
     process.env.JWT_SECRET,
     {
@@ -35,14 +40,25 @@ exports.signAccessToken = (user) => {
   );
 };
 
-// exports.signAccessToken = (userId) => {
-//   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-//     expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || "1h",
-//   });
-// };
-
 exports.signRefreshToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.REFRESH_TOKEN_SECRET, {
     expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "30d",
   });
+};
+
+exports.verifyToken = (token) => {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    return null;
+  }
+};
+
+// Optional: Add token decoding without verification
+exports.decodeToken = (token) => {
+  try {
+    return jwt.decode(token);
+  } catch (error) {
+    return null;
+  }
 };

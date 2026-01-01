@@ -1,45 +1,132 @@
 const mongoose = require('mongoose');
 
 const attendanceRequestSchema = new mongoose.Schema({
-  user: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true,
-    index: true 
-  },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
   branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
-
-  // The date they want to fix
-  targetDate: { type: String, required: true }, // "YYYY-MM-DD"
   
+  // Request details
+  targetDate: { type: String, required: true }, // "YYYY-MM-DD"
   type: {
     type: String,
-    enum: ['missed_punch', 'on_duty', 'work_from_home', 'leave_reversal'],
+    enum: ['missed_punch', 'correction', 'work_from_home', 'on_duty', 'leave_reversal', 'others'],
     required: true
   },
-
-  // The correction data
+  
+  // Correction data
   correction: {
     newFirstIn: Date,
     newLastOut: Date,
-    reason: { type: String, required: true, minlength: 10 }
+    reason: { type: String, required: true, minlength: 10, maxlength: 500 },
+    supportingDocs: [String] // URLs to uploaded documents
   },
-
+  
+  // Workflow
   status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected'],
-    default: 'pending',
-    index: true
+    enum: ['draft', 'pending', 'under_review', 'approved', 'rejected', 'cancelled'],
+    default: 'pending'
   },
-
+  
+  // Approval chain
+  approvers: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'] },
+    comments: String,
+    actedAt: Date
+  }],
+  
+  currentApproverLevel: { type: Number, default: 1 },
+  approvalRequired: { type: Number, default: 1 }, // How many approvals needed
+  
+  // Final action
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: Date,
-  rejectionReason: String
-
+  rejectionReason: String,
+  
+  // Notifications
+  notifications: {
+    userNotifiedAt: Date,
+    approversNotifiedAt: Date,
+    completedNotifiedAt: Date
+  },
+  
+  // Audit
+  history: [{
+    action: String,
+    by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    remarks: String,
+    timestamp: { type: Date, default: Date.now },
+    oldStatus: String,
+    newStatus: String
+  }],
+  
+  // Metadata
+  urgency: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
+  tags: [String],
+  
 }, { timestamps: true });
 
-// Prevent duplicate pending requests for the same day
-attendanceRequestSchema.index({ user: 1, targetDate: 1, status: 1 }, { unique: true, partialFilterExpression: { status: 'pending' } });
+// Prevent duplicate pending requests
+attendanceRequestSchema.index({ 
+  user: 1, 
+  targetDate: 1, 
+  status: 1 
+}, { 
+  unique: true, 
+  partialFilterExpression: { 
+    status: { $in: ['draft', 'pending', 'under_review'] } 
+  } 
+});
+
+// For manager dashboards
+attendanceRequestSchema.index({ organizationId: 1, status: 1, createdAt: -1 });
+attendanceRequestSchema.index({ branchId: 1, status: 1 });
 
 module.exports = mongoose.model('AttendanceRequest', attendanceRequestSchema);
+
+// const mongoose = require('mongoose');
+
+// const attendanceRequestSchema = new mongoose.Schema({
+//   user: { 
+//     type: mongoose.Schema.Types.ObjectId, 
+//     ref: 'User', 
+//     required: true,
+//     index: true 
+//   },
+//   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
+//   branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
+
+//   // The date they want to fix
+//   targetDate: { type: String, required: true }, // "YYYY-MM-DD"
+  
+//   type: {
+//     type: String,
+//     enum: ['missed_punch', 'on_duty', 'work_from_home', 'leave_reversal'],
+//     required: true
+//   },
+
+//   // The correction data
+//   correction: {
+//     newFirstIn: Date,
+//     newLastOut: Date,
+//     reason: { type: String, required: true, minlength: 10 }
+//   },
+
+//   status: {
+//     type: String,
+//     enum: ['pending', 'approved', 'rejected'],
+//     default: 'pending',
+//     index: true
+//   },
+
+//   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+//   approvedAt: Date,
+//   rejectionReason: String
+
+// }, { timestamps: true });
+
+// // Prevent duplicate pending requests for the same day
+// attendanceRequestSchema.index({ user: 1, targetDate: 1, status: 1 }, { unique: true, partialFilterExpression: { status: 'pending' } });
+
+// module.exports = mongoose.model('AttendanceRequest', attendanceRequestSchema);

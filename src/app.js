@@ -1,41 +1,98 @@
-// app.js - Clean and organized version
-const express = require("express");
+// app.js - Working version with all improvements
 const qs = require("qs");
+const express = require("express");
+const morgan = require("morgan");
+const rateLimit = require("express-rate-limit");
+const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
+const xss = require("xss-clean");
+const hpp = require("hpp");
+const cors = require("cors");
+const compression = require("compression");
+const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
-const swaggerUi = require("swagger-ui-express");
 
-// Configuration
+const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swaggerConfig");
 const globalErrorHandler = require("./middleware/errorController");
 const AppError = require("./utils/appError");
 const logger = require("./config/logger");
+const { updateSessionActivity } = require("./middleware/sessionActivity");
+const assignRequestId = require("./middleware/assignRequestId");
 
-// Middleware configurations
-const middlewareConfig = require("./config/middlewareConfig");
-const securityMiddleware = require("./middleware/security");
-
-// Route management
+// Import route manager
 const routeManager = require("./middleware/routeManager");
 
 const app = express();
 
-// ====================== 1. APPLICATION SETTINGS ======================
+// ====================== 1. GLOBAL SETTINGS ======================
 app.set("trust proxy", 1);
 app.set("query parser", (str) => qs.parse(str, { defaultCharset: "utf-8" }));
 
-// ====================== 2. MIDDLEWARE STACK ======================
+// ====================== 2. MIDDLEWARE CHAIN ======================
 
-// A. Maintenance mode (if enabled)
-app.use(middlewareConfig.maintenanceMode);
+// A. Request ID (First, so logs can use it)
+app.use(assignRequestId);
 
-// B. Standard middleware
-middlewareConfig.applyStandardMiddleware(app);
+// B. CORS
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(",")
+      : ["http://localhost:4200", "https://apex-infinity.vercel.app"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+  }),
+);
+app.options("*", cors());
 
-// C. Security middleware
-securityMiddleware.applyAll(app);
+// C. Preflight Auth Bypass
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
 
-// D. Performance middleware
-middlewareConfig.applyPerformanceMiddleware(app);
+// D. Security & Parsers
+app.use(helmet());
+app.use(cookieParser());
+app.use(express.json({ limit: "10mb" }));
+app.use(mongoSanitize());
+app.use(xss());
+app.use(hpp());
+app.use(compression());
+
+// E. Setup Morgan Token
+morgan.token("id", (req) => req.id || "-");
+
+// F. Logging (Enhanced with ID)
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan(":id :method :url :status :response-time ms"));
+} else {
+  app.use(
+    morgan(
+      ':id :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length]',
+      {
+        stream: { write: (msg) => logger.info(msg.trim()) },
+      }
+    )
+  );
+}
+
+// G. Session Activity
+app.use(updateSessionActivity);
+
+// H. Rate Limiting
+app.use(
+  "/api/v1",
+  rateLimit({
+    limit: 2000,
+    windowMs: 60 * 60 * 1000,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: "Too many requests, please try again later.",
+  })
+);
 
 // ====================== 3. ROUTE MANAGEMENT ======================
 
@@ -85,11 +142,9 @@ app.get("/health", (req, res) => {
         status: "RUNNING",
         healthy: true,
         uptime: process.uptime(),
-        memory: process.memoryUsage(),
       },
     },
     environment: process.env.NODE_ENV,
-    version: process.env.npm_package_version || "1.0.0",
   };
 
   res.status(isHealthy ? 200 : 503).json(response);
@@ -118,7 +173,6 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
-
 // const qs = require("qs");
 // const express = require("express");
 // const morgan = require("morgan");

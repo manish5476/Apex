@@ -5,6 +5,13 @@ const {
   hasAllPermissions,
 } = require("../config/permissions");
 
+/**
+ * Check if user has special privileges (owner or super admin)
+ */
+const hasSpecialPrivileges = (user) => {
+  return user && (user.isOwner === true || user.isSuperAdmin === true);
+};
+
 // Single permission check
 const checkPermission = (requiredPermission) => {
   return (req, res, next) => {
@@ -16,12 +23,25 @@ const checkPermission = (requiredPermission) => {
         });
       }
 
+      // 🔥 CRITICAL FIX: Check for special privileges FIRST
+      if (hasSpecialPrivileges(req.user)) {
+        return next(); // Owners and Super Admins get full access
+      }
+
       const userPermissions = req.user.permissions || [];
 
       if (!hasPermission(userPermissions, requiredPermission)) {
         return res.status(403).json({
           status: "error",
           message: `You don't have permission to: ${requiredPermission}`,
+          debug: {
+            userId: req.user._id,
+            email: req.user.email,
+            isOwner: req.user.isOwner,
+            isSuperAdmin: req.user.isSuperAdmin,
+            roleName: req.user.role?.name,
+            permissions: userPermissions
+          }
         });
       }
 
@@ -45,6 +65,11 @@ const checkAnyPermission = (requiredPermissions) => {
           status: "error",
           message: "Authentication required",
         });
+      }
+
+      // Check for special privileges
+      if (hasSpecialPrivileges(req.user)) {
+        return next();
       }
 
       const userPermissions = req.user.permissions || [];
@@ -78,6 +103,11 @@ const checkAllPermissions = (requiredPermissions) => {
         });
       }
 
+      // Check for special privileges
+      if (hasSpecialPrivileges(req.user)) {
+        return next();
+      }
+
       const userPermissions = req.user.permissions || [];
 
       if (!hasAllPermissions(userPermissions, requiredPermissions)) {
@@ -98,10 +128,17 @@ const checkAllPermissions = (requiredPermissions) => {
   };
 };
 
-// Check if user is organization owner (alternative to authMiddleware.restrictToOwner)
+// Check if user is organization owner
 const checkIsOwner = () => {
   return (req, res, next) => {
-    if (!req.user.isOwner) {
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        status: "error",
+        message: "Authentication required",
+      });
+    }
+
+    if (!req.user.isOwner && !req.user.isSuperAdmin) {
       return res.status(403).json({
         status: "error",
         message: "Only organization owner can perform this action",
@@ -111,10 +148,17 @@ const checkIsOwner = () => {
   };
 };
 
-// Check if user is super admin (alternative to authMiddleware.restrictToSuperAdmin)
+// Check if user is super admin
 const checkIsSuperAdmin = () => {
   return (req, res, next) => {
-    if (!req.user.isOwner && !req.user.isSuperAdmin) {
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        status: "error",
+        message: "Authentication required",
+      });
+    }
+
+    if (!req.user.isSuperAdmin) {
       return res.status(403).json({
         status: "error",
         message: "Only super administrators can perform this action",
@@ -130,4 +174,5 @@ module.exports = {
   checkAllPermissions,
   checkIsOwner,
   checkIsSuperAdmin,
+  hasSpecialPrivileges,
 };

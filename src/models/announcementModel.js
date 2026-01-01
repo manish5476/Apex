@@ -32,7 +32,7 @@ const announcementSchema = new mongoose.Schema({
     // 'all' = everyone in org
     // 'role' = specific roles (e.g., Admin, HR)
     // 'specific' = specific list of user IDs
-    enum: ['all', 'role', 'specific'], 
+    enum: ['all', 'role', 'specific'],
     default: 'all',
     required: true
   },
@@ -46,6 +46,32 @@ const announcementSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  readBy: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    readAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  isPinned: {
+    type: Boolean,
+    default: false
+  },
+  priority: {
+  type: String,
+  enum: ['low', 'medium', 'high', 'critical'],
+  default: 'medium'
+},
+
+// In createAnnouncement
+isUrgent: {
+  type: Boolean,
+  default: false
+},
+
   // -------------------------------
   expiresAt: {
     type: Date

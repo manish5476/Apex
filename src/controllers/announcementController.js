@@ -57,12 +57,14 @@ exports.createAnnouncement = catchAsync(async (req, res, next) => {
       recipientUserIds = targetIds.map(id => id.toString());
     }
 
-    
     if (recipientUserIds.length > 0) {
-      recipientUserIds.forEach(userId => {
-        emitToUser(userId, 'newAnnouncement', socketPayload);
-      });
-    }
+     emitToUsers(recipientUserIds, 'newAnnouncement', socketPayload);
+    }  
+    // if (recipientUserIds.length > 0) {
+    //   recipientUserIds.forEach(userId => {
+    //     emitToUser(userId, 'newAnnouncement', socketPayload);
+    //   });
+    // }
   }
 
   res.status(201).json({
@@ -74,22 +76,137 @@ exports.createAnnouncement = catchAsync(async (req, res, next) => {
 
 exports.getAllAnnouncements = catchAsync(async (req, res, next) => {
   const userId = req.user.id;
-  const userRoleId = req.user.role; 
-  
-  
+  const userRoleId = req.user.role;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const skip = (page - 1) * limit;
+
   const filter = {
     organizationId: req.user.organizationId,
     isActive: true,
     $or: [
       { targetAudience: 'all' },
-      { targetRoles: userRoleId },      
-      { targetUsers: userId }           
+      { targetRoles: userRoleId },
+      { targetUsers: userId }
+    ],
+    $or: [
+      { expiresAt: null },
+      { expiresAt: { $gt: new Date() } }
     ]
   };
 
+  const [announcements, total] = await Promise.all([
+    Announcement.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('senderId', 'name avatar'),
+    Announcement.countDocuments(filter)
+  ]);
+
+  res.status(200).json({
+    status: 'success',
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+    total,
+    data: { announcements }
+  });
+});
+
+exports.markAsRead = catchAsync(async (req, res, next) => {
+  const announcement = await Announcement.findById(req.params.id);
+  
+  if (!announcement) {
+    return next(new AppError('Announcement not found', 404));
+  }
+
+  // Check if user already marked as read
+  const alreadyRead = announcement.readBy.some(
+    read => read.userId.toString() === req.user.id.toString()
+  );
+
+  if (!alreadyRead) {
+    announcement.readBy.push({
+      userId: req.user.id,
+      readAt: new Date()
+    });
+    await announcement.save();
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Announcement marked as read'
+  });
+});
+
+exports.updateAnnouncement = catchAsync(async (req, res, next) => {
+  const announcement = await Announcement.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    { new: true, runValidators: true }
+  );
+
+  if (!announcement) {
+    return next(new AppError('Announcement not found', 404));
+  }
+
+  // Re-emit updated announcement
+  const socketPayload = {
+    type: 'ANNOUNCEMENT_UPDATE',
+    data: announcement
+  };
+
+  // Send to appropriate audience
+  if (announcement.targetAudience === 'all') {
+    emitToOrg(announcement.organizationId.toString(), 'announcementUpdated', socketPayload);
+  } else {
+    // Get recipients and emit
+    // ... similar to createAnnouncement logic
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: { announcement }
+  });
+});
+
+exports.deleteAnnouncement = factory.deleteOne(Announcement);
+exports.searchAnnouncements = catchAsync(async (req, res, next) => {
+  const { search, type, priority, isUrgent, startDate, endDate } = req.query;
+  const userId = req.user.id;
+  const userRoleId = req.user.role;
+
+  const filter = {
+    organizationId: req.user.organizationId,
+    isActive: true,
+    $or: [
+      { targetAudience: 'all' },
+      { targetRoles: userRoleId },
+      { targetUsers: userId }
+    ]
+  };
+
+  if (search) {
+    filter.$or = [
+      { title: { $regex: search, $options: 'i' } },
+      { message: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  if (type) filter.type = type;
+  if (priority) filter.priority = priority;
+  if (isUrgent !== undefined) filter.isUrgent = isUrgent === 'true';
+  
+  if (startDate || endDate) {
+    filter.createdAt = {};
+    if (startDate) filter.createdAt.$gte = new Date(startDate);
+    if (endDate) filter.createdAt.$lte = new Date(endDate);
+  }
+
   const announcements = await Announcement.find(filter)
-    .sort({ createdAt: -1 })
-    .populate('senderId', 'name avatar'); 
+    .sort({ isUrgent: -1, priority: -1, createdAt: -1 })
+    .populate('senderId', 'name avatar');
 
   res.status(200).json({
     status: 'success',
@@ -98,4 +215,76 @@ exports.getAllAnnouncements = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.deleteAnnouncement = factory.deleteOne(Announcement);
+exports.getAnnouncementStats = catchAsync(async (req, res, next) => {
+  const stats = await Announcement.aggregate([
+    {
+      $match: {
+        organizationId: mongoose.Types.ObjectId(req.user.organizationId),
+        isActive: true
+      }
+    },
+    {
+      $group: {
+        _id: '$targetAudience',
+        count: { $sum: 1 },
+        unread: {
+          $sum: {
+            $cond: [
+              { $in: [mongoose.Types.ObjectId(req.user.id), '$readBy.userId'] },
+              0,
+              1
+            ]
+          }
+        }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$count' },
+        totalUnread: { $sum: '$unread' },
+        byAudience: {
+          $push: {
+            audience: '$_id',
+            count: '$count',
+            unread: '$unread'
+          }
+        }
+      }
+    }
+  ]);
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      stats: stats[0] || { total: 0, totalUnread: 0, byAudience: [] }
+    }
+  });
+});
+
+// exports.getAllAnnouncements = catchAsync(async (req, res, next) => {
+//   const userId = req.user.id;
+//   const userRoleId = req.user.role; 
+  
+  
+//   const filter = {
+//     organizationId: req.user.organizationId,
+//     isActive: true,
+//     $or: [
+//       { targetAudience: 'all' },
+//       { targetRoles: userRoleId },      
+//       { targetUsers: userId }           
+//     ]
+//   };
+
+//   const announcements = await Announcement.find(filter)
+//     .sort({ createdAt: -1 })
+//     .populate('senderId', 'name avatar'); 
+
+//   res.status(200).json({
+//     status: 'success',
+//     results: announcements.length,
+//     data: { announcements }
+//   });
+// });
+
