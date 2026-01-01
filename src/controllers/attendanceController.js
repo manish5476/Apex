@@ -78,6 +78,7 @@ exports.getMyAttendance = catchAsync(async (req, res, next) => {
     });
 });
 
+
 /**
  * @desc   Get my regularization requests
  * @route  GET /api/v1/attendance/my-requests
@@ -211,6 +212,632 @@ exports.submitRegularization = catchAsync(async (req, res, next) => {
         data: request
     });
 });
+
+// ==================== EXPORT & REPORTS ====================
+
+/**
+ * @desc   Export attendance data to Excel/CSV
+ * @route  GET /api/v1/attendance/export
+ */
+exports.exportAttendance = catchAsync(async (req, res, next) => {
+    const { startDate, endDate, branchId, department, format = 'excel' } = req.query;
+    
+    const filter = {
+        organizationId: req.user.organizationId,
+        date: { 
+            $gte: startDate || dayjs().startOf('month').format('YYYY-MM-DD'),
+            $lte: endDate || dayjs().format('YYYY-MM-DD')
+        }
+    };
+    
+    if (branchId) filter.branchId = branchId;
+    
+    // Get users for department filter
+    if (department) {
+        const users = await User.find({ 
+            department, 
+            organizationId: req.user.organizationId 
+        }).select('_id');
+        filter.user = { $in: users.map(u => u._id) };
+    }
+    
+    // Get attendance data with user details
+    const attendanceData = await AttendanceDaily.find(filter)
+        .populate('user', 'name email employeeId department position')
+        .populate('shiftId', 'name startTime endTime')
+        .sort({ date: -1, 'user.name': 1 })
+        .lean();
+    
+    if (format === 'csv') {
+        // Generate CSV
+        const csvData = generateCSV(attendanceData);
+        
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=attendance_${dayjs().format('YYYYMMDD')}.csv`);
+        
+        return res.send(csvData);
+    } else {
+        // Generate Excel (you'll need ExcelJS package)
+        const workbook = await generateExcel(attendanceData);
+        
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=attendance_${dayjs().format('YYYYMMDD')}.xlsx`);
+        
+        await workbook.xlsx.write(res);
+        res.end();
+    }
+});
+
+/**
+ * @desc   Get monthly attendance report
+ * @route  GET /api/v1/attendance/reports/monthly
+ */
+exports.getMonthlyReport = catchAsync(async (req, res, next) => {
+    const { month = dayjs().format('YYYY-MM'), branchId, department } = req.query;
+    
+    const startOfMonth = dayjs(month).startOf('month').format('YYYY-MM-DD');
+    const endOfMonth = dayjs(month).endOf('month').format('YYYY-MM-DD');
+    
+    const filter = {
+        organizationId: req.user.organizationId,
+        date: { $gte: startOfMonth, $lte: endOfMonth }
+    };
+    
+    if (branchId) filter.branchId = branchId;
+    
+    // Get users for department filter
+    if (department) {
+        const users = await User.find({ 
+            department, 
+            organizationId: req.user.organizationId 
+        }).select('_id name email employeeId department position');
+        filter.user = { $in: users.map(u => u._id) };
+    } else {
+        // Get all active users
+        var users = await User.find({ 
+            organizationId: req.user.organizationId,
+            status: 'active'
+        }).select('_id name email employeeId department position');
+    }
+    
+    // Get attendance data
+    const attendanceData = await AttendanceDaily.find(filter)
+        .populate('user', 'name email department position')
+        .lean();
+    
+    // Create attendance map for easy lookup
+    const attendanceMap = new Map();
+    attendanceData.forEach(record => {
+        const key = `${record.user._id}_${record.date}`;
+        attendanceMap.set(key, record);
+    });
+    
+    // Generate report by user
+    const userReports = users.map(user => {
+        let presentDays = 0;
+        let absentDays = 0;
+        let lateDays = 0;
+        let halfDays = 0;
+        let leaveDays = 0;
+        let totalHours = 0;
+        
+        // Loop through all days in month
+        const startDate = dayjs(startOfMonth);
+        const endDate = dayjs(endOfMonth);
+        const daysInMonth = endDate.diff(startDate, 'day') + 1;
+        
+        for (let i = 0; i < daysInMonth; i++) {
+            const currentDate = startDate.add(i, 'day').format('YYYY-MM-DD');
+            const key = `${user._id}_${currentDate}`;
+            const record = attendanceMap.get(key);
+            
+            if (record) {
+                switch (record.status) {
+                    case 'present':
+                        presentDays++;
+                        if (record.isLate) lateDays++;
+                        if (record.isHalfDay) halfDays++;
+                        totalHours += record.totalWorkHours || 0;
+                        break;
+                    case 'absent':
+                        absentDays++;
+                        break;
+                    case 'on_leave':
+                        leaveDays++;
+                        break;
+                    case 'half_day':
+                        halfDays++;
+                        presentDays += 0.5;
+                        totalHours += record.totalWorkHours || 0;
+                        break;
+                }
+            } else {
+                // Check if it's a weekend or holiday
+                const dayOfWeek = dayjs(currentDate).day();
+                // Assuming 0=Sunday, 6=Saturday are weekends
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    // Weekend - not counted
+                } else {
+                    absentDays++;
+                }
+            }
+        }
+        
+        const attendanceRate = daysInMonth > 0 ? (presentDays / daysInMonth) * 100 : 0;
+        
+        return {
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                employeeId: user.employeeId,
+                department: user.department,
+                position: user.position
+            },
+            summary: {
+                presentDays,
+                absentDays,
+                lateDays,
+                halfDays,
+                leaveDays,
+                totalHours: totalHours.toFixed(2),
+                attendanceRate: attendanceRate.toFixed(2),
+                workingDays: daysInMonth
+            }
+        };
+    });
+    
+    // Overall summary
+    const overallSummary = {
+        totalEmployees: users.length,
+        totalWorkingDays: dayjs(endOfMonth).diff(dayjs(startOfMonth), 'day') + 1,
+        averageAttendanceRate: userReports.reduce((acc, curr) => acc + parseFloat(curr.summary.attendanceRate), 0) / userReports.length,
+        totalPresentDays: userReports.reduce((acc, curr) => acc + curr.summary.presentDays, 0),
+        totalAbsentDays: userReports.reduce((acc, curr) => acc + curr.summary.absentDays, 0),
+        totalLateOccurrences: userReports.reduce((acc, curr) => acc + curr.summary.lateDays, 0),
+        totalLeaveDays: userReports.reduce((acc, curr) => acc + curr.summary.leaveDays, 0)
+    };
+    
+    res.status(200).json({
+        status: 'success',
+        data: {
+            period: { startDate: startOfMonth, endDate: endOfMonth, month },
+            overallSummary,
+            userReports,
+            generatedAt: new Date()
+        }
+    });
+});
+
+/**
+ * @desc   Get advanced attendance analytics
+ * @route  GET /api/v1/attendance/analytics
+ */
+exports.getAnalytics = catchAsync(async (req, res, next) => {
+    const { startDate, endDate, branchId, department } = req.query;
+    
+    const filter = {
+        organizationId: req.user.organizationId,
+        date: { 
+            $gte: startDate || dayjs().subtract(30, 'days').format('YYYY-MM-DD'),
+            $lte: endDate || dayjs().format('YYYY-MM-DD')
+        }
+    };
+    
+    if (branchId) filter.branchId = branchId;
+    
+    // Get users for department filter
+    if (department) {
+        const users = await User.find({ 
+            department, 
+            organizationId: req.user.organizationId 
+        }).select('_id');
+        filter.user = { $in: users.map(u => u._id) };
+    }
+    
+    // 1. Daily trends
+    const dailyTrends = await AttendanceDaily.aggregate([
+        { $match: filter },
+        { $group: {
+            _id: '$date',
+            present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+            absent: { $sum: { $cond: [{ $eq: ['$status', 'absent'] }, 1, 0] } },
+            late: { $sum: { $cond: ['$isLate', 1, 0] } },
+            halfDay: { $sum: { $cond: ['$isHalfDay', 1, 0] } },
+            total: { $sum: 1 },
+            avgHours: { $avg: '$totalWorkHours' }
+        }},
+        { $sort: { _id: 1 } }
+    ]);
+    
+    // 2. Department-wise analytics
+    const departmentAnalytics = await AttendanceDaily.aggregate([
+        { $match: filter },
+        { $lookup: {
+            from: 'users',
+            localField: 'user',
+            foreignField: '_id',
+            as: 'userInfo'
+        }},
+        { $unwind: '$userInfo' },
+        { $group: {
+            _id: '$userInfo.department',
+            totalEmployees: { $addToSet: '$user' },
+            presentDays: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+            totalDays: { $sum: 1 },
+            lateCount: { $sum: { $cond: ['$isLate', 1, 0] } },
+            avgHours: { $avg: '$totalWorkHours' }
+        }},
+        { $project: {
+            department: '$_id',
+            employeeCount: { $size: '$totalEmployees' },
+            attendanceRate: { $multiply: [{ $divide: ['$presentDays', '$totalDays'] }, 100] },
+            latePercentage: { $multiply: [{ $divide: ['$lateCount', '$totalDays'] }, 100] },
+            avgHoursPerDay: { $round: ['$avgHours', 2] },
+            _id: 0
+        }},
+        { $sort: { attendanceRate: -1 } }
+    ]);
+    
+    // 3. Time-based patterns
+    const timePatterns = await AttendanceDaily.aggregate([
+        { $match: { ...filter, firstIn: { $exists: true, $ne: null } } },
+        { $project: {
+            hour: { $hour: '$firstIn' },
+            minute: { $minute: '$firstIn' },
+            dayOfWeek: { $dayOfWeek: '$firstIn' }
+        }},
+        { $group: {
+            _id: '$hour',
+            count: { $sum: 1 },
+            avgMinute: { $avg: '$minute' }
+        }},
+        { $sort: { _id: 1 } }
+    ]);
+    
+    // 4. Top performers and concerns
+    const employeeStats = await AttendanceDaily.aggregate([
+        { $match: filter },
+        { $lookup: {
+            from: 'users',
+            localField: 'user',
+            foreignField: '_id',
+            as: 'userInfo'
+        }},
+        { $unwind: '$userInfo' },
+        { $group: {
+            _id: '$user',
+            name: { $first: '$userInfo.name' },
+            department: { $first: '$userInfo.department' },
+            presentDays: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+            totalDays: { $sum: 1 },
+            lateCount: { $sum: { $cond: ['$isLate', 1, 0] } },
+            avgHours: { $avg: '$totalWorkHours' }
+        }},
+        { $project: {
+            user: '$_id',
+            name: 1,
+            department: 1,
+            attendanceRate: { $multiply: [{ $divide: ['$presentDays', '$totalDays'] }, 100] },
+            latePercentage: { $multiply: [{ $divide: ['$lateCount', '$totalDays'] }, 100] },
+            avgHoursPerDay: { $round: ['$avgHours', 2] },
+            performanceScore: {
+                $add: [
+                    { $multiply: [{ $divide: ['$presentDays', '$totalDays'] }, 70] }, // 70% weight for attendance
+                    { $multiply: [{ $subtract: [1, { $divide: ['$lateCount', { $max: ['$totalDays', 1] }] }] }, 20] }, // 20% for punctuality
+                    { $multiply: [{ $divide: ['$avgHours', 8] }, 10] } // 10% for hours worked
+                ]
+            }
+        }},
+        { $sort: { performanceScore: -1 } },
+        { $limit: 20 }
+    ]);
+    
+    // 5. Late pattern analysis
+    const latePatterns = await AttendanceDaily.aggregate([
+        { $match: { ...filter, isLate: true } },
+        { $group: {
+            _id: {
+                user: '$user',
+                dayOfWeek: { $dayOfWeek: { $toDate: { $concat: ['$date', 'T00:00:00.000Z'] } } }
+            },
+            count: { $sum: 1 }
+        }},
+        { $lookup: {
+            from: 'users',
+            localField: '_id.user',
+            foreignField: '_id',
+            as: 'userInfo'
+        }},
+        { $unwind: '$userInfo' },
+        { $group: {
+            _id: '$_id.dayOfWeek',
+            totalLate: { $sum: '$count' },
+            affectedEmployees: { $addToSet: '$userInfo.name' }
+        }},
+        { $sort: { totalLate: -1 } }
+    ]);
+    
+    res.status(200).json({
+        status: 'success',
+        data: {
+            period: { startDate: filter.date.$gte, endDate: filter.date.$lte },
+            dailyTrends,
+            departmentAnalytics,
+            timePatterns,
+            employeeStats,
+            latePatterns,
+            summary: {
+                totalDaysAnalyzed: dailyTrends.length,
+                averageAttendanceRate: departmentAnalytics.reduce((acc, curr) => acc + curr.attendanceRate, 0) / departmentAnalytics.length,
+                mostPunctualDepartment: departmentAnalytics[0] || null,
+                leastPunctualDepartment: departmentAnalytics[departmentAnalytics.length - 1] || null,
+                topPerformer: employeeStats[0] || null
+            }
+        }
+    });
+});
+
+/**
+ * @desc   Get comprehensive dashboard data
+ * @route  GET /api/v1/attendance/dashboard
+ */
+exports.getDashboard = catchAsync(async (req, res, next) => {
+    const today = dayjs().format('YYYY-MM-DD');
+    const startOfWeek = dayjs().startOf('week').format('YYYY-MM-DD');
+    const startOfMonth = dayjs().startOf('month').format('YYYY-MM-DD');
+    
+    // 1. Today's overview
+    const todayFilter = {
+        organizationId: req.user.organizationId,
+        date: today
+    };
+    
+    const todayStats = await AttendanceDaily.aggregate([
+        { $match: todayFilter },
+        { $group: {
+            _id: null,
+            total: { $sum: 1 },
+            present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+            absent: { $sum: { $cond: [{ $eq: ['$status', 'absent'] }, 1, 0] } },
+            late: { $sum: { $cond: ['$isLate', 1, 0] } },
+            onLeave: { $sum: { $cond: [{ $eq: ['$status', 'on_leave'] }, 1, 0] } },
+            checkedIn: { $sum: { $cond: [{ $ne: ['$firstIn', null] }, 1, 0] } }
+        }}
+    ]);
+    
+    // 2. Weekly trends
+    const weekFilter = {
+        organizationId: req.user.organizationId,
+        date: { $gte: startOfWeek, $lte: today }
+    };
+    
+    const weeklyTrends = await AttendanceDaily.aggregate([
+        { $match: weekFilter },
+        { $group: {
+            _id: '$date',
+            present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+            total: { $sum: 1 },
+            avgHours: { $avg: '$totalWorkHours' }
+        }},
+        { $sort: { _id: 1 } }
+    ]);
+    
+    // 3. Monthly summary
+    const monthFilter = {
+        organizationId: req.user.organizationId,
+        date: { $gte: startOfMonth, $lte: today }
+    };
+    
+    const monthlyStats = await AttendanceDaily.aggregate([
+        { $match: monthFilter },
+        { $group: {
+            _id: null,
+            totalDays: { $sum: 1 },
+            presentDays: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+            lateDays: { $sum: { $cond: ['$isLate', 1, 0] } },
+            totalHours: { $sum: '$totalWorkHours' },
+            avgHoursPerDay: { $avg: '$totalWorkHours' }
+        }}
+    ]);
+    
+    // 4. Pending requests
+    const pendingRequests = await AttendanceRequest.countDocuments({
+        organizationId: req.user.organizationId,
+        status: { $in: ['pending', 'under_review'] }
+    });
+    
+    // 5. Recent activities
+    const recentActivities = await AttendanceLog.find({
+        organizationId: req.user.organizationId,
+        timestamp: { $gte: dayjs().subtract(24, 'hours').toDate() }
+    })
+    .populate('user', 'name')
+    .sort({ timestamp: -1 })
+    .limit(10)
+    .lean();
+    
+    // 6. Department-wise today
+    const departmentToday = await AttendanceDaily.aggregate([
+        { $match: todayFilter },
+        { $lookup: {
+            from: 'users',
+            localField: 'user',
+            foreignField: '_id',
+            as: 'userInfo'
+        }},
+        { $unwind: '$userInfo' },
+        { $group: {
+            _id: '$userInfo.department',
+            present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+            total: { $sum: 1 }
+        }},
+        { $project: {
+            department: '$_id',
+            attendanceRate: { $multiply: [{ $divide: ['$present', '$total'] }, 100] },
+            _id: 0
+        }},
+        { $sort: { attendanceRate: -1 } }
+    ]);
+    
+    // 7. Upcoming holidays
+    const upcomingHolidays = await Holiday.find({
+        organizationId: req.user.organizationId,
+        date: { $gte: today, $lte: dayjs().add(30, 'days').format('YYYY-MM-DD') }
+    })
+    .sort({ date: 1 })
+    .limit(5)
+    .lean();
+    
+    res.status(200).json({
+        status: 'success',
+        data: {
+            today: {
+                date: today,
+                stats: todayStats[0] || { total: 0, present: 0, absent: 0, late: 0, onLeave: 0, checkedIn: 0 },
+                departmentBreakdown: departmentToday
+            },
+            week: {
+                startDate: startOfWeek,
+                endDate: today,
+                trends: weeklyTrends,
+                summary: {
+                    days: weeklyTrends.length,
+                    averageAttendance: weeklyTrends.reduce((acc, curr) => acc + (curr.present/curr.total), 0) / weeklyTrends.length
+                }
+            },
+            month: {
+                startDate: startOfMonth,
+                endDate: today,
+                stats: monthlyStats[0] || { totalDays: 0, presentDays: 0, lateDays: 0, totalHours: 0, avgHoursPerDay: 0 }
+            },
+            alerts: {
+                pendingRequests,
+                lowAttendanceDepartments: departmentToday.filter(dept => dept.attendanceRate < 70),
+                recentLateArrivals: recentActivities.filter(act => act.type === 'in' && act.isLate)
+            },
+            recentActivities: recentActivities.map(act => ({
+                id: act._id,
+                user: act.user?.name || 'Unknown',
+                type: act.type,
+                time: dayjs(act.timestamp).format('HH:mm'),
+                source: act.source
+            })),
+            upcomingHolidays: upcomingHolidays.map(holiday => ({
+                id: holiday._id,
+                name: holiday.name,
+                date: holiday.date,
+                description: holiday.description
+            })),
+            lastUpdated: new Date()
+        }
+    });
+});
+
+// ==================== HELPER FUNCTIONS FOR EXPORT ====================
+
+/**
+ * Generate CSV from attendance data
+ */
+function generateCSV(attendanceData) {
+    const headers = [
+        'Date',
+        'Employee ID',
+        'Employee Name',
+        'Department',
+        'Position',
+        'Shift',
+        'First In',
+        'Last Out',
+        'Total Hours',
+        'Status',
+        'Late',
+        'Half Day',
+        'Overtime',
+        'Remarks'
+    ];
+    
+    const rows = attendanceData.map(record => [
+        record.date,
+        record.user?.employeeId || '',
+        record.user?.name || '',
+        record.user?.department || '',
+        record.user?.position || '',
+        record.shiftId?.name || '',
+        record.firstIn ? dayjs(record.firstIn).format('HH:mm') : '',
+        record.lastOut ? dayjs(record.lastOut).format('HH:mm') : '',
+        record.totalWorkHours || 0,
+        record.status,
+        record.isLate ? 'Yes' : 'No',
+        record.isHalfDay ? 'Yes' : 'No',
+        record.isOvertime ? 'Yes' : 'No',
+        record.remarks || ''
+    ]);
+    
+    const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    return csvContent;
+}
+
+/**
+ * Generate Excel from attendance data (requires ExcelJS)
+ */
+async function generateExcel(attendanceData) {
+    const ExcelJS = require('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Attendance Report');
+    
+    // Add headers
+    worksheet.columns = [
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Employee ID', key: 'employeeId', width: 15 },
+        { header: 'Employee Name', key: 'employeeName', width: 25 },
+        { header: 'Department', key: 'department', width: 20 },
+        { header: 'Position', key: 'position', width: 20 },
+        { header: 'Shift', key: 'shift', width: 15 },
+        { header: 'First In', key: 'firstIn', width: 12 },
+        { header: 'Last Out', key: 'lastOut', width: 12 },
+        { header: 'Total Hours', key: 'totalHours', width: 12 },
+        { header: 'Status', key: 'status', width: 12 },
+        { header: 'Late', key: 'isLate', width: 8 },
+        { header: 'Half Day', key: 'isHalfDay', width: 10 },
+        { header: 'Overtime', key: 'isOvertime', width: 10 },
+        { header: 'Remarks', key: 'remarks', width: 30 }
+    ];
+    
+    // Add data rows
+    attendanceData.forEach(record => {
+        worksheet.addRow({
+            date: record.date,
+            employeeId: record.user?.employeeId || '',
+            employeeName: record.user?.name || '',
+            department: record.user?.department || '',
+            position: record.user?.position || '',
+            shift: record.shiftId?.name || '',
+            firstIn: record.firstIn ? dayjs(record.firstIn).format('HH:mm') : '',
+            lastOut: record.lastOut ? dayjs(record.lastOut).format('HH:mm') : '',
+            totalHours: record.totalWorkHours || 0,
+            status: record.status,
+            isLate: record.isLate ? 'Yes' : 'No',
+            isHalfDay: record.isHalfDay ? 'Yes' : 'No',
+            isOvertime: record.isOvertime ? 'Yes' : 'No',
+            remarks: record.remarks || ''
+        });
+    });
+    
+    // Apply formatting
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+    };
+    
+    return workbook;
+}
 
 // ---------------------------------------------------------
 // 🔴 MANAGER/ADMIN ACTIONS
@@ -870,6 +1497,116 @@ exports.createShift = catchAsync(async (req, res, next) => {
         data: shift
     });
 });
+
+// Add this helper function (you can add it near the other helper functions)
+const mapLogType = (status) => {
+    // Customize this map based on your specific hardware documentation
+    // Common ZKTeco/Hikvision codes:
+    if (String(status) === '0' || String(status) === 'CheckIn') return 'in';
+    if (String(status) === '1' || String(status) === 'CheckOut') return 'out';
+    return 'unknown';
+};
+
+exports.pushMachineData = catchAsync(async (req, res, next) => {
+    const apiKey = req.headers['x-machine-api-key'];
+    
+    // 1. Authenticate Machine
+    const machine = await AttendanceMachine.findOne({ apiKey }).select('+apiKey');
+    if (!machine || machine.status !== 'active') {
+        return next(new AppError('Unauthorized Machine', 401));
+    }
+
+    const payload = Array.isArray(req.body) ? req.body : [req.body];
+    if (payload.length === 0) return res.status(200).json({ message: 'No data' });
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const processedLogs = [];
+
+        for (const entry of payload) {
+            // Adapt these fields based on your specific machine's JSON format
+            const machineUserId = entry.userId || entry.user_id; 
+            const scanTime = new Date(entry.timestamp); 
+            const statusType = entry.status; // 0=CheckIn, 1=CheckOut usually
+
+            // A. Find User
+            const user = await User.findOne({ 
+                'attendanceConfig.machineUserId': machineUserId,
+                organizationId: machine.organizationId
+            }).session(session);
+
+            let processingStatus = 'processed';
+            let resolvedUserId = user ? user._id : null;
+
+            if (!user) processingStatus = 'orphan';
+
+            // B. Create Immutable Log
+            const logEntry = new AttendanceLog({
+                machineId: machine._id,
+                rawUserId: machineUserId,
+                user: resolvedUserId,
+                timestamp: scanTime,
+                type: mapLogType(statusType),
+                metadata: entry,
+                processingStatus
+            });
+            await logEntry.save({ session });
+            
+            // C. Update Daily Record (Only if User is identified)
+            if (user) {
+                const dateStr = dayjs(scanTime).format('YYYY-MM-DD');
+                
+                let daily = await AttendanceDaily.findOne({
+                    user: user._id,
+                    date: dateStr
+                }).session(session);
+
+                if (!daily) {
+                    daily = new AttendanceDaily({
+                        user: user._id,
+                        organizationId: user.organizationId,
+                        branchId: user.branchId,
+                        date: dateStr,
+                        firstIn: scanTime,
+                        logs: [logEntry._id],
+                        status: 'present'
+                    });
+                } else {
+                    // Update First In / Last Out logic
+                    if (scanTime < daily.firstIn) daily.firstIn = scanTime;
+                    if (!daily.lastOut || scanTime > daily.lastOut) daily.lastOut = scanTime;
+                    daily.logs.push(logEntry._id);
+                }
+
+                // Simple Hours Calculation
+                if (daily.firstIn && daily.lastOut) {
+                    const diff = daily.lastOut - daily.firstIn;
+                    daily.totalWorkHours = (diff / (1000 * 60 * 60)).toFixed(2);
+                }
+
+                await daily.save({ session });
+            }
+            
+            processedLogs.push(logEntry._id);
+        }
+        
+        // Update Machine Last Sync
+        machine.lastSyncAt = new Date();
+        await machine.save({ session });
+
+        await session.commitTransaction();
+        res.status(200).json({ status: 'success', synced: processedLogs.length });
+
+    } catch (err) {
+        await session.abortTransaction();
+        throw err;
+    } finally {
+        session.endSession();
+    }
+});
+
 
 /**
  * @desc   Get all shifts

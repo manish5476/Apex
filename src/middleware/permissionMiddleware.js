@@ -5,9 +5,6 @@ const {
   hasAllPermissions,
 } = require("../config/permissions");
 
-/**
- * Check if user has special privileges (owner or super admin)
- */
 const hasSpecialPrivileges = (user) => {
   return user && (user.isOwner === true || user.isSuperAdmin === true);
 };
