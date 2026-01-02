@@ -1,13 +1,12 @@
 // routes/reconciliationRoutes.js
 const router = require('express').Router();
 const reconciliationController = require('../../modules/accounting/core/reconciliation.controller');
-// Note: paymentWebhookController may need to be created or located
 const paymentWebhookController = require('../../modules/accounting/payments/payment.controller');
 const { checkPermission } = require('../../core/middleware/permission.middleware');
 const { PERMISSIONS } = require('../../config/permissions');
 
 // Webhook (no auth required)
-// router.post('/webhook/payment', paymentWebhookController.paymentGatewayWebhook);
+router.post('/webhook/payment', paymentWebhookController.paymentGatewayWebhook);
 
 // Manual reconciliation (admin only)
 router.use(checkPermission(PERMISSIONS.RECONCILIATION.MANAGE));
