@@ -1,7 +1,7 @@
 const express = require('express');
-const holidayController = require('../../controllers/holidayController');
-const authController = require('../../controllers/authController');
-const { checkPermission, } = require("../../middleware/permissionMiddleware");
+const holidayController = require('../../modules/hr/holiday/holiday.controller');
+const authController = require('../../modules/auth/core/auth.controller');
+const { checkPermission, } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require('../../config/permissions');
 
 const router = express.Router();

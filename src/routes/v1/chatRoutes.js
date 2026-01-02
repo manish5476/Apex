@@ -3,10 +3,10 @@ const router = express.Router();
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 
-const channelCtrl = require('../../controllers/channelController');
-const messageCtrl = require('../../controllers/messageController');
-const authController = require('../../controllers/authController');
-const { checkPermission } = require('../../middleware/permissionMiddleware');
+const channelCtrl = require('../../modules/organization/core/channel.controller');
+const messageCtrl = require('../../modules/notification/core/message.controller');
+const authController = require('../../modules/auth/core/auth.controller');
+const { checkPermission } = require('../../core/middleware/permission.middleware');
 const { PERMISSIONS } = require('../../config/permissions');
 
 router.use(authController.protect);

@@ -1,13 +1,13 @@
 // routes/v1/roleRoutes.js
 const express = require("express");
 const router = express.Router();
-const roleController = require("../../controllers/roleControllers");
-const authController = require("../../controllers/authController");
+const roleController = require("../../modules/auth/core/role.controller");
+const authController = require("../../modules/auth/core/auth.controller");
 const {
     checkPermission,
     checkIsOwner,
     checkIsSuperAdmin,
-} = require("../../middleware/permissionMiddleware");
+} = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
 router.use(authController.protect);

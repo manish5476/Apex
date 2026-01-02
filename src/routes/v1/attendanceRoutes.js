@@ -1,9 +1,9 @@
 // routes/attendanceRoutes.js
 const express = require('express');
-const attendanceController = require('../../controllers/attendanceController');
-const attendanceWebController = require('../../controllers/attendanceWebController'); // For web punches
-const authController = require('../../controllers/authController');
-const { checkPermission, checkAnyPermission } = require("../../middleware/permissionMiddleware");
+const attendanceController = require('../../modules/hr/attendance/attendance.controller');
+const attendanceWebController = require('../../modules/hr/attendance/attendanceWeb.controller'); // For web punches
+const authController = require('../../modules/auth/core/auth.controller');
+const { checkPermission, checkAnyPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require('../../config/permissions');
 const router = express.Router();
 router.use(authController.protect);

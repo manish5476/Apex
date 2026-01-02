@@ -2,16 +2,16 @@
 const express = require("express");
 const router = express.Router();
 
-const noteController = require("../../controllers/noteController");
-const authController = require("../../controllers/authController");
-const { upload } = require("../../middleware/uploadMiddleware");
+const noteController = require("../../modules/_legacy/controllers/noteController");
+const authController = require("../../modules/auth/core/auth.controller");
+const { upload } = require("../../core/middleware/upload.middleware");
 const {
   checkPermission,
   checkAnyPermission,
   checkAllPermissions,
   checkIsOwner,
   checkIsSuperAdmin,
-} = require("../../middleware/permissionMiddleware");
+} = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
 // Apply authentication to all routes
@@ -258,14 +258,14 @@ module.exports = router;
 
 // const noteController = require("../../controllers/noteController");
 // const authController = require("../../controllers/authController");
-// const { upload } = require("../../middleware/uploadMiddleware");
+// const { upload } = require("../../core/middleware/upload.middleware");
 // const {
 //   checkPermission,
 //   checkAnyPermission,
 //   checkAllPermissions,
 //   checkIsOwner,
 //   checkIsSuperAdmin,
-// } = require("../../middleware/permissionMiddleware");
+// } = require("../../core/middleware/permission.middleware");
 
 // // Apply authentication to all routes
 // router.use(authController.protect);

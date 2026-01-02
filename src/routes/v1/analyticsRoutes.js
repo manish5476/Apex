@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const analyticsController = require("../../controllers/analyticsController");
-const authController = require("../../controllers/authController");
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const analyticsController = require("../../modules/_legacy/controllers/analyticsController");
+const authController = require("../../modules/auth/core/auth.controller");
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
 // All analytics routes require authentication

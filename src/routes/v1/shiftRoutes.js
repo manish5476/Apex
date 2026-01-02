@@ -1,7 +1,7 @@
 const express = require('express');
-const shiftController = require('../../controllers/shiftController');
-const authController = require('../../controllers/authController');
-const { checkPermission, } = require("../../middleware/permissionMiddleware");
+const shiftController = require('../../modules/hr/shift/shift.controller');
+const authController = require('../../modules/auth/core/auth.controller');
+const { checkPermission, } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require('../../config/permissions');
 
 const router = express.Router();

@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const inventoryController = require("../../controllers/inventoryController");
-const authController = require("../../controllers/authController");
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const inventoryController = require("../../modules/inventory/core/inventory.controller");
+const authController = require("../../modules/auth/core/auth.controller");
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions"); // Ensure you add PRODUCT.ADJUST to permissions config
 
 router.use(authController.protect);

@@ -1,11 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const invoiceController = require("../../controllers/invoiceController");
-const invoicePDFController = require("../../controllers/invoicePDFController");
-const authController = require("../../controllers/authController");
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const invoiceController = require("../../modules/accounting/billing/invoice.controller");
+const invoicePDFController = require("../../modules/accounting/billing/invoicePDF.controller");
+const authController = require("../../modules/auth/core/auth.controller");
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
-const { validateStockForInvoice, checkStockBeforeSale } = require("../../middleware/stockValidationMiddleware");
+const { validateStockForInvoice, checkStockBeforeSale } = require("../../core/middleware/stockValidation.middleware");
 
 // Protect all routes
 router.use(authController.protect);

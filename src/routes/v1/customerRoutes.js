@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const customerController = require("../../controllers/customerController");
-const authController = require("../../controllers/authController");
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const customerController = require("../../modules/organization/core/customer.controller");
+const authController = require("../../modules/auth/core/auth.controller");
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
-const { upload } = require("../../middleware/uploadMiddleware");
+const { upload } = require("../../core/middleware/upload.middleware");
 
 router.use(authController.protect);
 

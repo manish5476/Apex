@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const ownership = require('../../controllers/ownership.controller');
-const authController = require('../../controllers/authController'); // Your auth middleware
-const { checkPermission, } = require("../../middleware/permissionMiddleware");
+const ownership = require('../../modules/_legacy/controllers/ownership.controller');
+const authController = require('../../modules/auth/core/auth.controller'); // Your auth middleware
+const { checkPermission, } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require('../../config/permissions');
 
 // Protect all routes

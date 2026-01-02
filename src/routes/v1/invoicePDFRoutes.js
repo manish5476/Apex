@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const authController = require("../../controllers/authController");
-const invoicePDFController = require("../../controllers/invoicePDFController");
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const authController = require("../../modules/auth/core/auth.controller");
+const invoicePDFController = require("../../modules/accounting/billing/invoicePDF.controller");
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
 router.use(authController.protect);

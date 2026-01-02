@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const accountController = require('../../controllers/accountController');
-const authController = require('../../controllers/authController');
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const accountController = require('../../modules/accounting/core/account.controller');
+const authController = require('../../modules/auth/core/auth.controller');
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
 // Protect all routes

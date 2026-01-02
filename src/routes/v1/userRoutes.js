@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const authController = require("../../controllers/authController");
-const userController = require("../../controllers/userController");
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const authController = require("../../modules/auth/core/auth.controller");
+const userController = require("../../modules/auth/core/user.controller");
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 }, });

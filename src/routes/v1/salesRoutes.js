@@ -1,12 +1,12 @@
 const express = require('express');
-const salesController = require('../../controllers/salesController');
-const salesReturnController = require('../../controllers/salesReturnController');
-const authController = require('../../controllers/authController');
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const salesController = require('../../modules/inventory/core/sales.controller');
+const salesReturnController = require('../../modules/inventory/core/salesReturn.controller');
+const authController = require('../../modules/auth/core/auth.controller');
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 // const { validate } = require("../../middleware/validationMiddleware"); // Assuming you have this helper
-const { createSalesSchema, updateSalesSchema } = require('../../validations/salesValidation');
-const { checkStockBeforeSale } = require("../../middleware/stockValidationMiddleware");
+const { createSalesSchema, updateSalesSchema } = require('../../shared/validations/salesValidation');
+const { checkStockBeforeSale } = require("../../core/middleware/stockValidation.middleware");
 
 const router = express.Router();
 

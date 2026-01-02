@@ -13,12 +13,12 @@ const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose"); // Required for health check
 
 const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./config/swaggerConfig");
-const globalErrorHandler = require("./middleware/errorController");
-const AppError = require("./utils/appError");
-const logger = require("./config/logger");
-const { updateSessionActivity } = require("./middleware/sessionActivity");
-const assignRequestId = require("./middleware/assignRequestId"); // ✅ NEW
+const swaggerSpec = require("./bootstrap/swagger");
+const globalErrorHandler = require("./core/error/errorController");
+const AppError = require("./core/utils/appError");
+const logger = require("./bootstrap/logger");
+const { updateSessionActivity } = require("./core/middleware/session.middleware");
+const assignRequestId = require("./shared/middleware/requestId");
 
 // ---------------------- ROUTES ----------------------
 // (Keep all your existing imports exactly as they are)

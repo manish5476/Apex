@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const organizationController = require('../../controllers/organizationController');
-const authController = require('../../controllers/authController');
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const organizationController = require('../../modules/organization/core/organization.controller');
+const authController = require('../../modules/auth/core/auth.controller');
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
 // Public
