@@ -5,13 +5,9 @@ const attendanceWebController = require('../../controllers/attendanceWebControll
 const authController = require('../../controllers/authController');
 const { checkPermission, checkAnyPermission } = require("../../middleware/permissionMiddleware");
 const { PERMISSIONS } = require('../../config/permissions');
-
 const router = express.Router();
-
 router.use(authController.protect);
-
 // ==================== EMPLOYEE ROUTES ====================
-
 // Web/Mobile Punch
 router.post('/punch', 
   checkPermission(PERMISSIONS.ATTENDANCE.MARK), 
