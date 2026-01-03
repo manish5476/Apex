@@ -72,5 +72,12 @@ router.delete(
   messageCtrl.deleteMessage
 );
 
+// In your backend router:
+router.patch(
+  '/messages/:messageId/read',
+  checkPermission(PERMISSIONS.CHAT.SEND),
+  messageCtrl.markMessageAsRead
+);
+
 module.exports = router;
 

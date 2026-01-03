@@ -7,16 +7,54 @@ const EMI = require("../../accounting/payments/emi.model");
 const sendEmail = require("../../../core/utils/_legacy/email");
 const inventoryAlertService = require("../../inventory/core/inventoryAlert.service");
 
-exports.createNotification = async (organizationId, recipientId, type, title, message, io = null) => {
+// exports.createNotification = async (organizationId, recipientId, type, title, message, io = null) => {
+//   const notification = await Notification.create({
+//     organizationId, recipientId, type, title, message,
+//   });
+//   if (io) {
+//     io.to(recipientId.toString()).emit("newNotification", notification);
+//   }
+//   return notification;
+// };
+// Update your existing createNotification function
+exports.createNotification = async (organizationId, recipientId, type, title, message, metadata = {}, io = null) => {
   const notification = await Notification.create({
-    organizationId, recipientId, type, title, message,
+    organizationId,
+    recipientId,
+    type,
+    title,
+    message,
+    metadata, // ✅ Add metadata support
+    priority: this.determinePriorityFromType(type), // ✅ Add priority
+    createdAt: new Date()
   });
+
   if (io) {
     io.to(recipientId.toString()).emit("newNotification", notification);
   }
+
+  // Also use socket utils if available
+  try {
+    const { emitToUser } = require("../../../core/utils/_legacy/socket");
+    emitToUser(recipientId.toString(), "newNotification", notification);
+  } catch (err) {
+    console.log("Socket utils not available");
+  }
+
   return notification;
 };
 
+// Helper function
+exports.determinePriorityFromType = (type) => {
+  const priorityMap = {
+    'urgent': 'critical',
+    'error': 'high',
+    'warning': 'high',
+    'success': 'normal',
+    'info': 'low'
+  };
+  return priorityMap[type] || 'normal';
+};
 /**
  * Send overdue invoice emails to organizations
  */
@@ -158,3 +196,128 @@ exports.sendEmiOverdueAlerts = async () => {
     }
   }
 };
+
+// ✅ ADD NEW CLASS METHODS
+class NotificationService {
+  /**
+   * Create a system notification (for automated processes)
+   * Uses your existing notification model structure
+   */
+  static async createSystemNotification(organizationId, recipientId, businessType, title, message, metadata = {}) {
+    try {
+      // Map businessType to your existing type field
+      const type = this.mapBusinessTypeToUIType(businessType);
+
+      const notification = await Notification.create({
+        organizationId,
+        recipientId,
+        type, // This is your existing 'type' field
+        title,
+        message,
+        metadata,
+        isSystem: true,
+        priority: this.determinePriority(businessType)
+      });
+
+      // Use socket if available
+      emitToUser(recipientId.toString(), "newNotification", notification);
+
+      return notification;
+    } catch (err) {
+      console.error("Create system notification error:", err);
+      return null;
+    }
+  }
+
+  /**
+   * Map business type to UI type
+   * Adapts to your existing type system
+   */
+  static mapBusinessTypeToUIType(businessType) {
+    const map = {
+      'USER_SIGNUP': 'info',
+      'INVOICE_CREATED': 'info',
+      'PAYMENT_RECEIVED': 'success',
+      'STOCK_ALERT': 'warning',
+      'TASK_OVERDUE': 'error',
+      'TASK_COMPLETED': 'success',
+      'SYSTEM': 'info'
+    };
+    return map[businessType] || 'info';
+  }
+
+  /**
+   * Determine priority based on business type
+   */
+  static determinePriority(businessType) {
+    const criticalTypes = ['STOCK_ALERT_CRITICAL', 'PAYMENT_OVERDUE'];
+    const highTypes = ['STOCK_ALERT', 'TASK_OVERDUE'];
+
+    if (criticalTypes.includes(businessType)) return 'critical';
+    if (highTypes.includes(businessType)) return 'high';
+    return 'normal';
+  }
+
+  /**
+   * Bulk create notifications
+   */
+  static async bulkCreateNotifications(notificationsData) {
+    try {
+      const notifications = await Notification.insertMany(notificationsData);
+
+      // Emit socket events for each
+      notifications.forEach(notification => {
+        emitToUser(notification.recipientId.toString(), "newNotification", notification);
+      });
+
+      return notifications;
+    } catch (err) {
+      console.error("Bulk create notifications error:", err);
+      return [];
+    }
+  }
+
+  /**
+   * Get user's unread count
+   */
+  static async getUnreadCount(userId, organizationId) {
+    return await Notification.countDocuments({
+      recipientId: userId,
+      organizationId,
+      isRead: false
+    });
+  }
+
+  /**
+   * Create notification and send email
+   */
+  static async createNotificationWithEmail(organizationId, recipientId, type, title, message, emailData = null) {
+    try {
+      // Create notification
+      const notification = await exports.createNotification(
+        organizationId,
+        recipientId,
+        type,
+        title,
+        message
+      );
+
+      // Send email if emailData provided
+      if (emailData && emailData.email) {
+        await sendEmail({
+          email: emailData.email,
+          subject: emailData.subject || title,
+          html: emailData.html || message
+        });
+      }
+
+      return notification;
+    } catch (err) {
+      console.error("Create notification with email error:", err);
+      return null;
+    }
+  }
+}
+
+// ✅ Export the class as well
+exports.NotificationService = NotificationService;

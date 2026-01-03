@@ -124,3 +124,34 @@ exports.uploadAttachment = async (req, res) => {
     res.status(500).json({ message: 'File upload failed' });
   }
 };
+
+// Add to your message controller
+exports.markMessageAsRead = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user._id;
+    
+    const message = await MessageModel.findById(messageId);
+    if (!message) return res.status(404).json({ message: 'Message not found' });
+    
+    // Add user to readBy array if not already there
+    if (!message.readBy.includes(userId)) {
+      message.readBy.push(userId);
+      await message.save();
+    }
+    
+    // Emit read receipt
+    try {
+      const socketUtil = require('../utils/socket');
+      socketUtil.emitToChannel(message.channelId, 'messageRead', {
+        messageId,
+        userId,
+        readAt: new Date()
+      });
+    } catch(e) { console.error('Socket emit failed', e); }
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error marking message as read' });
+  }
+};

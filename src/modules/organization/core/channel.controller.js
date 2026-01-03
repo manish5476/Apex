@@ -1,4 +1,3 @@
-// src/controllers/channelController.js
 const ChannelModel = require('./channel.model');
 const UserModel = require('../../auth/core/user.model');
 
