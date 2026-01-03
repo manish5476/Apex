@@ -1,9 +1,9 @@
 const express = require("express");
 const multer = require("multer");
 const router = express.Router();
-const purchaseController = require("../../controllers/purchaseController");
-const authController = require("../../controllers/authController");
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const purchaseController = require("../../modules/inventory/core/purchase.controller");
+const authController = require("../../modules/auth/core/auth.controller");
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
 router.use(authController.protect);

@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const authController = require("../../controllers/authController");
-const invoicePDFController = require("../../controllers/invoicePDFController");
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const authController = require("../../modules/auth/core/auth.controller");
+const invoicePDFController = require("../../modules/accounting/billing/invoicePDF.controller");
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
 router.use(authController.protect);
@@ -20,20 +20,3 @@ router.post(
 );
 
 module.exports = router;
-
-
-// // Note: This file seems redundant if logic is in invoiceRoutes, 
-// // but sticking to your structure.
-// const express = require("express");
-// const authController = require("../../controllers/authController");
-// const invoicePDFController = require("../../controllers/invoicePDFController");
-// const { checkPermission } = require("../../middleware/permissionMiddleware");
-// const { PERMISSIONS } = require("../../config/permissions");
-
-// const router = express.Router();
-// router.use(authController.protect);
-
-// router.get("/:id/download", checkPermission(PERMISSIONS.INVOICE.DOWNLOAD), invoicePDFController.downloadInvoicePDF);
-// router.post("/:id/email", checkPermission(PERMISSIONS.INVOICE.DOWNLOAD), invoicePDFController.emailInvoice);
-
-// module.exports = router;

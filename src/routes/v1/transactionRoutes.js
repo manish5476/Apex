@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const transactionController = require('../../controllers/transactionController');
-const monitorController = require('../../controllers/monitorController');
-const authController = require('../../controllers/authController');
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const transactionController = require('../../modules/accounting/core/transaction.controller');
+const monitorController = require('../../modules/_legacy/controllers/monitorController');
+const authController = require('../../modules/auth/core/auth.controller');
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
 router.use(authController.protect);
