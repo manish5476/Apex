@@ -14,10 +14,10 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
     const φ2 = lat2 * Math.PI / 180;
     const Δφ = (lat2 - lat1) * Math.PI / 180;
     const Δλ = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) *
+        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // Distance in meters
 };
 
@@ -39,30 +39,76 @@ exports.markAttendance = catchAsync(async (req, res, next) => {
     let isGeoFenced = false;
     let distance = 0;
 
+    // if (user.attendanceConfig.enforceGeoFence) {
+    //     // if (!latitude || !longitude) {
+    //     //     return next(new AppError('Location access is required to mark attendance.', 400));
+    //     // }
+
+    //     if (latitude == null || longitude == null) {
+    //         return next(new AppError('Location access is required.', 400));
+    //     }
+
+    //     const branch = await Branch.findById(user.branchId);
+    //     console.log(branch, '❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗')
+    //     if (!branch || branch.location?.lat == null || branch.location?.lng == null) {
+    //         return next(
+    //             new AppError('Your branch location is not configured. Contact Admin.', 400)
+    //         );
+    //     }
+
+    //     const branchLat = branch.location.lat;
+    //     const branchLng = branch.location.lng;
+    //     distance = getDistance(latitude, longitude, branchLat, branchLng);
+    //     const maxRadius = user.attendanceConfig.geoFenceRadius || 100;
+
+    //     if (distance > maxRadius) {
+    //         return next(new AppError(`You are ${Math.round(distance)}m away from office. Must be within ${maxRadius}m.`, 400));
+    //     }
+    //     isGeoFenced = true;
+    // }
+
     if (user.attendanceConfig.enforceGeoFence) {
-        if (!latitude || !longitude) {
-            return next(new AppError('Location access is required to mark attendance.', 400));
+
+        if (latitude == null || longitude == null) {
+            return next(new AppError('Location access is required.', 400));
         }
 
-        // Fetch Branch Coordinates
+        // 🚫 Reject bad GPS data
+        // if (accuracy && accuracy > 100) {
+        //     return next(
+        //         new AppError(
+        //             `Location accuracy too low (${Math.round(accuracy)}m). Please use mobile GPS.`,
+        //             400
+        //         )
+        //     );
+        // }
+
         const branch = await Branch.findById(user.branchId);
-        if (!branch || !branch.location?.coordinates) {
+
+        if (!branch?.location || branch.location.lat == null || branch.location.lng == null) {
             return next(new AppError('Your branch location is not configured. Contact Admin.', 400));
         }
 
-        // Expecting [lng, lat] in MongoDB GeoJSON
-        const branchLat = branch.location.coordinates[1]; 
-        const branchLng = branch.location.coordinates[0];
+        const distance = getDistance(
+            latitude,
+            longitude,
+            branch.location.lat,
+            branch.location.lng
+        );
 
-        distance = getDistance(latitude, longitude, branchLat, branchLng);
         const maxRadius = user.attendanceConfig.geoFenceRadius || 100;
 
         if (distance > maxRadius) {
-            return next(new AppError(`You are ${Math.round(distance)}m away from office. Must be within ${maxRadius}m.`, 400));
+            return next(
+                new AppError(
+                    `You are ${Math.round(distance)}m away from office. Must be within ${maxRadius}m.`,
+                    400
+                )
+            );
         }
+
         isGeoFenced = true;
     }
-
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -74,6 +120,8 @@ exports.markAttendance = catchAsync(async (req, res, next) => {
         // 3. Create Audit Log
         const log = new AttendanceLog({
             source: 'web',
+            organizationId: user.organizationId, // ✅
+            branchId: user.branchId,
             user: user._id,
             timestamp: now,
             type: type, // 'in' or 'out'

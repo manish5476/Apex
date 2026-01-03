@@ -107,7 +107,7 @@ const userSchema = new mongoose.Schema({
     
     // If true, they MUST be within X meters of their Branch location
     enforceGeoFence: { type: Boolean, default: true }, 
-    geoFenceRadius: { type: Number, default: 100 } // Meters
+    geoFenceRadius: { type: Number, default: 100 } 
   }
 
 }, { timestamps: true });
@@ -153,9 +153,6 @@ userSchema.methods.createPasswordResetToken = function () {
 
 // --- FIX: Logic Check for Admin ---
 userSchema.methods.isAdmin = function () {
-  // Apex Fix: Since 'role' is an ObjectId, we cannot compare it to strings directly 
-  // without populating. This method assumes you have populated 'role'.
-  // If 'role' is just an ID, this returns false safely.
   if (this.role && this.role.name) {
       return ['admin', 'superadmin'].includes(this.role.name);
   }
