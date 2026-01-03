@@ -1,3 +1,115 @@
+// const mongoose = require('mongoose');
+// const crypto = require('crypto');
+// const Organization = require('../models/organizationModel');
+// const Branch = require('../models/branchModel');
+// const User = require('../models/userModel');
+// const Role = require('../models/roleModel');
+// const catchAsync = require('../utils/catchAsync');
+// const AppError = require('../utils/appError');
+// const factory = require('../utils/handlerFactory');
+// const sendEmail = require('../utils/email');
+// const { signToken } = require('../utils/authUtils');
+// const { emitToOrg, emitToUser } = require('../utils/socket'); // ✅ IMPORTED SOCKET UTILITIES
+// /* -------------------------------------------------------------
+//  * Utility: Generate Unique Shop ID (Fallback)
+// ------------------------------------------------------------- */
+// const generateUniqueShopId = () =>
+//   `ORG-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+// /* -------------------------------------------------------------
+//  * Create New Organization (Transactional)
+// ------------------------------------------------------------- */
+// exports.createOrganization = catchAsync(async (req, res, next) => {
+//   const { organizationName, uniqueShopId, primaryEmail, primaryPhone, gstNumber, ownerName, ownerEmail, ownerPassword, mainBranchName, mainBranchAddress,} = req.body;
+  
+//   if (!organizationName || !ownerName || !ownerEmail || !ownerPassword)
+//     return next(new AppError('Missing required organization or owner fields', 400));
+
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const tempOrgId = new mongoose.Types.ObjectId();
+
+//     // Step 1: Create the Owner
+//     const newUser = await new User({
+//       name: ownerName,
+//       email: ownerEmail,
+//       password: ownerPassword,
+//       organizationId: tempOrgId,
+//       status: 'approved',
+//     }).save({ session });
+
+//     // Step 2: Create Role (Super Admin)
+//     const newRole = await new Role({
+//       name: 'Super Admin',
+//       organizationId: tempOrgId,
+//       permissions: Role.allPermissions || [], 
+//       isSuperAdmin: true,
+//     }).save({ session });
+
+//     // Step 3: Create Organization
+//     const newOrg = await new Organization({
+//       _id: tempOrgId,
+//       name: organizationName,
+//       uniqueShopId: uniqueShopId || generateUniqueShopId(),
+//       primaryEmail,
+//       primaryPhone,
+//       gstNumber,
+//       owner: newUser._id,
+//     }).save({ session });
+
+//     // Step 4: Create Main Branch
+//     const newBranch = await new Branch({
+//       name: mainBranchName || 'Main Branch',
+//       address: mainBranchAddress,
+//       organizationId: newOrg._id,
+//       isMainBranch: true,
+//     }).save({ session });
+
+//     // Step 5: Link Everything
+//     newOrg.mainBranch = newBranch._id;
+//     newOrg.branches.push(newBranch._id);
+//     newOrg.members.push(newUser._id); // Add owner to members
+
+//     newUser.organizationId = newOrg._id;
+//     newUser.branchId = newBranch._id;
+//     newUser.role = newRole._id;
+
+//     await Promise.all([newOrg.save({ session }), newUser.save({ session })]);
+//     await session.commitTransaction();
+    
+//     // Fetch clean data for response
+//     const orgId = newOrg._id;
+//     const [branches, roles] = await Promise.all([
+//       Branch.find({ organizationId: orgId, isActive: true }).select('_id name address isMainBranch').lean(),
+//       Role.find({ organizationId: orgId }).select('_id name permissions isSuperAdmin isDefault').lean()
+//     ]);
+
+//     const token = signToken(newUser);
+//     newUser.password = undefined;
+
+//     res.status(201).json({
+//       status: 'success',
+//       message: 'Organization created successfully!',
+//       token,
+//       allbranches: branches,
+//       allroles: roles,
+//       data: { organization: newOrg, owner: newUser, branch: newBranch, role: newRole },
+//     });
+//   } catch (err) {
+//     await session.abortTransaction();
+//     if (err.code === 11000) {
+//       if (err.keyPattern?.uniqueShopId)
+//         return next(new AppError('This Shop ID is already taken.', 400));
+//       if (err.keyPattern?.email)
+//         return next(new AppError('This email address is already in use.', 400));
+//     }
+//     next(err);
+//   } finally {
+//     session.endSession();
+//   }
+// });
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 const Organization = require('../models/organizationModel');
@@ -10,8 +122,10 @@ const factory = require('../utils/handlerFactory');
 const sendEmail = require('../utils/email');
 const { signToken } = require('../utils/authUtils');
 const { emitToOrg, emitToUser } = require('../utils/socket'); // ✅ IMPORTED SOCKET UTILITIES
+const Shift = require('../models/shiftModel'); // 🟢 NEW: Import Shift Model
+
 /* -------------------------------------------------------------
- * Utility: Generate Unique Shop ID (Fallback)
+ * Utility: Generate Unique Shop ID
 ------------------------------------------------------------- */
 const generateUniqueShopId = () =>
   `ORG-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
@@ -20,7 +134,11 @@ const generateUniqueShopId = () =>
  * Create New Organization (Transactional)
 ------------------------------------------------------------- */
 exports.createOrganization = catchAsync(async (req, res, next) => {
-  const { organizationName, uniqueShopId, primaryEmail, primaryPhone, gstNumber, ownerName, ownerEmail, ownerPassword, mainBranchName, mainBranchAddress,} = req.body;
+  const { 
+    organizationName, uniqueShopId, primaryEmail, primaryPhone, gstNumber, 
+    ownerName, ownerEmail, ownerPassword, 
+    mainBranchName, mainBranchAddress 
+  } = req.body;
   
   if (!organizationName || !ownerName || !ownerEmail || !ownerPassword)
     return next(new AppError('Missing required organization or owner fields', 400));
@@ -31,13 +149,19 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
   try {
     const tempOrgId = new mongoose.Types.ObjectId();
 
-    // Step 1: Create the Owner
+    // Step 1: Create the Owner (Initial Save)
     const newUser = await new User({
       name: ownerName,
       email: ownerEmail,
       password: ownerPassword,
       organizationId: tempOrgId,
       status: 'approved',
+      // Initialize Config (Shift will be added later)
+      attendanceConfig: {
+        isAttendanceEnabled: true,
+        allowWebPunch: true, // Owners usually need web punch
+        allowMobilePunch: true
+      }
     }).save({ session });
 
     // Step 2: Create Role (Super Admin)
@@ -57,6 +181,9 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       primaryPhone,
       gstNumber,
       owner: newUser._id,
+      // Default Preferences
+      whatsappWallet: { credits: 50 }, // Free credits
+      features: { whatsappEnabled: true }
     }).save({ session });
 
     // Step 4: Create Main Branch
@@ -67,16 +194,35 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       isMainBranch: true,
     }).save({ session });
 
-    // Step 5: Link Everything
+    // 🟢 STEP 4.5: Create Default Shift (CRITICAL FOR ATTENDANCE)
+    const defaultShift = await new Shift({
+        name: 'General Shift',
+        organizationId: newOrg._id,
+        startTime: '09:00',
+        endTime: '18:00',
+        gracePeriodMins: 15,
+        halfDayThresholdHrs: 4,
+        minFullDayHrs: 8,
+        weeklyOffs: [0], // Sunday
+        isActive: true
+    }).save({ session });
+
+    // Step 5: Link Everything & Update Owner
     newOrg.mainBranch = newBranch._id;
     newOrg.branches.push(newBranch._id);
-    newOrg.members.push(newUser._id); // Add owner to members
+    newOrg.members.push(newUser._id);
 
+    // Update Owner Links
     newUser.organizationId = newOrg._id;
     newUser.branchId = newBranch._id;
     newUser.role = newRole._id;
+    
+    // 🟢 Assign the Default Shift to Owner
+    newUser.attendanceConfig.shiftId = defaultShift._id;
 
+    // Final Save
     await Promise.all([newOrg.save({ session }), newUser.save({ session })]);
+    
     await session.commitTransaction();
     
     // Fetch clean data for response
@@ -95,8 +241,15 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       token,
       allbranches: branches,
       allroles: roles,
-      data: { organization: newOrg, owner: newUser, branch: newBranch, role: newRole },
+      data: { 
+          organization: newOrg, 
+          owner: newUser, 
+          branch: newBranch, 
+          role: newRole,
+          shift: defaultShift // Return shift so frontend can update state
+      },
     });
+
   } catch (err) {
     await session.abortTransaction();
     if (err.code === 11000) {

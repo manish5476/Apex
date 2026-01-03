@@ -55,6 +55,9 @@ const chatRoutes = require("./routes/v1/chatRoutes");
 const inventoryRoutes = require("./routes/v1/inventoryRoutes");
 const feedRoutes = require("./routes/v1/feedRoutes");
 const chartRoutes = require("./routes/v1/chartRoutes");
+const attendanceRoutes = require('./routes/v1/attendanceRoutes');
+const shiftRoutes = require('./routes/v1/shiftRoutes');
+const holidayRoutes = require('./routes/v1/holidayRoutes');
 const app = express();
 
 // 1. GLOBAL SETTINGS
@@ -195,6 +198,11 @@ app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1/feed", feedRoutes);
 app.use("/api/v1/reconciliation", require("./routes/v1/reconciliationRoutes"));
 app.use("/api/v1/automation", require("./routes/v1/automationRoutes"));
+// ... under your other routes ...
+app.use('/api/v1/shifts', shiftRoutes);
+app.use('/api/v1/holidays', holidayRoutes);
+// Use
+app.use('/api/v1/attendance', attendanceRoutes);
 // ---------------------- 5. ERROR HANDLING ----------------------
 app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
