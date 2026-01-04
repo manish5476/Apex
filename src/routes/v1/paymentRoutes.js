@@ -21,4 +21,35 @@ router.route("/:id")
   .patch(checkPermission(PERMISSIONS.PAYMENT.CREATE), paymentController.updatePayment)
   .delete(checkPermission(PERMISSIONS.PAYMENT.DELETE), paymentController.deletePayment);
 
+  // In payment.routes.js, add:
+router.get(
+  '/customer/:customerId/summary',
+  checkPermission(PERMISSIONS.PAYMENT.READ),
+  paymentController.getCustomerPaymentSummary
+);
+
+router.post(
+  '/:paymentId/allocate/auto',
+  checkPermission(PERMISSIONS.PAYMENT.CREATE),
+  paymentController.autoAllocatePayment
+);
+
+router.post(
+  '/:paymentId/allocate/manual',
+  checkPermission(PERMISSIONS.PAYMENT.CREATE),
+  paymentController.manualAllocatePayment
+);
+
+router.get(
+  '/customer/:customerId/unallocated',
+  checkPermission(PERMISSIONS.PAYMENT.READ),
+  paymentController.getUnallocatedPayments
+);
+
+router.get(
+  '/reports/allocation',
+  checkPermission(PERMISSIONS.PAYMENT.READ),
+  paymentController.getAllocationReport
+);
+
 module.exports = router;

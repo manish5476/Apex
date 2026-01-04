@@ -292,3 +292,5 @@ class StockValidationService {
 }
 
 module.exports = StockValidationService;
+
+

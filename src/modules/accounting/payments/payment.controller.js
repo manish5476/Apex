@@ -14,6 +14,7 @@ const paymentPDFService = require('./paymentPDF.service');
 const automationService = require('../../_legacy/services/automationService');
 const { invalidateOpeningBalance } = require('../core/ledgerCache.service');
 const PendingReconciliation = require('../../_legacy/models/pendingReconciliationModel');
+const paymentAllocationService = require('./paymentAllocation.service');
 
 /* ======================================================
    ACCOUNT RESOLUTION (STRICT)
@@ -347,35 +348,90 @@ exports.paymentGatewayWebhook = catchAsync(async (req, res, next) => {
   } = req.body;
 
   // Find organization by invoice number
-  const invoice = await Invoice.findOne({ 
-    invoiceNumber: invoice_id 
+  const invoice = await Invoice.findOne({
+    invoiceNumber: invoice_id
   }).populate('organizationId');
 
   if (!invoice) {
-    return res.status(404).json({ 
-      status: 'error', 
-      message: 'Invoice not found' 
+    return res.status(404).json({
+      status: 'error',
+      message: 'Invoice not found'
     });
   }
 
+  // if (event === 'payment.success') {
+  //   try {
+  //     const result = await emiService.autoReconcilePayment({
+  //       organizationId: invoice.organizationId._id,
+  //       branchId: invoice.branchId,
+  //       invoiceId: invoice._id,
+  //       amount: amount / 100, // Convert from paise to rupees
+  //       paymentDate: new Date(timestamp * 1000),
+  //       paymentMethod: mapPaymentMethod(payment_method),
+  //       transactionId: transaction_id,
+  //       gateway: 'razorpay', // or 'stripe', 'paypal', etc.
+  //       createdBy: null // System user
+  //     });
+
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: 'Payment reconciled successfully',
+  //       data: result
+  //     });
+
+  //   } catch (error) {
+  //     // Store for manual reconciliation
+  // await PendingReconciliation.create({
+  //   organizationId: invoice.organizationId._id,
+  //   invoiceId: invoice._id,
+  //   customerId: invoice.customerId,
+  //   externalTransactionId: transaction_id,
+  //   amount: amount / 100,
+  //   paymentDate: new Date(timestamp * 1000),
+  //   paymentMethod: mapPaymentMethod(payment_method),
+  //   gateway: 'razorpay',
+  //   rawData: req.body,
+  //   status: 'pending',
+  //   error: error.message
+  // });
+
+  //     return res.status(200).json({
+  //       status: 'pending',
+  //       message: 'Payment queued for manual reconciliation',
+  //       transaction_id
+  //     });
+  //   }
+  // }
+
   if (event === 'payment.success') {
     try {
-      const result = await emiService.autoReconcilePayment({
+      // 1. Create payment record
+      const payment = await Payment.create({
         organizationId: invoice.organizationId._id,
         branchId: invoice.branchId,
+        type: 'inflow',
+        amount: amount / 100,
+        customerId: invoice.customerId,
         invoiceId: invoice._id,
-        amount: amount / 100, // Convert from paise to rupees
-        paymentDate: new Date(timestamp * 1000),
         paymentMethod: mapPaymentMethod(payment_method),
         transactionId: transaction_id,
-        gateway: 'razorpay', // or 'stripe', 'paypal', etc.
-        createdBy: null // System user
+        paymentDate: new Date(timestamp * 1000),
+        referenceNumber: transaction_id,
+        status: 'completed',
+        transactionMode: 'auto',
+        createdBy: null
       });
+
+      // 2. Auto-allocate payment
+      await paymentAllocationService.autoAllocatePayment(
+        payment._id,
+        invoice.organizationId._id
+      );
 
       return res.status(200).json({
         status: 'success',
-        message: 'Payment reconciled successfully',
-        data: result
+        message: 'Payment recorded and allocated',
+        data: { paymentId: payment._id }
       });
 
     } catch (error) {
@@ -401,7 +457,6 @@ exports.paymentGatewayWebhook = catchAsync(async (req, res, next) => {
       });
     }
   }
-
   res.status(200).json({ status: 'acknowledged' });
 });
 
@@ -417,393 +472,94 @@ function mapPaymentMethod(gatewayMethod) {
 }
 
 
-// const mongoose = require('mongoose');
-// const Payment = require('../models/paymentModel');
-// const Invoice = require('../models/invoiceModel');
-// const Purchase = require('../models/purchaseModel');
-// const Customer = require('../models/customerModel');
-// const Supplier = require('../models/supplierModel');
-// const AccountEntry = require('../models/accountEntryModel');
-// const Account = require('../models/accountModel');
-// const catchAsync = require('../utils/catchAsync');
-// const AppError = require('../utils/appError');
-// const factory = require('../utils/handlerFactory');
-// const emiService = require('../services/emiService');
-// const paymentPDFService = require("../services/paymentPDFService");
-// const automationService = require('../services/automationService');
-// const { invalidateOpeningBalance } = require("../services/ledgerCache");
+/* ======================================================
+   GET CUSTOMER PAYMENT SUMMARY
+====================================================== */
+exports.getCustomerPaymentSummary = catchAsync(async (req, res) => {
+  const { customerId } = req.params;
 
-// async function applyPaymentEffects(payment, session, direction = 'apply') {
-//   const { 
-//     type, amount, organizationId, branchId, 
-//     customerId, supplierId, invoiceId, purchaseId, 
-//     _id, paymentMethod, referenceNumber, createdBy, paymentDate
-//   } = payment;
+  const summary = await paymentAllocationService.getCustomerPaymentSummary(
+    customerId,
+    req.user.organizationId
+  );
 
-//   const multiplier = direction === 'apply' ? 1 : -1;
-//   const isCash = paymentMethod === 'cash';
-//   const bankQuery = isCash 
-//     ? { $or: [{ code: '1001' }, { name: 'Cash' }] }
-//     : { $or: [{ code: '1002' }, { name: 'Bank' }] }; 
-//   const bankAccount = await Account.findOne({ organizationId, ...bankQuery }).session(session);
-//   const arAccount = await Account.findOne({ 
-//     organizationId, 
-//     $or: [{ code: '1200' }, { name: 'Accounts Receivable' }] 
-//   }).session(session);
+  res.status(200).json({
+    status: 'success',
+    data: summary
+  });
+});
 
-//   // Accounts Payable (For Suppliers)
-//   const apAccount = await Account.findOne({ 
-//     organizationId, 
-//     $or: [{ code: '2000' }, { name: 'Accounts Payable' }] 
-//   }).session(session);
+/* ======================================================
+   AUTO-ALLOCATE PAYMENT
+====================================================== */
+exports.autoAllocatePayment = catchAsync(async (req, res) => {
+  const { paymentId } = req.params;
 
-//   // 🔴 CRITICAL CHECK: Integrity Guard
-//   if (!bankAccount || !arAccount || !apAccount) {
-//     throw new AppError(
-//       `CRITICAL ACCOUNTING FAILURE: System cannot locate default ledger accounts (Cash/Bank, AR, AP). Transaction aborted to prevent financial data corruption. Please configure your Chart of Accounts.`,
-//       500
-//     );
-//   }
-//   const effectiveDate = paymentDate || new Date();
-//   // --------------------------------------------------------
-//   if (type === 'inflow') {
-//     // A. Update Invoice Status & Balance
-//     if (invoiceId) {
-//       const invoice = await Invoice.findOne({ _id: invoiceId, organizationId }).session(session);
-//       if (invoice) {
-//         invoice.paidAmount = (invoice.paidAmount || 0) + amount * multiplier;
-//         invoice.balanceAmount = invoice.grandTotal - invoice.paidAmount;
-//         // Float Precision Safety
-//         invoice.balanceAmount = Math.round(invoice.balanceAmount * 100) / 100;
-//         if (invoice.balanceAmount <= 0) invoice.paymentStatus = 'paid';
-//         else if (invoice.paidAmount > 0) invoice.paymentStatus = 'partial';
-//         else invoice.paymentStatus = 'unpaid';
-//         await invoice.save({ session });
-//       }
-//     }
+  const result = await paymentAllocationService.autoAllocatePayment(
+    paymentId,
+    req.user.organizationId
+  );
 
-//     // B. Update Customer Outstanding Balance
-//     if (customerId) {
-//       await Customer.findOneAndUpdate(
-//         { _id: customerId, organizationId },
-//         { $inc: { outstandingBalance: -amount * multiplier } },
-//         { session }
-//       );
-//     }
-//     const drAccount = direction === 'apply' ? bankAccount : arAccount;
-//     const crAccount = direction === 'apply' ? arAccount : bankAccount;
-//     const descPrefix = direction === 'apply' ? 'Payment Recv' : 'Reversal';
-//     // Debit Entry
-//     await AccountEntry.create([{
-//         organizationId, branchId,
-//         accountId: drAccount._id,
-//         customerId: direction === 'reverse' ? customerId : null, // Tag customer on AR debit
-//         paymentId: _id,
-//         date: effectiveDate,
-//         debit: amount,
-//         credit: 0,
-//         description: `${descPrefix}: ${referenceNumber || 'Cash'}`,
-//         referenceType: 'payment', referenceId: _id, createdBy
-//     }], { session });
+  res.status(200).json({
+    status: 'success',
+    message: 'Payment allocated successfully',
+    data: result
+  });
+});
 
-//     // Credit Entry
-//     await AccountEntry.create([{
-//         organizationId, branchId,
-//         accountId: crAccount._id,
-//         customerId: direction === 'apply' ? customerId : null, // Tag customer on AR credit
-//         paymentId: _id,
-//         date: effectiveDate,
-//         debit: 0,
-//         credit: amount,
-//         description: `${descPrefix}: ${referenceNumber || 'Cash'}`,
-//         referenceType: 'payment', referenceId: _id, createdBy
-//     }], { session });
-//   }
+/* ======================================================
+   MANUAL ALLOCATE PAYMENT
+====================================================== */
+exports.manualAllocatePayment = catchAsync(async (req, res) => {
+  const { paymentId } = req.params;
+  const { allocations } = req.body;
 
-//   // 3. Handle OUTFLOW (Supplier Payment)
-//   // --------------------------------------------------------
-//   if (type === 'outflow') {
-//     // A. Update Purchase Status & Balance
-//     if (purchaseId) {
-//       const purchase = await Purchase.findOne({ _id: purchaseId, organizationId }).session(session);
-//       if (purchase) {
-//         purchase.paidAmount = (purchase.paidAmount || 0) + amount * multiplier;
-//         purchase.balanceAmount = purchase.grandTotal - purchase.paidAmount;
-        
-//         // Float Precision Safety
-//         purchase.balanceAmount = Math.round(purchase.balanceAmount * 100) / 100;
+  const result = await paymentAllocationService.manualAllocatePayment(
+    paymentId,
+    allocations,
+    req.user.organizationId,
+    req.user._id
+  );
 
-//         if (purchase.balanceAmount <= 0) purchase.paymentStatus = 'paid';
-//         else if (purchase.paidAmount > 0) purchase.paymentStatus = 'partial';
-//         else purchase.paymentStatus = 'unpaid';
-        
-//         await purchase.save({ session });
-//       }
-//     }
+  res.status(200).json({
+    status: 'success',
+    message: 'Payment manually allocated',
+    data: result
+  });
+});
 
-//     // B. Update Supplier Outstanding Balance
-//     if (supplierId) {
-//       await Supplier.findOneAndUpdate(
-//         { _id: supplierId, organizationId },
-//         { $inc: { outstandingBalance: -amount * multiplier } },
-//         { session }
-//       );
-//     }
+/* ======================================================
+   GET UNALLOCATED PAYMENTS
+====================================================== */
+exports.getUnallocatedPayments = catchAsync(async (req, res) => {
+  const { customerId } = req.params;
 
-//     // C. Write Ledger Entries (Double-Entry)
-//     // Apply:   Debit AP, Credit Bank/Cash
-//     // Reverse: Debit Bank/Cash, Credit AP
-//     const drAccount = direction === 'apply' ? apAccount : bankAccount;
-//     const crAccount = direction === 'apply' ? bankAccount : apAccount;
-    
-//     const descPrefix = direction === 'apply' ? 'Payment Sent' : 'Reversal';
+  const payments = await paymentAllocationService.getUnallocatedPayments(
+    customerId,
+    req.user.organizationId
+  );
 
-//     // Debit Entry
-//     await AccountEntry.create([{
-//         organizationId, branchId,
-//         accountId: drAccount._id,
-//         supplierId: direction === 'apply' ? supplierId : null, // Tag supplier on AP debit
-//         paymentId: _id,
-//         date: effectiveDate,
-//         debit: amount,
-//         credit: 0,
-//         description: `${descPrefix}: ${referenceNumber || ''}`,
-//         referenceType: 'payment', referenceId: _id, createdBy
-//     }], { session });
+  res.status(200).json({
+    status: 'success',
+    results: payments.length,
+    data: { payments }
+  });
+});
 
-//     // Credit Entry
-//     await AccountEntry.create([{
-//         organizationId, branchId,
-//         accountId: crAccount._id,
-//         supplierId: direction === 'reverse' ? supplierId : null, // Tag supplier on AP credit
-//         paymentId: _id,
-//         date: effectiveDate,
-//         debit: 0,
-//         credit: amount,
-//         description: `${descPrefix}: ${referenceNumber || ''}`,
-//         referenceType: 'payment', referenceId: _id, createdBy
-//     }], { session });
-//   }
-// }
+/* ======================================================
+   GET ALLOCATION REPORT
+====================================================== */
+exports.getAllocationReport = catchAsync(async (req, res) => {
+  const { startDate, endDate } = req.query;
 
-// /* ==========================================================
-//    Create Payment (Transactional & Idempotent)
-// ========================================================== */
-// exports.createPayment = catchAsync(async (req, res, next) => {
-//   const {
-//     type, amount, customerId, supplierId, invoiceId, purchaseId,
-//     paymentMethod, paymentDate, referenceNumber, transactionId,
-//     bankName, remarks, status,
-//   } = req.body;
+  const report = await paymentAllocationService.getAllocationReport(
+    req.user.organizationId,
+    new Date(startDate),
+    new Date(endDate)
+  );
 
-//   if (!type || !['inflow', 'outflow'].includes(type)) {
-//     return next(new AppError('Payment type must be inflow or outflow', 400));
-//   }
-//   if (!amount || amount <= 0) {
-//     return next(new AppError('Amount must be positive', 400));
-//   }
-
-//   // --- IDEMPOTENCY CHECK ---
-//   // Prevent double-charging due to network retries
-//   if (referenceNumber || transactionId) {
-//     const existing = await Payment.findOne({
-//       organizationId: req.user.organizationId,
-//       $or: [
-//         { referenceNumber: referenceNumber || null },
-//         { transactionId: transactionId || null },
-//       ],
-//     });
-//     if (existing) {
-//       return res.status(200).json({
-//         status: 'success',
-//         message: 'Duplicate payment detected — returning existing record.',
-//         data: { payment: existing },
-//       });
-//     }
-//   }
-
-//   const session = await mongoose.startSession();
-//   session.startTransaction();
-
-//   try {
-//     // 1. Create Payment Record
-//     const paymentArr = await Payment.create(
-//       [
-//         {
-//           organizationId: req.user.organizationId,
-//           branchId: req.user.branchId,
-//           type,
-//           customerId: customerId || null,
-//           supplierId: supplierId || null,
-//           invoiceId: invoiceId || null,
-//           purchaseId: purchaseId || null,
-//           paymentDate: paymentDate || new Date(),
-//           referenceNumber,
-//           amount,
-//           paymentMethod,
-//           transactionMode: 'manual',
-//           transactionId,
-//           bankName,
-//           remarks,
-//           status: status || 'completed',
-//           createdBy: req.user._id,
-//         },
-//       ],
-//       { session }
-//     );
-
-//     const payment = paymentArr[0];
-
-//     // 2. Apply Financial Effects
-//     // Only apply if status is completed. Pending payments impact nothing yet.
-//     if (payment.status === 'completed') {
-//       await applyPaymentEffects(payment, session, 'apply');
-      
-//       // 3. EMI Logic (Isolated Try-Catch)
-//       // If EMI service fails, we do NOT roll back the main payment.
-//       if (type === 'inflow' && invoiceId && customerId) {
-//           try {
-//             await emiService.applyPaymentToEmi({
-//               customerId,
-//               invoiceId,
-//               amount,
-//               paymentId: payment._id,
-//               organizationId: req.user.organizationId,
-//             });
-//           } catch (err) {
-//             console.error('⚠️ EMI Auto-Allocation Failed (Non-Critical):', err.message);
-//           }
-//       }
-//     }
-
-//     await session.commitTransaction();
-// automationService.triggerEvent('payment.received', payment, req.user.organizationId);
-
-//     res.status(201).json({
-//       status: 'success',
-//       message: 'Payment recorded successfully',
-//       data: { payment },
-//     });
-//     await invalidateOpeningBalance(req.user.organizationId);
-
-//   } catch (err) {
-//     await session.abortTransaction();
-//     next(err);
-//   } finally {
-//     session.endSession();
-//   }
-// });
-
-// /* ==========================================================
-//    Update Payment (Status Transitions & Reversals)
-// ========================================================== */
-// exports.updatePayment = catchAsync(async (req, res, next) => {
-//   const payment = await Payment.findOne({
-//     _id: req.params.id,
-//     organizationId: req.user.organizationId,
-//   });
-
-//   if (!payment) {
-//     return next(new AppError('No payment found with that ID', 404));
-//   }
-
-//   const prevStatus = payment.status;
-//   const newStatus = req.body.status || payment.status;
-
-//   // Prevent editing locked fields on completed payments to ensure audit trail integrity
-//   if (prevStatus === 'completed' && req.body.amount && req.body.amount !== payment.amount) {
-//      return next(new AppError('Cannot change amount of a completed payment. Please void/cancel and recreate.', 400));
-//   }
-
-//   const session = await mongoose.startSession();
-//   session.startTransaction();
-
-//   try {
-//     // --- Update fields ---
-//     Object.assign(payment, req.body);
-//     await payment.save({ session });
-
-//     // --- Handle Status State Machine ---
-//     if (prevStatus !== newStatus) {
-//       // Case 1: Pending -> Completed (Apply Money)
-//       if (prevStatus !== 'completed' && newStatus === 'completed') {
-//         await applyPaymentEffects(payment, session, 'apply');
-//       } 
-//       // Case 2: Completed -> Failed/Cancelled (Reverse Money)
-//       else if (prevStatus === 'completed' && (newStatus === 'failed' || newStatus === 'cancelled')) {
-//         await applyPaymentEffects(payment, session, 'reverse');
-//       }
-//       // Case 3: Failed/Cancelled -> Completed (Re-Apply Money)
-//       else if ((prevStatus === 'failed' || prevStatus === 'cancelled') && newStatus === 'completed') {
-//         await applyPaymentEffects(payment, session, 'apply');
-//       }
-//     }
-
-//     await session.commitTransaction();
-
-//     res.status(200).json({
-//       status: 'success',
-//       message: 'Payment updated successfully',
-//       data: { payment },
-//     });
-//   } catch (err) {
-//     await session.abortTransaction();
-//     next(err);
-//   } finally {
-//     session.endSession();
-//   }
-// });
-
-// /* ==========================================================
-//    Standard CRUD & Queries
-// ========================================================== */
-// exports.getAllPayments = factory.getAll(Payment);
-// exports.getPayment = factory.getOne(Payment, ['customerId', 'supplierId', 'invoiceId', 'purchaseId']);
-// exports.deletePayment = factory.deleteOne(Payment); // Note: Soft delete is handled by Model middleware usually
-
-// exports.getPaymentsByCustomer = catchAsync(async (req, res, next) => {
-//   const { customerId } = req.params;
-//   const payments = await Payment.find({
-//     organizationId: req.user.organizationId,
-//     customerId,
-//     isDeleted: { $ne: true },
-//   }).sort({ paymentDate: -1 });
-
-//   res.status(200).json({
-//     status: 'success',
-//     results: payments.length,
-//     data: { payments },
-//   });
-// });
-
-// exports.getPaymentsBySupplier = catchAsync(async (req, res, next) => {
-//   const { supplierId } = req.params;
-//   const payments = await Payment.find({
-//     organizationId: req.user.organizationId,
-//     supplierId,
-//     isDeleted: { $ne: true },
-//   }).sort({ paymentDate: -1 });
-
-//   res.status(200).json({
-//     status: 'success',
-//     results: payments.length,
-//     data: { payments },
-//   });
-// });
-
-// /* ==========================================================
-//    Documents & Receipts
-// ========================================================== */
-// exports.downloadReceipt = catchAsync(async (req, res, next) => {
-//   const buffer = await paymentPDFService.downloadPaymentPDF(req.params.id, req.user.organizationId);
-//   res.set({
-//     "Content-Type": "application/pdf",
-//     "Content-Disposition": `inline; filename=receipt_${req.params.id}.pdf`,
-//   });
-//   res.send(buffer);
-// });
-
-// exports.emailReceipt = catchAsync(async (req, res, next) => {
-//   await paymentPDFService.emailPaymentSlip(req.params.id, req.user.organizationId);
-//   res.status(200).json({ status: "success", message: "Receipt emailed successfully" });
-// });
+  res.status(200).json({
+    status: 'success',
+    data: report
+  });
+});

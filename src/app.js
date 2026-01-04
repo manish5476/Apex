@@ -59,17 +59,13 @@ const chartRoutes = require("./routes/v1/chartRoutes");
 const attendanceRoutes = require("./routes/v1/attendanceRoutes");
 const shiftRoutes = require("./routes/v1/shiftRoutes");
 const holidayRoutes = require("./routes/v1/holidayRoutes");
+const cronRoutes = require('./routes/v1/cron.routes');
+
 const app = express();
 
-// 1. GLOBAL SETTINGS
 app.set("trust proxy", 1);
 app.set("query parser", (str) => qs.parse(str, { defaultCharset: "utf-8" }));
-
-// 2. MIDDLEWARE CHAIN
-// A. Request ID (First, so logs can use it)
 app.use(assignRequestId);
-
-// B. CORS
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN
@@ -81,14 +77,10 @@ app.use(
   }),
 );
 app.options("*", cors());
-
-// C. Preflight Auth Bypass
 app.use((req, res, next) => {
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
-
-// D. Security & Parsers
 app.use(helmet());
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
@@ -96,8 +88,6 @@ app.use(mongoSanitize());
 app.use(xss());
 app.use(hpp());
 app.use(compression());
-
-// E. Logging (Enhanced with ID)
 morgan.token("id", (req) => req.id);
 if (process.env.NODE_ENV === "development") {
   app.use(morgan(":id :method :url :status :response-time ms"));
@@ -209,6 +199,8 @@ app.use("/api/v1/shifts", shiftRoutes);
 app.use("/api/v1/holidays", holidayRoutes);
 app.use('/api/v1/stock', require('./routes/v1/stockRoutes'));
 app.use("/api/v1/attendance", attendanceRoutes);
+app.use('/api/v1/cron', cronRoutes);
+
 app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
 });

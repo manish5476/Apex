@@ -26,7 +26,7 @@ const accountEntrySchema = new mongoose.Schema(
     description: { type: String, trim: true },
     referenceNumber: { type: String, trim: true, uppercase: true }, // important
 
-    referenceType: { type: String, enum: ['invoice', 'emi_payment', 'emi_down_payment','purchase', 'payment', 'journal', 'manual', null], default: null },
+    referenceType: { type: String, enum: ['invoice', 'opening_stock', 'emi_payment', 'emi_down_payment', 'purchase', 'payment', 'journal', 'manual', null], default: null },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   },

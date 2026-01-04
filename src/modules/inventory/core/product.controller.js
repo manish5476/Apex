@@ -14,13 +14,14 @@ const imageUploadService = require("../../_legacy/services/uploads/imageUploadSe
 async function getOrInitAccount(orgId, type, name, code, session) {
   let account = await Account.findOne({ organizationId: orgId, code }).session(session);
   if (!account) {
+    // FIX: Added 'ordered: true' here as well to prevent future errors
     const created = await Account.create([{
       organizationId: orgId,
       name,
       code,
       type,
       isGroup: false
-    }], { session });
+    }], { session, ordered: true });
     return created[0];
   }
   return account;
@@ -51,7 +52,8 @@ exports.createProduct = catchAsync(async (req, res, next) => {
       }];
     }
 
-    const [product] = await Product.create([req.body], { session });
+    // --- CRITICAL FIX: Added 'ordered: true' ---
+    const [product] = await Product.create([req.body], { session, ordered: true });
 
     /* ---------- OPENING STOCK ACCOUNTING (SAFE) ---------- */
     let totalStockValue = 0;
@@ -61,9 +63,10 @@ exports.createProduct = catchAsync(async (req, res, next) => {
     }
 
     if (totalStockValue > 0) {
+      // Changed 'opening_stock' to 'journal' to satisfy enum validation
       const alreadyBooked = await AccountEntry.exists({
         organizationId: req.user.organizationId,
-        referenceType: 'opening_stock',
+        referenceType: 'journal',
         referenceId: product._id
       }).session(session);
 
@@ -75,6 +78,8 @@ exports.createProduct = catchAsync(async (req, res, next) => {
           req.user.organizationId, 'equity', 'Opening Balance Equity', '3000', session
         );
 
+        // FIX: Added 'ordered: true' for AccountEntry creation too
+        // FIX: Changed referenceType to 'journal'
         await AccountEntry.create([
           {
             organizationId: req.user.organizationId,
@@ -84,7 +89,7 @@ exports.createProduct = catchAsync(async (req, res, next) => {
             debit: totalStockValue,
             credit: 0,
             description: `Opening Stock: ${product.name}`,
-            referenceType: 'opening_stock',
+            referenceType: 'journal',
             referenceId: product._id,
             createdBy: req.user._id
           },
@@ -96,11 +101,11 @@ exports.createProduct = catchAsync(async (req, res, next) => {
             debit: 0,
             credit: totalStockValue,
             description: `Opening Stock Equity: ${product.name}`,
-            referenceType: 'opening_stock',
+            referenceType: 'journal',
             referenceId: product._id,
             createdBy: req.user._id
           }
-        ], { session });
+        ], { session, ordered: true });
       }
     }
 
@@ -114,7 +119,6 @@ exports.createProduct = catchAsync(async (req, res, next) => {
     session.endSession();
   }
 });
-
 /* ======================================================
    2. UPDATE PRODUCT (NO STOCK / COST MUTATION)
 ====================================================== */
@@ -338,6 +342,99 @@ exports.getProduct = factory.getOne(Product, [
 /* ======================================================
    BULK IMPORT PRODUCTS (OPENING STOCK ONLY)
 ====================================================== */
+// exports.bulkImportProducts = catchAsync(async (req, res, next) => {
+//   const products = req.body;
+
+//   if (!Array.isArray(products) || products.length === 0) {
+//     return next(new AppError("Provide an array of products", 400));
+//   }
+
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     // HARD GUARD: price required
+//     products.forEach(p => {
+//       const qty =
+//         p.quantity ||
+//         p.inventory?.reduce((a, i) => a + (i.quantity || 0), 0) ||
+//         0;
+
+//       if (qty > 0 && (!p.purchasePrice || p.purchasePrice <= 0)) {
+//         throw new AppError(
+//           `purchasePrice required for bulk import: ${p.name}`,
+//           400
+//         );
+//       }
+//     });
+
+//     const mapped = products.map(p => ({
+//       ...p,
+//       organizationId: req.user.organizationId,
+//       slug: `${slugify(p.name)}-${nanoid(6)}`,
+//       inventory: p.inventory?.length
+//         ? p.inventory
+//         : p.quantity
+//         ? [{ branchId: req.user.branchId, quantity: p.quantity }]
+//         : [],
+//       createdBy: req.user._id
+//     }));
+
+//     const created = await Product.insertMany(mapped, { session });
+
+//     let totalValue = 0;
+//     created.forEach(p => {
+//       const qty = p.inventory.reduce((a, i) => a + (i.quantity || 0), 0);
+//       totalValue += qty * (p.purchasePrice || 0);
+//     });
+
+//     if (totalValue > 0) {
+//       const inventoryAcc = await getOrInitAccount(
+//         req.user.organizationId, 'asset', 'Inventory Asset', '1500', session
+//       );
+//       const equityAcc = await getOrInitAccount(
+//         req.user.organizationId, 'equity', 'Opening Balance Equity', '3000', session
+//       );
+
+//       await AccountEntry.create([
+//         {
+//           organizationId: req.user.organizationId,
+//           branchId: req.user.branchId,
+//           accountId: inventoryAcc._id,
+//           date: new Date(),
+//           debit: totalValue,
+//           credit: 0,
+//           description: "Bulk Import Opening Stock",
+//           referenceType: 'opening_stock',
+//           createdBy: req.user._id
+//         },
+//         {
+//           organizationId: req.user.organizationId,
+//           branchId: req.user.branchId,
+//           accountId: equityAcc._id,
+//           date: new Date(),
+//           debit: 0,
+//           credit: totalValue,
+//           description: "Bulk Import Equity",
+//           referenceType: 'opening_stock',
+//           createdBy: req.user._id
+//         }
+//       ], { session });
+//     }
+
+//     await session.commitTransaction();
+//     res.status(201).json({
+//       status: "success",
+//       message: "Bulk import completed"
+//     });
+
+//   } catch (err) {
+//     await session.abortTransaction();
+//     next(err);
+//   } finally {
+//     session.endSession();
+//   }
+// });
 exports.bulkImportProducts = catchAsync(async (req, res, next) => {
   const products = req.body;
 
@@ -349,7 +446,9 @@ exports.bulkImportProducts = catchAsync(async (req, res, next) => {
   session.startTransaction();
 
   try {
-    // HARD GUARD: price required
+    // ===============================
+    // HARD GUARD: purchase price
+    // ===============================
     products.forEach(p => {
       const qty =
         p.quantity ||
@@ -364,64 +463,90 @@ exports.bulkImportProducts = catchAsync(async (req, res, next) => {
       }
     });
 
-    const mapped = products.map(p => ({
-      ...p,
-      organizationId: req.user.organizationId,
-      slug: `${slugify(p.name)}-${nanoid(6)}`,
-      inventory: p.inventory?.length
-        ? p.inventory
-        : p.quantity
-        ? [{ branchId: req.user.branchId, quantity: p.quantity }]
-        : [],
-      createdBy: req.user._id
-    }));
-
-    const created = await Product.insertMany(mapped, { session });
-
     let totalValue = 0;
-    created.forEach(p => {
-      const qty = p.inventory.reduce((a, i) => a + (i.quantity || 0), 0);
-      totalValue += qty * (p.purchasePrice || 0);
-    });
 
+    const BATCH_SIZE = Number(process.env.BULK_IMPORT_BATCH_SIZE || 100);
+
+    // ===============================
+    // BATCHED PRODUCT INSERT
+    // ===============================
+    for (let i = 0; i < products.length; i += BATCH_SIZE) {
+      const batch = products.slice(i, i + BATCH_SIZE);
+
+      const mapped = batch.map(p => ({
+        ...p,
+        organizationId: req.user.organizationId,
+        slug: `${slugify(p.name)}-${nanoid(6)}`,
+        inventory: p.inventory?.length
+          ? p.inventory
+          : p.quantity
+            ? [{ branchId: req.user.branchId, quantity: p.quantity }]
+            : [],
+        createdBy: req.user._id
+      }));
+
+      const created = await Product.insertMany(mapped, { session });
+
+      created.forEach(p => {
+        const qty = p.inventory.reduce((a, i) => a + (i.quantity || 0), 0);
+        totalValue += qty * (p.purchasePrice || 0);
+      });
+    }
+
+    // ===============================
+    // ACCOUNTING ENTRY (ONCE)
+    // ===============================
     if (totalValue > 0) {
       const inventoryAcc = await getOrInitAccount(
-        req.user.organizationId, 'asset', 'Inventory Asset', '1500', session
-      );
-      const equityAcc = await getOrInitAccount(
-        req.user.organizationId, 'equity', 'Opening Balance Equity', '3000', session
+        req.user.organizationId,
+        'asset',
+        'Inventory Asset',
+        '1500',
+        session
       );
 
-      await AccountEntry.create([
-        {
-          organizationId: req.user.organizationId,
-          branchId: req.user.branchId,
-          accountId: inventoryAcc._id,
-          date: new Date(),
-          debit: totalValue,
-          credit: 0,
-          description: "Bulk Import Opening Stock",
-          referenceType: 'opening_stock',
-          createdBy: req.user._id
-        },
-        {
-          organizationId: req.user.organizationId,
-          branchId: req.user.branchId,
-          accountId: equityAcc._id,
-          date: new Date(),
-          debit: 0,
-          credit: totalValue,
-          description: "Bulk Import Equity",
-          referenceType: 'opening_stock',
-          createdBy: req.user._id
-        }
-      ], { session });
+      const equityAcc = await getOrInitAccount(
+        req.user.organizationId,
+        'equity',
+        'Opening Balance Equity',
+        '3000',
+        session
+      );
+
+      await AccountEntry.insertMany(
+        [
+          {
+            organizationId: req.user.organizationId,
+            branchId: req.user.branchId,
+            accountId: inventoryAcc._id,
+            date: new Date(),
+            debit: totalValue,
+            credit: 0,
+            description: "Bulk Import Opening Stock",
+            referenceType: 'opening_stock',
+            createdBy: req.user._id
+          },
+          {
+            organizationId: req.user.organizationId,
+            branchId: req.user.branchId,
+            accountId: equityAcc._id,
+            date: new Date(),
+            debit: 0,
+            credit: totalValue,
+            description: "Bulk Import Equity",
+            referenceType: 'opening_stock',
+            createdBy: req.user._id
+          }
+        ],
+        { session }
+      );
     }
 
     await session.commitTransaction();
+
     res.status(201).json({
       status: "success",
-      message: "Bulk import completed"
+      message: `Bulk import completed (${products.length} products)`
     });
 
   } catch (err) {
@@ -431,6 +556,7 @@ exports.bulkImportProducts = catchAsync(async (req, res, next) => {
     session.endSession();
   }
 });
+
 /* ======================================================
    BULK UPDATE PRODUCTS (NON-FINANCIAL ONLY)
 ====================================================== */

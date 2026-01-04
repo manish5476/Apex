@@ -99,6 +99,29 @@ const paymentSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
     },
+    // --- Payment Allocation ---
+    allocationStatus: {
+        type: String,
+        enum: ['unallocated', 'partially_allocated', 'fully_allocated'],
+        default: 'unallocated'
+    },
+
+    allocatedTo: [{
+        type: {
+            type: String,
+            enum: ['invoice', 'emi', 'advance', 'purchase', 'other']
+        },
+        documentId: mongoose.Schema.Types.ObjectId,
+        emiId: mongoose.Schema.Types.ObjectId,
+        installmentNumber: Number,
+        amount: Number,
+        allocatedAt: Date
+    }],
+
+    remainingAmount: {
+        type: Number,
+        default: function () { return this.amount; }
+    }
 
 }, { timestamps: true });
 
@@ -111,12 +134,12 @@ paymentSchema.index({ purchaseId: 1 });
 paymentSchema.index({ organizationId: 1, paymentDate: -1 });
 
 // --- Virtual: Transaction Direction ---
-paymentSchema.virtual('direction').get(function() {
+paymentSchema.virtual('direction').get(function () {
     return this.type === 'inflow' ? 'Received from Customer' : 'Paid to Supplier';
 });
 
 // --- Middleware: Normalize ---
-paymentSchema.pre('save', function(next) {
+paymentSchema.pre('save', function (next) {
     if (this.referenceNumber) this.referenceNumber = this.referenceNumber.trim().toUpperCase();
     next();
 });
