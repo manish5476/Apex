@@ -71,6 +71,50 @@ exports.postInvoiceJournal = async ({
   await AccountEntry.insertMany(entries, { session });
 };
 
+exports.reverseInvoiceJournal = async ({
+  orgId, branchId, invoice, userId, session
+}) => {
+  // 1. Get Accounts (Use your helper function)
+  const arAccount = await getOrInitAccount(orgId, 'asset', 'Accounts Receivable', '1200', session);
+  const salesAccount = await getOrInitAccount(orgId, 'income', 'Sales', '4000', session);
+  const taxAccount = invoice.totalTax > 0 
+    ? await getOrInitAccount(orgId, 'liability', 'Tax Payable', '2100', session) 
+    : null;
+
+  // 2. Create Reversal Entries (Credit Note)
+  const entries = [];
+  const cnNumber = `CN-${invoice.invoiceNumber}`;
+
+  // Debit Sales (Reduce Income)
+  const netRevenue = invoice.grandTotal - (invoice.totalTax || 0);
+  entries.push({
+    organizationId: orgId, branchId, accountId: salesAccount._id,
+    date: new Date(), debit: netRevenue, credit: 0,
+    description: `Cancel: #${invoice.invoiceNumber}`,
+    referenceType: 'credit_note', referenceNumber: cnNumber, invoiceId: invoice._id, createdBy: userId
+  });
+
+  // Debit Tax (Reduce Liability)
+  if (taxAccount) {
+    entries.push({
+      organizationId: orgId, branchId, accountId: taxAccount._id,
+      date: new Date(), debit: invoice.totalTax, credit: 0,
+      description: `Cancel Tax: #${invoice.invoiceNumber}`,
+      referenceType: 'credit_note', referenceNumber: cnNumber, invoiceId: invoice._id, createdBy: userId
+    });
+  }
+
+  // Credit AR (Reduce Debt)
+  entries.push({
+    organizationId: orgId, branchId, accountId: arAccount._id, customerId: invoice.customerId,
+    date: new Date(), debit: 0, credit: invoice.grandTotal,
+    description: `Cancel: #${invoice.invoiceNumber}`,
+    referenceType: 'credit_note', referenceNumber: cnNumber, invoiceId: invoice._id, createdBy: userId
+  });
+
+  await AccountEntry.insertMany(entries, { session });
+};
+
 
 // const AccountEntry = require('../models/accountEntryModel');
 // const Account = require('../models/accountModel');

@@ -5,50 +5,133 @@ class StockValidationService {
   /**
    * Validate stock availability for sale
    */
+  // static async validateSale(items, branchId, organizationId, session = null) {
+  //   const errors = [];
+  //   const warnings = [];
+    
+  //   for (const item of items) {
+  //     const product = await Product.findOne({
+  //       _id: item.productId,
+  //       organizationId,
+  //       isActive: true
+  //     }).session(session);
+      
+  //     if (!product) {
+  //       errors.push(`Product not found or inactive: ${item.productId}`);
+  //       continue;
+  //     }
+      
+  //     const inventory = product.inventory.find(
+  //       inv => String(inv.branchId) === String(branchId)
+  //     );
+      
+  //     const availableQty = inventory?.quantity || 0;
+  //     const requiredQty = item.quantity || item.qty || 0;
+      
+  //     if (availableQty < requiredQty) {
+  //       errors.push(
+  //         `Insufficient stock for ${product.name}. Available: ${availableQty}, Required: ${requiredQty}`
+  //       );
+  //     }
+      
+  //     // Warning for low stock (below reorder level)
+  //     if (inventory && inventory.reorderLevel && availableQty - requiredQty < inventory.reorderLevel) {
+  //       warnings.push(
+  //         `${product.name} will be below reorder level after this sale`
+  //       );
+  //     }
+  //   }
+    
+  //   return {
+  //     isValid: errors.length === 0,
+  //     errors,
+  //     warnings
+  //   };
+  // }
   static async validateSale(items, branchId, organizationId, session = null) {
-    const errors = [];
-    const warnings = [];
-    
-    for (const item of items) {
-      const product = await Product.findOne({
-        _id: item.productId,
-        organizationId,
-        isActive: true
-      }).session(session);
-      
-      if (!product) {
-        errors.push(`Product not found or inactive: ${item.productId}`);
-        continue;
-      }
-      
-      const inventory = product.inventory.find(
-        inv => String(inv.branchId) === String(branchId)
-      );
-      
-      const availableQty = inventory?.quantity || 0;
-      const requiredQty = item.quantity || item.qty || 0;
-      
-      if (availableQty < requiredQty) {
-        errors.push(
-          `Insufficient stock for ${product.name}. Available: ${availableQty}, Required: ${requiredQty}`
-        );
-      }
-      
-      // Warning for low stock (below reorder level)
-      if (inventory && inventory.reorderLevel && availableQty - requiredQty < inventory.reorderLevel) {
-        warnings.push(
-          `${product.name} will be below reorder level after this sale`
-        );
-      }
+  const errors = [];
+  const warnings = [];
+
+  let totalStock = 0;
+  let totalRequested = 0;
+
+  for (const item of items) {
+    const requiredQty = Number(item.quantity ?? item.qty);
+
+    // ❗ HARD VALIDATION
+    if (!requiredQty || requiredQty <= 0) {
+      errors.push({
+        productId: item.productId,
+        productName: item.productName,
+        available: 0,
+        required: requiredQty,
+        reason: 'Invalid quantity'
+      });
+      continue;
     }
-    
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings
-    };
+
+    const product = await Product.findOne({
+      _id: item.productId,
+      organizationId,
+      isActive: true
+    }).session(session);
+
+    if (!product) {
+      errors.push({
+        productId: item.productId,
+        productName: item.productName,
+        available: 0,
+        required: requiredQty,
+        reason: 'Product not found or inactive'
+      });
+      continue;
+    }
+
+    const inventory = product.inventory.find(
+      inv => String(inv.branchId) === String(branchId)
+    );
+
+    const availableQty = inventory?.quantity ?? 0;
+
+    totalStock += availableQty;
+    totalRequested += requiredQty;
+
+    // ❌ BLOCK SALE
+    if (availableQty < requiredQty) {
+      errors.push({
+        productId: product._id,
+        productName: product.name,
+        available: availableQty,
+        required: requiredQty
+      });
+    }
+
+    // ⚠ LOW STOCK WARNING
+    if (
+      inventory?.reorderLevel &&
+      availableQty - requiredQty <= inventory.reorderLevel
+    ) {
+      warnings.push({
+        productId: product._id,
+        productName: product.name,
+        availableAfterSale: availableQty - requiredQty,
+        reorderLevel: inventory.reorderLevel,
+        message: 'Stock will fall below reorder level'
+      });
+    }
   }
-  
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
+    summary: {
+      totalStock,
+      totalRequested
+    }
+  };
+}
+
   /**
    * Get available stock for a product
    */

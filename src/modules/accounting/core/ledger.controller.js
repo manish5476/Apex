@@ -236,7 +236,6 @@ exports.getAllLedgers = catchAsync(async (req, res, next) => {
 /* -------------------------------------------------------------
    CUSTOMER STATEMENT (Optimized)
 ------------------------------------------------------------- */
-
 exports.getCustomerLedger = catchAsync(async (req, res, next) => {
   const { customerId } = req.params;
   const { startDate, endDate, limit = 200 } = req.query;
@@ -244,17 +243,20 @@ exports.getCustomerLedger = catchAsync(async (req, res, next) => {
   const orgId = new mongoose.Types.ObjectId(req.user.organizationId);
   const custId = new mongoose.Types.ObjectId(customerId);
 
+  // 1. Base Match: Get entries for this Org and Customer
   const match = {
     organizationId: orgId,
     customerId: custId
   };
 
+  // 2. Date Filter
   if (startDate || endDate) {
     match.date = {};
     if (startDate) match.date.$gte = new Date(startDate);
-    if (endDate) match.date.$lte = new Date(new Date(endDate).setHours(23,59,59,999));
+    if (endDate) match.date.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
   }
 
+  // 3. Opening Balance Logic
   let openingBalance = 0;
   let cached = null;
 
@@ -267,12 +269,30 @@ exports.getCustomerLedger = catchAsync(async (req, res, next) => {
   } else if (startDate) {
     const start = new Date(startDate);
 
+    // Calculate sum of previous transactions
     const prev = await AccountEntry.aggregate([
       {
         $match: {
           organizationId: orgId,
           customerId: custId,
           date: { $lt: start }
+        }
+      },
+      // IMPORTANT: We must apply the same Account Type filter here too!
+      {
+        $lookup: {
+          from: "accounts",
+          localField: "accountId",
+          foreignField: "_id",
+          as: "account"
+        }
+      },
+      { $unwind: "$account" },
+      {
+        $match: {
+           // Only calculate balance based on Assets (Receivables)
+           // Adjust these values to match your exact Account 'type' enum strings
+          "account.type": { $in: ["asset", "receivable", "current_asset"] } 
         }
       },
       {
@@ -291,38 +311,58 @@ exports.getCustomerLedger = catchAsync(async (req, res, next) => {
     await setOpeningBalance(orgId, custId, startDate, openingBalance);
   }
 
+  // 4. Main Ledger Pipeline
   const pipeline = [
+    // A. Match basic criteria
     { $match: match },
 
-    // invoice join
+    // B. JOIN ACCOUNTS (The Critical Fix)
+    {
+      $lookup: {
+        from: "accounts",       // Collection name in MongoDB
+        localField: "accountId",
+        foreignField: "_id",
+        as: "account"
+      }
+    },
+    { $unwind: "$account" },
+
+    // C. FILTER ACCOUNT TYPE
+    // We only want the "Accounts Receivable" side of the transaction.
+    // We do NOT want the "Sales Income" side.
+    {
+      $match: {
+        "account.type": { $in: ["asset", "receivable", "current_asset"] }
+      }
+    },
+
+    // D. Invoice Join
     {
       $lookup: {
         from: "invoices",
-        localField: "invoiceId",
+        localField: "invoiceId", // Use referenceId if invoiceId is not explicitly on entry
         foreignField: "_id",
         as: "invoice"
       }
     },
     { $unwind: { path: "$invoice", preserveNullAndEmptyArrays: true } },
 
-    // payment join
+    // E. Payment Join
     {
       $lookup: {
         from: "payments",
-        localField: "paymentId",
+        localField: "paymentId", // Use referenceId if paymentId is not explicitly on entry
         foreignField: "_id",
         as: "payment"
       }
     },
     { $unwind: { path: "$payment", preserveNullAndEmptyArrays: true } },
 
-    {
-      $sort: { date: 1, _id: 1 }
-    },
-    {
-      $limit: Number(limit)
-    },
+    // F. Sort & Limit
+    { $sort: { date: 1, _id: 1 } },
+    { $limit: Number(limit) },
 
+    // G. Project / Format
     {
       $project: {
         _id: 1,
@@ -332,16 +372,16 @@ exports.getCustomerLedger = catchAsync(async (req, res, next) => {
         description: 1,
         referenceNumber: 1,
         referenceType: 1,
-
         branchId: 1,
         createdBy: 1,
-
         invoiceId: 1,
         paymentId: 1,
-
+        // Account details for debugging
+        accountName: "$account.name",
+        accountType: "$account.type", 
+        
         invoiceNumber: "$invoice.invoiceNumber",
         invoiceStatus: "$invoice.paymentStatus",
-
         paymentRef: "$payment.reference",
         paymentMethod: "$payment.method"
       }
@@ -350,6 +390,7 @@ exports.getCustomerLedger = catchAsync(async (req, res, next) => {
 
   const entries = await AccountEntry.aggregate(pipeline);
 
+  // 5. Calculate Running Balance
   let running = openingBalance;
   const history = [];
 
@@ -373,6 +414,7 @@ exports.getCustomerLedger = catchAsync(async (req, res, next) => {
     });
   }
 
+  // 6. Fetch Customer Details
   const customer = await mongoose.model("Customer")
     .findById(customerId)
     .select("name phone gstNumber outstandingBalance");
@@ -387,6 +429,155 @@ exports.getCustomerLedger = catchAsync(async (req, res, next) => {
     history
   });
 });
+// exports.getCustomerLedger = catchAsync(async (req, res, next) => {
+//   const { customerId } = req.params;
+//   const { startDate, endDate, limit = 200 } = req.query;
+//   const orgId = new mongoose.Types.ObjectId(req.user.organizationId);
+//   const custId = new mongoose.Types.ObjectId(customerId);
+
+//   const match = {
+//     organizationId: orgId,
+//     customerId: custId
+//   };
+
+//   if (startDate || endDate) {
+//     match.date = {};
+//     if (startDate) match.date.$gte = new Date(startDate);
+//     if (endDate) match.date.$lte = new Date(new Date(endDate).setHours(23,59,59,999));
+//   }
+
+//   let openingBalance = 0;
+//   let cached = null;
+
+//   if (startDate) {
+//     cached = await getOpeningBalance(orgId, custId, startDate);
+//   }
+
+//   if (cached !== null) {
+//     openingBalance = cached;
+//   } else if (startDate) {
+//     const start = new Date(startDate);
+
+//     const prev = await AccountEntry.aggregate([
+//       {
+//         $match: {
+//           organizationId: orgId,
+//           customerId: custId,
+//           date: { $lt: start }
+//         }
+//       },
+//       {
+//         $group: {
+//           _id: null,
+//           debit: { $sum: "$debit" },
+//           credit: { $sum: "$credit" }
+//         }
+//       }
+//     ]);
+
+//     openingBalance = prev.length
+//       ? prev[0].debit - prev[0].credit
+//       : 0;
+
+//     await setOpeningBalance(orgId, custId, startDate, openingBalance);
+//   }
+
+//   const pipeline = [
+//     { $match: match },
+
+//     // invoice join
+//     {
+//       $lookup: {
+//         from: "invoices",
+//         localField: "invoiceId",
+//         foreignField: "_id",
+//         as: "invoice"
+//       }
+//     },
+//     { $unwind: { path: "$invoice", preserveNullAndEmptyArrays: true } },
+
+//     // payment join
+//     {
+//       $lookup: {
+//         from: "payments",
+//         localField: "paymentId",
+//         foreignField: "_id",
+//         as: "payment"
+//       }
+//     },
+//     { $unwind: { path: "$payment", preserveNullAndEmptyArrays: true } },
+
+//     {
+//       $sort: { date: 1, _id: 1 }
+//     },
+//     {
+//       $limit: Number(limit)
+//     },
+
+//     {
+//       $project: {
+//         _id: 1,
+//         date: 1,
+//         debit: 1,
+//         credit: 1,
+//         description: 1,
+//         referenceNumber: 1,
+//         referenceType: 1,
+
+//         branchId: 1,
+//         createdBy: 1,
+
+//         invoiceId: 1,
+//         paymentId: 1,
+
+//         invoiceNumber: "$invoice.invoiceNumber",
+//         invoiceStatus: "$invoice.paymentStatus",
+
+//         paymentRef: "$payment.reference",
+//         paymentMethod: "$payment.method"
+//       }
+//     }
+//   ];
+
+//   const entries = await AccountEntry.aggregate(pipeline);
+
+//   let running = openingBalance;
+//   const history = [];
+
+//   if (startDate) {
+//     history.push({
+//       _id: "opening",
+//       date: new Date(startDate),
+//       description: "Opening Balance",
+//       debit: 0,
+//       credit: 0,
+//       balance: Number(running.toFixed(2))
+//     });
+//   }
+
+//   for (const e of entries) {
+//     running += (e.debit || 0) - (e.credit || 0);
+
+//     history.push({
+//       ...e,
+//       balance: Number(running.toFixed(2))
+//     });
+//   }
+
+//   const customer = await mongoose.model("Customer")
+//     .findById(customerId)
+//     .select("name phone gstNumber outstandingBalance");
+
+//   res.status(200).json({
+//     status: "success",
+//     openingBalance,
+//     closingBalance: running,
+//     customer,
+//     count: history.length,
+//     cached: cached !== null,
+//     history
+//   });
+// });
 
 /* -------------------------------------------------------------
    SUPPLIER STATEMENT (Optimized)
