@@ -103,6 +103,32 @@ router.get(
   invoiceController.profitSummary
 );
 
+// Add these new routes
+router.get(
+  '/analytics/profit',
+  checkPermission(PERMISSIONS.INVOICE.READ),
+  invoiceController.getProfitAnalysis
+);
+
+router.get(
+  '/analytics/profit-dashboard',
+  checkPermission(PERMISSIONS.INVOICE.READ),
+  invoiceController.getProfitDashboard
+);
+
+router.get(
+  '/analytics/product-profit/:productId',
+  checkPermission(PERMISSIONS.INVOICE.READ),
+  invoiceController.getProductProfitAnalysis
+);
+
+// Keep your existing profitSummary endpoint (updated version)
+router.get(
+  '/analytics/profit-summary',
+  checkPermission(PERMISSIONS.INVOICE.READ),
+  invoiceController.profitSummary
+);
+
 /**
  * @route GET /api/v1/invoices/reports/sales
  * @desc Get sales report by date range

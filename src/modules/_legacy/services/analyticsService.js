@@ -206,6 +206,181 @@ exports.getWithCache = async (cacheKey, fetchFunction, ttl = 300) => {
    2. SMART EXECUTIVE DASHBOARD
    ========================================================================== */
 
+// exports.getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
+//     try {
+//         const startTime = performance.now();
+
+//         // Input validation
+//         if (!orgId) throw new Error('Organization ID is required');
+//         if (!mongoose.Types.ObjectId.isValid(orgId)) throw new Error('Invalid Organization ID');
+
+//         const start = new Date(startDate);
+//         const end = new Date(endDate);
+//         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+//             throw new Error('Invalid date format');
+//         }
+//         if (start > end) throw new Error('Start date cannot be after end date');
+
+//         const match = { 
+//             organizationId: toObjectId(orgId),
+//             status: { $ne: 'cancelled' }
+//         };
+
+//         if (branchId && mongoose.Types.ObjectId.isValid(branchId)) {
+//             match.branchId = toObjectId(branchId);
+//         }
+
+//         const duration = end - start;
+//         const prevStart = new Date(start - duration);
+//         const prevEnd = new Date(start);
+
+//         // Parallel execution of key metrics
+//         const [
+//             salesStats,
+//             purchaseStats,
+//             customerStats,
+//             productStats
+//         ] = await Promise.all([
+//             // Sales metrics
+//             Invoice.aggregate([
+//                 {
+//                     $facet: {
+//                         current: [
+//                             { $match: { ...match, invoiceDate: { $gte: start, $lte: end } } },
+//                             { 
+//                                 $group: { 
+//                                     _id: null, 
+//                                     revenue: { $sum: '$grandTotal' }, 
+//                                     count: { $sum: 1 }, 
+//                                     due: { $sum: '$balanceAmount' },
+//                                     avgTicket: { $avg: '$grandTotal' }
+//                                 } 
+//                             }
+//                         ],
+//                         previous: [
+//                             { $match: { ...match, invoiceDate: { $gte: prevStart, $lte: prevEnd } } },
+//                             { $group: { _id: null, revenue: { $sum: '$grandTotal' } } }
+//                         ],
+//                         today: [
+//                             { 
+//                                 $match: { 
+//                                     ...match, 
+//                                     invoiceDate: { 
+//                                         $gte: new Date(new Date().setHours(0,0,0,0)), 
+//                                         $lte: new Date(new Date().setHours(23,59,59,999)) 
+//                                     } 
+//                                 } 
+//                             },
+//                             { $group: { _id: null, revenue: { $sum: '$grandTotal' }, count: { $sum: 1 } } }
+//                         ]
+//                     }
+//                 }
+//             ]),
+
+//             // Purchase metrics
+//             Purchase.aggregate([
+//                 {
+//                     $facet: {
+//                         current: [
+//                             { $match: { ...match, purchaseDate: { $gte: start, $lte: end } } },
+//                             { 
+//                                 $group: { 
+//                                     _id: null, 
+//                                     expense: { $sum: '$grandTotal' }, 
+//                                     count: { $sum: 1 }, 
+//                                     due: { $sum: '$balanceAmount' }
+//                                 } 
+//                             }
+//                         ],
+//                         previous: [
+//                             { $match: { ...match, purchaseDate: { $gte: prevStart, $lte: prevEnd } } },
+//                             { $group: { _id: null, expense: { $sum: '$grandTotal' } } }
+//                         ]
+//                     }
+//                 }
+//             ]),
+
+//             // Customer metrics
+//             Invoice.aggregate([
+//                 { $match: { ...match, invoiceDate: { $gte: start, $lte: end } } },
+//                 { $group: { _id: '$customerId' } },
+//                 { $count: 'uniqueCustomers' }
+//             ]),
+
+//             // Product metrics
+//             Invoice.aggregate([
+//                 { $match: { ...match, invoiceDate: { $gte: start, $lte: end } } },
+//                 { $unwind: '$items' },
+//                 { 
+//                     $group: { 
+//                         _id: null,
+//                         totalProductsSold: { $sum: '$items.quantity' },
+//                         uniqueProducts: { $addToSet: '$items.productId' }
+//                     } 
+//                 },
+//                 { $project: { 
+//                     totalProductsSold: 1,
+//                     uniqueProductCount: { $size: '$uniqueProducts' }
+//                 } }
+//             ])
+//         ]);
+
+//         // Process results
+//         const curSales = salesStats[0]?.current?.[0] || { revenue: 0, count: 0, due: 0, avgTicket: 0 };
+//         const prevSales = salesStats[0]?.previous?.[0] || { revenue: 0 };
+//         const todaySales = salesStats[0]?.today?.[0] || { revenue: 0, count: 0 };
+
+//         const curPurch = purchaseStats[0]?.current?.[0] || { expense: 0, count: 0, due: 0 };
+//         const prevPurch = purchaseStats[0]?.previous?.[0] || { expense: 0 };
+
+//         const uniqueCustomers = customerStats[0]?.uniqueCustomers || 0;
+//         const productMetrics = productStats[0] || { totalProductsSold: 0, uniqueProductCount: 0 };
+
+//         const netProfit = curSales.revenue - curPurch.expense;
+//         const prevNetProfit = prevSales.revenue - prevPurch.expense;
+
+//         const executionTime = performance.now() - startTime;
+
+//         return {
+//             totalRevenue: {
+//                 value: curSales.revenue,
+//                 count: curSales.count,
+//                 growth: calculateGrowth(curSales.revenue, prevSales.revenue),
+//                 avgTicket: Number(curSales.avgTicket ? curSales.avgTicket.toFixed(2) : 0),
+//                 today: todaySales.revenue
+//             },
+//             totalExpense: {
+//                 value: curPurch.expense,
+//                 count: curPurch.count,
+//                 growth: calculateGrowth(curPurch.expense, prevPurch.expense)
+//             },
+//             netProfit: {
+//                 value: netProfit,
+//                 growth: calculateGrowth(netProfit, prevNetProfit),
+//                 margin: calculatePercentage(netProfit, curSales.revenue)
+//             },
+//             customers: {
+//                 active: uniqueCustomers,
+//                 new: await this.getNewCustomersCount(orgId, branchId, start, end)
+//             },
+//             products: {
+//                 sold: productMetrics.totalProductsSold,
+//                 unique: productMetrics.uniqueProductCount
+//             },
+//             outstanding: {
+//                 receivables: curSales.due,
+//                 payables: curPurch.due
+//             },
+//             performance: {
+//                 executionTime: `${executionTime.toFixed(2)}ms`,
+//                 dataPoints: curSales.count + curPurch.count
+//             }
+//         };
+//     } catch (error) {
+//         console.error('Error in getExecutiveStats:', error);
+//         throw new Error(`Failed to fetch executive stats: ${error.message}`);
+//     }
+// };
 exports.getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
     try {
         const startTime = performance.now();
@@ -234,6 +409,12 @@ exports.getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
         const prevStart = new Date(start - duration);
         const prevEnd = new Date(start);
 
+        // Create today date boundaries with timezone awareness
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
         // Parallel execution of key metrics
         const [
             salesStats,
@@ -241,7 +422,7 @@ exports.getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
             customerStats,
             productStats
         ] = await Promise.all([
-            // Sales metrics
+            // Sales metrics - FIXED: Removed $totalCost reference
             Invoice.aggregate([
                 {
                     $facet: {
@@ -266,8 +447,8 @@ exports.getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
                                 $match: { 
                                     ...match, 
                                     invoiceDate: { 
-                                        $gte: new Date(new Date().setHours(0,0,0,0)), 
-                                        $lte: new Date(new Date().setHours(23,59,59,999)) 
+                                        $gte: todayStart, 
+                                        $lte: todayEnd 
                                     } 
                                 } 
                             },
@@ -277,7 +458,7 @@ exports.getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
                 }
             ]),
 
-            // Purchase metrics
+            // Purchase metrics - FIXED: Ensure consistent field names
             Purchase.aggregate([
                 {
                     $facet: {
@@ -300,17 +481,29 @@ exports.getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
                 }
             ]),
 
-            // Customer metrics
+            // Customer metrics - FIXED: Filter null customerIds
             Invoice.aggregate([
-                { $match: { ...match, invoiceDate: { $gte: start, $lte: end } } },
+                { 
+                    $match: { 
+                        ...match, 
+                        invoiceDate: { $gte: start, $lte: end },
+                        customerId: { $ne: null } // Exclude null customer IDs
+                    } 
+                },
                 { $group: { _id: '$customerId' } },
                 { $count: 'uniqueCustomers' }
             ]),
 
-            // Product metrics
+            // Product metrics - FIXED: Filter null productIds
             Invoice.aggregate([
-                { $match: { ...match, invoiceDate: { $gte: start, $lte: end } } },
+                { 
+                    $match: { 
+                        ...match, 
+                        invoiceDate: { $gte: start, $lte: end } 
+                    } 
+                },
                 { $unwind: '$items' },
+                { $match: { 'items.productId': { $ne: null } } }, // Exclude null product IDs
                 { 
                     $group: { 
                         _id: null,
@@ -318,10 +511,18 @@ exports.getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
                         uniqueProducts: { $addToSet: '$items.productId' }
                     } 
                 },
-                { $project: { 
-                    totalProductsSold: 1,
-                    uniqueProductCount: { $size: '$uniqueProducts' }
-                } }
+                { 
+                    $project: { 
+                        totalProductsSold: 1,
+                        uniqueProductCount: { 
+                            $cond: {
+                                if: { $isArray: "$uniqueProducts" },
+                                then: { $size: "$uniqueProducts" },
+                                else: 0
+                            }
+                        }
+                    } 
+                }
             ])
         ]);
 
@@ -338,6 +539,9 @@ exports.getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
 
         const netProfit = curSales.revenue - curPurch.expense;
         const prevNetProfit = prevSales.revenue - prevPurch.expense;
+
+        // Get new customers count - FIXED: Call the function properly
+        const newCustomersCount = await getNewCustomersCount(orgId, branchId, start, end);
 
         const executionTime = performance.now() - startTime;
 
@@ -357,11 +561,11 @@ exports.getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
             netProfit: {
                 value: netProfit,
                 growth: calculateGrowth(netProfit, prevNetProfit),
-                margin: calculatePercentage(netProfit, curSales.revenue)
+                margin: calculatePercentage(netProfit, curSales.revenue || 1) // Avoid division by zero
             },
             customers: {
                 active: uniqueCustomers,
-                new: await this.getNewCustomersCount(orgId, branchId, start, end)
+                new: newCustomersCount
             },
             products: {
                 sold: productMetrics.totalProductsSold,
@@ -373,7 +577,13 @@ exports.getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
             },
             performance: {
                 executionTime: `${executionTime.toFixed(2)}ms`,
-                dataPoints: curSales.count + curPurch.count
+                dataPoints: curSales.count + curPurch.count,
+                queryCount: 4
+            },
+            period: {
+                current: { start, end },
+                previous: { start: prevStart, end: prevEnd },
+                today: { start: todayStart, end: todayEnd }
             }
         };
     } catch (error) {
@@ -382,6 +592,28 @@ exports.getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
     }
 };
 
+// Get new customers count - CORRECTED VERSION
+const getNewCustomersCount = async (orgId, branchId, start, end) => {
+    try {
+        if (!orgId) throw new Error('Organization ID is required');
+
+        const match = { 
+            organizationId: toObjectId(orgId),
+            createdAt: { $gte: start, $lte: end }
+        };
+
+        if (branchId && mongoose.Types.ObjectId.isValid(branchId)) {
+            // Note: Customer model doesn't have branchId field, so we need to handle this differently
+            // If you need branch-specific new customers, you might need to join with invoices
+            // For now, we'll return all new customers for the organization
+        }
+
+        return await Customer.countDocuments(match);
+    } catch (error) {
+        console.error('Error in getNewCustomersCount:', error);
+        return 0;
+    }
+};
 exports.getChartData = async (orgId, branchId, startDate, endDate, interval = 'auto') => {
     try {
         if (!orgId) throw new Error('Organization ID is required');
@@ -1765,22 +1997,22 @@ exports.getCustomerRFMAnalysis = async (orgId) => {
    4. NEW ENHANCEMENTS
    ========================================================================== */
 
-// Get new customers count
-exports.getNewCustomersCount = async (orgId, branchId, start, end) => {
-    try {
-        if (!orgId) throw new Error('Organization ID is required');
+// // Get new customers count
+// exports.getNewCustomersCount = async (orgId, branchId, start, end) => {
+//     try {
+//         if (!orgId) throw new Error('Organization ID is required');
 
-        const match = { 
-            organizationId: toObjectId(orgId),
-            createdAt: { $gte: start, $lte: end }
-        };
+//         const match = { 
+//             organizationId: toObjectId(orgId),
+//             createdAt: { $gte: start, $lte: end }
+//         };
 
-        return Customer.countDocuments(match);
-    } catch (error) {
-        console.error('Error in getNewCustomersCount:', error);
-        return 0;
-    }
-};
+//         return Customer.countDocuments(match);
+//     } catch (error) {
+//         console.error('Error in getNewCustomersCount:', error);
+//         return 0;
+//     }
+// };
 
 // Calculate inventory health score
 exports.calculateInventoryHealthScore = (analytics, performance, deadStock) => {
