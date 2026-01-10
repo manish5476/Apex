@@ -1,9 +1,17 @@
+// const Customer = require('./customer.model');
+// const Invoice = require('../../accounting/billing/invoice.model');
+// const Payment = require('../../accounting/payments/payment.model');
+// const EMI = require('../../accounting/payments/emi.model');
 const mongoose = require('mongoose');
+const express = require("express");
+const router = express.Router();
+const analyticsController = require("../../modules/organization/core/customerAnalytics");
+const cacheMiddleware = require("../../core/middleware/cache.middleware");
+const authController = require("../../modules/auth/core/auth.controller");
+const { checkPermission } = require("../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../config/permissions");
+const { upload } = require("../../core/middleware/upload.middleware");
 const { Parser } = require('json2csv'); 
-const Customer = require('./customer.model');
-const Invoice = require('../../accounting/billing/invoice.model');
-const Payment = require('../../accounting/payments/payment.model');
-const EMI = require('../../accounting/payments/emi.model');
 
 class AnalyticsController {
 
