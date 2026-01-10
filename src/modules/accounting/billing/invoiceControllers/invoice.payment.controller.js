@@ -13,110 +13,12 @@ const Account = require('../../core/account.model');
 const Organization = require("../../../organization/core/organization.model");
 const InvoiceAudit = require('../invoiceAudit.model');
 
-const SalesService = require("../../../inventory/core/sales.service");
-const invoicePDFService = require("../../../_legacy/services/invoicePDFService");
-const StockValidationService = require("../../../_legacy/services/stockValidationService");
-const { createNotification } = require("../../../notification/core/notification.service");
-// CHANGED: Import the whole service to access reverseInvoiceJournal
-const salesJournalService = require('../../../inventory/core/salesJournal.service');
-
 const catchAsync = require("../../../../core/utils/catchAsync");
 const AppError = require("../../../../core/utils/appError");
 const factory = require("../../../../core/utils/handlerFactory");
 const { runInTransaction } = require("../../../../core/utils/runInTransaction");
 const { emitToOrg } = require("../../../../core/utils/_legacy/socket");
 const automationService = require('../../../_legacy/services/automationService');
-/* ======================================================
-   4. ADD PAYMENT TO INVOICE
-====================================================== */
-// exports.addPayment = catchAsync(async (req, res, next) => {
-//   const { id } = req.params;
-//   const { amount, paymentMethod, referenceNumber, transactionId, notes } = req.body;
-
-//   if (!amount || amount <= 0) {
-//     return next(new AppError('Payment amount must be positive', 400));
-//   }
-
-//   await runInTransaction(async (session) => {
-//     const invoice = await Invoice.findOne({
-//       _id: id,
-//       organizationId: req.user.organizationId
-//     }).session(session);
-
-//     if (!invoice) throw new AppError('Invoice not found', 404);
-//     if (invoice.status === 'cancelled') throw new AppError('Cannot add payment to cancelled invoice', 400);
-//     if (invoice.status === 'paid') throw new AppError('Invoice already fully paid', 400);
-
-//     const newPaidAmount = invoice.paidAmount + amount;
-//     const newBalance = invoice.grandTotal - newPaidAmount;
-
-//     if (newPaidAmount > invoice.grandTotal) {
-//       throw new AppError(
-//         `Payment exceeds invoice total. Maximum allowed: ${invoice.grandTotal - invoice.paidAmount}`,
-//         400
-//       );
-//     }
-
-//     // Store old values for audit
-//     const oldValues = {
-//       paidAmount: invoice.paidAmount,
-//       balanceAmount: invoice.balanceAmount,
-//       paymentStatus: invoice.paymentStatus,
-//       status: invoice.status
-//     };
-
-//     // Process the payment
-//     await processPaymentForInvoice({
-//       invoice,
-//       amount,
-//       paymentMethod: paymentMethod || invoice.paymentMethod,
-//       referenceNumber,
-//       transactionId,
-//       notes,
-//       userId: req.user._id,
-//       session
-//     });
-
-//     // Update invoice
-//     invoice.paidAmount = newPaidAmount;
-//     invoice.balanceAmount = newBalance;
-    
-//     // Update payment status and overall status
-//     if (newBalance <= 0) {
-//       invoice.paymentStatus = 'paid';
-//       invoice.status = 'paid';
-//     } else {
-//       invoice.paymentStatus = 'partial';
-//     }
-
-//     if (paymentMethod) invoice.paymentMethod = paymentMethod;
-//     if (notes) invoice.notes = (invoice.notes || '') + `\nPayment: ${notes}`;
-
-//     await invoice.save({ session });
-
-//     // CREATE AUDIT LOG
-//     await InvoiceAudit.create([{
-//       invoiceId: invoice._id,
-//       action: 'PAYMENT_ADDED',
-//       performedBy: req.user._id,
-//       details: `Payment of ${amount} added via ${paymentMethod}. New paid: ${newPaidAmount}/${invoice.grandTotal}`,
-//       oldValues,
-//       newValues: {
-//         paidAmount: invoice.paidAmount,
-//         balanceAmount: invoice.balanceAmount,
-//         paymentStatus: invoice.paymentStatus,
-//         status: invoice.status
-//       },
-//       ipAddress: req.ip
-//     }], { session });
-
-//   }, 3, { action: "ADD_PAYMENT", userId: req.user._id });
-
-//   res.status(200).json({
-//     status: 'success',
-//     message: 'Payment added successfully'
-//   });
-// });
 /* ======================================================
    4. ADD PAYMENT TO INVOICE (FIXED)
 ====================================================== */
