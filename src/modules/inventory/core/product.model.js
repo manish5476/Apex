@@ -30,6 +30,10 @@ const productSchema = new mongoose.Schema({
         trim: true,
         lowercase: true
     },
+
+    // Analytics Field (Controller updates this on sale)
+    lastSold: { type: Date },
+
     description: { type: String, trim: true },
     sku: { type: String, trim: true, uppercase: true },
     brand: { type: String, trim: true },
@@ -45,7 +49,7 @@ const productSchema = new mongoose.Schema({
     defaultSupplierId: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
     tags: [{ type: String, trim: true }],
     isActive: { type: Boolean, default: true },
-}, { 
+}, {
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
@@ -60,17 +64,17 @@ const productSchema = new mongoose.Schema({
 // it doesn't trigger a duplicate error.
 productSchema.index(
     { organizationId: 1, slug: 1 },
-    { 
-        unique: true, 
-        partialFilterExpression: { slug: { $gt: "" } } 
+    {
+        unique: true,
+        partialFilterExpression: { slug: { $gt: "" } }
     }
 );
 
 productSchema.index(
     { organizationId: 1, sku: 1 },
-    { 
-        unique: true, 
-        partialFilterExpression: { sku: { $gt: "" } } 
+    {
+        unique: true,
+        partialFilterExpression: { sku: { $gt: "" } }
     }
 );
 

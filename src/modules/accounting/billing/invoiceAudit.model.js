@@ -14,7 +14,7 @@ const invoiceAuditSchema = new mongoose.Schema({
   // },
   action: {
     type: String,
-    enum: ['CREATE', 'UPDATE', 'STATUS_CHANGE', 'DELETE', 'EMAIL_SENT', 'DOWNLOADED', 'PAYMENT', 'CONVERT_DRAFT', 'UPDATE_DRAFT', 'UPDATE_FINANCIAL', 'CANCEL'],
+    enum: ['CREATE', 'UPDATE','PAYMENT_ADDED', 'STATUS_CHANGE', 'DELETE', 'EMAIL_SENT', 'DOWNLOADED', 'PAYMENT', 'CONVERT_DRAFT', 'UPDATE_DRAFT', 'UPDATE_FINANCIAL', 'CANCEL'],
   },
   performedBy: {
     type: mongoose.Schema.Types.ObjectId,
