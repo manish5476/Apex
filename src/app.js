@@ -29,6 +29,7 @@ const branchRoutes = require("./routes/v1/branchRoutes");
 const supplierRoutes = require("./routes/v1/supplierRoutes");
 const productRoutes = require("./routes/v1/productRoutes");
 const customerRoutes = require("./routes/v1/customerRoutes");
+const customerAnalytics = require("./routes/v1/customer.analytics.routes");
 const paymentRoutes = require("./routes/v1/paymentRoutes");
 const userRoutes = require("./routes/v1/userRoutes");
 const invoicePDFRoutes = require("./routes/v1/invoicePDFRoutes");
@@ -200,6 +201,7 @@ app.use("/api/v1/holidays", holidayRoutes);
 app.use('/api/v1/stock', require('./routes/v1/stockRoutes'));
 app.use("/api/v1/attendance", attendanceRoutes);
 app.use('/api/v1/cron', cronRoutes);
+app.use('/api/v1/customeranalytics', customerAnalytics);
 
 app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));

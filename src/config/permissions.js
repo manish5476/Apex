@@ -138,6 +138,11 @@ const PERMISSIONS_LIST = [
     { tag: "customer:delete", group: "Customers", description: "Delete Customers" },
     { tag: "customer:credit_limit", group: "Customers", description: "Modify Credit Limits" },
 
+    { tag: "analytics:read", group: "Analytics", description: "View Analytics Dashboards & Charts" },
+    { tag: "analytics:export", group: "Analytics", description: "Export Analytics Reports (CSV/Excel)" },
+    { tag: "analytics:emi_read", group: "Analytics", description: "View Sensitive EMI & Loan Data" },
+
+
     // FEED (Customer Activity)
     { tag: "feed:read", group: "Customers", description: "View customer activity feed" },
 
@@ -160,289 +165,289 @@ const PERMISSIONS_LIST = [
     // ======================================================
     // PURCHASE PERMISSIONS
     // ======================================================
-        // --- Basic CRUD Operations ---
-        { tag: "purchase:read", group: "Purchase", description: "View purchase records" },
-        { tag: "purchase:create", group: "Purchase", description: "Record new purchases" },
-        { tag: "purchase:update", group: "Purchase", description: "Modify purchase records" },
-        { tag: "purchase:delete", group: "Purchase", description: "Delete purchases" },
+    // --- Basic CRUD Operations ---
+    { tag: "purchase:read", group: "Purchase", description: "View purchase records" },
+    { tag: "purchase:create", group: "Purchase", description: "Record new purchases" },
+    { tag: "purchase:update", group: "Purchase", description: "Modify purchase records" },
+    { tag: "purchase:delete", group: "Purchase", description: "Delete purchases" },
 
-        // --- Financial Operations ---
-        { tag: "purchase:payment:record", group: "Purchase", description: "Record payments against purchases" },
-        { tag: "purchase:payment:view", group: "Purchase", description: "View payment history" },
-        { tag: "purchase:payment:delete", group: "Purchase", description: "Delete/void payments" },
-        { tag: "purchase:payment:bulk", group: "Purchase", description: "Process bulk payments" },
+    // --- Financial Operations ---
+    { tag: "purchase:payment:record", group: "Purchase", description: "Record payments against purchases" },
+    { tag: "purchase:payment:view", group: "Purchase", description: "View payment history" },
+    { tag: "purchase:payment:delete", group: "Purchase", description: "Delete/void payments" },
+    { tag: "purchase:payment:bulk", group: "Purchase", description: "Process bulk payments" },
 
-        // --- Return & Cancellation ---
-        { tag: "purchase:cancel", group: "Purchase", description: "Cancel entire purchases" },
-        { tag: "purchase:return", group: "Purchase", description: "Process partial returns" },
-        { tag: "purchase:approve_return", group: "Purchase", description: "Approve purchase returns" },
+    // --- Return & Cancellation ---
+    { tag: "purchase:cancel", group: "Purchase", description: "Cancel entire purchases" },
+    { tag: "purchase:return", group: "Purchase", description: "Process partial returns" },
+    { tag: "purchase:approve_return", group: "Purchase", description: "Approve purchase returns" },
 
-        // --- Status Management ---
-        { tag: "purchase:status:update", group: "Purchase", description: "Update purchase status" },
-        { tag: "purchase:approve", group: "Purchase", description: "Approve purchase orders" },
-        { tag: "purchase:reject", group: "Purchase", description: "Reject purchase orders" },
-        { tag: "purchase:verify", group: "Purchase", description: "Verify received goods" },
+    // --- Status Management ---
+    { tag: "purchase:status:update", group: "Purchase", description: "Update purchase status" },
+    { tag: "purchase:approve", group: "Purchase", description: "Approve purchase orders" },
+    { tag: "purchase:reject", group: "Purchase", description: "Reject purchase orders" },
+    { tag: "purchase:verify", group: "Purchase", description: "Verify received goods" },
 
-        // --- Document Management ---
-        { tag: "purchase:attachment:upload", group: "Purchase", description: "Upload purchase attachments" },
-        { tag: "purchase:attachment:delete", group: "Purchase", description: "Delete purchase attachments" },
-        { tag: "purchase:attachment:view", group: "Purchase", description: "View purchase attachments" },
+    // --- Document Management ---
+    { tag: "purchase:attachment:upload", group: "Purchase", description: "Upload purchase attachments" },
+    { tag: "purchase:attachment:delete", group: "Purchase", description: "Delete purchase attachments" },
+    { tag: "purchase:attachment:view", group: "Purchase", description: "View purchase attachments" },
 
-        // --- Bulk Operations ---
-        { tag: "purchase:bulk:create", group: "Purchase", description: "Bulk import purchases" },
-        { tag: "purchase:bulk:update", group: "Purchase", description: "Bulk update purchases" },
-        { tag: "purchase:bulk:delete", group: "Purchase", description: "Bulk delete purchases" },
+    // --- Bulk Operations ---
+    { tag: "purchase:bulk:create", group: "Purchase", description: "Bulk import purchases" },
+    { tag: "purchase:bulk:update", group: "Purchase", description: "Bulk update purchases" },
+    { tag: "purchase:bulk:delete", group: "Purchase", description: "Bulk delete purchases" },
 
-        // --- Reports & Analytics ---
-        { tag: "purchase:report:view", group: "Purchase", description: "View purchase reports" },
-        { tag: "purchase:report:generate", group: "Purchase", description: "Generate purchase reports" },
-        { tag: "purchase:analytics:view", group: "Purchase", description: "View purchase analytics" },
-        { tag: "purchase:dashboard:view", group: "Purchase", description: "View purchase dashboard" },
+    // --- Reports & Analytics ---
+    { tag: "purchase:report:view", group: "Purchase", description: "View purchase reports" },
+    { tag: "purchase:report:generate", group: "Purchase", description: "Generate purchase reports" },
+    { tag: "purchase:analytics:view", group: "Purchase", description: "View purchase analytics" },
+    { tag: "purchase:dashboard:view", group: "Purchase", description: "View purchase dashboard" },
 
-        // --- Export Operations ---
-        { tag: "purchase:export:csv", group: "Purchase", description: "Export purchases to CSV" },
-        { tag: "purchase:export:pdf", group: "Purchase", description: "Export purchases to PDF" },
-        { tag: "purchase:export:excel", group: "Purchase", description: "Export purchases to Excel" },
+    // --- Export Operations ---
+    { tag: "purchase:export:csv", group: "Purchase", description: "Export purchases to CSV" },
+    { tag: "purchase:export:pdf", group: "Purchase", description: "Export purchases to PDF" },
+    { tag: "purchase:export:excel", group: "Purchase", description: "Export purchases to Excel" },
 
-        // --- Audit & Verification ---
-        { tag: "purchase:audit:view", group: "Purchase", description: "View purchase audit trail" },
-        { tag: "purchase:audit:export", group: "Purchase", description: "Export audit logs" },
-        { tag: "purchase:reconcile", group: "Purchase", description: "Reconcile purchase accounts" },
+    // --- Audit & Verification ---
+    { tag: "purchase:audit:view", group: "Purchase", description: "View purchase audit trail" },
+    { tag: "purchase:audit:export", group: "Purchase", description: "Export audit logs" },
+    { tag: "purchase:reconcile", group: "Purchase", description: "Reconcile purchase accounts" },
 
-        // --- Supplier Management ---
-        { tag: "purchase:supplier:view", group: "Purchase", description: "View supplier purchase history" },
-        { tag: "purchase:supplier:statement", group: "Purchase", description: "Generate supplier statements" },
+    // --- Supplier Management ---
+    { tag: "purchase:supplier:view", group: "Purchase", description: "View supplier purchase history" },
+    { tag: "purchase:supplier:statement", group: "Purchase", description: "Generate supplier statements" },
 
-        // --- Inventory Integration ---
-        { tag: "purchase:inventory:update", group: "Purchase", description: "Update inventory from purchases" },
-        { tag: "purchase:stock:adjust", group: "Purchase", description: "Adjust stock from purchase discrepancies" },
+    // --- Inventory Integration ---
+    { tag: "purchase:inventory:update", group: "Purchase", description: "Update inventory from purchases" },
+    { tag: "purchase:stock:adjust", group: "Purchase", description: "Adjust stock from purchase discrepancies" },
 
-        // --- Advanced Operations ---
-        { tag: "purchase:backdate", group: "Purchase", description: "Create backdated purchases" },
-        { tag: "purchase:price:override", group: "Purchase", description: "Override standard pricing" },
-        { tag: "purchase:discount:apply", group: "Purchase", description: "Apply special discounts" },
-        { tag: "purchase:tax:override", group: "Purchase", description: "Override tax calculations" },
+    // --- Advanced Operations ---
+    { tag: "purchase:backdate", group: "Purchase", description: "Create backdated purchases" },
+    { tag: "purchase:price:override", group: "Purchase", description: "Override standard pricing" },
+    { tag: "purchase:discount:apply", group: "Purchase", description: "Apply special discounts" },
+    { tag: "purchase:tax:override", group: "Purchase", description: "Override tax calculations" },
 
-        // --- Purchase Order Management ---
-        { tag: "purchase:order:create", group: "Purchase", description: "Create purchase orders" },
-        { tag: "purchase:order:update", group: "Purchase", description: "Update purchase orders" },
-        { tag: "purchase:order:approve", group: "Purchase", description: "Approve purchase orders" },
-        { tag: "purchase:order:convert", group: "Purchase", description: "Convert orders to purchases" },
+    // --- Purchase Order Management ---
+    { tag: "purchase:order:create", group: "Purchase", description: "Create purchase orders" },
+    { tag: "purchase:order:update", group: "Purchase", description: "Update purchase orders" },
+    { tag: "purchase:order:approve", group: "Purchase", description: "Approve purchase orders" },
+    { tag: "purchase:order:convert", group: "Purchase", description: "Convert orders to purchases" },
 
-        // --- Credit Management ---
-        { tag: "purchase:credit:apply", group: "Purchase", description: "Apply supplier credits" },
-        { tag: "purchase:credit:view", group: "Purchase", description: "View supplier credit balance" },
-        { tag: "purchase:credit:adjust", group: "Purchase", description: "Adjust supplier credits" },
+    // --- Credit Management ---
+    { tag: "purchase:credit:apply", group: "Purchase", description: "Apply supplier credits" },
+    { tag: "purchase:credit:view", group: "Purchase", description: "View supplier credit balance" },
+    { tag: "purchase:credit:adjust", group: "Purchase", description: "Adjust supplier credits" },
 
-        // --- Approval Workflow ---
-        { tag: "purchase:approval:level1", group: "Purchase", description: "First level purchase approval" },
-        { tag: "purchase:approval:level2", group: "Purchase", description: "Second level purchase approval" },
-        { tag: "purchase:approval:bypass", group: "Purchase", description: "Bypass purchase approval workflow" },
-        { tag: "purchase:approval:level3", group: "Purchase", description: "Bypass purchase approval workflow" },
+    // --- Approval Workflow ---
+    { tag: "purchase:approval:level1", group: "Purchase", description: "First level purchase approval" },
+    { tag: "purchase:approval:level2", group: "Purchase", description: "Second level purchase approval" },
+    { tag: "purchase:approval:bypass", group: "Purchase", description: "Bypass purchase approval workflow" },
+    { tag: "purchase:approval:level3", group: "Purchase", description: "Bypass purchase approval workflow" },
 
-        // --- Settings & Configuration ---
-        { tag: "purchase:settings:view", group: "Purchase", description: "View purchase settings" },
-        { tag: "purchase:settings:update", group: "Purchase", description: "Update purchase settings" },
-        { tag: "purchase:terms:manage", group: "Purchase", description: "Manage payment terms" },
-        { tag: "purchase:tax:manage", group: "Purchase", description: "Manage tax settings" },
-        // SUPPLIERS
-        { tag: "supplier:read", group: "Inventory", description: "View Suppliers" },
-        { tag: "supplier:create", group: "Inventory", description: "Create Suppliers" },
-        { tag: "supplier:update", group: "Inventory", description: "Edit Suppliers" },
-        { tag: "supplier:delete", group: "Inventory", description: "Delete Suppliers" },
+    // --- Settings & Configuration ---
+    { tag: "purchase:settings:view", group: "Purchase", description: "View purchase settings" },
+    { tag: "purchase:settings:update", group: "Purchase", description: "Update purchase settings" },
+    { tag: "purchase:terms:manage", group: "Purchase", description: "Manage payment terms" },
+    { tag: "purchase:tax:manage", group: "Purchase", description: "Manage tax settings" },
+    // SUPPLIERS
+    { tag: "supplier:read", group: "Inventory", description: "View Suppliers" },
+    { tag: "supplier:create", group: "Inventory", description: "Create Suppliers" },
+    { tag: "supplier:update", group: "Inventory", description: "Edit Suppliers" },
+    { tag: "supplier:delete", group: "Inventory", description: "Delete Suppliers" },
 
-        // STOCK MANAGEMENT
-        { tag: "stock:read", group: "Inventory", description: "View stock information" },
-        { tag: "stock:manage", group: "Inventory", description: "Manage stock transfers and adjustments" },
-        { tag: "stock:low_stock", group: "Inventory", description: "View low stock alerts" },
-        { tag: "stock:validate", group: "Inventory", description: "Validate Stock Before Sales" },
-        { tag: "stock:warnings", group: "Inventory", description: "View Low Stock Warnings" },
+    // STOCK MANAGEMENT
+    { tag: "stock:read", group: "Inventory", description: "View stock information" },
+    { tag: "stock:manage", group: "Inventory", description: "Manage stock transfers and adjustments" },
+    { tag: "stock:low_stock", group: "Inventory", description: "View low stock alerts" },
+    { tag: "stock:validate", group: "Inventory", description: "Validate Stock Before Sales" },
+    { tag: "stock:warnings", group: "Inventory", description: "View Low Stock Warnings" },
 
-        // -----------------------------------------------------------
-        // SALES MANAGEMENT
-        // -----------------------------------------------------------
-        // INVOICES
-        { tag: "invoice:read", group: "Sales", description: "View Invoices" },
-        { tag: "invoice:create", group: "Sales", description: "Create Invoices" },
-        { tag: "invoice:update", group: "Sales", description: "Modify Invoices" },
-        { tag: "invoice:delete", group: "Sales", description: "Delete Invoices" },
-        { tag: "invoice:download", group: "Sales", description: "Download / Email Invoice" },
-        { tag: "invoice:export", group: "Sales", description: "Export Invoices (CSV/Excel)" },
-        { tag: "invoice:history", group: "Sales", description: "View Invoice Audit History" },
+    // -----------------------------------------------------------
+    // SALES MANAGEMENT
+    // -----------------------------------------------------------
+    // INVOICES
+    { tag: "invoice:read", group: "Sales", description: "View Invoices" },
+    { tag: "invoice:create", group: "Sales", description: "Create Invoices" },
+    { tag: "invoice:update", group: "Sales", description: "Modify Invoices" },
+    { tag: "invoice:delete", group: "Sales", description: "Delete Invoices" },
+    { tag: "invoice:download", group: "Sales", description: "Download / Email Invoice" },
+    { tag: "invoice:export", group: "Sales", description: "Export Invoices (CSV/Excel)" },
+    { tag: "invoice:history", group: "Sales", description: "View Invoice Audit History" },
 
-        // DIRECT SALES
-        { tag: "sales:manage", group: "Sales", description: "Manage Direct Sales" },
-        { tag: "sales:view", group: "Sales", description: "View Sales & Exports" },
+    // DIRECT SALES
+    { tag: "sales:manage", group: "Sales", description: "Manage Direct Sales" },
+    { tag: "sales:view", group: "Sales", description: "View Sales & Exports" },
 
-        // SALES RETURNS
-        { tag: "sales_return:read", group: "Sales", description: "View sales returns" },
-        { tag: "sales_return:manage", group: "Sales", description: "Create/process sales returns" },
+    // SALES RETURNS
+    { tag: "sales_return:read", group: "Sales", description: "View sales returns" },
+    { tag: "sales_return:manage", group: "Sales", description: "Create/process sales returns" },
 
-        // DRAFTS MANAGEMENT
-        { tag: "draft:view", group: "Sales", description: "View Draft Invoices" },
-        { tag: "draft:delete", group: "Sales", description: "Delete Draft Invoices" },
-        { tag: "draft:convert", group: "Sales", description: "Convert Draft to Active" },
+    // DRAFTS MANAGEMENT
+    { tag: "draft:view", group: "Sales", description: "View Draft Invoices" },
+    { tag: "draft:delete", group: "Sales", description: "Delete Draft Invoices" },
+    { tag: "draft:convert", group: "Sales", description: "Convert Draft to Active" },
 
-        // BULK OPERATIONS
-        { tag: "bulk:invoice:create", group: "Sales", description: "Bulk Create Invoices" },
-        { tag: "bulk:invoice:update", group: "Sales", description: "Bulk Update Invoice Status" },
-        { tag: "bulk:invoice:cancel", group: "Sales", description: "Bulk Cancel Invoices" },
-        { tag: "bulk:invoice:delete", group: "Sales", description: "Bulk Delete Drafts" },
+    // BULK OPERATIONS
+    { tag: "bulk:invoice:create", group: "Sales", description: "Bulk Create Invoices" },
+    { tag: "bulk:invoice:update", group: "Sales", description: "Bulk Update Invoice Status" },
+    { tag: "bulk:invoice:cancel", group: "Sales", description: "Bulk Cancel Invoices" },
+    { tag: "bulk:invoice:delete", group: "Sales", description: "Bulk Delete Drafts" },
 
-        // RECURRING INVOICES
-        { tag: "recurring:invoice:create", group: "Sales", description: "Create Recurring Invoice Templates" },
-        { tag: "recurring:invoice:generate", group: "Sales", description: "Generate Recurring Invoices" },
+    // RECURRING INVOICES
+    { tag: "recurring:invoice:create", group: "Sales", description: "Create Recurring Invoice Templates" },
+    { tag: "recurring:invoice:generate", group: "Sales", description: "Generate Recurring Invoices" },
 
-        // -----------------------------------------------------------
-        // REPORTS
-        // -----------------------------------------------------------
-        { tag: "report:profit", group: "Reports", description: "View Profit Reports" },
-        { tag: "report:sales", group: "Reports", description: "View Sales Reports" },
-        { tag: "report:tax", group: "Reports", description: "View Tax Reports" },
-        { tag: "report:outstanding", group: "Reports", description: "View Outstanding Invoices" },
+    // -----------------------------------------------------------
+    // REPORTS
+    // -----------------------------------------------------------
+    { tag: "report:profit", group: "Reports", description: "View Profit Reports" },
+    { tag: "report:sales", group: "Reports", description: "View Sales Reports" },
+    { tag: "report:tax", group: "Reports", description: "View Tax Reports" },
+    { tag: "report:outstanding", group: "Reports", description: "View Outstanding Invoices" },
 
-        // -----------------------------------------------------------
-        // FINANCE MANAGEMENT
-        // -----------------------------------------------------------
-        // ACCOUNTS
-        { tag: "account:manage", group: "Finance", description: "Manage Chart of Accounts" },
+    // -----------------------------------------------------------
+    // FINANCE MANAGEMENT
+    // -----------------------------------------------------------
+    // ACCOUNTS
+    { tag: "account:manage", group: "Finance", description: "Manage Chart of Accounts" },
 
-        // PAYMENTS
-        { tag: "payment:read", group: "Finance", description: "View Payments" },
-        { tag: "payment:create", group: "Finance", description: "Record Payments" },
-        { tag: "payment:update", group: "Finance", description: "Update payment records" },
-        { tag: "payment:delete", group: "Finance", description: "Delete Payments" },
+    // PAYMENTS
+    { tag: "payment:read", group: "Finance", description: "View Payments" },
+    { tag: "payment:create", group: "Finance", description: "Record Payments" },
+    { tag: "payment:update", group: "Finance", description: "Update payment records" },
+    { tag: "payment:delete", group: "Finance", description: "Delete Payments" },
 
-        // LEDGER
-        { tag: "ledger:read", group: "Finance", description: "View Ledgers" },
-        { tag: "ledger:delete", group: "Finance", description: "Delete Ledger Entries" },
+    // LEDGER
+    { tag: "ledger:read", group: "Finance", description: "View Ledgers" },
+    { tag: "ledger:delete", group: "Finance", description: "Delete Ledger Entries" },
 
-        // STATEMENTS
-        { tag: "statement:read", group: "Finance", description: "View Statements" },
+    // STATEMENTS
+    { tag: "statement:read", group: "Finance", description: "View Statements" },
 
-        // EMI
-        { tag: "emi:read", group: "Finance", description: "View EMI" },
-        { tag: "emi:create", group: "Finance", description: "Create EMI" },
-        { tag: "emi:pay", group: "Finance", description: "Collect EMI Installments" },
-        { tag: "emi:manage", group: "Finance", description: "Manage EMI plans" },
+    // EMI
+    { tag: "emi:read", group: "Finance", description: "View EMI" },
+    { tag: "emi:create", group: "Finance", description: "Create EMI" },
+    { tag: "emi:pay", group: "Finance", description: "Collect EMI Installments" },
+    { tag: "emi:manage", group: "Finance", description: "Manage EMI plans" },
 
-        // TRANSACTIONS
-        { tag: "transaction:read", group: "Finance", description: "View Transactions" },
+    // TRANSACTIONS
+    { tag: "transaction:read", group: "Finance", description: "View Transactions" },
 
-        // RECONCILIATION
-        { tag: "reconciliation:read", group: "Finance", description: "Reconciliation Reporting" },
-        { tag: "reconciliation:manage", group: "Finance", description: "Perform reconciliations" },
+    // RECONCILIATION
+    { tag: "reconciliation:read", group: "Finance", description: "Reconciliation Reporting" },
+    { tag: "reconciliation:manage", group: "Finance", description: "Perform reconciliations" },
 
-        // -----------------------------------------------------------
-        // INTEGRATIONS
-        // -----------------------------------------------------------
-        { tag: "integration:webhook", group: "Integrations", description: "Trigger Invoice Webhooks" },
-        { tag: "integration:accounting", group: "Integrations", description: "Sync with Accounting Software" },
+    // -----------------------------------------------------------
+    // INTEGRATIONS
+    // -----------------------------------------------------------
+    { tag: "integration:webhook", group: "Integrations", description: "Trigger Invoice Webhooks" },
+    { tag: "integration:accounting", group: "Integrations", description: "Sync with Accounting Software" },
 
-        // -----------------------------------------------------------
-        // AUTOMATION
-        // -----------------------------------------------------------
-        { tag: "automation:read", group: "Automation", description: "View Webhooks & Workflows" },
-        { tag: "automation:manage", group: "Automation", description: "Full Automation CRUD" },
-        { tag: "automation:webhook", group: "Automation", description: "Manage Webhooks" },
-        { tag: "automation:workflow", group: "Automation", description: "Manage Workflows" },
+    // -----------------------------------------------------------
+    // AUTOMATION
+    // -----------------------------------------------------------
+    { tag: "automation:read", group: "Automation", description: "View Webhooks & Workflows" },
+    { tag: "automation:manage", group: "Automation", description: "Full Automation CRUD" },
+    { tag: "automation:webhook", group: "Automation", description: "Manage Webhooks" },
+    { tag: "automation:workflow", group: "Automation", description: "Manage Workflows" },
 
-        // -----------------------------------------------------------
-        // COMMUNICATION
-        // -----------------------------------------------------------
-        // ANNOUNCEMENTS
-        { tag: "announcement:read", group: "Communication", description: "View Announcements" },
-        { tag: "announcement:manage", group: "Communication", description: "Create/Delete Announcements" },
+    // -----------------------------------------------------------
+    // COMMUNICATION
+    // -----------------------------------------------------------
+    // ANNOUNCEMENTS
+    { tag: "announcement:read", group: "Communication", description: "View Announcements" },
+    { tag: "announcement:manage", group: "Communication", description: "Create/Delete Announcements" },
 
-        // CHAT
-        { tag: "chat:manage_channel", group: "Communication", description: "Create/Edit Channels" },
-        { tag: "chat:send", group: "Communication", description: "Send Messages & Uploads" },
-        { tag: "chat:delete", group: "Communication", description: "Delete Messages" },
+    // CHAT
+    { tag: "chat:manage_channel", group: "Communication", description: "Create/Edit Channels" },
+    { tag: "chat:send", group: "Communication", description: "Send Messages & Uploads" },
+    { tag: "chat:delete", group: "Communication", description: "Delete Messages" },
 
-        // NOTIFICATIONS
-        { tag: "notification:read", group: "Communication", description: "View Notifications" },
-        { tag: "notification:manage", group: "Communication", description: "Clear/Delete Notifications" },
+    // NOTIFICATIONS
+    { tag: "notification:read", group: "Communication", description: "View Notifications" },
+    { tag: "notification:manage", group: "Communication", description: "Clear/Delete Notifications" },
 
-        // -----------------------------------------------------------
-        // SEARCH
-        // -----------------------------------------------------------
-        { tag: "search:global", group: "Search", description: "Use Global Search" },
+    // -----------------------------------------------------------
+    // SEARCH
+    // -----------------------------------------------------------
+    { tag: "search:global", group: "Search", description: "Use Global Search" },
 
-        // -----------------------------------------------------------
-        // FILE MANAGEMENT
-        // -----------------------------------------------------------
-        { tag: "file:upload", group: "Files", description: "Upload files to notes and meetings" },
-        { tag: "file:download", group: "Files", description: "Download files" },
-        { tag: "file:delete", group: "Files", description: "Delete files" },
-        { tag: "file:manage", group: "Files", description: "Manage all files" },
+    // -----------------------------------------------------------
+    // FILE MANAGEMENT
+    // -----------------------------------------------------------
+    { tag: "file:upload", group: "Files", description: "Upload files to notes and meetings" },
+    { tag: "file:download", group: "Files", description: "Download files" },
+    { tag: "file:delete", group: "Files", description: "Delete files" },
+    { tag: "file:manage", group: "Files", description: "Manage all files" },
 
-        // -----------------------------------------------------------
-        // SYSTEM ADMINISTRATION
-        // -----------------------------------------------------------
-        // USERS
-        { tag: "user:read", group: "System", description: "View Users" },
-        { tag: "user:manage", group: "System", description: "Manage Users" },
+    // -----------------------------------------------------------
+    // SYSTEM ADMINISTRATION
+    // -----------------------------------------------------------
+    // USERS
+    { tag: "user:read", group: "System", description: "View Users" },
+    { tag: "user:manage", group: "System", description: "Manage Users" },
 
-        // ROLES
-        { tag: "role:manage", group: "System", description: "Manage Roles" },
+    // ROLES
+    { tag: "role:manage", group: "System", description: "Manage Roles" },
 
-        // BRANCHES
-        { tag: "branch:read", group: "System", description: "View Branches" },
-        { tag: "branch:manage", group: "System", description: "Create/Edit Branches" },
+    // BRANCHES
+    { tag: "branch:read", group: "System", description: "View Branches" },
+    { tag: "branch:manage", group: "System", description: "Create/Edit Branches" },
 
-        // MASTER DATA
-        { tag: "master:read", group: "System", description: "View Master Data" },
-        { tag: "master:manage", group: "System", description: "Manage Master Data" },
+    // MASTER DATA
+    { tag: "master:read", group: "System", description: "View Master Data" },
+    { tag: "master:manage", group: "System", description: "Manage Master Data" },
 
-        // LOGS & SESSIONS
-        { tag: "logs:view", group: "System", description: "Access System Logs" },
-        { tag: "session:view_all", group: "System", description: "View All Sessions" },
+    // LOGS & SESSIONS
+    { tag: "logs:view", group: "System", description: "Access System Logs" },
+    { tag: "session:view_all", group: "System", description: "View All Sessions" },
 
-        // -----------------------------------------------------------
-        // ORGANIZATION MANAGEMENT
-        // -----------------------------------------------------------
-        { tag: "org:manage", group: "Organization", description: "Manage Own Organization" },
-        { tag: "org:manage_members", group: "Organization", description: "Invite/Remove Members" },
-        { tag: "org:transfer", group: "Organization", description: "Transfer Ownership" },
-        { tag: "org:manage_platform", group: "Organization", description: "SuperAdmin — Manage Orgs" },
-        { tag: "ownership:transfer", group: "Organization", description: "Transfer organization ownership" },
+    // -----------------------------------------------------------
+    // ORGANIZATION MANAGEMENT
+    // -----------------------------------------------------------
+    { tag: "org:manage", group: "Organization", description: "Manage Own Organization" },
+    { tag: "org:manage_members", group: "Organization", description: "Invite/Remove Members" },
+    { tag: "org:transfer", group: "Organization", description: "Transfer Ownership" },
+    { tag: "org:manage_platform", group: "Organization", description: "SuperAdmin — Manage Orgs" },
+    { tag: "ownership:transfer", group: "Organization", description: "Transfer organization ownership" },
 
-        // -----------------------------------------------------------
-        // ATTENDANCE & TIME MANAGEMENT
-        // -----------------------------------------------------------
-        // { tag: "attendance:read", group: "Attendance", description: "View attendance records" },
-        // { tag: "attendance:mark", group: "Attendance", description: "Mark own attendance" },
-        // { tag: "attendance:regularize", group: "Attendance", description: "Submit regularization requests" },
-        // { tag: "attendance:approve", group: "Attendance", description: "Approve/reject regularization requests" },
-        // { tag: "attendance:view_all", group: "Attendance", description: "View all attendance records" },
-        // { tag: "attendance:export", group: "Attendance", description: "Export attendance reports" },
-        // Attendance Permissions
-        { tag: "attendance:read", group: "Attendance", description: "View own attendance records" },
-        { tag: "attendance:mark", group: "Attendance", description: "Mark own attendance via web/mobile" },
-        { tag: "attendance:regularize", group: "Attendance", description: "Submit regularization requests" },
-        { tag: "attendance:approve", group: "Attendance", description: "Approve/reject regularization requests" },
-        { tag: "attendance:view_all", group: "Attendance", description: "View all attendance records in organization" },
-        { tag: "attendance:export", group: "Attendance", description: "Export attendance reports" },
-        { tag: "attendance:manage_shifts", group: "Attendance", description: "Create, update, and manage shifts" },
-        { tag: "attendance:manage_holidays", group: "Attendance", description: "Manage holiday calendar" },
-        { tag: "attendance:manage_machines", group: "Attendance", description: "Manage biometric machines" },
-        { tag: "attendance:real_time_monitor", group: "Attendance", description: "View real-time attendance monitoring" },
-        { tag: "attendance:bulk_update", group: "Attendance", description: "Bulk update attendance records" },
-        { tag: "attendance:view_analytics", group: "Attendance", description: "View attendance analytics and dashboards" },
-        { tag: "attendance:manage_leaves", group: "Attendance", description: "Manage leave requests and approvals" },
-        // TIMESHEETS
-        { tag: "timesheet:read", group: "Attendance", description: "View timesheets" },
-        { tag: "timesheet:submit", group: "Attendance", description: "Submit timesheets" },
-        { tag: "timesheet:approve", group: "Attendance", description: "Approve timesheets" },
+    // -----------------------------------------------------------
+    // ATTENDANCE & TIME MANAGEMENT
+    // -----------------------------------------------------------
+    // { tag: "attendance:read", group: "Attendance", description: "View attendance records" },
+    // { tag: "attendance:mark", group: "Attendance", description: "Mark own attendance" },
+    // { tag: "attendance:regularize", group: "Attendance", description: "Submit regularization requests" },
+    // { tag: "attendance:approve", group: "Attendance", description: "Approve/reject regularization requests" },
+    // { tag: "attendance:view_all", group: "Attendance", description: "View all attendance records" },
+    // { tag: "attendance:export", group: "Attendance", description: "Export attendance reports" },
+    // Attendance Permissions
+    { tag: "attendance:read", group: "Attendance", description: "View own attendance records" },
+    { tag: "attendance:mark", group: "Attendance", description: "Mark own attendance via web/mobile" },
+    { tag: "attendance:regularize", group: "Attendance", description: "Submit regularization requests" },
+    { tag: "attendance:approve", group: "Attendance", description: "Approve/reject regularization requests" },
+    { tag: "attendance:view_all", group: "Attendance", description: "View all attendance records in organization" },
+    { tag: "attendance:export", group: "Attendance", description: "Export attendance reports" },
+    { tag: "attendance:manage_shifts", group: "Attendance", description: "Create, update, and manage shifts" },
+    { tag: "attendance:manage_holidays", group: "Attendance", description: "Manage holiday calendar" },
+    { tag: "attendance:manage_machines", group: "Attendance", description: "Manage biometric machines" },
+    { tag: "attendance:real_time_monitor", group: "Attendance", description: "View real-time attendance monitoring" },
+    { tag: "attendance:bulk_update", group: "Attendance", description: "Bulk update attendance records" },
+    { tag: "attendance:view_analytics", group: "Attendance", description: "View attendance analytics and dashboards" },
+    { tag: "attendance:manage_leaves", group: "Attendance", description: "Manage leave requests and approvals" },
+    // TIMESHEETS
+    { tag: "timesheet:read", group: "Attendance", description: "View timesheets" },
+    { tag: "timesheet:submit", group: "Attendance", description: "Submit timesheets" },
+    { tag: "timesheet:approve", group: "Attendance", description: "Approve timesheets" },
 
-        // HOLIDAYS
-        { tag: "holiday:read", group: "Attendance", description: "View holidays" },
-        { tag: "holiday:manage", group: "Attendance", description: "Create/update/delete holidays" },
+    // HOLIDAYS
+    { tag: "holiday:read", group: "Attendance", description: "View holidays" },
+    { tag: "holiday:manage", group: "Attendance", description: "Create/update/delete holidays" },
 
-        // SHIFTS
-        { tag: "shift:read", group: "Attendance", description: "View shifts" },
-        { tag: "shift:manage", group: "Attendance", description: "Create/update/delete shifts" },
-    ];
+    // SHIFTS
+    { tag: "shift:read", group: "Attendance", description: "View shifts" },
+    { tag: "shift:manage", group: "Attendance", description: "Create/update/delete shifts" },
+];
 
 // Now define VALID_TAGS based on PERMISSIONS_LIST
 const VALID_TAGS = PERMISSIONS_LIST.map((p) => p.tag);

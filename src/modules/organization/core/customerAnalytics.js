@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 const { Parser } = require('json2csv'); // You might need to install: npm install json2csv
-const Customer = require('../models/Customer');
-const Invoice = require('../models/Invoice');
-const Payment = require('../models/Payment');
-const EMI = require('../models/EMI');
+const Customer = require('./customer.model');
+const Invoice = require('../../accounting/billing/invoice.model');
+const Payment = require('../../accounting/payments/payment.model');
+const EMI = require('../../accounting/payments/emi.model');
 
 class AnalyticsController {
 
