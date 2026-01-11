@@ -96,42 +96,56 @@ exports.signup = catchAsync(async (req, res, next) => {
 });
 
 exports.login = catchAsync(async (req, res, next) => {
-  const { email, password } = req.body;
+  const { email, password, uniqueShopId } = req.body;
 
-  if (!email || !password)
-    return next(new AppError("Email and password required.", 400));
-
-  // Find user with populated role
-  const user = await User.findOne({ email })
-    .select('+password')
-    .populate({
-      path: 'role',
-      select: 'name permissions isSuperAdmin isActive'
-    });
-
-  if (!user || !(await user.correctPassword(password, user.password)))
-    return next(new AppError("Invalid credentials.", 401));
-
-  if (user.status !== "approved")
-    return next(new AppError("Account is not approved.", 401));
-
-  // Check if user is owner of the organization
-  let isOwner = false;
-  try {
-    const organization = await Organization.findById(user.organizationId);
-    if (organization) {
-      isOwner = organization.owner.toString() === user._id.toString();
-    }
-  } catch (error) {
-    console.error("Error checking organization ownership:", error);
-    // Continue even if ownership check fails
+  // 1️⃣ Validate input
+  if (!email || !password || !uniqueShopId) {
+    return next(
+      new AppError("Email, password and Shop ID are required.", 400)
+    );
   }
 
-  // Remove password from user object
+  // 2️⃣ Find organization by uniqueShopId
+  const organization = await Organization.findOne({ uniqueShopId });
+  if (!organization) {
+    return next(new AppError("Invalid Shop ID.", 404));
+  }
+
+  // 3️⃣ Find user scoped to organization
+  const user = await User.findOne({
+    email,
+    organizationId: organization._id
+  })
+    .select("+password")
+    .populate({
+      path: "role",
+      select: "name permissions isSuperAdmin isActive"
+    });
+
+  // 4️⃣ Validate credentials
+  if (!user || !(await user.correctPassword(password, user.password))) {
+    return next(new AppError("Invalid credentials.", 401));
+  }
+
+  // 5️⃣ Approval check
+  if (user.status !== "approved") {
+    return next(new AppError("Account is not approved.", 401));
+  }
+
+  // 6️⃣ Check organization ownership
+  let isOwner = false;
+  try {
+    if (organization.owner) {
+      isOwner = organization.owner.toString() === user._id.toString();
+    }
+  } catch (err) {
+    console.error("Ownership check failed:", err);
+  }
+
+  // 7️⃣ Remove password
   user.password = undefined;
 
-  // CREATE ACCESS + REFRESH TOKENS
-  // Create a user object with all necessary flags for token signing
+  // 8️⃣ Token payload
   const userForToken = {
     _id: user._id,
     name: user.name,
@@ -139,23 +153,22 @@ exports.login = catchAsync(async (req, res, next) => {
     organizationId: user.organizationId,
     branchId: user.branchId,
     role: user.role,
-    // Add flags for token
-    isOwner: isOwner,
+    isOwner,
     isSuperAdmin: user.role?.isSuperAdmin || false
   };
 
   const accessToken = signAccessToken(userForToken);
   const refreshToken = signRefreshToken(user._id);
 
-  // SET REFRESH TOKEN COOKIE
+  // 9️⃣ Set refresh token cookie
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-    maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    maxAge: 30 * 24 * 60 * 60 * 1000
   });
 
-  // CREATE SESSION RECORD
+  // 🔟 Create session
   const { browser, os, device } = getDeviceInfo(req);
   const ip = getClientIp(req);
 
@@ -168,39 +181,134 @@ exports.login = catchAsync(async (req, res, next) => {
     deviceType: device,
     ipAddress: ip,
     organizationId: user.organizationId,
-    userAgent: req.headers["user-agent"] || null,
+    userAgent: req.headers["user-agent"] || null
   });
 
-  // Prepare user response object with all flags
+  // 1️⃣1️⃣ Response user object
   const userResponse = {
     ...user.toObject(),
-    isOwner: isOwner,
+    isOwner,
     isSuperAdmin: user.role?.isSuperAdmin || false,
     permissions: user.role?.permissions || []
   };
 
-  // Debug logging (remove in production)
-  if (process.env.NODE_ENV === "development") {
-    console.log("🔐 Login successful:", {
-      userId: user._id,
-      email: user.email,
-      isOwner: isOwner,
-      isSuperAdmin: user.role?.isSuperAdmin,
-      roleName: user.role?.name,
-      permissions: user.role?.permissions?.length || 0
-    });
-  }
-
-  // SEND RESPONSE
+  // 1️⃣2️⃣ Send response
   res.status(200).json({
     status: "success",
     token: accessToken,
-    data: { 
-      user: userResponse, 
-      session 
+    data: {
+      user: userResponse,
+      session
     }
   });
 });
+
+// exports.login = catchAsync(async (req, res, next) => {
+//   const { email, password } = req.body;
+
+//   if (!email || !password)
+//     return next(new AppError("Email and password required.", 400));
+
+//   // Find user with populated role
+//   const user = await User.findOne({ email })
+//     .select('+password')
+//     .populate({
+//       path: 'role',
+//       select: 'name permissions isSuperAdmin isActive'
+//     });
+
+//   if (!user || !(await user.correctPassword(password, user.password)))
+//     return next(new AppError("Invalid credentials.", 401));
+
+//   if (user.status !== "approved")
+//     return next(new AppError("Account is not approved.", 401));
+
+//   // Check if user is owner of the organization
+//   let isOwner = false;
+//   try {
+//     const organization = await Organization.findById(user.organizationId);
+//     if (organization) {
+//       isOwner = organization.owner.toString() === user._id.toString();
+//     }
+//   } catch (error) {
+//     console.error("Error checking organization ownership:", error);
+//     // Continue even if ownership check fails
+//   }
+
+//   // Remove password from user object
+//   user.password = undefined;
+
+//   // CREATE ACCESS + REFRESH TOKENS
+//   // Create a user object with all necessary flags for token signing
+//   const userForToken = {
+//     _id: user._id,
+//     name: user.name,
+//     email: user.email,
+//     organizationId: user.organizationId,
+//     branchId: user.branchId,
+//     role: user.role,
+//     // Add flags for token
+//     isOwner: isOwner,
+//     isSuperAdmin: user.role?.isSuperAdmin || false
+//   };
+
+//   const accessToken = signAccessToken(userForToken);
+//   const refreshToken = signRefreshToken(user._id);
+
+//   // SET REFRESH TOKEN COOKIE
+//   res.cookie("refreshToken", refreshToken, {
+//     httpOnly: true,
+//     secure: process.env.NODE_ENV === "production",
+//     sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+//     maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+//   });
+
+//   // CREATE SESSION RECORD
+//   const { browser, os, device } = getDeviceInfo(req);
+//   const ip = getClientIp(req);
+
+//   const session = await Session.create({
+//     userId: user._id,
+//     token: accessToken,
+//     isValid: true,
+//     browser,
+//     os,
+//     deviceType: device,
+//     ipAddress: ip,
+//     organizationId: user.organizationId,
+//     userAgent: req.headers["user-agent"] || null,
+//   });
+
+//   // Prepare user response object with all flags
+//   const userResponse = {
+//     ...user.toObject(),
+//     isOwner: isOwner,
+//     isSuperAdmin: user.role?.isSuperAdmin || false,
+//     permissions: user.role?.permissions || []
+//   };
+
+//   // Debug logging (remove in production)
+//   if (process.env.NODE_ENV === "development") {
+//     console.log("🔐 Login successful:", {
+//       userId: user._id,
+//       email: user.email,
+//       isOwner: isOwner,
+//       isSuperAdmin: user.role?.isSuperAdmin,
+//       roleName: user.role?.name,
+//       permissions: user.role?.permissions?.length || 0
+//     });
+//   }
+
+//   // SEND RESPONSE
+//   res.status(200).json({
+//     status: "success",
+//     token: accessToken,
+//     data: { 
+//       user: userResponse, 
+//       session 
+//     }
+//   });
+// });
 
 exports.protect = catchAsync(async (req, res, next) => {
   let token;

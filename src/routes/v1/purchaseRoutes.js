@@ -36,4 +36,18 @@ router.post(
   purchaseController.partialReturn
 );
 
+// GET /api/v1/purchase-returns
+router.get(
+  "/purchaseReturn",
+  checkPermission(PERMISSIONS.PURCHASE.READ), // Reusing Purchase Read permission
+  purchaseController.getAllReturns
+);
+
+// GET /api/v1/purchase-returns/:id
+router.get(
+  "/purchaseReturn/:id",
+  checkPermission(PERMISSIONS.PURCHASE.READ),
+  purchaseController.getReturnById
+);
+
 module.exports = router;

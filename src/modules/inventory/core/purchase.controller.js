@@ -1,667 +1,6 @@
-// /* ======================================================
-//    UTILS
-// ====================================================== */
-// function parseItemsField(items) {
-//   if (!items) return [];
-//   if (typeof items === "string") {
-//     try {
-//       return JSON.parse(items);
-//     } catch {
-//       throw new AppError("Invalid items JSON", 400);
-//     }
-//   }
-//   return items;
-// }
-// // Helper to populate product names in items
-// async function populateProductNames(items, organizationId, session) {
-//   const populatedItems = [];
-//   const productIds = items.map(item => item.productId).filter(Boolean);
-
-
-// /* ======================================================
-//    HELPER: Get or Init Account
-// ====================================================== */
-// async function getOrInitAccount(orgId, type, name, code, session) {
-//   let account = await Account.findOne({ organizationId: orgId, code }).session(session);
-//   if (!account) {
-//     try {
-//         account = (await Account.create([{
-//             organizationId: orgId, name, code, type, isGroup: false, cachedBalance: 0
-//         }], { session }))[0];
-//     } catch (err) {
-//         // Handle race condition
-//         if (err.code === 11000) account = await Account.findOne({ organizationId: orgId, code }).session(session);
-//         else throw err;
-//     }
-//   }
-//   return account;
-// }
-
-// /* ======================================================
-//    HELPER: Atomic Stock Update (Prevents WriteConflict)
-// ====================================================== */
-// async function updateStockAtomically(items, branchId, orgId, type = 'increment', session) {
-//     for (const item of items) {
-//         const adjustment = type === 'increment' ? item.quantity : -item.quantity;
-        
-//         const update = { $inc: { "inventory.$.quantity": adjustment } };
-        
-//         // If purchasing, update the purchase price
-//         if (type === 'increment' && item.purchasePrice > 0) {
-//             update.$set = { purchasePrice: item.purchasePrice };
-//         }
-
-//         const result = await Product.findOneAndUpdate(
-//             { 
-//                 _id: item.productId, 
-//                 organizationId: orgId,
-//                 "inventory.branchId": branchId 
-//             },
-//             update,
-//             { session, new: true }
-//         );
-
-//         // If product exists but inventory doc doesn't, we need to push it
-//         if (!result) {
-//             const product = await Product.findById(item.productId).session(session);
-//             if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
-            
-//             // Add branch inventory if missing
-//             await Product.updateOne(
-//                 { _id: item.productId },
-//                 { 
-//                     $push: { 
-//                         inventory: { 
-//                             branchId: branchId, 
-//                             quantity: type === 'increment' ? item.quantity : 0 
-//                         } 
-//                     } 
-//                 },
-//                 { session }
-//             );
-//         }
-//     }
-// }
-
-// /* ======================================================
-//    1. CREATE PURCHASE
-// ====================================================== */
-// exports.createPurchase = catchAsync(async (req, res, next) => {
-//   const { supplierId, invoiceNumber, purchaseDate, dueDate, notes, status } = req.body;
-  
-//   // 1. Parse & Validate Items (Outside Transaction)
-//   let items = req.body.items;
-//   if (typeof items === "string") items = JSON.parse(items);
-//   if (!supplierId || !items?.length) return next(new AppError("Supplier and items are required", 400));
-
-//   // Enrich items with names (Outside Transaction for speed)
-//   const enrichedItems = await Promise.all(items.map(async (item) => {
-//       const product = await Product.findById(item.productId).select('name');
-//       if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
-//       return { 
-//           ...item, 
-//           name: product.name,
-//           productId: item.productId,
-//           quantity: Number(item.quantity),
-//           purchasePrice: Number(item.purchasePrice),
-//           taxRate: Number(item.taxRate || 0),
-//           discount: Number(item.discount || 0)
-//       };
-//   }));
-
-//   const paidAmount = Number(req.body.paidAmount) || 0;
-
-//   await runInTransaction(async (session) => {
-//     // 2. Handle File Uploads
-//     const attachedFiles = [];
-//     if (req.files?.length) {
-//       for (const f of req.files) {
-//         attachedFiles.push(await fileUploadService.uploadFile(f.buffer, "purchases"));
-//       }
-//     }
-
-//     // 3. Create Purchase Document
-//     const [purchase] = await Purchase.create([{
-//       organizationId: req.user.organizationId,
-//       branchId: req.user.branchId,
-//       supplierId,
-//       invoiceNumber,
-//       purchaseDate: purchaseDate || new Date(),
-//       dueDate,
-//       items: enrichedItems,
-//       // Handle initial payment status
-//       paidAmount,
-//       // balanceAmount is auto-calculated in pre-save middleware (grandTotal - paidAmount)
-//       paymentStatus: paidAmount > 0 ? "partial" : "unpaid", 
-//       status: status || "received",
-//       notes,
-//       attachedFiles,
-//       createdBy: req.user._id
-//     }], { session, ordered: true });
-
-//     // 4. Update Inventory (Atomic)
-//     await updateStockAtomically(enrichedItems, req.user.branchId, req.user.organizationId, 'increment', session);
-
-//     // 5. Update Supplier Balance
-//     // Increase balance by (Grand Total - Paid Amount)
-//     await Supplier.findByIdAndUpdate(
-//       supplierId,
-//       { $inc: { outstandingBalance: purchase.grandTotal - paidAmount } },
-//       { session }
-//     );
-
-//     // 6. Record Payment (If any paid initially)
-//     if (paidAmount > 0) {
-//         const payment = (await Payment.create([{
-//             organizationId: req.user.organizationId,
-//             branchId: req.user.branchId,
-//             type: 'outflow', // Money leaving
-//             supplierId: supplierId,
-//             purchaseId: purchase._id,
-//             paymentDate: purchase.purchaseDate,
-//             amount: paidAmount,
-//             paymentMethod: req.body.paymentMethod || 'cash',
-//             transactionMode: 'manual',
-//             status: 'completed',
-//             remarks: `Payment for Purchase ${invoiceNumber}`,
-//             createdBy: req.user._id
-//         }], { session, ordered: true }))[0];
-
-//         // 7a. Payment Accounting (Dr AP, Cr Cash/Bank)
-//         const assetAccName = req.body.paymentMethod === 'bank' ? 'Bank' : 'Cash';
-//         const assetAccCode = req.body.paymentMethod === 'bank' ? '1002' : '1001';
-        
-//         const assetAcc = await getOrInitAccount(req.user.organizationId, "asset", assetAccName, assetAccCode, session);
-//         const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
-
-//         await AccountEntry.create([
-//             {
-//                 organizationId: req.user.organizationId,
-//                 branchId: req.user.branchId,
-//                 accountId: apAcc._id, // Dr AP (Liability decreases)
-//                 debit: paidAmount,
-//                 credit: 0,
-//                 description: `Payment for Purchase ${invoiceNumber}`,
-//                 referenceType: "payment",
-//                 referenceId: payment._id,
-//                 createdBy: req.user._id
-//             },
-//             {
-//                 organizationId: req.user.organizationId,
-//                 branchId: req.user.branchId,
-//                 accountId: assetAcc._id, // Cr Asset (Cash decreases)
-//                 debit: 0,
-//                 credit: paidAmount,
-//                 description: `Payment for Purchase ${invoiceNumber}`,
-//                 referenceType: "payment",
-//                 referenceId: payment._id,
-//                 createdBy: req.user._id
-//             }
-//         ], { session, ordered: true });
-//     }
-
-//     // 7b. Purchase Accounting (Dr Inventory, Cr AP - Full Amount)
-//     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
-//     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
-
-//     await AccountEntry.create([
-//       {
-//         organizationId: req.user.organizationId,
-//         branchId: req.user.branchId,
-//         accountId: inventoryAcc._id, // Dr Inventory
-//         debit: purchase.grandTotal,
-//         credit: 0,
-//         description: `Purchase: ${invoiceNumber}`,
-//         referenceType: "purchase",
-//         referenceId: purchase._id,
-//         supplierId,
-//         createdBy: req.user._id
-//       },
-//       {
-//         organizationId: req.user.organizationId,
-//         branchId: req.user.branchId,
-//         accountId: apAcc._id, // Cr AP
-//         debit: 0,
-//         credit: purchase.grandTotal,
-//         description: `Bill: ${invoiceNumber}`,
-//         referenceType: "purchase",
-//         referenceId: purchase._id,
-//         supplierId,
-//         createdBy: req.user._id
-//       }
-//     ], { session, ordered: true });
-
-//   }, 3, { action: "CREATE_PURCHASE", userId: req.user._id });
-
-//   res.status(201).json({ 
-//     status: "success", 
-//     message: "Purchase recorded successfully"
-//   });
-// });
-
-// /* ======================================================
-//    2. UPDATE PURCHASE (FULL REVERSAL + REBOOK)
-// ====================================================== */
-// exports.updatePurchase = catchAsync(async (req, res, next) => {
-//   const updates = req.body;
-//   let updatedPurchase;
-
-//   // Handle files
-//   const newFiles = [];
-//   if (req.files?.length) {
-//     for (const f of req.files) newFiles.push(await fileUploadService.uploadFile(f.buffer, "purchases"));
-//   }
-
-//   await runInTransaction(async (session) => {
-//     const oldPurchase = await Purchase.findOne({
-//       _id: req.params.id,
-//       organizationId: req.user.organizationId
-//     }).session(session);
-
-//     if (!oldPurchase) throw new AppError("Purchase not found", 404);
-//     if (oldPurchase.status === "cancelled") throw new AppError("Cancelled purchase cannot be edited", 400);
-
-//     if (newFiles.length) updates.attachedFiles = [...oldPurchase.attachedFiles, ...newFiles];
-
-//     // Non-financial updates
-//     const financialChange = updates.items || updates.tax || updates.discount;
-//     if (!financialChange) {
-//       updatedPurchase = await Purchase.findByIdAndUpdate(oldPurchase._id, updates, { new: true, session });
-//       return;
-//     }
-
-//     // A. REVERSE EVERYTHING
-//     // 1. Restore Stock (Take back what we bought)
-//     await updateStockAtomically(oldPurchase.items, oldPurchase.branchId, req.user.organizationId, 'decrement', session);
-
-//     // 2. Reverse Supplier Balance
-//     await Supplier.findByIdAndUpdate(
-//       oldPurchase.supplierId,
-//       { $inc: { outstandingBalance: -(oldPurchase.grandTotal - oldPurchase.paidAmount) } },
-//       { session }
-//     );
-
-//     // 3. Delete old Accounting (Simple approach: delete & recreate)
-//     // Note: Deleting payments related to this purchase might be dangerous if they were reconciled.
-//     // Ideally, block financial updates if payments exist, or handle gracefully.
-//     if (oldPurchase.paidAmount > 0) {
-//         throw new AppError("Cannot edit financial details of a purchase that has payments. Cancel and recreate.", 400);
-//     }
-
-//     await AccountEntry.deleteMany({
-//       referenceId: oldPurchase._id,
-//       referenceType: "purchase"
-//     }).session(session);
-
-//     // B. APPLY NEW CHANGES
-//     let newItems = updates.items;
-//     if (typeof newItems === 'string') newItems = JSON.parse(newItems);
-    
-//     // Enrich
-//     const enrichedItems = await Promise.all(newItems.map(async (item) => {
-//         const product = await Product.findById(item.productId).select('name');
-//         return { ...item, name: product.name };
-//     }));
-
-//     // Save Purchase
-//     Object.assign(oldPurchase, updates, { items: enrichedItems });
-//     updatedPurchase = await oldPurchase.save({ session });
-
-//     // C. APPLY NEW STOCK
-//     await updateStockAtomically(enrichedItems, req.user.branchId, req.user.organizationId, 'increment', session);
-
-//     // D. UPDATE SUPPLIER
-//     await Supplier.findByIdAndUpdate(
-//       updatedPurchase.supplierId,
-//       { $inc: { outstandingBalance: updatedPurchase.grandTotal } }, // Assume unpaid for simplicity in edit
-//       { session }
-//     );
-
-//     // E. NEW ACCOUNTING
-//     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
-//     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
-
-//     await AccountEntry.create([
-//       {
-//         organizationId: req.user.organizationId,
-//         branchId: req.user.branchId,
-//         accountId: inventoryAcc._id,
-//         date: updatedPurchase.purchaseDate,
-//         debit: updatedPurchase.grandTotal,
-//         credit: 0,
-//         description: `Purchase Updated: ${updatedPurchase.invoiceNumber}`,
-//         referenceType: "purchase",
-//         referenceId: updatedPurchase._id,
-//         supplierId: updatedPurchase.supplierId,
-//         createdBy: req.user._id
-//       },
-//       {
-//         organizationId: req.user.organizationId,
-//         branchId: req.user.branchId,
-//         accountId: apAcc._id,
-//         supplierId: updatedPurchase.supplierId,
-//         date: updatedPurchase.purchaseDate,
-//         debit: 0,
-//         credit: updatedPurchase.grandTotal,
-//         description: `Bill Updated: ${updatedPurchase.invoiceNumber}`,
-//         referenceType: "purchase",
-//         referenceId: updatedPurchase._id,
-//         createdBy: req.user._id
-//       }
-//     ], { session, ordered: true });
-
-//   }, 3, { action: "UPDATE_PURCHASE", userId: req.user._id });
-
-//   res.status(200).json({ status: "success", data: { purchase: updatedPurchase } });
-// });
-
-// /* ======================================================
-//    3. CANCEL PURCHASE
-// ====================================================== */
-// exports.cancelPurchase = catchAsync(async (req, res, next) => {
-//   const { reason } = req.body;
-//   if (!reason) return next(new AppError("Cancellation reason is required", 400));
-
-//   await runInTransaction(async (session) => {
-//     const purchase = await Purchase.findOne({ _id: req.params.id, organizationId: req.user.organizationId }).session(session);
-//     if (!purchase) throw new AppError("Purchase not found", 404);
-//     if (purchase.status === "cancelled") throw new AppError("Already cancelled", 400);
-//     if (purchase.paidAmount > 0) throw new AppError("Cannot cancel purchase with payments. Refund first.", 400);
-
-//     // 1. Reverse Stock
-//     await updateStockAtomically(purchase.items, purchase.branchId, req.user.organizationId, 'decrement', session);
-
-//     // 2. Update Supplier
-//     await Supplier.findByIdAndUpdate(
-//       purchase.supplierId,
-//       { $inc: { outstandingBalance: -purchase.grandTotal } },
-//       { session }
-//     );
-
-//     // 3. Accounting (Reversal)
-//     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
-//     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
-
-//     await AccountEntry.create([
-//       {
-//         organizationId: req.user.organizationId,
-//         branchId: req.user.branchId,
-//         accountId: apAcc._id,
-//         supplierId: purchase.supplierId,
-//         date: new Date(),
-//         debit: purchase.grandTotal,
-//         credit: 0,
-//         description: `Purchase Cancelled: ${reason}`,
-//         referenceType: "purchase_return",
-//         referenceId: purchase._id,
-//         createdBy: req.user._id
-//       },
-//       {
-//         organizationId: req.user.organizationId,
-//         branchId: req.user.branchId,
-//         accountId: inventoryAcc._id,
-//         date: new Date(),
-//         debit: 0,
-//         credit: purchase.grandTotal,
-//         description: `Inventory Returned: ${purchase.invoiceNumber}`,
-//         referenceType: "purchase_return",
-//         referenceId: purchase._id,
-//         createdBy: req.user._id
-//       }
-//     ], { session, ordered: true });
-
-//     // 4. Update Status
-//     purchase.status = "cancelled";
-//     purchase.notes = `${purchase.notes || ""}\nCancelled: ${reason}`;
-//     await purchase.save({ session });
-
-//   }, 3, { action: "CANCEL_PURCHASE", userId: req.user._id });
-
-//   res.status(200).json({ status: "success", message: "Purchase cancelled successfully" });
-// });
-
-// /* ======================================================
-//    4. RECORD PAYMENT (After Purchase)
-// ====================================================== */
-// exports.recordPayment = catchAsync(async (req, res, next) => {
-//   const { amount, paymentMethod, date, reference, notes } = req.body;
-//   if (!amount || amount <= 0) return next(new AppError("Valid payment amount is required", 400));
-
-//   await runInTransaction(async (session) => {
-//     const purchase = await Purchase.findOne({
-//       _id: req.params.id,
-//       organizationId: req.user.organizationId
-//     }).session(session);
-
-//     if (!purchase) throw new AppError("Purchase not found", 404);
-//     if (purchase.status === "cancelled") throw new AppError("Cannot record payment for cancelled purchase", 400);
-
-//     const totalPaid = purchase.paidAmount + amount;
-//     if (totalPaid > purchase.grandTotal) throw new AppError("Payment exceeds purchase total", 400);
-
-//     // 1. Update Purchase
-//     purchase.paidAmount = totalPaid;
-//     purchase.balanceAmount = purchase.grandTotal - totalPaid;
-//     purchase.paymentStatus = totalPaid === purchase.grandTotal ? "paid" : "partial";
-//     if (paymentMethod) purchase.paymentMethod = paymentMethod;
-//     await purchase.save({ session });
-
-//     // 2. Create Payment Document (Outflow)
-//     const payment = (await Payment.create([{
-//         organizationId: req.user.organizationId,
-//         branchId: req.user.branchId,
-//         type: 'outflow',
-//         supplierId: purchase.supplierId,
-//         purchaseId: purchase._id,
-//         paymentDate: date || new Date(),
-//         amount: amount,
-//         paymentMethod: paymentMethod || 'cash',
-//         transactionMode: 'manual',
-//         referenceNumber: reference,
-//         remarks: notes || `Payment for Purchase ${purchase.invoiceNumber}`,
-//         status: 'completed',
-//         createdBy: req.user._id
-//     }], { session, ordered: true }))[0];
-
-//     // 3. Update Supplier Balance
-//     await Supplier.findByIdAndUpdate(
-//         purchase.supplierId,
-//         { $inc: { outstandingBalance: -amount } },
-//         { session }
-//     );
-
-//     // 4. Accounting (Dr AP, Cr Cash/Bank)
-//     const accountName = paymentMethod === 'bank' ? "Bank" : "Cash";
-//     const accountCode = paymentMethod === 'bank' ? "1002" : "1001";
-    
-//     const paymentAccount = await getOrInitAccount(req.user.organizationId, "asset", accountName, accountCode, session);
-//     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
-
-//     await AccountEntry.create([
-//       {
-//         organizationId: req.user.organizationId,
-//         branchId: req.user.branchId,
-//         accountId: apAcc._id, // Dr AP
-//         date: date || new Date(),
-//         debit: amount,
-//         credit: 0,
-//         description: `Payment to Supplier for ${purchase.invoiceNumber}`,
-//         referenceType: "payment",
-//         referenceId: payment._id,
-//         supplierId: purchase.supplierId,
-//         createdBy: req.user._id
-//       },
-//       {
-//         organizationId: req.user.organizationId,
-//         branchId: req.user.branchId,
-//         accountId: paymentAccount._id, // Cr Cash
-//         date: date || new Date(),
-//         debit: 0,
-//         credit: amount,
-//         description: `Payment Out: ${reference || ''}`,
-//         referenceType: "payment",
-//         referenceId: payment._id,
-//         supplierId: purchase.supplierId,
-//         createdBy: req.user._id
-//       }
-//     ], { session, ordered: true });
-
-//   }, 3, { action: "RECORD_PURCHASE_PAYMENT", userId: req.user._id });
-
-//   res.status(200).json({ status: "success", message: "Payment recorded successfully" });
-// });
-
-// /* ======================================================
-//    5. PARTIAL RETURN (Debit Note)
-// ====================================================== */
-// exports.partialReturn = catchAsync(async (req, res, next) => {
-//   const { items, reason } = req.body;
-//   if (!items || !items.length || !reason) return next(new AppError("Items and reason required", 400));
-
-//   await runInTransaction(async (session) => {
-//     const purchase = await Purchase.findById(req.params.id).session(session);
-//     if (!purchase) throw new AppError("Purchase not found", 404);
-
-//     let totalReturnAmount = 0;
-//     const returnItems = [];
-
-//     // Check items and calc total
-//     for (const retItem of items) {
-//         const originalItem = purchase.items.find(i => String(i.productId) === retItem.productId);
-//         if (!originalItem || originalItem.quantity < retItem.quantity) {
-//             throw new AppError(`Invalid return quantity for product ${retItem.productId}`, 400);
-//         }
-        
-//         // Calculate refund amount based on purchase price
-//         // (Price * Qty) + Tax Proportion
-//         const itemBasePrice = originalItem.purchasePrice * retItem.quantity;
-//         const itemTax = (originalItem.taxRate / 100) * itemBasePrice;
-//         const itemTotal = itemBasePrice + itemTax;
-        
-//         totalReturnAmount += itemTotal;
-//         returnItems.push({
-//             productId: retItem.productId,
-//             quantity: retItem.quantity,
-//             purchasePrice: originalItem.purchasePrice
-//         });
-
-//         // Reduce qty in purchase doc (or mark returned)
-//         originalItem.quantity -= retItem.quantity;
-//     }
-
-//     // 1. Remove Stock
-//     await updateStockAtomically(returnItems, purchase.branchId, req.user.organizationId, 'decrement', session);
-
-//     // 2. Reduce Supplier Balance
-//     await Supplier.findByIdAndUpdate(
-//         purchase.supplierId,
-//         { $inc: { outstandingBalance: -totalReturnAmount } },
-//         { session }
-//     );
-
-//     // 3. Accounting (Dr AP, Cr Inventory)
-//     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
-//     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
-
-//     await AccountEntry.create([
-//         {
-//             organizationId: req.user.organizationId,
-//             branchId: req.user.branchId,
-//             accountId: apAcc._id, // Dr AP (We owe less)
-//             debit: totalReturnAmount,
-//             credit: 0,
-//             description: `Partial Return: ${reason}`,
-//             referenceType: "purchase_return",
-//             referenceId: purchase._id,
-//             createdBy: req.user._id
-//         },
-//         {
-//             organizationId: req.user.organizationId,
-//             branchId: req.user.branchId,
-//             accountId: inventoryAcc._id, // Cr Inventory (Stock reduced)
-//             debit: 0,
-//             credit: totalReturnAmount,
-//             description: `Inventory Returned: ${purchase.invoiceNumber}`,
-//             referenceType: "purchase_return",
-//             referenceId: purchase._id,
-//             createdBy: req.user._id
-//         }
-//     ], { session, ordered: true });
-
-//     // 4. Update Purchase
-//     purchase.grandTotal -= totalReturnAmount;
-//     purchase.balanceAmount -= totalReturnAmount;
-//     purchase.notes = (purchase.notes || "") + `\nPartial Return: -${totalReturnAmount} (${reason})`;
-    
-//     // Filter out items with 0 qty
-//     purchase.items = purchase.items.filter(i => i.quantity > 0);
-    
-//     if (purchase.items.length === 0) {
-//         purchase.status = 'cancelled'; // All items returned
-//     }
-
-//     await purchase.save({ session });
-
-//   }, 3, { action: "PARTIAL_RETURN", userId: req.user._id });
-
-//   res.status(200).json({ status: "success", message: "Partial return processed" });
-// });
-
-//   // Fetch all products at once for efficiency
-//   const products = await Product.find({
-//     _id: { $in: productIds },
-//     organizationId
-//   }).select('name _id').session(session);
-// ----------------
-//   const productMap = {};
-//   products.forEach(product => {
-//     productMap[product._id.toString()] = product.name;
-//   });
-
-//   for (const item of items) {
-//     if (item.productId && !item.name) {
-//       const productName = productMap[item.productId.toString()];
-//       if (productName) {
-//         populatedItems.push({
-//           ...item,
-//           name: productName
-//         });
-//       } else {
-//         // If product not found, keep as is (will fail validation later)
-//         populatedItems.push(item);
-//       }
-//     } else {
-//       populatedItems.push(item);
-//     }
-//   }
-
-//   return populatedItems;
-// }
-
-// // Helper to validate all items exist and are active
-// async function validateItemsExist(items, organizationId, session) {
-//   const productIds = items.map(item => item.productId).filter(Boolean);
-
-//   const products = await Product.find({
-//     _id: { $in: productIds },
-//     organizationId,
-//     isActive: true
-//   }).select('_id').session(session);
-
-//   const foundIds = products.map(p => p._id.toString());
-
-//   for (const item of items) {
-//     if (!item.productId) {
-//       throw new AppError("Each item must have a productId", 400);
-//     }
-
-//     if (!foundIds.includes(item.productId.toString())) {
-//       throw new AppError(`Product ${item.productId} not found or inactive`, 404);
-//     }
-//   }
-// }
 const mongoose = require("mongoose");
 const Purchase = require("./purchase.model");
+const PurchaseReturn = require("./purchase.return.model");
 const Supplier = require("../../organization/core/supplier.model");
 const Payment = require("../../accounting/payments/payment.model"); // Fixed path
 const Product = require("../../inventory/core/product.model"); // Fixed path
@@ -1209,9 +548,9 @@ exports.recordPayment = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", message: "Payment recorded successfully" });
 });
 
-/* ======================================================
-   5. PARTIAL RETURN (Debit Note)
-====================================================== */
+// /* ======================================================
+//    5. PARTIAL RETURN (Debit Note)
+// ====================================================== */
 exports.partialReturn = catchAsync(async (req, res, next) => {
   const { items, reason } = req.body;
   if (!items || !items.length || !reason) return next(new AppError("Items and reason required", 400));
@@ -1223,15 +562,14 @@ exports.partialReturn = catchAsync(async (req, res, next) => {
     let totalReturnAmount = 0;
     const returnItems = [];
 
-    // Check items and calc total
+    // 1. Calculate Refund/Return Totals
     for (const retItem of items) {
         const originalItem = purchase.items.find(i => String(i.productId) === retItem.productId);
         if (!originalItem || originalItem.quantity < retItem.quantity) {
             throw new AppError(`Invalid return quantity for product ${retItem.productId}`, 400);
         }
         
-        // Calculate refund amount based on purchase price
-        // (Price * Qty) + Tax Proportion
+        // Calculate proportional value
         const itemBasePrice = originalItem.purchasePrice * retItem.quantity;
         const itemTax = (originalItem.taxRate / 100) * itemBasePrice;
         const itemTotal = itemBasePrice + itemTax;
@@ -1239,25 +577,39 @@ exports.partialReturn = catchAsync(async (req, res, next) => {
         totalReturnAmount += itemTotal;
         returnItems.push({
             productId: retItem.productId,
+            name: originalItem.name,
             quantity: retItem.quantity,
-            purchasePrice: originalItem.purchasePrice
+            returnPrice: originalItem.purchasePrice,
+            total: itemTotal
         });
 
-        // Reduce qty in purchase doc (or mark returned)
+        // Reduce qty in purchase doc
         originalItem.quantity -= retItem.quantity;
     }
 
-    // 1. Remove Stock
+    // 2. Create Purchase Return Document (Audit Trail)
+    await PurchaseReturn.create([{
+        organizationId: req.user.organizationId,
+        branchId: req.user.branchId,
+        purchaseId: purchase._id,
+        supplierId: purchase.supplierId,
+        items: returnItems,
+        totalAmount: totalReturnAmount,
+        reason: reason,
+        createdBy: req.user._id
+    }], { session, ordered: true });
+
+    // 3. Remove Stock
     await updateStockAtomically(returnItems, purchase.branchId, req.user.organizationId, 'decrement', session);
 
-    // 2. Reduce Supplier Balance
+    // 4. Reduce Supplier Balance
     await Supplier.findByIdAndUpdate(
         purchase.supplierId,
         { $inc: { outstandingBalance: -totalReturnAmount } },
         { session }
     );
 
-    // 3. Accounting (Dr AP, Cr Inventory)
+    // 5. Accounting (Dr AP, Cr Inventory)
     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
 
@@ -1286,12 +638,12 @@ exports.partialReturn = catchAsync(async (req, res, next) => {
         }
     ], { session, ordered: true });
 
-    // 4. Update Purchase
+    // 6. Update Purchase Document
     purchase.grandTotal -= totalReturnAmount;
     purchase.balanceAmount -= totalReturnAmount;
     purchase.notes = (purchase.notes || "") + `\nPartial Return: -${totalReturnAmount} (${reason})`;
     
-    // Filter out items with 0 qty
+    // Filter out completely returned items
     purchase.items = purchase.items.filter(i => i.quantity > 0);
     
     if (purchase.items.length === 0) {
@@ -1302,8 +654,10 @@ exports.partialReturn = catchAsync(async (req, res, next) => {
 
   }, 3, { action: "PARTIAL_RETURN", userId: req.user._id });
 
-  res.status(200).json({ status: "success", message: "Partial return processed" });
+  res.status(200).json({ status: "success", message: "Partial return processed successfully" });
 });
+
+
 /* ======================================================
    5. RECORD PAYMENT
 ====================================================== */
@@ -1597,7 +951,6 @@ exports.addAttachments = catchAsync(async (req, res, next) => {
     data: { purchase }
   });
 });
-
 /* ======================================================
    11. GET PAYMENT HISTORY
 ====================================================== */
@@ -1730,4 +1083,43 @@ exports.getPendingPayments = catchAsync(async (req, res, next) => {
     results: pendingPayments.length,
     data: { pendingPayments }
   });
+});
+
+exports.getAllReturns = catchAsync(async (req, res, next) => {
+  const { supplierId, startDate, endDate, purchaseId } = req.query;
+
+  const filter = {
+    organizationId: req.user.organizationId,
+    branchId: req.user.branchId
+  };
+
+  if (supplierId) filter.supplierId = supplierId;
+  if (purchaseId) filter.purchaseId = purchaseId;
+  
+  if (startDate || endDate) {
+    filter.returnDate = {};
+    if (startDate) filter.returnDate.$gte = new Date(startDate);
+    if (endDate) filter.returnDate.$lte = new Date(endDate);
+  }
+
+  // Execute query with sorting
+  const returns = await PurchaseReturn.find(filter)
+    .sort({ returnDate: -1 })
+    .populate('supplierId', 'companyName email phone')
+    .populate('purchaseId', 'invoiceNumber grandTotal status')
+    .populate('createdBy', 'name');
+
+  res.status(200).json({
+    status: 'success',
+    results: returns.length,
+    data: { returns }
+  });
+});
+
+/* ======================================================
+   2. GET RETURN DETAILS
+====================================================== */
+exports.getReturnById = factory.getOne(PurchaseReturn, {
+  path: 'purchaseId supplierId createdBy',
+  select: 'invoiceNumber companyName name email'
 });
