@@ -156,12 +156,6 @@ const PERMISSIONS_LIST = [
     { tag: "product:delete", group: "Inventory", description: "Delete Products" },
     { tag: "product:stock_adjust", group: "Inventory", description: "Manual Stock Adjustment" },
 
-    // // PURCHASE
-    // { tag: "purchase:read", group: "Inventory", description: "View Purchases" },
-    // { tag: "purchase:create", group: "Inventory", description: "Record Purchases" },
-    // { tag: "purchase:update", group: "Inventory", description: "Modify Purchase Records" },
-    // { tag: "purchase:delete", group: "Inventory", description: "Delete Purchases" },
-
     // ======================================================
     // PURCHASE PERMISSIONS
     // ======================================================
