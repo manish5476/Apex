@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { nanoid } = require('nanoid');
-
+const redis = require('../../../core/utils/_legacy/redis');
 const inventorySchema = new mongoose.Schema({
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
     quantity: { type: Number, required: true, default: 0, min: 0 },
@@ -90,5 +90,21 @@ productSchema.pre("save", async function (next) {
     next();
 });
 
+// FLUSH CACHE ON UPDATE
+productSchema.post('save', async function(doc) {
+    try {
+        if (redis && redis.status === 'ready') {
+            // Pattern matches: smartrule:v1:{orgId}:{ruleId}
+            const cachePattern = `smartrule:v1:${doc.organizationId}:*`;
+            const keys = await redis.keys(cachePattern);
+            if (keys.length > 0) {
+                await redis.del(keys);
+                console.log(`[Cache] Cleared ${keys.length} smart rules for org ${doc.organizationId}`);
+            }
+        }
+    } catch (err) {
+        console.error('[Cache Error] Failed to clear smart rules:', err);
+    }
+});
 const Product = mongoose.model("Product", productSchema);
 module.exports = Product;

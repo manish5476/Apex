@@ -42,11 +42,24 @@ class SmartRuleEngine {
 
     const query = RuleQueryBuilder.build(rule, organizationId);
 
+    // LOGIC FIX: Prefer option limit over rule limit
+    const finalLimit = options.limit 
+        ? Math.min(parseInt(options.limit), this.MAX_LIMIT)
+        : Math.min(query.limit, this.MAX_LIMIT);
+
     const products = await Product.aggregate([
       ...query.pipeline,
       { $sort: query.sort },
-      { $limit: Math.min(query.limit, this.MAX_LIMIT) }
+      { $limit: finalLimit } // Use the calculated limit
     ]);
+    
+    // const query = RuleQueryBuilder.build(rule, organizationId);
+
+    // const products = await Product.aggregate([
+    //   ...query.pipeline,
+    //   { $sort: query.sort },
+    //   { $limit: Math.min(query.limit, this.MAX_LIMIT) }
+    // ]);
 
     const result = this.transform(products);
 

@@ -63,8 +63,12 @@ class ProductPublicController {
         isActive: true
       };
 
-      if (category) query.category = category;
+      // if (category) query.category = category;
+if (category) {
 
+  const escapedCategory = category.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  query.category = { $regex: new RegExp('^' + escapedCategory, 'i') };
+}
       if (tags) {
         query.tags = { $in: tags.split(',') };
       }

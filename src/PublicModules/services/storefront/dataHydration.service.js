@@ -56,11 +56,15 @@ class DataHydrationService {
     }
     
     try {
+      // const products = await SmartRuleEngine.executeRule(
+      //   section.smartRuleId,
+      //   organizationId
+      // );
       const products = await SmartRuleEngine.executeRule(
         section.smartRuleId,
-        organizationId
-      );
-      
+        organizationId,
+        { limit: section.config?.itemsPerView || section.config?.limit } // <--- YOU MUST PASS THIS
+    );
       return this.transformProductsForPublic(products);
     } catch (error) {
       console.error('Error hydrating smart section:', error);
