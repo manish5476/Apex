@@ -59,9 +59,6 @@ const productSchema = new mongoose.Schema({
 // 🔑 INDEXES (The Critical Fix for Bulk/Factories)
 // ======================================================
 
-// We make the slug unique PER organization. 
-// The partialFilterExpression ensures that if slug is missing (null/empty), 
-// it doesn't trigger a duplicate error.
 productSchema.index(
     { organizationId: 1, slug: 1 },
     {
