@@ -1,6 +1,6 @@
-// src/controllers/storefront/storefrontAdmin.controller.js
 const { StorefrontPage, SmartRule, SectionTemplate } = require('../../models/storefront');
-const { Organization } = require('../../../modules/organization/core/organization.model');
+// FIX: Removed curly braces
+const Organization = require('../../../modules/organization/core/organization.model');
 const SectionRegistry = require('../../services/storefront/sectionRegistry.service');
 const SectionValidator = require('../../middleware/validation/section.validator');
 const AppError = require('../../../core/utils/appError');

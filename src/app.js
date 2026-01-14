@@ -166,13 +166,10 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // 1. Public Storefront Routes (matches Angular Public Service)
 app.use('/public', storefrontPublicRoutes);
 
-// 2. Admin Storefront Routes (matches Angular Admin Service)
-// Angular Service calls: /admin/storefront/smart-rules
-app.use('/admin/storefront/smart-rules', smartRuleRoutes);
-
-// Angular Service calls: /admin/storefront/pages, /sections, etc.
-app.use('/admin/storefront', storefrontAdminRoutes);
-
+// 2. Admin Storefront Routes (MOVE TO /api/v1)
+// ⚠️ CHANGE: Added /api/v1 prefix to match standard API structure
+app.use('/api/v1/admin/storefront/smart-rules', smartRuleRoutes);
+app.use('/api/v1/admin/storefront', storefrontAdminRoutes);
 // === EXISTING API ROUTES ===
 app.use("/api/v1/organization", organizationRoutes);
 app.use("/api/v1/neworganization", organizationExtrasRoutes);

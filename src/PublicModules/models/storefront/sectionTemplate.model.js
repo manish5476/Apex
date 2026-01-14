@@ -19,17 +19,7 @@ const templateSchema = new mongoose.Schema({
   sectionType: {
     type: String,
     required: true,
-    enum: [
-      'hero_banner',
-      'feature_grid',
-      'product_slider',
-      'product_grid',
-      'category_grid',
-      'text_content',
-      'testimonial_slider',
-      'contact_form',
-      'map_locations',
-      'blog_feed'
+    enum: ['hero_banner','feature_grid','product_slider','product_grid','category_grid','text_content','testimonial_slider','contact_form','map_locations','blog_feed'
     ]
   },
   
