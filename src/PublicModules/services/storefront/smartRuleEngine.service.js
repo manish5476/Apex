@@ -140,6 +140,37 @@ class SmartRuleEngine {
       at: new Date().toISOString()
     });
   }
+  /**
+   * Execute a rule defined directly in JSON config (No DB lookup)
+   */
+  async executeAdHocRule(config, organizationId) {
+    const start = Date.now();
+
+    // 1. Construct a temporary rule object that matches the Schema structure
+    const adHocRule = {
+      ruleType: config.ruleType,
+      limit: parseInt(config.limit || config.itemsPerView || 10),
+      sortBy: 'createdAt', // Default sort
+      sortOrder: 'desc',
+      filters: [] 
+    };
+
+    // 2. Build the query using your existing Service
+    const query = RuleQueryBuilder.build(adHocRule, organizationId);
+
+    // 3. Execute
+    const products = await Product.aggregate([
+      ...query.pipeline,
+      { $sort: query.sort },
+      { $limit: adHocRule.limit }
+    ]);
+
+    const result = this.transform(products);
+
+    this.logExecution('ADHOC-' + config.ruleType, 'db-hit', Date.now() - start);
+
+    return result;
+  }
 }
 
 module.exports = new SmartRuleEngine();

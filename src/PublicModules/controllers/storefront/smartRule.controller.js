@@ -7,10 +7,6 @@ class SmartRuleController {
   // ==========================================
   // 1. NEW CRUD METHODS (Required for Angular)
   // ==========================================
-
-  /**
-   * Create a new smart rule
-   */
   async createRule(req, res, next) {
     try {
       const { organizationId } = req.user;

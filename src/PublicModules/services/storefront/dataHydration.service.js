@@ -50,24 +50,51 @@ class DataHydrationService {
   /**
    * Hydrate smart section with rule-based data
    */
-  async hydrateSmartSection(section, organizationId) {
-    if (!section.smartRuleId) {
-      return [];
-    }
+  // async hydrateSmartSection(section, organizationId) {
+  //   if (!section.smartRuleId) {
+  //     return [];
+  //   }
     
+  //   try {
+  //     const products = await SmartRuleEngine.executeRule(
+  //       section.smartRuleId,
+  //       organizationId,
+  //       { limit: section.config?.itemsPerView || section.config?.limit } 
+  //     );
+  //     return this.transformProductsForPublic(products);
+  //   } catch (error) {
+  //     console.error('Error hydrating smart section:', error);
+  //     return [];
+  //   }
+  // }
+  async hydrateSmartSection(section, organizationId) {
     try {
-      const products = await SmartRuleEngine.executeRule(
-        section.smartRuleId,
-        organizationId,
-        { limit: section.config?.itemsPerView || section.config?.limit } 
-      );
-      return this.transformProductsForPublic(products);
+      // CASE 1: Saved Rule (Reference to SmartRule collection)
+      if (section.smartRuleId) {
+        const products = await SmartRuleEngine.executeRule(
+          section.smartRuleId,
+          organizationId,
+          { limit: section.config?.limit || section.config?.itemsPerView }
+        );
+        return this.transformProductsForPublic(products);
+      }
+
+      // CASE 2: Ad-Hoc Rule (Defined directly in section config)
+      // This matches your JSON structure: { config: { ruleType: "best_sellers", ... } }
+      if (section.config && section.config.ruleType) {
+        const products = await SmartRuleEngine.executeAdHocRule(
+          section.config,
+          organizationId
+        );
+        return this.transformProductsForPublic(products);
+      }
+
+      return [];
     } catch (error) {
       console.error('Error hydrating smart section:', error);
       return [];
     }
   }
-  
   /**
    * Hydrate manual section with specific products
    */

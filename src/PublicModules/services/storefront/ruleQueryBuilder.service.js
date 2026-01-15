@@ -78,11 +78,24 @@ class RuleQueryBuilder {
   }
 
   bestSellers(match, rule) {
-    const days = this.getDays(rule.filters, 'lastSold') || 90;
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    match.lastSold = { $gte: date };
+    const days = this.getDays(rule.filters, 'lastSold');
+    if (days) {
+      const date = new Date();
+      date.setDate(date.getDate() - days);
+      match.lastSold = { $gte: date };
+    }
+
+    // Ensure we are sorting by sales (requires salesCount in Schema as discussed before)
+    rule.sortBy = 'salesCount';
+    rule.sortOrder = 'desc';
   }
+
+  // bestSellers(match, rule) {
+  //   const days = this.getDays(rule.filters, 'lastSold') || 90;
+  //   const date = new Date();
+  //   date.setDate(date.getDate() - days);
+  //   match.lastSold = { $gte: date };
+  // }
 
   trending(match) {
     const date = new Date();
