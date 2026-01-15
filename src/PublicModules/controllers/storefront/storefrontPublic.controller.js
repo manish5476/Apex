@@ -1,6 +1,5 @@
-// src/controllers/storefront/storefrontPublic.controller.js
 const { StorefrontPage } = require('../../models/storefront');
-const { Organization } = require('../../../modules/organization/core/organization.model');
+const Organization = require('../../../modules/organization/core/organization.model');
 const SmartRuleEngine = require('../../services/storefront/smartRuleEngine.service');
 const DataHydrationService = require('../../services/storefront/dataHydration.service');
 const AppError = require('../../../core/utils/appError');
@@ -10,7 +9,7 @@ class StorefrontPublicController {
    * Get public storefront page
    * Route: GET /public/:organizationSlug/:pageSlug
    */
-  async getPublicPage(req, res, next) {
+  getPublicPage = async (req, res, next) => {
     try {
       const { organizationSlug, pageSlug } = req.params;
       
@@ -46,7 +45,8 @@ class StorefrontPublicController {
         return next(new AppError('Page not found', 404));
       }
       
-      // Increment view count (async, don't wait)
+      // Increment view count (This caused your error!)
+      // Now it works because we are using arrow functions
       this.incrementViewCount(page._id);
       
       // Hydrate sections with live data
@@ -79,7 +79,7 @@ class StorefrontPublicController {
         },
         meta: {
           generatedAt: new Date().toISOString(),
-          cacheControl: 'public, max-age=300' // 5 minutes cache
+          cacheControl: 'public, max-age=300' 
         }
       };
       
@@ -87,7 +87,8 @@ class StorefrontPublicController {
       res.set({
         'X-Store-Name': organization.name,
         'X-Page-Title': page.seo?.title || page.name,
-        'Cache-Control': 'public, max-age=300'
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+        // 'Cache-Control': 'public, max-age=300'
       });
       
       res.status(200).json(response);
@@ -101,7 +102,7 @@ class StorefrontPublicController {
    * Get organization info
    * Route: GET /public/:organizationSlug
    */
-  async getOrganizationInfo(req, res, next) {
+  getOrganizationInfo = async (req, res, next) => {
     try {
       const { organizationSlug } = req.params;
       
@@ -137,7 +138,7 @@ class StorefrontPublicController {
    * Get all published pages for sitemap
    * Route: GET /public/:organizationSlug/sitemap
    */
-  async getSitemap(req, res, next) {
+  getSitemap = async (req, res, next) => {
     try {
       const { organizationSlug } = req.params;
       
@@ -180,7 +181,7 @@ class StorefrontPublicController {
   /**
    * Increment view count (async)
    */
-  async incrementViewCount(pageId) {
+  incrementViewCount = async (pageId) => {
     try {
       await StorefrontPage.findByIdAndUpdate(
         pageId,

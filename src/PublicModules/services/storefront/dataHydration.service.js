@@ -1,6 +1,6 @@
-// src/services/storefront/dataHydration.service.js
-const { Product } = require('../../../modules/inventory/core/product.model');
-const { Branch } = require('../../../modules/organization/core/branch.model');
+// FIX: Removed curly braces
+const Product = require('../../../modules/inventory/core/product.model');
+const Branch = require('../../../modules/organization/core/branch.model');
 const SmartRuleEngine = require('./smartRuleEngine.service');
 
 class DataHydrationService {
@@ -56,15 +56,11 @@ class DataHydrationService {
     }
     
     try {
-      // const products = await SmartRuleEngine.executeRule(
-      //   section.smartRuleId,
-      //   organizationId
-      // );
       const products = await SmartRuleEngine.executeRule(
         section.smartRuleId,
         organizationId,
-        { limit: section.config?.itemsPerView || section.config?.limit } // <--- YOU MUST PASS THIS
-    );
+        { limit: section.config?.itemsPerView || section.config?.limit } 
+      );
       return this.transformProductsForPublic(products);
     } catch (error) {
       console.error('Error hydrating smart section:', error);
