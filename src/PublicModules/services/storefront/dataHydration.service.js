@@ -5,51 +5,38 @@ const Branch = require('../../../modules/organization/core/branch.model');
 const SmartRuleEngine = require('./smartRuleEngine.service');
 
 class DataHydrationService {
-
-  /**
-   * Hydrate sections with live data (Optimized)
-   */
-  async hydrateSections(sections, organizationId) {
+async hydrateSections(sections, organizationId) {
     if (!sections || sections.length === 0) return [];
 
     const hydrationTasks = sections.map(async (section) => {
-      // 1. Create a safe copy of the section
-      // We parse/stringify to ensure we aren't mutating a frozen Mongoose object
       const hydratedSection = JSON.parse(JSON.stringify(section));
       hydratedSection.data = null;
 
       if (!hydratedSection.isActive) return null;
 
       try {
-        // SPECIAL CASE: Auto-detect Navigation/Header sections
-        // This runs if type contains 'navbar' OR if you manually set dataSource to 'pages'
+        // Navigation Logic (Existing)
         if (hydratedSection.type.includes('navbar') || hydratedSection.dataSource === 'pages') {
            await this.hydrateNavigation(hydratedSection, organizationId);
            return hydratedSection; 
         }
 
-        // Standard Hydration
+        // Main Hydration Switch
         switch (hydratedSection.dataSource) {
           case 'smart':
+            // ✅ UPDATED: Now handles Brands and Categories too
             hydratedSection.data = await this.hydrateSmartSection(hydratedSection, organizationId);
             break;
           case 'manual':
             hydratedSection.data = await this.hydrateManualSection(hydratedSection, organizationId);
-            break;
-          case 'category':
-            hydratedSection.data = await this.hydrateCategorySection(hydratedSection, organizationId);
             break;
           case 'dynamic':
             hydratedSection.data = await this.hydrateDynamicSection(hydratedSection, organizationId);
             break;
         }
       } catch (error) {
-        // Log the exact error to your server console so you can see it
-        console.error(`[Hydration Error] Section ${hydratedSection.type}:`, error.message);
-        
-        // Return the section with an error flag, but keep static data (like the logo) intact
+        console.error(`[Hydration Error] ${hydratedSection.type}:`, error.message);
         hydratedSection.error = true;
-        hydratedSection.errorMessage = error.message;
       }
 
       return hydratedSection;
@@ -58,6 +45,113 @@ class DataHydrationService {
     const results = await Promise.all(hydrationTasks);
     return results.filter(Boolean);
   }
+
+  /**
+   * ✅ UPGRADED: Handles Rules, Brands, and Categories
+   */
+  async hydrateSmartSection(section, organizationId) {
+    try {
+      const config = section.config || {};
+      let query = { 
+        organizationId, 
+        isActive: true 
+      };
+
+      // 1. LIMIT & SORT
+      const limit = parseInt(config.limit || config.itemsPerView || 12);
+      const sort = { createdAt: -1 }; // Default Newest
+
+      // 2. CHECK SOURCE TYPE
+      // The user can now select 'rule', 'brand', or 'category' in the Admin UI
+      const sourceType = config.sourceType || 'rule'; 
+
+      // CASE A: Specific Brand
+      if (sourceType === 'brand' && config.sourceValue) {
+        query.brand = { $regex: new RegExp(`^${config.sourceValue}$`, 'i') }; // Case-insensitive match
+      }
+      
+      // CASE B: Specific Category
+      else if (sourceType === 'category' && config.sourceValue) {
+        query.category = { $regex: new RegExp(`^${config.sourceValue}`, 'i') };
+      }
+
+      // CASE C: Smart Rule (Best Sellers, New Arrivals, etc.)
+      else {
+        // If it's a rule, we delegate to the Rule Engine
+        // Note: We return immediately because Rule Engine builds its own aggregation pipeline
+        if (config.ruleType) {
+          const products = await SmartRuleEngine.executeAdHocRule(config, organizationId);
+          return this.transformProductsForPublic(products);
+        }
+      }
+
+      // 3. EXECUTE QUERY (For Brand/Category)
+      const products = await Product.find(query)
+        .select('name slug description images sellingPrice discountedPrice category tags sku inventory brand')
+        .sort(sort)
+        .limit(limit)
+        .lean();
+
+      return this.transformProductsForPublic(products);
+
+    } catch (error) {
+      console.error('Error hydrating smart section:', error);
+      return [];
+    }
+  }
+
+  // /**
+  //  * Hydrate sections with live data (Optimized)
+  //  */
+  // async hydrateSections(sections, organizationId) {
+  //   if (!sections || sections.length === 0) return [];
+
+  //   const hydrationTasks = sections.map(async (section) => {
+  //     // 1. Create a safe copy of the section
+  //     // We parse/stringify to ensure we aren't mutating a frozen Mongoose object
+  //     const hydratedSection = JSON.parse(JSON.stringify(section));
+  //     hydratedSection.data = null;
+
+  //     if (!hydratedSection.isActive) return null;
+
+  //     try {
+  //       // SPECIAL CASE: Auto-detect Navigation/Header sections
+  //       // This runs if type contains 'navbar' OR if you manually set dataSource to 'pages'
+  //       if (hydratedSection.type.includes('navbar') || hydratedSection.dataSource === 'pages') {
+  //          await this.hydrateNavigation(hydratedSection, organizationId);
+  //          return hydratedSection; 
+  //       }
+
+  //       // Standard Hydration
+  //       switch (hydratedSection.dataSource) {
+  //         case 'smart':
+  //           hydratedSection.data = await this.hydrateSmartSection(hydratedSection, organizationId);
+  //           break;
+  //         case 'manual':
+  //           hydratedSection.data = await this.hydrateManualSection(hydratedSection, organizationId);
+  //           break;
+  //         case 'category':
+  //           hydratedSection.data = await this.hydrateCategorySection(hydratedSection, organizationId);
+  //           break;
+  //         case 'dynamic':
+  //           hydratedSection.data = await this.hydrateDynamicSection(hydratedSection, organizationId);
+  //           break;
+  //       }
+  //     } catch (error) {
+  //       // Log the exact error to your server console so you can see it
+  //       console.error(`[Hydration Error] Section ${hydratedSection.type}:`, error.message);
+        
+  //       // Return the section with an error flag, but keep static data (like the logo) intact
+  //       hydratedSection.error = true;
+  //       hydratedSection.errorMessage = error.message;
+  //     }
+
+  //     return hydratedSection;
+  //   });
+
+  //   const results = await Promise.all(hydrationTasks);
+  //   return results.filter(Boolean);
+  // }
 
   /**
    * NEW: Automatically fetch published pages for the menu
@@ -106,29 +200,29 @@ class DataHydrationService {
   // EXISTING METHODS (No Changes Needed Below)
   // ==========================================
 
-  async hydrateSmartSection(section, organizationId) {
-    try {
-      if (section.smartRuleId) {
-        const products = await SmartRuleEngine.executeRule(
-          section.smartRuleId,
-          organizationId,
-          { limit: section.config?.limit || section.config?.itemsPerView }
-        );
-        return this.transformProductsForPublic(products);
-      }
-      if (section.config && section.config.ruleType) {
-        const products = await SmartRuleEngine.executeAdHocRule(
-          section.config,
-          organizationId
-        );
-        return this.transformProductsForPublic(products);
-      }
-      return [];
-    } catch (error) {
-      console.error('Error hydrating smart section:', error);
-      return [];
-    }
-  }
+  // async hydrateSmartSection(section, organizationId) {
+  //   try {
+  //     if (section.smartRuleId) {
+  //       const products = await SmartRuleEngine.executeRule(
+  //         section.smartRuleId,
+  //         organizationId,
+  //         { limit: section.config?.limit || section.config?.itemsPerView }
+  //       );
+  //       return this.transformProductsForPublic(products);
+  //     }
+  //     if (section.config && section.config.ruleType) {
+  //       const products = await SmartRuleEngine.executeAdHocRule(
+  //         section.config,
+  //         organizationId
+  //       );
+  //       return this.transformProductsForPublic(products);
+  //     }
+  //     return [];
+  //   } catch (error) {
+  //     console.error('Error hydrating smart section:', error);
+  //     return [];
+  //   }
+  // }
 
   async hydrateManualSection(section, organizationId) {
     if (!section.manualData?.productIds?.length) return [];
@@ -198,13 +292,13 @@ class DataHydrationService {
       isMain: branch.isMainBranch
     }));
   }
-
-  transformProductsForPublic(products) {
+transformProductsForPublic(products) {
     return products.map(product => ({
       id: product._id,
       name: product.name,
       slug: product.slug,
       images: product.images || [],
+      brand: product.brand, // Added Brand
       price: {
         original: product.sellingPrice,
         discounted: product.discountedPrice,
@@ -216,6 +310,23 @@ class DataHydrationService {
       }
     }));
   }
+  // transformProductsForPublic(products) {
+  //   return products.map(product => ({
+  //     id: product._id,
+  //     name: product.name,
+  //     slug: product.slug,
+  //     images: product.images || [],
+  //     price: {
+  //       original: product.sellingPrice,
+  //       discounted: product.discountedPrice,
+  //       currency: 'USD',
+  //       hasDiscount: !!(product.discountedPrice && product.discountedPrice < product.sellingPrice)
+  //     },
+  //     stock: {
+  //       available: product.inventory?.some(inv => inv.quantity > 0) || false
+  //     }
+  //   }));
+  // }
 }
 
 module.exports = new DataHydrationService();
