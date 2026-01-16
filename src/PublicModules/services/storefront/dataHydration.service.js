@@ -67,44 +67,29 @@ class DataHydrationService {
   //     return [];
   //   }
   // }
-  /**
-   * Hydrate smart section with rule-based data
-   */
   async hydrateSmartSection(section, organizationId) {
     try {
-      // CASE 1: Linked to a saved Smart Rule (Database ID)
+      // CASE 1: Saved Rule (Reference to SmartRule collection)
       if (section.smartRuleId) {
         const products = await SmartRuleEngine.executeRule(
           section.smartRuleId,
           organizationId,
-          { limit: section.config?.limit }
+          { limit: section.config?.limit || section.config?.itemsPerView }
         );
         return this.transformProductsForPublic(products);
       }
 
-      // CASE 2: Config-based Rule (Virtual/Implicit Rule)
-      // ✅ This fixes your issue!
+      // CASE 2: Ad-Hoc Rule (Defined directly in section config)
+      // This matches your JSON structure: { config: { ruleType: "best_sellers", ... } }
       if (section.config && section.config.ruleType) {
-        
-        // Construct a virtual rule object from config
-        const virtualRule = {
-          ruleType: section.config.ruleType, // e.g., 'clearance_sale'
-          filters: [], // Add default filters if needed
-          sortBy: 'createdAt',
-          sortOrder: 'desc'
-        };
-
-        // Use previewRule because it accepts raw object data instead of an ID
-        const limit = parseInt(section.config.limit) || 8;
-        const result = await SmartRuleEngine.previewRule(virtualRule, organizationId, limit);
-        
-        // previewRule returns { preview: [...products], ... }
-        return this.transformProductsForPublic(result.preview || []);
+        const products = await SmartRuleEngine.executeAdHocRule(
+          section.config,
+          organizationId
+        );
+        return this.transformProductsForPublic(products);
       }
 
-      // Default: No rule found
       return [];
-
     } catch (error) {
       console.error('Error hydrating smart section:', error);
       return [];
