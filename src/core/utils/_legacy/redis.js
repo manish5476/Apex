@@ -1,4 +1,5 @@
-// src/config/redis.js - Unified Redis Configuration
+
+// src\core\utils\_legacy\redis.js
 const Redis = require("ioredis");
 
 // Singleton Redis instance
