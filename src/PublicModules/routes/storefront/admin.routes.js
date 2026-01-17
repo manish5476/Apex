@@ -7,6 +7,10 @@ const storefrontAdminController = require('../../controllers/storefront/storefro
 // All routes require authentication
 router.use(auth.protect);
 
+router.route('/layout')
+  .get(storefrontAdminController.getLayout)
+  .put(storefrontAdminController.updateLayout);
+  
 // Page management
 router.route('/pages')
   .get(storefrontAdminController.getPages)

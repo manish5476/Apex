@@ -12,23 +12,7 @@ const sectionSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Section type is required'],
     trim: true,
-    enum: [
-      'hero_banner',
-      'feature_grid',
-      'product_slider',
-      'category_grid',
-      'text_content',
-      'testimonial_slider',
-      'contact_form',
-      'map_locations',
-      'blog_feed',
-      'image_gallery',
-      'video_section',
-      'cta_banner',
-      'social_proof',
-      'pricing_table',
-      'faq_section',
-      'product_grid'  // NEW: For product listing pages
+    enum: ['hero_banner', 'feature_grid', 'product_slider', 'category_grid', 'text_content', 'testimonial_slider', 'contact_form', 'map_locations', 'blog_feed', 'image_gallery', 'video_section', 'cta_banner', 'social_proof', 'pricing_table', 'faq_section', 'product_grid'
     ]
   },
   position: {
@@ -75,7 +59,7 @@ const pageSchema = new mongoose.Schema({
     required: [true, 'Organization ID is required'],
     index: true
   },
-  
+
   // Page identity
   name: {
     type: String,
@@ -96,10 +80,10 @@ const pageSchema = new mongoose.Schema({
     enum: ['home', 'products', 'product_detail', 'category', 'blog', 'about', 'contact', 'custom'],
     default: 'custom'
   },
-  
+
   // Content structure
   sections: [sectionSchema],
-  
+
   // SEO & Metadata
   seo: {
     title: {
@@ -129,7 +113,7 @@ const pageSchema = new mongoose.Schema({
       default: false
     }
   },
-  
+
   // Theme & Design
   theme: {
     primaryColor: {
@@ -157,7 +141,7 @@ const pageSchema = new mongoose.Schema({
       default: 'standard'
     }
   },
-  
+
   // Settings
   isPublished: {
     type: Boolean,
@@ -171,7 +155,7 @@ const pageSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  
+
   // Versioning
   version: {
     type: Number,
@@ -181,7 +165,7 @@ const pageSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'StorefrontPage'
   },
-  
+
   // Analytics
   viewCount: {
     type: Number,
@@ -190,7 +174,7 @@ const pageSchema = new mongoose.Schema({
   lastViewedAt: {
     type: Date
   },
-  
+
   // Status
   status: {
     type: String,
@@ -205,7 +189,7 @@ const pageSchema = new mongoose.Schema({
 });
 
 // Virtual for full URL
-pageSchema.virtual('fullUrl').get(function() {
+pageSchema.virtual('fullUrl').get(function () {
   const org = this.organizationId;
   return `${process.env.BASE_URL || ''}/store/${org.uniqueShopId || org._id}/${this.slug}`;
 });
@@ -218,11 +202,11 @@ pageSchema.index({ organizationId: 1, status: 1 });
 pageSchema.index({ organizationId: 1, isPublished: 1, slug: 1 });
 
 // Middleware to ensure only one homepage per organization
-pageSchema.pre('save', async function(next) {
+pageSchema.pre('save', async function (next) {
   if (this.isHomepage && this.isModified('isHomepage')) {
     try {
       await this.constructor.updateMany(
-        { 
+        {
           organizationId: this.organizationId,
           _id: { $ne: this._id }
         },
@@ -232,17 +216,17 @@ pageSchema.pre('save', async function(next) {
       return next(error);
     }
   }
-  
+
   // Auto-generate SEO title if not provided
   if (!this.seo.title && this.name) {
     this.seo.title = `${this.name} - ${this.organizationId.name || 'Store'}`;
   }
-  
+
   // Auto-generate SEO description if not provided
   if (!this.seo.description && this.name) {
     this.seo.description = `Explore ${this.name} at our store. Find the best products and services.`;
   }
-  
+
   next();
 });
 
