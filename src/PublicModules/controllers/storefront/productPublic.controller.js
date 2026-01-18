@@ -498,10 +498,12 @@ class ProductPublicController {
     try { await Product.findByIdAndUpdate(productId, { $inc: { views: 1 } }); } catch (_) {}
   }
 }
-
-
-
 module.exports = new ProductPublicController();
+
+
+
+
+
 
 
 // const Product = require('../../../modules/inventory/core/product.model');

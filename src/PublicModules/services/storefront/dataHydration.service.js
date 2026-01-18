@@ -1,9 +1,8 @@
 const Product = require('../../../modules/inventory/core/product.model');
-// FIX: Point directly to the file to avoid "Module not found" or undefined errors
 const StorefrontPage = require('../../models/storefront/storefrontPage.model'); 
 const Branch = require('../../../modules/organization/core/branch.model');
 const SmartRuleEngine = require('./smartRuleEngine.service');
-
+const Master = require('../../../modules/master/core/master.model'); // Import your new Master model
 class DataHydrationService {
 async hydrateSections(sections, organizationId) {
     if (!sections || sections.length === 0) return [];
@@ -180,14 +179,144 @@ async hydrateSections(sections, organizationId) {
     }
   }
 
-  async hydrateDynamicSection(section, organizationId) {
+  
+  // async hydrateDynamicSection(section, organizationId) {
+  //   switch (section.type) {
+  //     case 'category_grid':
+  //       return await this.getCategories(organizationId);
+  //     case 'map_locations':
+  //       return await this.getBranches(organizationId);
+  //     default:
+  //       return null;
+  //   }
+  // }
+async hydrateDynamicSection(section, organizationId) {
     switch (section.type) {
+      
       case 'category_grid':
-        return await this.getCategories(organizationId);
+        return await this.hydrateCategoryGrid(section, organizationId);
+
       case 'map_locations':
         return await this.getBranches(organizationId);
+      
       default:
         return null;
+    }
+  }
+
+  // async hydrateCategoryGrid(section, organizationId) {
+  //   const config = section.config || {};
+
+  //   // 1. MANUAL MODE: Return user-defined categories directly
+  //   if (config.sourceType === 'manual' && config.categories?.length > 0) {
+  //     return config.categories.map(cat => ({
+  //       name: cat.name,
+  //       image: cat.image,
+  //       // Generate link if not provided: /products?category=CategoryName
+  //       linkUrl: cat.linkUrl || `/products?category=${encodeURIComponent(cat.name)}`, 
+  //       productCount: null // Manual mode usually doesn't show live counts unless we do an extra query
+  //     }));
+  //   }
+
+  //   // 2. DYNAMIC MODE: Aggregate from Products DB
+  //   // This existing logic is good, just ensures images are attached.
+  //   const categories = await Product.aggregate([
+  //     { 
+  //       $match: { 
+  //         organizationId: new mongoose.Types.ObjectId(organizationId), 
+  //         isActive: true, 
+  //         category: { $exists: true, $ne: '' } 
+  //       } 
+  //     },
+  //     { $sort: { createdAt: -1 } }, // Newest products first for image selection
+  //     { 
+  //       $group: { 
+  //         _id: '$category', 
+  //         productCount: { $sum: 1 }, 
+  //         image: { $first: '$images' } // Pick 1st image of newest product
+  //       } 
+  //     },
+  //     { 
+  //       $project: { 
+  //         name: '$_id', 
+  //         // Link logic handled here or frontend. 
+  //         // Backend generating standard URL path is safer:
+  //         linkUrl: { $concat: ["/products?category=", "$_id"] }, 
+  //         productCount: 1, 
+  //         image: { $arrayElemAt: ['$image', 0] } 
+  //       } 
+  //     },
+  //     { $sort: { productCount: -1 } }
+  //   ]);
+    
+  //   return categories;
+  // }
+  async hydrateCategoryGrid(section, organizationId) {
+    const config = section.config || {};
+    const sourceType = config.sourceType || 'dynamic'; // Default to dynamic
+
+    // =================================================
+    // CASE 1: MANUAL (Static)
+    // User manually typed names and uploaded images in Admin Panel
+    // =================================================
+    if (sourceType === 'manual') {
+      if (!config.categories || config.categories.length === 0) return [];
+      
+      return config.categories.map(cat => ({
+        id: 'manual_' + Math.random().toString(36).substr(2, 9),
+        name: cat.name,
+        image: cat.image || 'assets/placeholder-category.jpg',
+        // Manual links default to search query if no specific URL provided
+        linkUrl: cat.linkUrl || `/products?category=${encodeURIComponent(cat.name)}`, 
+        productCount: null
+      }));
+    }
+
+    // =================================================
+    // CASE 2: DYNAMIC (From Master DB)
+    // Fetches real categories created in Inventory
+    // =================================================
+    else {
+      // 1. Build Query for Master Table
+      const query = {
+        organizationId: mongoose.Types.ObjectId(organizationId),
+        type: 'category', // Ensure we only get categories
+        isActive: true
+      };
+
+      // Optional: Filter by specific IDs if user selected "Specific Categories" in Dynamic mode
+      if (config.selectedCategories && config.selectedCategories.length > 0) {
+        query._id = { $in: config.selectedCategories.map(id => mongoose.Types.ObjectId(id)) };
+      }
+
+      // 2. Fetch Masters
+      const masters = await Master.find(query)
+        .sort({ 'metadata.sortOrder': 1, createdAt: -1 }) // Respect sort order
+        .limit(config.limit || 12)
+        .lean();
+
+      // 3. (Optional) Get Product Counts if UI requires it
+      // We do a parallel aggregation to count active products per category
+      let countsMap = {};
+      if (config.showProductCount) {
+        const counts = await Product.aggregate([
+          { $match: { organizationId: mongoose.Types.ObjectId(organizationId), isActive: true } },
+          { $group: { _id: '$categoryId', count: { $sum: 1 } } }
+        ]);
+        // Convert array to object for O(1) lookup: { "catId": 50, "catId2": 10 }
+        countsMap = counts.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {});
+      }
+
+      // 4. Map to Frontend Structure
+      return masters.map(master => ({
+        id: master._id,
+        name: master.name,
+        // Use Master image -> Fallback to Product Image (if you added logic) -> Default
+        image: master.imageUrl || 'assets/placeholder-category.jpg', 
+        // Use the SEO slug for the link
+        linkUrl: `/products?category=${master.slug || master._id}`, 
+        productCount: countsMap[master._id] || 0
+      }));
     }
   }
 
