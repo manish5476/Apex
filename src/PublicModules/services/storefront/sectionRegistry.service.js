@@ -515,8 +515,14 @@ class SectionRegistry {
         allowedConfig: {
           ...this.commonConfig,
           title: { type: 'string', default: 'Limited Time Offer' },
-          targetDate: { type: 'string', required: true }, // ISO Date string
-          timerStyle: { type: 'string', enum: ['blocks', 'minimal'], default: 'blocks' },
+          targetDate: { 
+          type: 'string',            // ✅ Keep this as 'string' for JSON validation
+          inputType: 'datetime-local', // ✅ New property specifically for the UI
+          required: true 
+      },
+timerStyle: { type: 'string', enum: ['blocks', 'minimal'], default: 'blocks' },
+          // targetDate: { type: 'string', required: true }, // ISO Date string
+          // timerStyle: { type: 'string', enum: ['blocks', 'minimal'], default: 'blocks' },
           ctaText: { type: 'string' },
           ctaUrl: { type: 'string' }
         },
