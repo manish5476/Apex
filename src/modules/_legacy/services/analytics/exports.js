@@ -8,17 +8,8 @@ const toObjectId = (id) => (id ? new mongoose.Types.ObjectId(id) : null);
 // 1. SALES EXPORT (Invoice-level snapshot)
 // --------------------------------------------------
 const getSalesExportRows = async ({ orgId, startDate, endDate }) => {
-    const match = {
-        organizationId: toObjectId(orgId),
-        invoiceDate: { $gte: new Date(startDate), $lte: new Date(endDate) },
-        isDeleted: { $ne: true }
-    };
-
-    const invoices = await Invoice.find(match)
-        .populate('customerId', 'name')
-        .populate('branchId', 'name')
-        .lean();
-
+    const match = { organizationId: toObjectId(orgId), invoiceDate: { $gte: new Date(startDate), $lte: new Date(endDate) }, isDeleted: { $ne: true } };
+    const invoices = await Invoice.find(match).populate('customerId', 'name').populate('branchId', 'name').lean();
     return invoices.map(inv => ({
         Date: inv.invoiceDate ? inv.invoiceDate.toISOString().split('T')[0] : '',
         InvoiceNo: inv.invoiceNumber,
@@ -144,11 +135,7 @@ exports.getExportData = async ({ orgId, type, startDate, endDate }) => {
 
     if (t === 'tax') {
         const rows = await getTaxExportRows({ orgId, startDate, endDate });
-        return {
-            type: 'tax',
-            period: { startDate, endDate },
-            rows
-        };
+        return { type: 'tax', period: { startDate, endDate }, rows };
     }
 
     throw new Error(`Unsupported export type: ${type}`);

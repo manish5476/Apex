@@ -285,36 +285,15 @@ exports.getInventoryHealth = catchAsync(async (req, res, next) => {
     const startTime = performance.now();
     const { branchId } = req.query;
     const orgId = req.user.organizationId;
-
-    const [
-        analytics,
-        performance,
-        deadStock,
-        predictions,
-        categoryAnalysis,
-        supplierPerformance,
-        stockTurnover,
-    ] = await Promise.all([
-        // Basic inventory analytics
+    const [analytics, performance, deadStock, predictions, categoryAnalysis, supplierPerformance, stockTurnover,] = await Promise.all([
         analyticsService.getInventoryAnalytics(orgId, branchId),
-
-        // Product performance
         analyticsService.getProductPerformanceStats(orgId, branchId),
-
         // Dead stock analysis
         analyticsService.getDeadStockAnalysis(orgId, branchId, 90),
-
         // Stock-out predictions
         analyticsService.getInventoryRunRate(orgId, branchId),
-
         // Category analysis
-        analyticsService.getCategoryAnalytics(
-            orgId,
-            branchId,
-            new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-            new Date(),
-        ),
-
+        analyticsService.getCategoryAnalytics(orgId, branchId, new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), new Date()),
         // Supplier performance
         analyticsService.getSupplierPerformance(
             orgId,
@@ -350,10 +329,10 @@ exports.getInventoryHealth = catchAsync(async (req, res, next) => {
                     healthScore >= 80
                         ? "Excellent"
                         : healthScore >= 60
-                        ? "Good"
-                        : healthScore >= 40
-                        ? "Fair"
-                        : "Poor",
+                            ? "Good"
+                            : healthScore >= 40
+                                ? "Fair"
+                                : "Poor",
             },
             alerts: {
                 lowStock: analytics.lowStockAlerts.length,
@@ -536,7 +515,7 @@ exports.getRealTimeMonitoring = catchAsync(async (req, res, next) => {
         analyticsService.getCustomerRiskStats(orgId, branchId),
 
         // Security pulse
-        analyticsService.getSecurityPulse(orgId, 
+        analyticsService.getSecurityPulse(orgId,
             new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             new Date().toISOString().split('T')[0]
         ),
@@ -695,7 +674,7 @@ exports.customAnalyticsQuery = catchAsync(async (req, res, next) => {
 
     // Format response based on requested format
     if (format === "csv") {
-        const csvData = analyticsService.convertToCSV(result.data, 
+        const csvData = analyticsService.convertToCSV(result.data,
             analyticsService.getExportConfig('sales')
         );
 
@@ -1042,7 +1021,7 @@ exports.getRedisStatus = catchAsync(async (req, res, next) => {
         data: {
             redisEnabled: REDIS_ENABLED,
             redisAvailable: isRedisAvailable(),
-            message: REDIS_ENABLED ? 
+            message: REDIS_ENABLED ?
                 (isRedisAvailable() ? 'Redis is connected and ready' : 'Redis is enabled but not connected') :
                 'Redis is disabled via configuration'
         }
@@ -2520,32 +2499,32 @@ module.exports = exports;
 // // Add these to your routes file:
 // /*
 // router.get(
-//     '/staff-attendance-performance', 
-//     checkPermission(PERMISSIONS.ANALYTICS.VIEW_STAFF_PERFORMANCE), 
+//     '/staff-attendance-performance',
+//     checkPermission(PERMISSIONS.ANALYTICS.VIEW_STAFF_PERFORMANCE),
 //     analyticsController.getStaffAttendancePerformance
 // );
 
 // router.get(
-//     '/category-performance', 
-//     checkPermission(PERMISSIONS.ANALYTICS.VIEW_PRODUCT_PERFORMANCE), 
+//     '/category-performance',
+//     checkPermission(PERMISSIONS.ANALYTICS.VIEW_PRODUCT_PERFORMANCE),
 //     analyticsController.getCategoryAnalytics
 // );
 
 // router.get(
-//     '/supplier-performance', 
-//     checkPermission(PERMISSIONS.ANALYTICS.VIEW_PROCUREMENT), 
+//     '/supplier-performance',
+//     checkPermission(PERMISSIONS.ANALYTICS.VIEW_PROCUREMENT),
 //     analyticsController.getSupplierPerformance
 // );
 
 // router.get(
-//     '/emi-analytics', 
-//     checkPermission(PERMISSIONS.ANALYTICS.VIEW_FINANCIAL), 
+//     '/emi-analytics',
+//     checkPermission(PERMISSIONS.ANALYTICS.VIEW_FINANCIAL),
 //     analyticsController.getEMIAnalytics
 // );
 
 // router.get(
-//     '/time-analytics', 
-//     checkPermission(PERMISSIONS.ANALYTICS.VIEW_OPERATIONAL), 
+//     '/time-analytics',
+//     checkPermission(PERMISSIONS.ANALYTICS.VIEW_OPERATIONAL),
 //     analyticsController.getTimeBasedAnalytics
 // );
 // */

@@ -1,8 +1,3 @@
-
-const Invoice = require('../../accounting/billing/invoice.model');
-const Product = require('../../inventory/core/product.model');
-const Customer = require('../../organization/core/customer.model');
-const Payment = require('../../accounting/payments/payment.model');
 // const Review = require('../models/ReviewModel'); // Not used, removed
 const fs = require('fs').promises; // For async file operations
 const path = require('path');

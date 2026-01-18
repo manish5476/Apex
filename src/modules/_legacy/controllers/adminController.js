@@ -1,8 +1,5 @@
 // src/controllers/adminController.js
 const Invoice = require("../../accounting/billing/invoice.model");
-const Customer = require("../../organization/core/customer.model");
-const Product = require("../../inventory/core/product.model");
-const Branch = require("../../organization/core/branch.model"); 
 const { getSummary, getMonthlyTrends, getOutstandingList } = require("../services/adminService");
 const { logAudit } = require("../../../core/utils/auditLogger");
 const catchAsync = require("../../../core/utils/catchAsync"); // ✅ Standard Import
