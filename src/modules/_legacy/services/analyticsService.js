@@ -1595,58 +1595,58 @@ exports.analyzePaymentHabits = async (orgId, branchId) => {
     }
 };
 
-exports.getExportData = async (orgId, type, startDate, endDate, columns = null) => {
-    try {
-        if (!orgId) throw new Error('Organization ID is required');
+// exports.getExportData = async (orgId, type, startDate, endDate, columns = null) => {
+//     try {
+//         if (!orgId) throw new Error('Organization ID is required');
 
-        const match = { 
-            organizationId: toObjectId(orgId),
-            invoiceDate: { $gte: new Date(startDate), $lte: new Date(endDate) }
-        };
+//         const match = { 
+//             organizationId: toObjectId(orgId),
+//             invoiceDate: { $gte: new Date(startDate), $lte: new Date(endDate) }
+//         };
 
-        if (type === 'sales') {
-            const invoices = await Invoice.find(match)
-                .select('invoiceNumber invoiceDate grandTotal paymentStatus customerId branchId')
-                .populate('customerId', 'name')
-                .populate('branchId', 'name')
-                .lean();
+//         if (type === 'sales') {
+//             const invoices = await Invoice.find(match)
+//                 .select('invoiceNumber invoiceDate grandTotal paymentStatus customerId branchId')
+//                 .populate('customerId', 'name')
+//                 .populate('branchId', 'name')
+//                 .lean();
 
-            return invoices.map(inv => ({
-                invoiceNumber: inv.invoiceNumber,
-                date: inv.invoiceDate ? inv.invoiceDate.toISOString().split('T')[0] : '',
-                customerName: inv.customerId?.name || 'Walk-in',
-                branch: inv.branchId?.name || 'Main',
-                amount: inv.grandTotal,
-                status: inv.paymentStatus
-            }));
-        }
+//             return invoices.map(inv => ({
+//                 invoiceNumber: inv.invoiceNumber,
+//                 date: inv.invoiceDate ? inv.invoiceDate.toISOString().split('T')[0] : '',
+//                 customerName: inv.customerId?.name || 'Walk-in',
+//                 branch: inv.branchId?.name || 'Main',
+//                 amount: inv.grandTotal,
+//                 status: inv.paymentStatus
+//             }));
+//         }
 
-        if (type === 'inventory') {
-            const products = await Product.find({ organizationId: toObjectId(orgId) }).lean();
-            let rows = [];
-            products.forEach(p => {
-                if (p.inventory?.length > 0) {
-                    p.inventory.forEach(inv => {
-                        rows.push({
-                            name: p.name,
-                            sku: p.sku,
-                            stock: inv.quantity,
-                            value: inv.quantity * p.purchasePrice,
-                            reorderLevel: inv.reorderLevel
-                        });
-                    });
-                } else {
-                    rows.push({ name: p.name, sku: p.sku, stock: 0, value: 0, reorderLevel: 0 });
-                }
-            });
-            return rows;
-        }
-        return [];
-    } catch (error) {
-        console.error('Error in getExportData:', error);
-        throw new Error(`Failed to get export data: ${error.message}`);
-    }
-};
+//         if (type === 'inventory') {
+//             const products = await Product.find({ organizationId: toObjectId(orgId) }).lean();
+//             let rows = [];
+//             products.forEach(p => {
+//                 if (p.inventory?.length > 0) {
+//                     p.inventory.forEach(inv => {
+//                         rows.push({
+//                             name: p.name,
+//                             sku: p.sku,
+//                             stock: inv.quantity,
+//                             value: inv.quantity * p.purchasePrice,
+//                             reorderLevel: inv.reorderLevel
+//                         });
+//                     });
+//                 } else {
+//                     rows.push({ name: p.name, sku: p.sku, stock: 0, value: 0, reorderLevel: 0 });
+//                 }
+//             });
+//             return rows;
+//         }
+//         return [];
+//     } catch (error) {
+//         console.error('Error in getExportData:', error);
+//         throw new Error(`Failed to get export data: ${error.message}`);
+//     }
+// };
 
 exports.generateForecast = async (orgId, branchId) => {
     try {
@@ -2029,86 +2029,86 @@ exports.calculateInventoryTurnover = async (orgId, branchId) => {
 };
 
 // Get export configuration
-exports.getExportConfig = (type, requestedColumns = 'all') => {
-    try {
-        const configs = {
-            sales: {
-                defaultColumns: ['invoiceNumber', 'date', 'customerName', 'amount', 'status', 'branch'],
-                columnLabels: {
-                    invoiceNumber: 'Invoice #',
-                    date: 'Date',
-                    customerName: 'Customer',
-                    amount: 'Amount',
-                    status: 'Status',
-                    branch: 'Branch'
-                }
-            },
-            inventory: {
-                defaultColumns: ['name', 'sku', 'stock', 'value', 'reorderLevel', 'category'],
-                columnLabels: {
-                    name: 'Product Name',
-                    sku: 'SKU',
-                    stock: 'Current Stock',
-                    value: 'Inventory Value',
-                    reorderLevel: 'Reorder Level',
-                    category: 'Category'
-                }
-            },
-            customers: {
-                defaultColumns: ['name', 'email', 'totalSpent', 'lastPurchase', 'segment', 'ltv'],
-                columnLabels: {
-                    name: 'Customer Name',
-                    email: 'Email',
-                    totalSpent: 'Total Spent',
-                    lastPurchase: 'Last Purchase',
-                    segment: 'Segment',
-                    ltv: 'Lifetime Value'
-                }
-            }
-        };
+// exports.getExportConfig = (type, requestedColumns = 'all') => {
+//     try {
+//         const configs = {
+//             sales: {
+//                 defaultColumns: ['invoiceNumber', 'date', 'customerName', 'amount', 'status', 'branch'],
+//                 columnLabels: {
+//                     invoiceNumber: 'Invoice #',
+//                     date: 'Date',
+//                     customerName: 'Customer',
+//                     amount: 'Amount',
+//                     status: 'Status',
+//                     branch: 'Branch'
+//                 }
+//             },
+//             inventory: {
+//                 defaultColumns: ['name', 'sku', 'stock', 'value', 'reorderLevel', 'category'],
+//                 columnLabels: {
+//                     name: 'Product Name',
+//                     sku: 'SKU',
+//                     stock: 'Current Stock',
+//                     value: 'Inventory Value',
+//                     reorderLevel: 'Reorder Level',
+//                     category: 'Category'
+//                 }
+//             },
+//             customers: {
+//                 defaultColumns: ['name', 'email', 'totalSpent', 'lastPurchase', 'segment', 'ltv'],
+//                 columnLabels: {
+//                     name: 'Customer Name',
+//                     email: 'Email',
+//                     totalSpent: 'Total Spent',
+//                     lastPurchase: 'Last Purchase',
+//                     segment: 'Segment',
+//                     ltv: 'Lifetime Value'
+//                 }
+//             }
+//         };
 
-        const config = configs[type] || configs.sales;
+//         const config = configs[type] || configs.sales;
 
-        // Filter columns if requested
-        if (requestedColumns !== 'all') {
-            const columns = requestedColumns.split(',');
-            config.defaultColumns = config.defaultColumns.filter(col => 
-                columns.includes(col)
-            );
-        }
+//         // Filter columns if requested
+//         if (requestedColumns !== 'all') {
+//             const columns = requestedColumns.split(',');
+//             config.defaultColumns = config.defaultColumns.filter(col => 
+//                 columns.includes(col)
+//             );
+//         }
 
-        return config;
-    } catch (error) {
-        console.error('Error in getExportConfig:', error);
-        return {
-            defaultColumns: [],
-            columnLabels: {}
-        };
-    }
-};
+//         return config;
+//     } catch (error) {
+//         console.error('Error in getExportConfig:', error);
+//         return {
+//             defaultColumns: [],
+//             columnLabels: {}
+//         };
+//     }
+// };
 
-// Convert data to CSV
-exports.convertToCSV = (data, config) => {
-    try {
-        if (!data || data.length === 0) return '';
+// // Convert data to CSV
+// exports.convertToCSV = (data, config) => {
+//     try {
+//         if (!data || data.length === 0) return '';
 
-        const headers = config.defaultColumns.map(col => 
-            config.columnLabels[col] || col
-        );
+//         const headers = config.defaultColumns.map(col => 
+//             config.columnLabels[col] || col
+//         );
 
-        const rows = data.map(item => {
-            return config.defaultColumns.map(col => {
-                let value = item[col] || '';
-                return `"${String(value).replace(/"/g, '""')}"`;
-            }).join(',');
-        });
+//         const rows = data.map(item => {
+//             return config.defaultColumns.map(col => {
+//                 let value = item[col] || '';
+//                 return `"${String(value).replace(/"/g, '""')}"`;
+//             }).join(',');
+//         });
 
-        return [headers.join(','), ...rows].join('\n');
-    } catch (error) {
-        console.error('Error in convertToCSV:', error);
-        return '';
-    }
-};
+//         return [headers.join(','), ...rows].join('\n');
+//     } catch (error) {
+//         console.error('Error in convertToCSV:', error);
+//         return '';
+//     }
+// };
 
 // Generate advanced forecast
 exports.generateAdvancedForecast = async (orgId, branchId, periods = 3, confidence = 0.95) => {
@@ -3184,6 +3184,138 @@ exports.getEnhancedCustomerLTV = async (orgId, branchId) => {
         console.error('Error in getEnhancedCustomerLTV:', error);
         throw new Error(`Failed to fetch enhanced customer LTV: ${error.message}`);
     }
+};
+const mongoose = require('mongoose');
+const Sales = require('../models/salesModel');
+const Product = require('../models/productModel'); // Assuming path
+const Customer = require('../models/customerModel'); // Assuming path
+
+/**
+ * Fetch data based on type and date range
+ */
+exports.getExportData = async (orgId, type, startDate, endDate) => {
+    const query = { organizationId: orgId };
+
+    // Apply Date Filters if provided
+    if (startDate || endDate) {
+        const dateFilter = {};
+        if (startDate) dateFilter.$gte = new Date(startDate);
+        if (endDate) dateFilter.$lte = new Date(endDate);
+        
+        // Use 'createdAt' for Sales/Customers, 'updatedAt' for Inventory
+        const dateField = type === 'inventory' ? 'updatedAt' : 'createdAt';
+        query[dateField] = dateFilter;
+    }
+
+    switch (type) {
+        case 'sales':
+            return await Sales.find(query)
+                .populate('customerId', 'name email phone') // Populate customer details
+                .populate('items.productId', 'name sku')    // Populate product details in items
+                .sort({ createdAt: -1 })
+                .lean(); // Use lean() for better performance
+
+        case 'inventory':
+            // Fetch active products
+            query.isActive = true;
+            return await Product.find(query)
+                .populate('categoryId', 'name')
+                .populate('brandId', 'name')
+                .populate('departmentId', 'name')
+                .sort({ name: 1 })
+                .lean();
+
+        case 'customers':
+            return await Customer.find(query)
+                .sort({ name: 1 })
+                .lean();
+
+        default:
+            throw new Error('Invalid export type');
+    }
+};
+
+/**
+ * Define columns and data mapping for each export type
+ */
+exports.getExportConfig = (type) => {
+    const configs = {
+        sales: [
+            { header: 'Date', key: 'createdAt', format: 'date' },
+            { header: 'Invoice No', key: 'invoiceNumber' },
+            { header: 'Customer Name', key: 'customerId.name', default: 'Walk-in' },
+            { header: 'Status', key: 'status' },
+            { header: 'Payment Status', key: 'paymentStatus' },
+            { header: 'Items Count', key: 'items', transform: (items) => items ? items.length : 0 },
+            { header: 'Sub Total', key: 'subTotal', format: 'currency' },
+            { header: 'Tax', key: 'taxTotal', format: 'currency' },
+            { header: 'Total Amount', key: 'totalAmount', format: 'currency' }
+        ],
+        inventory: [
+            { header: 'Product Name', key: 'name' },
+            { header: 'SKU', key: 'sku' },
+            { header: 'Category', key: 'categoryId.name', default: '-' },
+            { header: 'Brand', key: 'brandId.name', default: '-' },
+            { header: 'Selling Price', key: 'sellingPrice', format: 'currency' },
+            { header: 'Total Stock', key: 'inventory', transform: (inv) => inv ? inv.reduce((sum, i) => sum + i.quantity, 0) : 0 },
+            { header: 'Last Sold', key: 'lastSold', format: 'date' }
+        ],
+        customers: [
+            { header: 'Name', key: 'name' },
+            { header: 'Phone', key: 'phone' },
+            { header: 'Email', key: 'email', default: '-' },
+            { header: 'Type', key: 'type' },
+            { header: 'Total Purchases', key: 'totalPurchases', format: 'currency' },
+            { header: 'Outstanding Balance', key: 'outstandingBalance', format: 'currency' },
+            { header: 'Last Purchase', key: 'lastPurchaseDate', format: 'date' }
+        ]
+    };
+
+    return configs[type] || [];
+};
+
+/**
+ * Convert JSON data to CSV string
+ */
+exports.convertToCSV = (data, config) => {
+    if (!data || !data.length) {
+        return '';
+    }
+
+    // 1. Create Header Row
+    const headers = config.map(c => `"${c.header}"`).join(',');
+    
+    // 2. Create Data Rows
+    const rows = data.map(row => {
+        return config.map(col => {
+            let val = getNestedValue(row, col.key);
+
+            // Apply specific transformations if defined in config
+            if (col.transform) {
+                val = col.transform(val);
+            }
+            
+            // Handle specific formats
+            if (val === undefined || val === null) {
+                val = col.default || '';
+            } else if (col.format === 'date') {
+                val = new Date(val).toISOString().split('T')[0]; // YYYY-MM-DD
+            } else if (col.format === 'currency') {
+                val = Number(val).toFixed(2);
+            }
+
+            // Escape quotes and wrap in quotes to handle commas in data
+            const stringVal = String(val).replace(/"/g, '""'); 
+            return `"${stringVal}"`;
+        }).join(',');
+    });
+
+    return [headers, ...rows].join('\n');
+};
+
+// Helper to access nested properties (e.g., "customerId.name")
+const getNestedValue = (obj, path) => {
+    return path.split('.').reduce((o, key) => (o && o[key] !== undefined) ? o[key] : null, obj);
 };
 
 module.exports = exports;
