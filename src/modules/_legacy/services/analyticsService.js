@@ -3185,43 +3185,48 @@ exports.getEnhancedCustomerLTV = async (orgId, branchId) => {
         throw new Error(`Failed to fetch enhanced customer LTV: ${error.message}`);
     }
 };
-const mongoose = require('mongoose');
-const Sales = require('../models/salesModel');
-const Product = require('../models/productModel'); // Assuming path
-const Customer = require('../models/customerModel'); // Assuming path
+
+// Helper to safely access nested properties (e.g., "customerId.name")
+const getNestedValue = (obj, path) => {
+    return path.split('.').reduce((o, key) => (o && o[key] !== undefined) ? o[key] : null, obj);
+};
 
 /**
- * Fetch data based on type and date range
+ * 1. Fetch Data
+ * Gets raw data from MongoDB based on the export type and date range
  */
 exports.getExportData = async (orgId, type, startDate, endDate) => {
     const query = { organizationId: orgId };
 
-    // Apply Date Filters if provided
+    // Apply Date Filters
     if (startDate || endDate) {
         const dateFilter = {};
         if (startDate) dateFilter.$gte = new Date(startDate);
         if (endDate) dateFilter.$lte = new Date(endDate);
         
-        // Use 'createdAt' for Sales/Customers, 'updatedAt' for Inventory
+        // Use 'updatedAt' for inventory (to see stock movement) or remove date filter for current stock
+        // For Sales/Customers we use createdAt
         const dateField = type === 'inventory' ? 'updatedAt' : 'createdAt';
-        query[dateField] = dateFilter;
+        
+        // Note: Usually inventory export is "Current State", so we might skip date filter for it
+        if (type !== 'inventory') {
+            query[dateField] = dateFilter;
+        }
     }
 
     switch (type) {
         case 'sales':
             return await Sales.find(query)
-                .populate('customerId', 'name email phone') // Populate customer details
-                .populate('items.productId', 'name sku')    // Populate product details in items
+                .populate('customerId', 'name email phone') 
                 .sort({ createdAt: -1 })
-                .lean(); // Use lean() for better performance
+                .lean();
 
         case 'inventory':
-            // Fetch active products
+            // For inventory, we usually want active products
             query.isActive = true;
             return await Product.find(query)
                 .populate('categoryId', 'name')
                 .populate('brandId', 'name')
-                .populate('departmentId', 'name')
                 .sort({ name: 1 })
                 .lean();
 
@@ -3231,25 +3236,25 @@ exports.getExportData = async (orgId, type, startDate, endDate) => {
                 .lean();
 
         default:
-            throw new Error('Invalid export type');
+            throw new Error('Invalid export type. Must be sales, inventory, or customers.');
     }
 };
 
 /**
- * Define columns and data mapping for each export type
+ * 2. Get Config
+ * Defines the CSV Columns (Headers) and how to map data to them
  */
 exports.getExportConfig = (type) => {
     const configs = {
         sales: [
             { header: 'Date', key: 'createdAt', format: 'date' },
             { header: 'Invoice No', key: 'invoiceNumber' },
-            { header: 'Customer Name', key: 'customerId.name', default: 'Walk-in' },
+            { header: 'Customer', key: 'customerId.name', default: 'Walk-in' },
             { header: 'Status', key: 'status' },
             { header: 'Payment Status', key: 'paymentStatus' },
-            { header: 'Items Count', key: 'items', transform: (items) => items ? items.length : 0 },
-            { header: 'Sub Total', key: 'subTotal', format: 'currency' },
-            { header: 'Tax', key: 'taxTotal', format: 'currency' },
-            { header: 'Total Amount', key: 'totalAmount', format: 'currency' }
+            { header: 'Total Amount', key: 'totalAmount', format: 'currency' },
+            { header: 'Paid Amount', key: 'paidAmount', format: 'currency' },
+            { header: 'Items Count', key: 'items', transform: (items) => items ? items.length : 0 }
         ],
         inventory: [
             { header: 'Product Name', key: 'name' },
@@ -3257,16 +3262,18 @@ exports.getExportConfig = (type) => {
             { header: 'Category', key: 'categoryId.name', default: '-' },
             { header: 'Brand', key: 'brandId.name', default: '-' },
             { header: 'Selling Price', key: 'sellingPrice', format: 'currency' },
+            // Manually calculate stock from inventory array since virtuals don't work in lean()
             { header: 'Total Stock', key: 'inventory', transform: (inv) => inv ? inv.reduce((sum, i) => sum + i.quantity, 0) : 0 },
             { header: 'Last Sold', key: 'lastSold', format: 'date' }
         ],
         customers: [
             { header: 'Name', key: 'name' },
+            { header: 'Type', key: 'type' },
             { header: 'Phone', key: 'phone' },
             { header: 'Email', key: 'email', default: '-' },
-            { header: 'Type', key: 'type' },
-            { header: 'Total Purchases', key: 'totalPurchases', format: 'currency' },
+            { header: 'GSTIN', key: 'gstNumber', default: '-' },
             { header: 'Outstanding Balance', key: 'outstandingBalance', format: 'currency' },
+            { header: 'Total Purchases', key: 'totalPurchases', format: 'currency' },
             { header: 'Last Purchase', key: 'lastPurchaseDate', format: 'date' }
         ]
     };
@@ -3275,47 +3282,50 @@ exports.getExportConfig = (type) => {
 };
 
 /**
- * Convert JSON data to CSV string
+ * 3. Convert to CSV
+ * Transforms the JSON data into a CSV string using the config
  */
 exports.convertToCSV = (data, config) => {
-    if (!data || !data.length) {
-        return '';
-    }
+    if (!data || !data.length) return '';
 
-    // 1. Create Header Row
+    // Create Header Row
     const headers = config.map(c => `"${c.header}"`).join(',');
-    
-    // 2. Create Data Rows
+
+    // Create Data Rows
     const rows = data.map(row => {
         return config.map(col => {
+            // Get raw value (supports nested keys like 'customerId.name')
             let val = getNestedValue(row, col.key);
 
-            // Apply specific transformations if defined in config
+            // Apply transformations (e.g. counting items array)
             if (col.transform) {
                 val = col.transform(val);
             }
-            
-            // Handle specific formats
+
+            // Handle null/undefined
             if (val === undefined || val === null) {
                 val = col.default || '';
-            } else if (col.format === 'date') {
-                val = new Date(val).toISOString().split('T')[0]; // YYYY-MM-DD
-            } else if (col.format === 'currency') {
+            } 
+            // Handle Dates
+            else if (col.format === 'date') {
+                try {
+                    val = new Date(val).toISOString().split('T')[0];
+                } catch (e) { val = ''; }
+            } 
+            // Handle Currency
+            else if (col.format === 'currency') {
                 val = Number(val).toFixed(2);
             }
 
-            // Escape quotes and wrap in quotes to handle commas in data
-            const stringVal = String(val).replace(/"/g, '""'); 
+            // Escape quotes in data to prevent CSV breaking
+            // e.g. 'John "The Rock"' becomes '"John ""The Rock"""'
+            const stringVal = String(val).replace(/"/g, '""');
+            
             return `"${stringVal}"`;
         }).join(',');
     });
 
     return [headers, ...rows].join('\n');
-};
-
-// Helper to access nested properties (e.g., "customerId.name")
-const getNestedValue = (obj, path) => {
-    return path.split('.').reduce((o, key) => (o && o[key] !== undefined) ? o[key] : null, obj);
 };
 
 module.exports = exports;
