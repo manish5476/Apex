@@ -171,7 +171,6 @@ noteSchema.virtual('formattedDate').get(function() {
 });
 
 // Indexes
-noteSchema.index({ title: 'text', content: 'text', 'meetingDetails.agenda': 'text' });
 noteSchema.index({ organizationId: 1, owner: 1, noteType: 1, status: 1 });
 noteSchema.index({ organizationId: 1, dueDate: 1, priority: 1 });
 noteSchema.index({ organizationId: 1, isMeeting: 1, startDate: 1 });
@@ -255,5 +254,22 @@ noteSchema.methods.logActivity = function(action, userId) {
   this.lastAccessed = new Date();
   this.accessCount += 1;
 };
+
+noteSchema.index(
+  {
+    title: "text",
+    content: "text",
+    "meetingDetails.agenda": "text"
+  },
+  {
+    weights: {
+      title: 10,
+      "meetingDetails.agenda": 6,
+      content: 2
+    },
+    name: "NotesTextSearch"
+  }
+);
+
 
 module.exports = mongoose.model('Note', noteSchema);

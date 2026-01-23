@@ -5,6 +5,7 @@ const User = require("../../auth/core/user.model");
 const catchAsync = require("../../../core/utils/catchAsync");
 const AppError = require("../../../core/utils/appError");
 const { emitToUser, emitToOrg } = require("../../../core/utils/_legacy/socket");
+const { uploadImage } = require('../services/uploads/imageUploadService');
 
 // Helper functions
 const startOfDay = (date) => {
@@ -44,20 +45,36 @@ const getEventColor = (noteType, priority) => {
 };
 
 /* ==================== MEDIA UPLOAD ==================== */
-exports.uploadMedia = catchAsync(async (req, res) => {
+
+exports.uploadMedia = catchAsync(async (req, res, next) => {
   if (!req.files || !req.files.length) {
-    return res.status(200).json({ status: "success", data: [] });
+    return next(new AppError('Please upload at least one file.', 400));
   }
 
-  const files = req.files.map((file) => ({
-    url: `/uploads/notes/${file.filename}`,
-    publicId: file.filename,
-    fileType: file.mimetype.startsWith("image/") ? "image" : "file",
-    fileName: file.originalname,
-    size: file.size,
-  }));
+  const uploadedFiles = [];
 
-  res.status(200).json({ status: "success", data: files });
+  for (const file of req.files) {
+    // Only images supported here (as per your service design)
+    if (!file.mimetype.startsWith('image/')) {
+      return next(new AppError('Only image uploads are supported.', 400));
+    }
+
+    const uploaded = await uploadImage(file.buffer, 'notes');
+
+    uploadedFiles.push({
+      url: uploaded.url || uploaded,     // supports service returning string or object
+      publicId: uploaded.publicId || null,
+      fileType: 'image',
+      fileName: file.originalname,
+      size: file.size
+    });
+  }
+
+  res.status(201).json({
+    status: 'success',
+    message: 'Media uploaded successfully',
+    data: uploadedFiles
+  });
 });
 
 /* ==================== CREATE NOTE ==================== */
@@ -333,32 +350,454 @@ exports.deleteNote = catchAsync(async (req, res, next) => {
 
 /* ==================== SEARCH NOTES ==================== */
 exports.searchNotes = catchAsync(async (req, res) => {
-  const query = req.query.q;
+  const query = req.query.q?.trim();
+
   if (!query) {
-    return res.status(200).json({ status: "success", data: [] });
+    return res.status(200).json({
+      status: 'success',
+      data: { notes: [] }
+    });
   }
 
-  const notes = await Note.find({
+  const notes = await Note.find(
+    {
+      $text: { $search: query },
+      organizationId: req.user.organizationId,
+      isDeleted: false,
+      $or: [
+        { owner: req.user._id },
+        { sharedWith: req.user._id },
+        { visibility: 'organization' }
+      ]
+    },
+    {
+      score: { $meta: 'textScore' }
+    }
+  )
+    .sort({
+      score: { $meta: 'textScore' },
+      updatedAt: -1
+    })
+    .populate('owner', 'name email avatar')
+    .lean();
+
+  res.status(200).json({
+    status: 'success',
+    data: { notes }
+  });
+});
+
+/* ==================== GET NOTES FOR MONTH ==================== */
+// exports.getNotesForMonth = catchAsync(async (req, res) => {
+//   const year = parseInt(req.query.year) || new Date().getFullYear();
+//   const month = parseInt(req.query.month) - 1 || new Date().getMonth();
+
+//   const start = new Date(year, month, 1);
+//   const end = new Date(year, month + 1, 1);
+
+//   const stats = await Note.aggregate([
+//     {
+//       $match: {
+//         organizationId: mongoose.Types.ObjectId(req.user.organizationId),
+//         owner: mongoose.Types.ObjectId(req.user._id),
+//         isDeleted: false,
+//         $or: [
+//           { startDate: { $gte: start, $lt: end } },
+//           { dueDate: { $gte: start, $lt: end } },
+//           { createdAt: { $gte: start, $lt: end } },
+//         ],
+//       },
+//     },
+//     {
+//       $group: {
+//         _id: {
+//           $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+//         },
+//         count: { $sum: 1 },
+//         notes: { $push: "$$ROOT._id" },
+//       },
+//     },
+//     {
+//       $project: {
+//         _id: 0,
+//         date: "$_id",
+//         count: 1,
+//         notes: 1,
+//       },
+//     },
+//     { $sort: { date: 1 } },
+//   ]);
+
+//   res.status(200).json({
+//     status: "success",
+//     data: stats,
+//   });
+// });
+
+// /* ==================== HEAT MAP DATA ==================== */
+// exports.getHeatMapData = catchAsync(async (req, res) => {
+//   const { startDate, endDate, userId } = req.query;
+
+//   const targetUserId = userId || req.user._id;
+//   const start = startDate
+//     ? new Date(startDate)
+//     : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+//   const end = endDate ? new Date(endDate) : new Date();
+
+//   const heatMapData = await Note.aggregate([
+//     {
+//       $match: {
+//         owner: mongoose.Types.ObjectId(targetUserId),
+//         isDeleted: false,
+//         createdAt: { $gte: start, $lte: end },
+//       },
+//     },
+//     {
+//       $group: {
+//         _id: {
+//           year: { $year: "$createdAt" },
+//           month: { $month: "$createdAt" },
+//           day: { $dayOfMonth: "$createdAt" },
+//         },
+//         count: { $sum: 1 },
+//       },
+//     },
+//     {
+//       $project: {
+//         _id: 0,
+//         date: {
+//           $dateFromParts: {
+//             year: "$_id.year",
+//             month: "$_id.month",
+//             day: "$_id.day",
+//           },
+//         },
+//         count: 1,
+//       },
+//     },
+//     { $sort: { date: 1 } },
+//   ]);
+
+//   const formattedData = heatMapData.reduce((acc, item) => {
+//     const dateStr = item.date.toISOString().split("T")[0];
+//     acc[dateStr] = {
+//       count: item.count,
+//       intensity: Math.min(item.count / 10, 1),
+//     };
+//     return acc;
+//   }, {});
+
+//   res.status(200).json({
+//     status: "success",
+//     data: {
+//       heatMap: formattedData,
+//       stats: {
+//         totalDays: Object.keys(formattedData).length,
+//         totalNotes: heatMapData.reduce((sum, item) => sum + item.count, 0),
+//         averagePerDay:
+//           heatMapData.length > 0
+//             ? (
+//               heatMapData.reduce((sum, item) => sum + item.count, 0) /
+//               heatMapData.length
+//             ).toFixed(2)
+//             : 0,
+//       },
+//     },
+//   });
+// });
+
+// /* ==================== CALENDAR VIEW ==================== */
+// exports.getCalendarView = catchAsync(async (req, res) => {
+//   const { start, end, view = "month" } = req.query;
+
+//   const startDate = new Date(start || new Date().setDate(1));
+//   const endDate = new Date(
+//     end || new Date().setMonth(new Date().getMonth() + 1),
+//   );
+
+//   const filter = {
+//     organizationId: req.user.organizationId,
+//     isDeleted: false,
+//     $or: [
+//       { owner: req.user._id },
+//       { sharedWith: req.user._id },
+//       { "participants.user": req.user._id },
+//     ],
+//     $or: [
+//       { startDate: { $gte: startDate, $lte: endDate } },
+//       { dueDate: { $gte: startDate, $lte: endDate } },
+//       { createdAt: { $gte: startDate, $lte: endDate } },
+//     ],
+//   };
+
+//   const notes = await Note.find(filter)
+//     .select(
+//       "title noteType startDate dueDate priority status isMeeting participants",
+//     )
+//     .populate("participants.user", "name")
+//     .lean();
+
+//   const calendarEvents = notes.map((note) => ({
+//     id: note._id.toString(),
+//     title: note.title,
+//     start: note.startDate || note.dueDate || note.createdAt,
+//     end:
+//       note.dueDate ||
+//       note.startDate ||
+//       new Date((note.startDate || note.createdAt).getTime() + 60 * 60 * 1000),
+//     allDay: !note.startDate || !note.dueDate,
+//     extendedProps: {
+//       noteType: note.noteType,
+//       priority: note.priority,
+//       status: note.status,
+//       isMeeting: note.isMeeting,
+//       participants: note.participants?.map((p) => p.user?.name).filter(Boolean),
+//     },
+//     color: getEventColor(note.noteType, note.priority),
+//     textColor: "#ffffff",
+//   }));
+
+//   const meetings = await Meeting.find({
+//     organizationId: req.user.organizationId,
+//     startTime: { $gte: startDate, $lte: endDate },
+//     status: { $ne: "cancelled" },
+//     $or: [{ organizer: req.user._id }, { "participants.user": req.user._id }],
+//   })
+//     .select("title startTime endTime status participants")
+//     .populate("participants.user", "name")
+//     .lean();
+
+//   meetings.forEach((meeting) => {
+//     calendarEvents.push({
+//       id: `meeting_${meeting._id}`,
+//       title: `📅 ${meeting.title}`,
+//       start: meeting.startTime,
+//       end: meeting.endTime,
+//       allDay: false,
+//       extendedProps: {
+//         noteType: "meeting",
+//         type: "meeting",
+//         meetingId: meeting._id,
+//         status: meeting.status,
+//         participants: meeting.participants
+//           ?.map((p) => p.user?.name)
+//           .filter(Boolean),
+//       },
+//       color: "#4f46e5",
+//       textColor: "#ffffff",
+//     });
+//   });
+
+//   res.status(200).json({
+//     status: "success",
+//     data: { events: calendarEvents },
+//   });
+// });
+
+/* ==================== CALENDAR VIEW ==================== */
+// Fixes "Calendar not working" by ensuring date parsing is robust
+// exports.getCalendarView = catchAsync(async (req, res) => {
+//   const { start, end, view = "month" } = req.query;
+
+//   // Ensure robust parsing of strings to Date objects
+//   const startDate = start ? new Date(start) : new Date(new Date().setDate(1)); 
+//   const endDate = end ? new Date(end) : new Date(new Date().setMonth(new Date().getMonth() + 1));
+
+//   // Check valid dates
+//   if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+//      return res.status(400).json({ status: 'fail', message: 'Invalid start or end date format' });
+//   }
+
+//   const filter = {
+//     organizationId: req.user.organizationId,
+//     isDeleted: false,
+//     $or: [
+//       { owner: req.user._id },
+//       { sharedWith: req.user._id },
+//       { "participants.user": req.user._id },
+//     ],
+//     // Match any note that falls within or overlaps the range
+//     $or: [
+//       { startDate: { $gte: startDate, $lte: endDate } },
+//       { dueDate: { $gte: startDate, $lte: endDate } },
+//       // Include notes created in this range if they have no other dates
+//       { createdAt: { $gte: startDate, $lte: endDate } },
+//     ],
+//   };
+
+//   const notes = await Note.find(filter)
+//     .select("title noteType startDate dueDate priority status isMeeting participants")
+//     .populate("participants.user", "name")
+//     .lean();
+
+//   const calendarEvents = notes.map((note) => ({
+//     id: note._id.toString(),
+//     title: note.title,
+//     // Prefer startDate, then dueDate, then createdAt
+//     start: note.startDate || note.dueDate || note.createdAt,
+//     end: note.dueDate || note.startDate || new Date((note.startDate || note.createdAt).getTime() + 60 * 60 * 1000),
+//     allDay: !note.startDate || !note.dueDate, // If no explicit dates, treat as all-day/todo
+//     extendedProps: {
+//       noteType: note.noteType,
+//       priority: note.priority,
+//       status: note.status,
+//       isMeeting: note.isMeeting,
+//       participants: note.participants?.map((p) => p.user?.name).filter(Boolean),
+//     },
+//     color: getEventColor(note.noteType, note.priority),
+//     textColor: "#ffffff",
+//   }));
+
+//   // Add Meetings from Meeting Model (if separate)
+//   const meetings = await Meeting.find({
+//     organizationId: req.user.organizationId,
+//     startTime: { $gte: startDate, $lte: endDate },
+//     status: { $ne: "cancelled" },
+//     $or: [{ organizer: req.user._id }, { "participants.user": req.user._id }],
+//   })
+//     .select("title startTime endTime status participants")
+//     .populate("participants.user", "name")
+//     .lean();
+
+//   meetings.forEach((meeting) => {
+//     // Avoid duplicates if meeting is also saved as a note
+//     if (!calendarEvents.find(e => e.extendedProps?.meetingId === meeting._id.toString())) {
+//         calendarEvents.push({
+//           id: `meeting_${meeting._id}`,
+//           title: `📅 ${meeting.title}`,
+//           start: meeting.startTime,
+//           end: meeting.endTime,
+//           allDay: false,
+//           extendedProps: {
+//             noteType: "meeting",
+//             isMeeting: true,
+//             meetingId: meeting._id,
+//             status: meeting.status,
+//             participants: meeting.participants?.map((p) => p.user?.name).filter(Boolean),
+//           },
+//           color: "#4f46e5",
+//           textColor: "#ffffff",
+//         });
+//     }
+//   });
+
+//   res.status(200).json({
+//     status: "success",
+//     data: { events: calendarEvents },
+//   });
+// });
+
+/* ==================== AGGREGATION FIXES ==================== */
+/* FIXED: Added `new` before mongoose.Types.ObjectId()
+   This fixes "Class constructor ObjectId cannot be invoked without 'new'" 
+*/
+/* ==================== CALENDAR VIEW ==================== */
+exports.getCalendarView = catchAsync(async (req, res) => {
+  const { start, end, view = "month" } = req.query;
+
+  // 1. Robust Date Parsing
+  const startDate = start ? new Date(start) : new Date(new Date().setDate(1)); 
+  const endDate = end ? new Date(end) : new Date(new Date().setMonth(new Date().getMonth() + 1));
+
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+     return res.status(400).json({ status: 'fail', message: 'Invalid start or end date format' });
+  }
+
+  const filter = {
     organizationId: req.user.organizationId,
     isDeleted: false,
     $or: [
       { owner: req.user._id },
       { sharedWith: req.user._id },
-      { visibility: "organization" },
+      { "participants.user": req.user._id },
     ],
-    $text: { $search: query },
-  })
-    .sort({ score: { $meta: "textScore" } })
-    .populate("owner", "name email avatar")
+    $or: [
+      { startDate: { $gte: startDate, $lte: endDate } },
+      { dueDate: { $gte: startDate, $lte: endDate } },
+      { createdAt: { $gte: startDate, $lte: endDate } },
+    ],
+  };
+
+  // 2. FIX: Added 'createdAt' to select string
+  const notes = await Note.find(filter)
+    .select("title noteType startDate dueDate priority status isMeeting participants createdAt") 
+    .populate("participants.user", "name")
     .lean();
+
+  const calendarEvents = notes.map((note) => {
+    // 3. Defensive Date Logic
+    // Ensure we have at least ONE valid date object
+    const startObj = note.startDate || note.dueDate || note.createdAt || new Date();
+    
+    // Safety check: ensure it is a real Date object (since .lean() might return strings depending on driver)
+    const start = new Date(startObj);
+    
+    // Default duration: 1 hour if no end date
+    const end = note.dueDate 
+      ? new Date(note.dueDate) 
+      : new Date(start.getTime() + 60 * 60 * 1000);
+
+    return {
+      id: note._id.toString(),
+      title: note.title,
+      start: start,
+      end: end,
+      allDay: !note.startDate && !note.dueDate, 
+      extendedProps: {
+        noteType: note.noteType,
+        priority: note.priority,
+        status: note.status,
+        isMeeting: note.isMeeting,
+        participants: note.participants?.map((p) => p.user?.name).filter(Boolean),
+      },
+      color: getEventColor(note.noteType, note.priority),
+      textColor: "#ffffff",
+    };
+  });
+
+  // 4. Add Meetings
+  const meetings = await Meeting.find({
+    organizationId: req.user.organizationId,
+    startTime: { $gte: startDate, $lte: endDate },
+    status: { $ne: "cancelled" },
+    $or: [{ organizer: req.user._id }, { "participants.user": req.user._id }],
+  })
+    .select("title startTime endTime status participants")
+    .populate("participants.user", "name")
+    .lean();
+
+  meetings.forEach((meeting) => {
+    // Avoid duplicates if meeting is already linked to a note
+    const isDuplicate = calendarEvents.some(
+       e => e.extendedProps?.meetingId === meeting._id.toString()
+    );
+
+    if (!isDuplicate) {
+        calendarEvents.push({
+          id: `meeting_${meeting._id}`,
+          title: `📅 ${meeting.title}`,
+          start: meeting.startTime,
+          end: meeting.endTime,
+          allDay: false,
+          extendedProps: {
+            noteType: "meeting",
+            isMeeting: true,
+            meetingId: meeting._id,
+            status: meeting.status,
+            participants: meeting.participants?.map((p) => p.user?.name).filter(Boolean),
+          },
+          color: "#4f46e5",
+          textColor: "#ffffff",
+        });
+    }
+  });
 
   res.status(200).json({
     status: "success",
-    data: { notes },
+    data: { events: calendarEvents },
   });
 });
 
-/* ==================== GET NOTES FOR MONTH ==================== */
 exports.getNotesForMonth = catchAsync(async (req, res) => {
   const year = parseInt(req.query.year) || new Date().getFullYear();
   const month = parseInt(req.query.month) - 1 || new Date().getMonth();
@@ -369,8 +808,9 @@ exports.getNotesForMonth = catchAsync(async (req, res) => {
   const stats = await Note.aggregate([
     {
       $match: {
-        organizationId: mongoose.Types.ObjectId(req.user.organizationId),
-        owner: mongoose.Types.ObjectId(req.user._id),
+        // FIX: Added 'new'
+        organizationId: new mongoose.Types.ObjectId(req.user.organizationId),
+        owner: new mongoose.Types.ObjectId(req.user._id),
         isDeleted: false,
         $or: [
           { startDate: { $gte: start, $lt: end } },
@@ -382,7 +822,8 @@ exports.getNotesForMonth = catchAsync(async (req, res) => {
     {
       $group: {
         _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+          // Group by the effective date
+          $dateToString: { format: "%Y-%m-%d", date: { $ifNull: ["$startDate", "$createdAt"] } },
         },
         count: { $sum: 1 },
         notes: { $push: "$$ROOT._id" },
@@ -399,26 +840,21 @@ exports.getNotesForMonth = catchAsync(async (req, res) => {
     { $sort: { date: 1 } },
   ]);
 
-  res.status(200).json({
-    status: "success",
-    data: stats,
-  });
+  res.status(200).json({ status: "success", data: stats });
 });
 
-/* ==================== HEAT MAP DATA ==================== */
 exports.getHeatMapData = catchAsync(async (req, res) => {
   const { startDate, endDate, userId } = req.query;
 
   const targetUserId = userId || req.user._id;
-  const start = startDate
-    ? new Date(startDate)
-    : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+  const start = startDate ? new Date(startDate) : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
   const end = endDate ? new Date(endDate) : new Date();
 
   const heatMapData = await Note.aggregate([
     {
       $match: {
-        owner: mongoose.Types.ObjectId(targetUserId),
+        // FIX: Added 'new'
+        owner: new mongoose.Types.ObjectId(targetUserId),
         isDeleted: false,
         createdAt: { $gte: start, $lte: end },
       },
@@ -449,6 +885,7 @@ exports.getHeatMapData = catchAsync(async (req, res) => {
     { $sort: { date: 1 } },
   ]);
 
+  // Format array into object map { "2023-01-01": { count: 5, intensity: 0.5 } }
   const formattedData = heatMapData.reduce((acc, item) => {
     const dateStr = item.date.toISOString().split("T")[0];
     acc[dateStr] = {
@@ -462,110 +899,72 @@ exports.getHeatMapData = catchAsync(async (req, res) => {
     status: "success",
     data: {
       heatMap: formattedData,
-      stats: {
-        totalDays: Object.keys(formattedData).length,
-        totalNotes: heatMapData.reduce((sum, item) => sum + item.count, 0),
-        averagePerDay:
-          heatMapData.length > 0
-            ? (
-                heatMapData.reduce((sum, item) => sum + item.count, 0) /
-                heatMapData.length
-              ).toFixed(2)
-            : 0,
-      },
+      stats: { totalDays: Object.keys(formattedData).length },
     },
   });
 });
 
-/* ==================== CALENDAR VIEW ==================== */
-exports.getCalendarView = catchAsync(async (req, res) => {
-  const { start, end, view = "month" } = req.query;
 
-  const startDate = new Date(start || new Date().setDate(1));
-  const endDate = new Date(
-    end || new Date().setMonth(new Date().getMonth() + 1),
-  );
+// /* ==================== SHARE NOTE ==================== */
+// exports.shareNote = catchAsync(async (req, res, next) => {
+//   const { noteId } = req.params;
+//   const { userIds, permission = "viewer" } = req.body;
 
-  const filter = {
-    organizationId: req.user.organizationId,
-    isDeleted: false,
-    $or: [
-      { owner: req.user._id },
-      { sharedWith: req.user._id },
-      { "participants.user": req.user._id },
-    ],
-    $or: [
-      { startDate: { $gte: startDate, $lte: endDate } },
-      { dueDate: { $gte: startDate, $lte: endDate } },
-      { createdAt: { $gte: startDate, $lte: endDate } },
-    ],
-  };
+//   const note = await Note.findOne({
+//     _id: noteId,
+//     owner: req.user._id,
+//     isDeleted: false,
+//   });
 
-  const notes = await Note.find(filter)
-    .select(
-      "title noteType startDate dueDate priority status isMeeting participants",
-    )
-    .populate("participants.user", "name")
-    .lean();
+//   if (!note) {
+//     return next(new AppError("Note not found or you are not the owner", 404));
+//   }
 
-  const calendarEvents = notes.map((note) => ({
-    id: note._id.toString(),
-    title: note.title,
-    start: note.startDate || note.dueDate || note.createdAt,
-    end:
-      note.dueDate ||
-      note.startDate ||
-      new Date((note.startDate || note.createdAt).getTime() + 60 * 60 * 1000),
-    allDay: !note.startDate || !note.dueDate,
-    extendedProps: {
-      noteType: note.noteType,
-      priority: note.priority,
-      status: note.status,
-      isMeeting: note.isMeeting,
-      participants: note.participants?.map((p) => p.user?.name).filter(Boolean),
-    },
-    color: getEventColor(note.noteType, note.priority),
-    textColor: "#ffffff",
-  }));
+//   const uniqueUserIds = [
+//     ...new Set([
+//       ...note.sharedWith.map((id) => id.toString()),
+//       ...(Array.isArray(userIds) ? userIds : [userIds]),
+//     ]),
+//   ];
 
-  const meetings = await Meeting.find({
-    organizationId: req.user.organizationId,
-    startTime: { $gte: startDate, $lte: endDate },
-    status: { $ne: "cancelled" },
-    $or: [{ organizer: req.user._id }, { "participants.user": req.user._id }],
-  })
-    .select("title startTime endTime status participants")
-    .populate("participants.user", "name")
-    .lean();
+//   note.sharedWith = uniqueUserIds.map((id) => mongoose.Types.ObjectId(id));
 
-  meetings.forEach((meeting) => {
-    calendarEvents.push({
-      id: `meeting_${meeting._id}`,
-      title: `📅 ${meeting.title}`,
-      start: meeting.startTime,
-      end: meeting.endTime,
-      allDay: false,
-      extendedProps: {
-        noteType: "meeting",
-        type: "meeting",
-        meetingId: meeting._id,
-        status: meeting.status,
-        participants: meeting.participants
-          ?.map((p) => p.user?.name)
-          .filter(Boolean),
-      },
-      color: "#4f46e5",
-      textColor: "#ffffff",
-    });
-  });
+//   userIds.forEach((userId) => {
+//     if (
+//       !note.participants.some((p) => p.user.toString() === userId.toString())
+//     ) {
+//       note.participants.push({
+//         user: userId,
+//         role: permission,
+//         rsvp: "pending",
+//       });
+//     }
+//   });
 
-  res.status(200).json({
-    status: "success",
-    data: { events: calendarEvents },
-  });
-});
+//   await note.save();
 
-/* ==================== SHARE NOTE ==================== */
+//   const socketPayload = {
+//     type: "NOTE_SHARED",
+//     data: {
+//       noteId: note._id,
+//       title: note.title,
+//       sharedBy: req.user.name,
+//       permission,
+//     },
+//   };
+
+//   if (Array.isArray(userIds)) {
+//     userIds.forEach((userId) => {
+//       emitToUser(userId, "noteShared", socketPayload);
+//     });
+//   }
+
+//   res.status(200).json({
+//     status: "success",
+//     message: "Note shared successfully",
+//     data: { note },
+//   });
+// });
 exports.shareNote = catchAsync(async (req, res, next) => {
   const { noteId } = req.params;
   const { userIds, permission = "viewer" } = req.body;
@@ -576,25 +975,27 @@ exports.shareNote = catchAsync(async (req, res, next) => {
     isDeleted: false,
   });
 
-  if (!note) {
-    return next(new AppError("Note not found or you are not the owner", 404));
-  }
+  if (!note) return next(new AppError("Note not found", 404));
 
-  const uniqueUserIds = [
-    ...new Set([
-      ...note.sharedWith.map((id) => id.toString()),
-      ...(Array.isArray(userIds) ? userIds : [userIds]),
-    ]),
-  ];
+  // Convert incoming IDs to Objects
+  const incomingIds = (Array.isArray(userIds) ? userIds : [userIds]).map(
+      // FIX: Added 'new'
+      id => new mongoose.Types.ObjectId(id)
+  );
 
-  note.sharedWith = uniqueUserIds.map((id) => mongoose.Types.ObjectId(id));
+  // Merge with existing
+  const existingStr = note.sharedWith.map(id => id.toString());
+  incomingIds.forEach(objId => {
+      if(!existingStr.includes(objId.toString())) {
+          note.sharedWith.push(objId);
+      }
+  });
 
-  userIds.forEach((userId) => {
-    if (
-      !note.participants.some((p) => p.user.toString() === userId.toString())
-    ) {
+  // Add to participants logic
+  incomingIds.forEach((objId) => {
+    if (!note.participants.some((p) => p.user.toString() === objId.toString())) {
       note.participants.push({
-        user: userId,
+        user: objId,
         role: permission,
         rsvp: "pending",
       });
@@ -603,57 +1004,28 @@ exports.shareNote = catchAsync(async (req, res, next) => {
 
   await note.save();
 
-  const socketPayload = {
-    type: "NOTE_SHARED",
-    data: {
-      noteId: note._id,
-      title: note.title,
-      sharedBy: req.user.name,
-      permission,
-    },
-  };
-
+  // Socket notification logic...
   if (Array.isArray(userIds)) {
-    userIds.forEach((userId) => {
-      emitToUser(userId, "noteShared", socketPayload);
-    });
+      userIds.forEach(uid => emitToUser(uid, "noteShared", { title: note.title }));
   }
 
-  res.status(200).json({
-    status: "success",
-    message: "Note shared successfully",
-    data: { note },
-  });
+  res.status(200).json({ status: "success", data: { note } });
 });
-
 /* ==================== GET NOTE ANALYTICS ==================== */
 exports.getNoteAnalytics = catchAsync(async (req, res) => {
   const { period = "month" } = req.query;
   const now = new Date();
-  let startDate;
+  let startDate = new Date(now.setMonth(now.getMonth() - 1)); // Default month
 
-  switch (period) {
-    case "week":
-      startDate = new Date(now.setDate(now.getDate() - 7));
-      break;
-    case "month":
-      startDate = new Date(now.setMonth(now.getMonth() - 1));
-      break;
-    case "quarter":
-      startDate = new Date(now.setMonth(now.getMonth() - 3));
-      break;
-    case "year":
-      startDate = new Date(now.setFullYear(now.getFullYear() - 1));
-      break;
-    default:
-      startDate = new Date(now.setMonth(now.getMonth() - 1));
-  }
+  if(period === 'week') startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  if(period === 'year') startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 
   const analytics = await Note.aggregate([
     {
       $match: {
-        organizationId: mongoose.Types.ObjectId(req.user.organizationId),
-        owner: mongoose.Types.ObjectId(req.user._id),
+        // FIX: Added 'new'
+        organizationId: new mongoose.Types.ObjectId(req.user.organizationId),
+        owner: new mongoose.Types.ObjectId(req.user._id),
         isDeleted: false,
         createdAt: { $gte: startDate },
       },
@@ -661,61 +1033,13 @@ exports.getNoteAnalytics = catchAsync(async (req, res) => {
     {
       $facet: {
         byType: [
-          {
-            $group: {
-              _id: "$noteType",
-              count: { $sum: 1 },
-            },
-          },
+          { $group: { _id: "$noteType", count: { $sum: 1 } } },
         ],
         byStatus: [
-          {
-            $group: {
-              _id: "$status",
-              count: { $sum: 1 },
-            },
-          },
+          { $group: { _id: "$status", count: { $sum: 1 } } },
         ],
         byPriority: [
-          {
-            $group: {
-              _id: "$priority",
-              count: { $sum: 1 },
-            },
-          },
-        ],
-        dailyActivity: [
-          {
-            $group: {
-              _id: {
-                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
-              },
-              count: { $sum: 1 },
-            },
-          },
-          { $sort: { _id: 1 } },
-        ],
-        completionRate: [
-          {
-            $group: {
-              _id: null,
-              total: { $sum: 1 },
-              completed: {
-                $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
-              },
-            },
-          },
-        ],
-        topTags: [
-          { $unwind: "$tags" },
-          {
-            $group: {
-              _id: "$tags",
-              count: { $sum: 1 },
-            },
-          },
-          { $sort: { count: -1 } },
-          { $limit: 10 },
+          { $group: { _id: "$priority", count: { $sum: 1 } } },
         ],
       },
     },
@@ -726,16 +1050,122 @@ exports.getNoteAnalytics = catchAsync(async (req, res) => {
   res.status(200).json({
     status: "success",
     data: {
-      byType: result.byType,
-      byStatus: result.byStatus,
-      byPriority: result.byPriority,
-      dailyActivity: result.dailyActivity,
-      completionRate: result.completionRate[0] || { total: 0, completed: 0 },
-      topTags: result.topTags,
+      byType: result.byType || [],
+      byStatus: result.byStatus || [],
+      byPriority: result.byPriority || [],
       period,
     },
   });
 });
+// exports.getNoteAnalytics = catchAsync(async (req, res) => {
+//   const { period = "month" } = req.query;
+//   const now = new Date();
+//   let startDate;
+
+//   switch (period) {
+//     case "week":
+//       startDate = new Date(now.setDate(now.getDate() - 7));
+//       break;
+//     case "month":
+//       startDate = new Date(now.setMonth(now.getMonth() - 1));
+//       break;
+//     case "quarter":
+//       startDate = new Date(now.setMonth(now.getMonth() - 3));
+//       break;
+//     case "year":
+//       startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+//       break;
+//     default:
+//       startDate = new Date(now.setMonth(now.getMonth() - 1));
+//   }
+
+//   const analytics = await Note.aggregate([
+//     {
+//       $match: {
+//         organizationId: mongoose.Types.ObjectId(req.user.organizationId),
+//         owner: mongoose.Types.ObjectId(req.user._id),
+//         isDeleted: false,
+//         createdAt: { $gte: startDate },
+//       },
+//     },
+//     {
+//       $facet: {
+//         byType: [
+//           {
+//             $group: {
+//               _id: "$noteType",
+//               count: { $sum: 1 },
+//             },
+//           },
+//         ],
+//         byStatus: [
+//           {
+//             $group: {
+//               _id: "$status",
+//               count: { $sum: 1 },
+//             },
+//           },
+//         ],
+//         byPriority: [
+//           {
+//             $group: {
+//               _id: "$priority",
+//               count: { $sum: 1 },
+//             },
+//           },
+//         ],
+//         dailyActivity: [
+//           {
+//             $group: {
+//               _id: {
+//                 $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+//               },
+//               count: { $sum: 1 },
+//             },
+//           },
+//           { $sort: { _id: 1 } },
+//         ],
+//         completionRate: [
+//           {
+//             $group: {
+//               _id: null,
+//               total: { $sum: 1 },
+//               completed: {
+//                 $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
+//               },
+//             },
+//           },
+//         ],
+//         topTags: [
+//           { $unwind: "$tags" },
+//           {
+//             $group: {
+//               _id: "$tags",
+//               count: { $sum: 1 },
+//             },
+//           },
+//           { $sort: { count: -1 } },
+//           { $limit: 10 },
+//         ],
+//       },
+//     },
+//   ]);
+
+//   const result = analytics[0];
+
+//   res.status(200).json({
+//     status: "success",
+//     data: {
+//       byType: result.byType,
+//       byStatus: result.byStatus,
+//       byPriority: result.byPriority,
+//       dailyActivity: result.dailyActivity,
+//       completionRate: result.completionRate[0] || { total: 0, completed: 0 },
+//       topTags: result.topTags,
+//       period,
+//     },
+//   });
+// });
 
 /* ==================== CONVERT TO TASK ==================== */
 exports.convertToTask = catchAsync(async (req, res, next) => {
@@ -1528,6 +1958,125 @@ exports.exportAllUserNotes = catchAsync(async (req, res) => {
     count: notes.length,
     exportedAt: new Date(),
   });
+});
+
+// modules/notes/controllers/noteController.js
+
+/* ==================== NEW: HISTORY & LOGS ==================== */
+exports.getNoteHistory = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const note = await Note.findOne({
+    _id: id,
+    $or: [
+      { owner: req.user._id },
+      { sharedWith: req.user._id },
+      { visibility: 'organization' }
+    ]
+  })
+  .select('activityLog')
+  .populate('activityLog.user', 'name email avatar');
+
+  if (!note) {
+    return next(new AppError('Note not found', 404));
+  }
+
+  // Sort logs newest first
+  const history = note.activityLog.sort((a, b) => b.timestamp - a.timestamp);
+
+  res.status(200).json({
+    status: 'success',
+    data: { activityLog: history }
+  });
+});
+
+/* ==================== NEW: SUBTASKS ==================== */
+exports.addSubtask = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { title } = req.body;
+
+  const note = await Note.findOneAndUpdate(
+    { _id: id, owner: req.user._id, isDeleted: false },
+    { 
+      $push: { 
+        subtasks: { title, completed: false } 
+      } 
+    },
+    { new: true, runValidators: true }
+  );
+
+  if (!note) return next(new AppError('Note not found', 404));
+
+  res.status(200).json({ status: 'success', data: { note } });
+});
+
+exports.toggleSubtask = catchAsync(async (req, res, next) => {
+  const { id, subtaskId } = req.params;
+  const { completed } = req.body;
+
+  const note = await Note.findOne({ _id: id, owner: req.user._id });
+  if (!note) return next(new AppError('Note not found', 404));
+
+  const subtask = note.subtasks.id(subtaskId);
+  if (!subtask) return next(new AppError('Subtask not found', 404));
+
+  subtask.completed = completed;
+  if (completed) subtask.completedAt = new Date();
+  
+  // Update progress calculation (optional based on your model)
+  const total = note.subtasks.length;
+  const done = note.subtasks.filter(t => t.completed).length;
+  note.progress = total === 0 ? 0 : Math.round((done / total) * 100);
+
+  await note.save();
+
+  res.status(200).json({ status: 'success', data: { note } });
+});
+
+exports.removeSubtask = catchAsync(async (req, res, next) => {
+  const { id, subtaskId } = req.params;
+
+  const note = await Note.findOneAndUpdate(
+    { _id: id, owner: req.user._id },
+    { $pull: { subtasks: { _id: subtaskId } } },
+    { new: true }
+  );
+
+  if (!note) return next(new AppError('Note not found', 404));
+
+  res.status(200).json({ status: 'success', data: { note } });
+});
+
+/* ==================== NEW: HARD DELETE ==================== */
+exports.hardDeleteNote = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Only allow if already soft-deleted or if super admin
+  const note = await Note.findOneAndDelete({
+    _id: id,
+    owner: req.user._id,
+    isDeleted: true 
+  });
+
+  if (!note) {
+    return next(new AppError('Note not found in trash or permission denied', 404));
+  }
+
+  res.status(204).json({ status: 'success', data: null });
+});
+
+/* ==================== NEW: LINKING ==================== */
+exports.linkNote = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { targetNoteId } = req.body;
+
+  const note = await Note.findOneAndUpdate(
+    { _id: id, owner: req.user._id },
+    { $addToSet: { relatedNotes: targetNoteId } }, // addToSet prevents duplicates
+    { new: true }
+  ).populate('relatedNotes', 'title status');
+
+  res.status(200).json({ status: 'success', data: { note } });
 });
 
 module.exports = exports;

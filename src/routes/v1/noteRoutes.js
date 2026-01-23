@@ -27,6 +27,9 @@ router.post(
 
 // ==================== NOTE CRUD OPERATIONS ====================
 
+// Search notes by text
+router.get("/search", checkPermission(PERMISSIONS.NOTE.READ), noteController.searchNotes);
+
 // Get all notes with filters
 router.get("/", checkPermission(PERMISSIONS.NOTE.READ), noteController.getNotes);
 
@@ -47,9 +50,6 @@ router.delete(
 );
 
 // ==================== SEARCH & FILTERS ====================
-
-// Search notes by text
-router.get("/search", checkPermission(PERMISSIONS.NOTE.READ), noteController.searchNotes);
 
 // ==================== CALENDAR & VIEWS ====================
 
@@ -250,257 +250,74 @@ router.get(
   noteController.getAllOrganizationNotes,
 );
 
+// routes/v1/noteRoutes.js (Add these under Special Operations)
+
+// Duplicate a note
+router.post(
+  "/:id/duplicate",
+  checkPermission(PERMISSIONS.NOTE.WRITE), 
+  noteController.duplicateNote
+);
+
+// Archive a note
+router.patch(
+  "/:id/archive",
+  checkPermission(PERMISSIONS.NOTE.WRITE),
+  noteController.archiveNote
+);
+
+// Restore an archived note
+router.patch(
+  "/:id/restore",
+  checkPermission(PERMISSIONS.NOTE.WRITE),
+  noteController.restoreNote
+);
+
+// Export ALL user notes (Controller has this, but route was missing)
+router.get(
+  "/export/all",
+  checkPermission(PERMISSIONS.NOTE.EXPORT_DATA),
+  noteController.exportAllUserNotes
+);
+
+// ==================== HISTORY (Fixes your 404) ====================
+router.get(
+  "/:id/history",
+  checkPermission(PERMISSIONS.NOTE.READ),
+  noteController.getNoteHistory
+);
+
+// ==================== SUBTASKS ====================
+router.post(
+  "/:id/subtasks",
+  checkPermission(PERMISSIONS.NOTE.WRITE),
+  noteController.addSubtask
+);
+
+router.patch(
+  "/:id/subtasks/:subtaskId",
+  checkPermission(PERMISSIONS.NOTE.WRITE),
+  noteController.toggleSubtask
+);
+
+router.delete(
+  "/:id/subtasks/:subtaskId",
+  checkPermission(PERMISSIONS.NOTE.WRITE),
+  noteController.removeSubtask
+);
+
+// ==================== TRASH MANAGEMENT ====================
+// (You already have the soft delete route "/:id", this is for permanent)
+router.delete(
+  "/:id/permanent",
+  checkPermission(PERMISSIONS.NOTE.DELETE),
+  noteController.hardDeleteNote
+);
+
+// ==================== LINKING ====================
+router.post(
+  "/:id/link",
+  checkPermission(PERMISSIONS.NOTE.WRITE),
+  noteController.linkNote
+);
 module.exports = router;
-
-// // routes/v1/noteRoutes.js
-// const express = require("express");
-// const router = express.Router();
-
-// const noteController = require("../../controllers/noteController");
-// const authController = require("../../controllers/authController");
-// const { upload } = require("../../core/middleware/upload.middleware");
-// const {
-//   checkPermission,
-//   checkAnyPermission,
-//   checkAllPermissions,
-//   checkIsOwner,
-//   checkIsSuperAdmin,
-// } = require("../../core/middleware/permission.middleware");
-
-// // Apply authentication to all routes
-// router.use(authController.protect);
-
-// // ==================== MEDIA UPLOAD ====================
-// router.post(
-//   "/upload",
-//   checkPermission("file:upload"),
-//   upload.array("attachments", 5),
-//   noteController.uploadMedia,
-// );
-
-// // ==================== NOTE CRUD OPERATIONS ====================
-
-// // Get all notes with filters
-// router.get("/", checkPermission("note:read"), noteController.getNotes);
-
-// // Create new note
-// router.post("/", checkPermission("note:write"), noteController.createNote);
-
-// // Get single note by ID
-// router.get("/:id", checkPermission("note:read"), noteController.getNoteById);
-
-// // Update note
-// router.patch("/:id", checkPermission("note:write"), noteController.updateNote);
-
-// // Delete note (soft delete)
-// router.delete(
-//   "/:id",
-//   checkPermission("note:delete"),
-//   noteController.deleteNote,
-// );
-
-// // ==================== SEARCH & FILTERS ====================
-
-// // Search notes by text
-// router.get("/search", checkPermission("note:read"), noteController.searchNotes);
-
-// // ==================== CALENDAR & VIEWS ====================
-
-// // Get calendar view (notes and meetings)
-// router.get(
-//   "/calendar/view",
-//   checkPermission("note:view_calendar"),
-//   noteController.getCalendarView,
-// );
-
-// // Get monthly notes for calendar
-// router.get(
-//   "/calendar/monthly",
-//   checkPermission("note:read"),
-//   noteController.getNotesForMonth,
-// );
-
-// // ==================== ANALYTICS & HEAT MAP ====================
-
-// // Get heat map data (activity visualization)
-// router.get(
-//   "/analytics/heatmap",
-//   checkPermission("note:view_analytics"),
-//   noteController.getHeatMapData,
-// );
-
-// // Get note analytics
-// router.get(
-//   "/analytics/summary",
-//   checkAnyPermission(["note:view_analytics", "analytics:read"]),
-//   noteController.getNoteAnalytics,
-// );
-
-// // Export note data
-// router.get(
-//   "/export/data",
-//   checkPermission("note:export_data"),
-//   noteController.exportNoteData,
-// );
-
-// // ==================== SHARING & COLLABORATION ====================
-
-// // Share note with other users
-// router.post(
-//   "/:id/share",
-//   checkPermission("note:share"),
-//   noteController.shareNote,
-// );
-
-// // Get shared notes with me
-// router.get(
-//   "/shared/with-me",
-//   checkPermission("note:read"),
-//   noteController.getSharedNotesWithMe,
-// );
-
-// // Get notes shared by me
-// router.get(
-//   "/shared/by-me",
-//   checkPermission("note:read"),
-//   noteController.getNotesSharedByMe,
-// );
-
-// // Update sharing permissions
-// router.patch(
-//   "/:id/share/permissions",
-//   checkPermission("note:manage_shared"),
-//   noteController.updateSharePermissions,
-// );
-
-// // Remove user from shared note
-// router.delete(
-//   "/:id/share/:userId",
-//   checkPermission("note:manage_shared"),
-//   noteController.removeUserFromSharedNote,
-// );
-
-// // ==================== TEMPLATE OPERATIONS ====================
-
-// // Create note template
-// router.post(
-//   "/templates",
-//   checkPermission("note:create_template"),
-//   noteController.createNoteTemplate,
-// );
-
-// // Get all templates
-// router.get(
-//   "/templates",
-//   checkAnyPermission(["note:use_template", "note:create_template"]),
-//   noteController.getNoteTemplates,
-// );
-
-// // Create note from template
-// router.post(
-//   "/templates/:templateId/create",
-//   checkPermission("note:use_template"),
-//   noteController.createFromTemplate,
-// );
-
-// // Update template
-// router.patch(
-//   "/templates/:templateId",
-//   checkPermission("note:create_template"),
-//   noteController.updateNoteTemplate,
-// );
-
-// // Delete template
-// router.delete(
-//   "/templates/:templateId",
-//   checkPermission("note:create_template"),
-//   noteController.deleteNoteTemplate,
-// );
-
-// // ==================== BULK OPERATIONS ====================
-
-// // Bulk update notes
-// router.patch(
-//   "/bulk/update",
-//   checkPermission("note:bulk_update"),
-//   noteController.bulkUpdateNotes,
-// );
-
-// // Bulk delete notes
-// router.delete(
-//   "/bulk/delete",
-//   checkPermission("note:bulk_delete"),
-//   noteController.bulkDeleteNotes,
-// );
-
-// // ==================== SPECIAL OPERATIONS ====================
-
-// // Convert note to task
-// router.post(
-//   "/:id/convert-to-task",
-//   checkAllPermissions(["note:write", "task:create"]),
-//   noteController.convertToTask,
-// );
-
-// // Pin/unpin note
-// router.patch(
-//   "/:id/pin",
-//   checkPermission("note:pin"),
-//   noteController.togglePinNote,
-// );
-
-// // ==================== MEETING ROUTES ====================
-
-// // Create meeting
-// router.post(
-//   "/meetings",
-//   checkPermission("meeting:schedule"),
-//   noteController.createMeeting,
-// );
-
-// // Get user meetings
-// router.get(
-//   "/meetings",
-//   checkPermission("meeting:read"),
-//   noteController.getUserMeetings,
-// );
-
-// // Update meeting status
-// router.patch(
-//   "/meetings/:meetingId/status",
-//   checkPermission("meeting:write"),
-//   noteController.updateMeetingStatus,
-// );
-
-// // RSVP to meeting
-// router.post(
-//   "/meetings/:meetingId/rsvp",
-//   checkPermission("meeting:rsvp"),
-//   noteController.meetingRSVP,
-// );
-
-// // ==================== UTILITY ROUTES ====================
-
-// // Get note statistics
-// router.get(
-//   "/stats/summary",
-//   checkPermission("note:read"),
-//   noteController.getNoteStatistics,
-// );
-
-// // Get recent activity
-// router.get(
-//   "/activity/recent",
-//   checkPermission("note:read"),
-//   noteController.getRecentActivity,
-// );
-
-// // ==================== ADMIN/OWNER ONLY ROUTES ====================
-// // Get all organization notes (owners/super admins only)
-// router.get(
-//   "/organization/all",
-//   checkIsSuperAdmin(),
-//   noteController.getAllOrganizationNotes,
-// );
-
-// module.exports = router;
