@@ -71,22 +71,51 @@ attendanceDailySchema.virtual('netWorkHours').get(function() {
 });
 
 // Pre-save to calculate flags
-attendanceDailySchema.pre('save', function(next) {
-  if (this.firstIn && this.scheduledInTime) {
-    const [hours, minutes] = this.scheduledInTime.split(':').map(Number);
-    const scheduledTime = new Date(this.firstIn);
-    scheduledTime.setHours(hours, minutes, 0, 0);
+// attendanceDailySchema.pre('save', function(next) {
+//   if (this.firstIn && this.scheduledInTime) {
+//     const [hours, minutes] = this.scheduledInTime.split(':').map(Number);
+//     const scheduledTime = new Date(this.firstIn);
+//     scheduledTime.setHours(hours, minutes, 0, 0);
     
-    // Check if late (after grace period)
-    const graceMs = (this.shift?.gracePeriodMins || 15) * 60 * 1000;
-    this.isLate = this.firstIn > new Date(scheduledTime.getTime() + graceMs);
-  }
+//     // Check if late (after grace period)
+//     const graceMs = (this.shift?.gracePeriodMins || 15) * 60 * 1000;
+//     this.isLate = this.firstIn > new Date(scheduledTime.getTime() + graceMs);
+//   }
   
-  // Check half day
-  if (this.totalWorkHours && this.shift?.halfDayThresholdHrs) {
-    this.isHalfDay = this.totalWorkHours < this.shift.halfDayThresholdHrs;
-  }
+//   // Check half day
+//   if (this.totalWorkHours && this.shift?.halfDayThresholdHrs) {
+//     this.isHalfDay = this.totalWorkHours < this.shift.halfDayThresholdHrs;
+//   }
   
+//   next();
+// });
+// ... schema definition
+
+attendanceDailySchema.pre('save', async function(next) {
+  // Only calculate if modified and we have times
+  if ((this.isModified('firstIn') || this.isModified('scheduledInTime')) && this.firstIn && this.scheduledInTime) {
+    
+    // 1. We need to fetch the shift to get grace period
+    // We use mongoose.model to avoid circular dependency issues
+    const Shift = mongoose.model('Shift');
+    const shift = await Shift.findById(this.shiftId);
+
+    if (shift) {
+      const [hours, minutes] = this.scheduledInTime.split(':').map(Number);
+      const scheduledTime = new Date(this.firstIn);
+      scheduledTime.setHours(hours, minutes, 0, 0);
+      
+      const graceMs = (shift.gracePeriodMins || 15) * 60 * 1000;
+      
+      // Calculate Late
+      this.isLate = this.firstIn > new Date(scheduledTime.getTime() + graceMs);
+
+      // Calculate Half Day (Logic correction)
+      if (this.totalWorkHours) {
+         this.isHalfDay = this.totalWorkHours < shift.halfDayThresholdHrs;
+      }
+    }
+  }
   next();
 });
 
