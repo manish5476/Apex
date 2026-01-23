@@ -1542,11 +1542,121 @@ exports.createShift = catchAsync(async (req, res, next) => {
 });
 
 // Add this helper function (you can add it near the other helper functions)
+// const mapLogType = (status) => {
+//     // Customize this map based on your specific hardware documentation
+//     // Common ZKTeco/Hikvision codes:
+//     if (String(status) === '0' || String(status) === 'CheckIn') return 'in';
+//     if (String(status) === '1' || String(status) === 'CheckOut') return 'out';
+//     return 'unknown';
+// };
+
+// exports.pushMachineData = catchAsync(async (req, res, next) => {
+//     const apiKey = req.headers['x-machine-api-key'];
+
+//     // 1. Authenticate Machine
+//     const machine = await AttendanceMachine.findOne({ apiKey }).select('+apiKey');
+//     if (!machine || machine.status !== 'active') {
+//         return next(new AppError('Unauthorized Machine', 401));
+//     }
+
+//     const payload = Array.isArray(req.body) ? req.body : [req.body];
+//     if (payload.length === 0) return res.status(200).json({ message: 'No data' });
+
+//     const session = await mongoose.startSession();
+//     session.startTransaction();
+
+//     try {
+//         const processedLogs = [];
+
+//         for (const entry of payload) {
+//             // Adapt these fields based on your specific machine's JSON format
+//             const machineUserId = entry.userId || entry.user_id;
+//             const scanTime = new Date(entry.timestamp);
+//             const statusType = entry.status; // 0=CheckIn, 1=CheckOut usually
+
+//             // A. Find User
+//             const user = await User.findOne({
+//                 'attendanceConfig.machineUserId': machineUserId,
+//                 organizationId: machine.organizationId
+//             }).session(session);
+
+//             let processingStatus = 'processed';
+//             let resolvedUserId = user ? user._id : null;
+
+//             if (!user) processingStatus = 'orphan';
+
+//             // B. Create Immutable Log
+//             const logEntry = new AttendanceLog({
+//                 machineId: machine._id,
+//                 rawUserId: machineUserId,
+//                 user: resolvedUserId,
+//                 timestamp: scanTime,
+//                 type: mapLogType(statusType),
+//                 metadata: entry,
+//                 processingStatus
+//             });
+//             await logEntry.save({ session });
+
+//             // C. Update Daily Record (Only if User is identified)
+//             if (user) {
+//                 const dateStr = dayjs(scanTime).format('YYYY-MM-DD');
+
+//                 let daily = await AttendanceDaily.findOne({
+//                     user: user._id,
+//                     date: dateStr
+//                 }).session(session);
+
+//                 if (!daily) {
+//                     daily = new AttendanceDaily({
+//                         user: user._id,
+//                         organizationId: user.organizationId,
+//                         branchId: user.branchId,
+//                         date: dateStr,
+//                         firstIn: scanTime,
+//                         logs: [logEntry._id],
+//                         status: 'present'
+//                     });
+//                 } else {
+//                     // Update First In / Last Out logic
+//                     if (scanTime < daily.firstIn) daily.firstIn = scanTime;
+//                     if (!daily.lastOut || scanTime > daily.lastOut) daily.lastOut = scanTime;
+//                     daily.logs.push(logEntry._id);
+//                 }
+
+//                 // Simple Hours Calculation
+//                 if (daily.firstIn && daily.lastOut) {
+//                     const diff = daily.lastOut - daily.firstIn;
+//                     daily.totalWorkHours = (diff / (1000 * 60 * 60)).toFixed(2);
+//                 }
+
+//                 await daily.save({ session });
+//             }
+
+//             processedLogs.push(logEntry._id);
+//         }
+
+//         // Update Machine Last Sync
+//         machine.lastSyncAt = new Date();
+//         await machine.save({ session });
+
+//         await session.commitTransaction();
+//         res.status(200).json({ status: 'success', synced: processedLogs.length });
+
+//     } catch (err) {
+//         await session.abortTransaction();
+//         throw err;
+//     } finally {
+//         session.endSession();
+//     }
+// });
+// Helper to map machine status codes to system types
 const mapLogType = (status) => {
-    // Customize this map based on your specific hardware documentation
-    // Common ZKTeco/Hikvision codes:
-    if (String(status) === '0' || String(status) === 'CheckIn') return 'in';
-    if (String(status) === '1' || String(status) === 'CheckOut') return 'out';
+    // Customize based on your machine type (ZKTeco/Hikvision)
+    const s = String(status).toLowerCase();
+    if (s === '0' || s === 'checkin' || s === 'in') return 'in';
+    if (s === '1' || s === 'checkout' || s === 'out') return 'out';
+    if (s === '2' || s === 'breakout') return 'break_start';
+    if (s === '3' || s === 'breakin') return 'break_end';
     return 'unknown';
 };
 
@@ -1569,27 +1679,37 @@ exports.pushMachineData = catchAsync(async (req, res, next) => {
         const processedLogs = [];
 
         for (const entry of payload) {
-            // Adapt these fields based on your specific machine's JSON format
             const machineUserId = entry.userId || entry.user_id;
-            const scanTime = new Date(entry.timestamp);
-            const statusType = entry.status; // 0=CheckIn, 1=CheckOut usually
+            // Parse timestamp carefully
+            const scanTime = new Date(entry.timestamp); 
+            if (isNaN(scanTime.getTime())) {
+                console.warn(`Invalid timestamp from machine: ${entry.timestamp}`);
+                continue;
+            }
+
+            const statusType = entry.status; 
 
             // A. Find User
             const user = await User.findOne({
-                'attendanceConfig.machineUserId': machineUserId,
+                'attendanceConfig.machineUserId': String(machineUserId), // Ensure string comparison
                 organizationId: machine.organizationId
             }).session(session);
 
             let processingStatus = 'processed';
             let resolvedUserId = user ? user._id : null;
 
-            if (!user) processingStatus = 'orphan';
+            if (!user) {
+                processingStatus = 'orphan';
+                console.warn(`Orphan record from machine ${machine.name}: UserID ${machineUserId}`);
+            }
 
             // B. Create Immutable Log
             const logEntry = new AttendanceLog({
                 machineId: machine._id,
                 rawUserId: machineUserId,
                 user: resolvedUserId,
+                organizationId: machine.organizationId, // Ensure Org ID is saved
+                branchId: machine.branchId, // Ensure Branch ID is saved
                 timestamp: scanTime,
                 type: mapLogType(statusType),
                 metadata: entry,
@@ -1599,7 +1719,29 @@ exports.pushMachineData = catchAsync(async (req, res, next) => {
 
             // C. Update Daily Record (Only if User is identified)
             if (user) {
-                const dateStr = dayjs(scanTime).format('YYYY-MM-DD');
+                // Default Date: The day of the punch
+                let dateStr = dayjs(scanTime).format('YYYY-MM-DD');
+
+                // 🌙 NIGHT SHIFT LOGIC START
+                if (user.shiftId) {
+                    const shift = await Shift.findById(user.shiftId).session(session);
+                    
+                    if (shift && shift.isNightShift) {
+                        const punchHour = scanTime.getHours();
+                        // Parse Shift End Time (e.g. "06:00")
+                        const [endHour] = shift.endTime.split(':').map(Number);
+                        
+                        // Rule: If punch is between 00:00 and (ShiftEndTime + 4 hours buffer), 
+                        // it belongs to the PREVIOUS day.
+                        // Example: Shift ends 6am. Punch at 7am belongs to yesterday. Punch at 2pm belongs to today.
+                        const cutoffHour = endHour + 4; 
+
+                        if (punchHour <= cutoffHour) {
+                            dateStr = dayjs(scanTime).subtract(1, 'day').format('YYYY-MM-DD');
+                        }
+                    }
+                }
+                // 🌙 NIGHT SHIFT LOGIC END
 
                 let daily = await AttendanceDaily.findOne({
                     user: user._id,
@@ -1607,26 +1749,41 @@ exports.pushMachineData = catchAsync(async (req, res, next) => {
                 }).session(session);
 
                 if (!daily) {
+                    // Create new record for the day
                     daily = new AttendanceDaily({
                         user: user._id,
                         organizationId: user.organizationId,
                         branchId: user.branchId,
                         date: dateStr,
+                        shiftId: user.shiftId, // Link the shift for calculation
                         firstIn: scanTime,
                         logs: [logEntry._id],
                         status: 'present'
                     });
                 } else {
-                    // Update First In / Last Out logic
-                    if (scanTime < daily.firstIn) daily.firstIn = scanTime;
-                    if (!daily.lastOut || scanTime > daily.lastOut) daily.lastOut = scanTime;
+                    // Update existing record
+                    
+                    // Logic: Update First In if this punch is earlier
+                    if (scanTime < new Date(daily.firstIn)) {
+                        daily.firstIn = scanTime;
+                    }
+                    
+                    // Logic: Update Last Out if this punch is later
+                    // Note: We check if it's strictly later to handle multiple punches
+                    if (!daily.lastOut || scanTime > new Date(daily.lastOut)) {
+                        daily.lastOut = scanTime;
+                    }
+                    
+                    // Add log reference
+                    // Avoid duplicates if using $addToSet, but array push is faster for high volume
                     daily.logs.push(logEntry._id);
                 }
 
-                // Simple Hours Calculation
+                // 🔢 Calculate Total Work Hours
                 if (daily.firstIn && daily.lastOut) {
-                    const diff = daily.lastOut - daily.firstIn;
-                    daily.totalWorkHours = (diff / (1000 * 60 * 60)).toFixed(2);
+                    const diffMs = new Date(daily.lastOut) - new Date(daily.firstIn);
+                    // Convert to Hours (decimal)
+                    daily.totalWorkHours = Number((diffMs / (1000 * 60 * 60)).toFixed(2));
                 }
 
                 await daily.save({ session });
@@ -1635,7 +1792,7 @@ exports.pushMachineData = catchAsync(async (req, res, next) => {
             processedLogs.push(logEntry._id);
         }
 
-        // Update Machine Last Sync
+        // Update Machine Last Sync Time
         machine.lastSyncAt = new Date();
         await machine.save({ session });
 
@@ -1644,12 +1801,12 @@ exports.pushMachineData = catchAsync(async (req, res, next) => {
 
     } catch (err) {
         await session.abortTransaction();
+        console.error('Machine Push Error:', err);
         throw err;
     } finally {
         session.endSession();
     }
 });
-
 
 /**
  * @desc   Get all shifts
