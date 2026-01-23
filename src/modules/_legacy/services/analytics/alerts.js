@@ -6,7 +6,6 @@ const operationalService = require('./operational');
 const salesService = require('./sales');
 
 exports.getCriticalAlerts = async ({ orgId, branchId }) => {
-
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 

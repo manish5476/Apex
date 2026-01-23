@@ -1,4 +1,5 @@
-const analyticsService = require("../services/analyticsService");
+// const analyticsService = require("../services/analyticsService");
+const analyticsService = require("../../analytics/index");
 const catchAsync = require("../../../core/utils/catchAsync");
 const AppError = require("../../../core/utils/appError");
 const { performance } = require("perf_hooks");
