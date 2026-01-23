@@ -912,39 +912,73 @@ exports.getSecurityAuditLog = catchAsync(async (req, res, next) => {
     formatResponse(res, securityLog, startTime);
 });
 
-exports.exportAnalyticsData = catchAsync(async (req, res, next) => {
-    const startTime = performance.now();
-    const { type, startDate, endDate, format = 'csv' } = req.query;
-    const orgId = req.user.organizationId;
+// exports.exportAnalyticsData = catchAsync(async (req, res, next) => {
+//     const startTime = performance.now();
+//     const { type, startDate, endDate, format = 'csv' } = req.query;
+//     const orgId = req.user.organizationId;
 
-    if (!type) {
-        return next(new AppError('Export type is required (sales, inventory, customers)', 400));
+//     if (!type) {
+//         return next(new AppError('Export type is required (sales, inventory, customers)', 400));
+//     }
+
+//     const data = await analyticsService.getExportData(
+//         orgId,
+//         type,
+//         startDate,
+//         endDate
+//     );
+
+//     if (format === 'csv') {
+//         const csvData = analyticsService.convertToCSV(
+//             data,
+//             analyticsService.getExportConfig(type)
+//         );
+
+//         res.setHeader('Content-Type', 'text/csv');
+//         res.setHeader(
+//             'Content-Disposition',
+//             `attachment; filename=${type}_${Date.now()}.csv`
+//         );
+//         return res.status(200).send(csvData);
+//     }
+
+//     formatResponse(res, data, startTime);
+// });
+exports.exportAnalyticsData = catchAsync(async (req, res, next) => {
+    const { type, startDate, endDate } = req.query;
+
+    // 1. Validation
+    if (!['sales', 'inventory', 'customers'].includes(type)) {
+        return next(new AppError('Invalid export type. Allowed: sales, inventory, customers', 400));
     }
 
+    // 2. Fetch Data
     const data = await analyticsService.getExportData(
-        orgId,
-        type,
-        startDate,
+        req.user.organizationId, 
+        type, 
+        startDate, 
         endDate
     );
 
-    if (format === 'csv') {
-        const csvData = analyticsService.convertToCSV(
-            data,
-            analyticsService.getExportConfig(type)
-        );
-
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader(
-            'Content-Disposition',
-            `attachment; filename=${type}_${Date.now()}.csv`
-        );
-        return res.status(200).send(csvData);
+    if (!data || data.length === 0) {
+        return next(new AppError(`No ${type} records found for the selected date range`, 404));
     }
 
-    formatResponse(res, data, startTime);
-});
+    // 3. Get Configuration for Columns
+    const config = analyticsService.getExportConfig(type);
 
+    // 4. Convert Data to CSV String
+    const csvData = analyticsService.convertToCSV(data, config);
+
+    // 5. Send Response (File Download)
+    const filename = `${type}_export_${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    
+    // Explicitly send the CSV string with 200 OK
+    return res.status(200).send(csvData);
+});
 /* ==========================================================================
    SYSTEM PERFORMANCE & HEALTH
    ========================================================================== */
