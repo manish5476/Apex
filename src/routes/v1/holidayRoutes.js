@@ -14,6 +14,12 @@ router.route('/')
   .get(checkPermission(PERMISSIONS.HOLIDAY.READ), holidayController.getHolidays)
   .post(checkPermission(PERMISSIONS.HOLIDAY.MANAGE), holidayController.createHoliday);
 
+// 🟢 New Perfection Route
+router.post('/bulk-import',
+  checkPermission(PERMISSIONS.HOLIDAY.MANAGE),
+  holidayController.bulkCreateHolidays
+);
+
 router.route('/:id')
   .get(checkPermission(PERMISSIONS.HOLIDAY.READ), holidayController.getHolidayById)
   .patch(checkPermission(PERMISSIONS.HOLIDAY.MANAGE), holidayController.updateHoliday)

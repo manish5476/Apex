@@ -5,6 +5,18 @@ const AppError = require("../../../core/utils/appError");
 const factory = require("../../../core/utils/handlerFactory"); // 👈 Import Factory
 const imageUploadService = require("../../_legacy/services/uploads/imageUploadService");
 
+// 🟢 FIX: Hierarchy & Tenant Guard
+const checkTargetHierarchy = (req, targetUser) => {
+  // 1. Cross-tenant protection
+  if (targetUser.organizationId.toString() !== req.user.organizationId.toString()) {
+    throw new AppError("You do not have permission to access users outside your organization.", 403);
+  }
+  // 2. Owner protection
+  if (targetUser.isOwner && req.user._id.toString() !== targetUser._id.toString()) {
+    throw new AppError("The Organization Owner cannot be modified or deleted by other users.", 403);
+  }
+};
+
 // ======================================================
 // 1. SELF MANAGEMENT (Logged in user)
 // ======================================================
@@ -21,36 +33,59 @@ exports.getMyProfile = [
   }),
 ];
 
+// ======================================================
+// 1. SELF MANAGEMENT
+// ======================================================
 exports.updateMyProfile = catchAsync(async (req, res, next) => {
-  if (req.body.password || req.body.passwordConfirm) {
-    return next(
-      new AppError(
-        "This route is not for password updates. Please use /updateMyPassword.",
-        400,
-      ),
-    );
+  if (req.body.password || req.body.passwordConfirm || req.body.role || req.body.isOwner) {
+    return next(new AppError("This route is only for profile data (name, phone, avatar).", 400));
   }
 
-  // 2. Filter allowed fields
+  // 🟢 PERFECTION: Whitelist allowed fields to prevent privilege escalation
   const allowedFields = ["name", "phone", "avatar", "preferences"];
   const filteredBody = {};
   Object.keys(req.body).forEach((el) => {
     if (allowedFields.includes(el)) filteredBody[el] = req.body[el];
   });
 
-  // 3. Update user document
   const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
     new: true,
     runValidators: true,
-  })
-    .populate("role", "name")
-    .populate("branchId", "name");
+  }).populate("role", "name");
 
-  res.status(200).json({
-    status: "success",
-    data: { user: updatedUser },
-  });
+  res.status(200).json({ status: "success", data: { user: updatedUser } });
 });
+
+// exports.updateMyProfile = catchAsync(async (req, res, next) => {
+//   if (req.body.password || req.body.passwordConfirm) {
+//     return next(
+//       new AppError(
+//         "This route is not for password updates. Please use /updateMyPassword.",
+//         400,
+//       ),
+//     );
+//   }
+
+//   // 2. Filter allowed fields
+//   const allowedFields = ["name", "phone", "avatar", "preferences"];
+//   const filteredBody = {};
+//   Object.keys(req.body).forEach((el) => {
+//     if (allowedFields.includes(el)) filteredBody[el] = req.body[el];
+//   });
+
+//   // 3. Update user document
+//   const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
+//     new: true,
+//     runValidators: true,
+//   })
+//     .populate("role", "name")
+//     .populate("branchId", "name");
+
+//   res.status(200).json({
+//     status: "success",
+//     data: { user: updatedUser },
+//   });
+// });
 
 exports.uploadProfilePhoto = catchAsync(async (req, res, next) => {
   if (!req.file || !req.file.buffer)
@@ -122,17 +157,17 @@ exports.uploadUserPhotoByAdmin = catchAsync(async (req, res, next) => {
 //   searchFields: ['name', 'email', 'phone'],
 //   populate: { path: 'role branchId', select: 'name' }
 // });
-exports.getAllUsers = factory.getAll(User, {
-  searchFields: ["name", "email", "phone"],
-  populate: [
-    { path: "role", select: "name" },
-    { path: "branchId", select: "name" },
-    {
-      path: "attendanceConfig.shiftId",
-      select: "name startTime endTime duration isNightShift",
-    },
-  ],
-});
+// exports.getAllUsers = factory.getAll(User, {
+//   searchFields: ["name", "email", "phone"],
+//   populate: [
+//     { path: "role", select: "name" },
+//     { path: "branchId", select: "name" },
+//     {
+//       path: "attendanceConfig.shiftId",
+//       select: "name startTime endTime duration isNightShift",
+//     },
+//   ],
+// });
 
 // ✅ GET ONE: Fetches user with Roles and Branch populated
 exports.getUser = factory.getOne(User, {
@@ -142,14 +177,61 @@ exports.getUser = factory.getOne(User, {
   ],
 });
 
+// 🟢 FIX: Ensure factory only pulls users for THIS organization
+exports.getAllUsers = (req, res, next) => {
+  req.query.organizationId = req.user.organizationId; // Force tenant filter
+  factory.getAll(User, {
+    searchFields: ["name", "email", "phone"],
+    populate: [
+      { path: "role", select: "name" },
+      { path: "branchId", select: "name" },
+      { path: "attendanceConfig.shiftId", select: "name startTime endTime" },
+    ],
+  })(req, res, next);
+};
+
+exports.updateUser = catchAsync(async (req, res, next) => {
+  const targetUser = await User.findById(req.params.id);
+  if (!targetUser) return next(new AppError("User not found", 404));
+
+  // 🟢 PERFECTION: Hierarchy & Tenant Check
+  checkTargetHierarchy(req, targetUser);
+
+  // Prevent a non-owner from making someone else an owner
+  if (req.body.isOwner && !req.user.isOwner) {
+    return next(new AppError("Only the current owner can designate a new owner.", 403));
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({ status: "success", data: { user: updatedUser } });
+});
+
 // ✅ CREATE: Auto-assigns OrganizationId and CreatedBy from req.user
 exports.createUser = factory.createOne(User);
 
-// ✅ UPDATE: Auto-handles permissions and Organization check
-exports.updateUser = factory.updateOne(User);
+exports.deleteUser = catchAsync(async (req, res, next) => {
+  const targetUser = await User.findById(req.params.id);
+  if (!targetUser) return next(new AppError("User not found", 404));
 
-// ✅ DELETE: Handles Soft Delete automatically via Factory
-exports.deleteUser = factory.deleteOne(User);
+  // 🟢 PERFECTION: Hierarchy & Tenant Check
+  checkTargetHierarchy(req, targetUser);
+
+  // Perform soft delete
+  targetUser.isActive = false;
+  targetUser.status = 'inactive';
+  await targetUser.save();
+
+  res.status(204).json({ status: "success", data: null });
+});
+// // ✅ UPDATE: Auto-handles permissions and Organization check
+// exports.updateUser = factory.updateOne(User);
+
+// // ✅ DELETE: Handles Soft Delete automatically via Factory
+// exports.deleteUser = factory.deleteOne(User);
 
 // ======================================================
 // 3. SPECIFIC ACTIONS (Custom Logic Preserved)
@@ -166,27 +248,50 @@ exports.searchUsers = (req, res, next) => {
 
 exports.adminUpdatePassword = catchAsync(async (req, res, next) => {
   const { password, passwordConfirm } = req.body;
+  if (password !== passwordConfirm) return next(new AppError("Passwords do not match", 400));
 
-  if (!password || !passwordConfirm)
-    return next(new AppError("Provide password & passwordConfirm", 400));
-  if (password !== passwordConfirm)
-    return next(new AppError("Passwords do not match", 400));
-
-  // Find user explicitly to run pre-save hooks (hashing)
   const user = await User.findOne({
     _id: req.params.id,
-    organizationId: req.user.organizationId,
+    organizationId: req.user.organizationId, // Tenant Isolation
   }).select("+password");
+
   if (!user) return next(new AppError("User not found", 404));
+
+  // 🟢 PERFECTION: Cannot reset owner password unless you ARE the owner
+  if (user.isOwner && req.user._id.toString() !== user._id.toString()) {
+    return next(new AppError("Admin cannot reset the Owner's password.", 403));
+  }
 
   user.password = password;
   user.passwordConfirm = passwordConfirm;
   await user.save();
 
-  res
-    .status(200)
-    .json({ status: "success", message: "Password updated successfully" });
+  res.status(200).json({ status: "success", message: "Password updated successfully" });
 });
+
+// exports.adminUpdatePassword = catchAsync(async (req, res, next) => {
+//   const { password, passwordConfirm } = req.body;
+
+//   if (!password || !passwordConfirm)
+//     return next(new AppError("Provide password & passwordConfirm", 400));
+//   if (password !== passwordConfirm)
+//     return next(new AppError("Passwords do not match", 400));
+
+//   // Find user explicitly to run pre-save hooks (hashing)
+//   const user = await User.findOne({
+//     _id: req.params.id,
+//     organizationId: req.user.organizationId,
+//   }).select("+password");
+//   if (!user) return next(new AppError("User not found", 404));
+
+//   user.password = password;
+//   user.passwordConfirm = passwordConfirm;
+//   await user.save();
+
+//   res
+//     .status(200)
+//     .json({ status: "success", message: "Password updated successfully" });
+// });
 
 exports.deactivateUser = catchAsync(async (req, res, next) => {
   const user = await User.findOneAndUpdate(
