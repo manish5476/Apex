@@ -14,22 +14,15 @@ exports.signToken = (user) => {
 };
 
 exports.signAccessToken = (user) => {
-  console.log("🔐 Signing access token for user:", {
-    userId: user._id,
-    email: user.email,
-    roleName: user.role?.name,
-    isSuperAdmin: user.isSuperAdmin || user.role?.isSuperAdmin,
-    isOwner: user.isOwner
-  });
-  
+  const userId = user._id || user.id;
+
   return jwt.sign(
     {
-      id: user._id,
+      id: userId, // Standardize on 'id'
+      sub: userId, // 'sub' is the industry standard for Subject (User ID)
       name: user.name,
       email: user.email,
-      sub: user._id,
       organizationId: user.organizationId,
-      role: user.role?._id || user.role,
       isSuperAdmin: user.isSuperAdmin || user.role?.isSuperAdmin || false,
       isOwner: user.isOwner || false
     },
@@ -41,10 +34,46 @@ exports.signAccessToken = (user) => {
 };
 
 exports.signRefreshToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.REFRESH_TOKEN_SECRET, {
+  // Ensure userId is a string/ID, not the whole object
+  const id = userId._id || userId; 
+  
+  return jwt.sign({ id }, process.env.REFRESH_TOKEN_SECRET, {
     expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "30d",
   });
 };
+
+// exports.signAccessToken = (user) => {
+//   console.log("🔐 Signing access token for user:", {
+//     userId: user._id,
+//     email: user.email,
+//     roleName: user.role?.name,
+//     isSuperAdmin: user.isSuperAdmin || user.role?.isSuperAdmin,
+//     isOwner: user.isOwner
+//   });
+  
+//   return jwt.sign(
+//     {
+//       id: user._id,
+//       name: user.name,
+//       email: user.email,
+//       sub: user._id,
+//       organizationId: user.organizationId,
+//       role: user.role?._id || user.role,
+//       isSuperAdmin: user.isSuperAdmin || user.role?.isSuperAdmin || false,
+//       isOwner: user.isOwner || false
+//     },
+//     process.env.JWT_SECRET,
+//     {
+//       expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || "1h",
+//     }
+//   );
+// };
+
+// exports.signRefreshToken = (userId) => {
+//   return jwt.sign({ id: userId }, process.env.REFRESH_TOKEN_SECRET, {
+//     expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "30d",
+//   });
+// };
 
 exports.verifyToken = (token) => {
   try {
