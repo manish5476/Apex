@@ -1,6 +1,4 @@
 const mongoose = require('mongoose');
-
-// --- Subdocument for Address ---
 const addressSchema = new mongoose.Schema({
   street: { type: String, trim: true },
   city: { type: String, trim: true },
@@ -8,8 +6,6 @@ const addressSchema = new mongoose.Schema({
   zipCode: { type: String, trim: true },
   country: { type: String, trim: true, default: 'India' },
 }, { _id: false });
-
-// --- Main Supplier Schema ---
 const supplierSchema = new mongoose.Schema(
   {
     organizationId: {
@@ -48,8 +44,6 @@ const supplierSchema = new mongoose.Schema(
 /* ===================================================
     🔥 THE FIX: Partial Indexes
 ==================================================== */
-
-// Email Unique per Org (Ignored if null/empty)
 supplierSchema.index(
   { organizationId: 1, email: 1 },
   { 
@@ -57,8 +51,6 @@ supplierSchema.index(
     partialFilterExpression: { email: { $gt: "" } } 
   }
 );
-
-// Phone Unique per Org (Ignored if null/empty)
 supplierSchema.index(
   { organizationId: 1, phone: 1 },
   { 
@@ -66,8 +58,6 @@ supplierSchema.index(
     partialFilterExpression: { phone: { $gt: "" } } 
   }
 );
-
-// GST Unique per Org (Ignored if null/empty)
 supplierSchema.index(
   { organizationId: 1, gstNumber: 1 },
   { 
@@ -75,28 +65,18 @@ supplierSchema.index(
     partialFilterExpression: { gstNumber: { $gt: "" } } 
   }
 );
-
 supplierSchema.index({ organizationId: 1, companyName: 1 });
-
-// --- Virtual for Display Name ---
 supplierSchema.virtual('displayName').get(function () {
   return this.contactPerson ? `${this.companyName} (${this.contactPerson})` : this.companyName;
 });
-
-// --- Middleware: Normalize Text & Clean Nulls ---
 supplierSchema.pre('save', function (next) {
   if (this.companyName) this.companyName = this.companyName.trim();
   if (this.contactPerson) this.contactPerson = this.contactPerson.trim();
-  
-  // Convert empty strings to null to avoid index collisions
   const fields = ['email', 'phone', 'gstNumber', 'panNumber'];
   fields.forEach(field => {
     if (this[field] === "") this[field] = null;
   });
-  
   next();
 });
-
 const Supplier = mongoose.model('Supplier', supplierSchema);
 module.exports = Supplier;
-

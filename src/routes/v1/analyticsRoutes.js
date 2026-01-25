@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const analyticsController = require("../../modules/_legacy/controllers/analyticsController");
+const analyticsController = require("../../modules/analytics/analyticsController");
 const authController = require("../../modules/auth/core/auth.controller");
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");

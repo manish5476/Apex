@@ -44,14 +44,50 @@ async function restoreStockFromInvoice(items, branchId, organizationId, session)
   }
 }
 
-// --- VALIDATION SCHEMA ---
+// // --- VALIDATION SCHEMA ---
+// const createInvoiceSchema = z.object({
+//   customerId: z.string().min(1, "Customer ID is required"),
+//   items: z.array(z.object({
+//     productId: z.string().min(1, "Product ID is required"),
+//     quantity: z.number().positive("Quantity must be positive"),
+//     price: z.number().nonnegative("Price cannot be negative"),
+//     // Allow 'tax' or 'taxRate'
+//     tax: z.number().optional().default(0),
+//     taxRate: z.number().optional().default(0),
+//     discount: z.number().optional().default(0),
+//     unit: z.string().optional().default('pcs'),
+//     hsnCode: z.string().optional()
+//   })).min(1, "Invoice must have at least one item"),
+
+//   invoiceNumber: z.string().optional(),
+//   invoiceDate: z.union([z.string(), z.date()]).optional(),
+//   dueDate: z.union([z.string(), z.date()]).optional(),
+
+//   // Payment fields
+//   paidAmount: z.coerce.number().min(0, "Paid amount cannot be negative").optional().default(0),
+//   paymentMethod: z.enum(['cash', 'bank', 'upi', 'card', 'cheque', 'other']).optional().default('cash'),
+//   // Support both fields
+//   referenceNumber: z.string().optional(),
+//   paymentReference: z.string().optional(),
+//   transactionId: z.string().optional(),
+
+//   status: z.enum(['draft', 'issued', 'paid', 'cancelled']).optional().default('issued'),
+//   shippingCharges: z.coerce.number().min(0).optional().default(0),
+//   notes: z.string().optional(),
+//   roundOff: z.number().optional(),
+//   gstType: z.string().optional(),
+//   attachedFiles: z.array(z.string()).optional()
+// });
 const createInvoiceSchema = z.object({
   customerId: z.string().min(1, "Customer ID is required"),
   items: z.array(z.object({
     productId: z.string().min(1, "Product ID is required"),
     quantity: z.number().positive("Quantity must be positive"),
-    price: z.number().nonnegative("Price cannot be negative"),
-    // Allow 'tax' or 'taxRate'
+    price: z.number().nonnegative("Price cannot be negative"), // Selling Price
+    
+    // 🟢 ADDED: This will be populated by the backend, not the user
+    purchasePriceAtSale: z.number().nonnegative().optional(), 
+    
     tax: z.number().optional().default(0),
     taxRate: z.number().optional().default(0),
     discount: z.number().optional().default(0),
@@ -63,10 +99,8 @@ const createInvoiceSchema = z.object({
   invoiceDate: z.union([z.string(), z.date()]).optional(),
   dueDate: z.union([z.string(), z.date()]).optional(),
 
-  // Payment fields
-  paidAmount: z.coerce.number().min(0, "Paid amount cannot be negative").optional().default(0),
+  paidAmount: z.coerce.number().min(0).optional().default(0),
   paymentMethod: z.enum(['cash', 'bank', 'upi', 'card', 'cheque', 'other']).optional().default('cash'),
-  // Support both fields
   referenceNumber: z.string().optional(),
   paymentReference: z.string().optional(),
   transactionId: z.string().optional(),
@@ -78,7 +112,6 @@ const createInvoiceSchema = z.object({
   gstType: z.string().optional(),
   attachedFiles: z.array(z.string()).optional()
 });
-
 // --- HELPER: Get or Init Account ---
 async function getOrInitAccount(orgId, type, name, code, session) {
   // Try to find existing account (using session if provided)
@@ -214,33 +247,63 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
     return next(new AppError(errorMessage, 400));
   }
 
-  // 2. Pre-transaction: Enrich Items & Calc Totals (Reads OUTSIDE transaction to prevent WriteConflict)
-  const enrichedItems = await Promise.all(req.body.items.map(async (item) => {
-    const product = await Product.findOne({ _id: item.productId, organizationId: req.user.organizationId }).select('name sku inventory hsnCode category');
-    if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
+  // // 2. Pre-transaction: Enrich Items & Calc Totals (Reads OUTSIDE transaction to prevent WriteConflict)
+  // const enrichedItems = await Promise.all(req.body.items.map(async (item) => {
+  //   const product = await Product.findOne({ _id: item.productId, organizationId: req.user.organizationId }).select('name sku inventory hsnCode category');
+  //   if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
     
-    // Quick stock check
-    const inv = product.inventory?.find(i => String(i.branchId) === String(req.user.branchId));
-    if (!inv || inv.quantity < item.quantity) throw new AppError(`Insufficient stock for ${product.name}`, 400);
+  //   // Quick stock check
+  //   const inv = product.inventory?.find(i => String(i.branchId) === String(req.user.branchId));
+  //   if (!inv || inv.quantity < item.quantity) throw new AppError(`Insufficient stock for ${product.name}`, 400);
 
-    return { 
-        ...item, 
-        name: product.name, 
-        hsnCode: product.hsnCode || product.sku || item.hsnCode || "",
-        unit: item.unit || 'pcs',
-        discount: item.discount || 0,
-        // Fix: Map either tax or taxRate to taxRate
-        taxRate: item.taxRate || item.tax || 0,
-        // Defaults for schema compliance
-        reminderSent: false,
-        overdueNoticeSent: false,
-        overdueCount: 0
-    };
-  }));
+  //   return { 
+  //       ...item, 
+  //       name: product.name, 
+  //       hsnCode: product.hsnCode || product.sku || item.hsnCode || "",
+  //       unit: item.unit || 'pcs',
+  //       discount: item.discount || 0,
+  //       // Fix: Map either tax or taxRate to taxRate
+  //       taxRate: item.taxRate || item.tax || 0,
+  //       // Defaults for schema compliance
+  //       reminderSent: false,
+  //       overdueNoticeSent: false,
+  //       overdueCount: 0
+  //   };
+  // }));
+
+const enrichedItems = await Promise.all(req.body.items.map(async (item) => {
+  // 🟢 CORRECTION: Add 'purchasePrice' to the select string
+  const product = await Product.findOne({ 
+    _id: item.productId, 
+    organizationId: req.user.organizationId 
+  }).select('name sku inventory hsnCode category purchasePrice'); // Added purchasePrice
+  
+  if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
+  
+  const inv = product.inventory?.find(i => String(i.branchId) === String(req.user.branchId));
+  if (!inv || inv.quantity < item.quantity) throw new AppError(`Insufficient stock for ${product.name}`, 400);
+
+  return { 
+      ...item, 
+      name: product.name, 
+      hsnCode: product.hsnCode || product.sku || item.hsnCode || "",
+      unit: item.unit || 'pcs',
+      discount: item.discount || 0,
+      taxRate: item.taxRate || item.tax || 0,
+      
+      // 🟢 THE KEY SNAPSHOT: Save the current cost price forever
+      purchasePriceAtSale: product.purchasePrice || 0, 
+      
+      reminderSent: false,
+      overdueNoticeSent: false,
+      overdueCount: 0
+  };
+}));
 
   const subtotal = enrichedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const shippingCharges = req.body.shippingCharges || 0;
   const discount = req.body.discount || 0;
+  
   // Calc tax based on taxRate
   const tax = enrichedItems.reduce((sum, item) => {
       const lineTotal = item.price * item.quantity - (item.discount || 0);

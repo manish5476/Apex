@@ -156,17 +156,25 @@ class SalesService {
       const qty = Number(i.quantity || 0);
       const rate = Number(i.price || 0);
       const discount = Number(i.discount || 0);
-      const tax = Number(i.taxRate || 0);
-      const lineTotal = qty * rate - discount + tax;
+      // In your Invoice, taxRate is the percentage (e.g., 18)
+      const taxRate = Number(i.taxRate || 0);
+      
+      // Calculate the actual tax amount for the Sales record
+      const lineTax = (taxRate / 100) * (qty * rate - discount);
+      const lineTotal = qty * rate - discount + lineTax;
 
       return {
         productId: i.productId,
-        sku: i.sku || "",
+        sku: i.sku || i.hsnCode || "",
         name: i.name || "",
         qty,
         rate,
+        
+        // 🟢 THE CRITICAL ADDITION: Mapping the snapshot from Invoice to Sales
+        purchasePriceAtSale: Number(i.purchasePriceAtSale || 0), 
+        
         discount,
-        tax,
+        tax: lineTax, // Storing the amount here makes analytics faster
         lineTotal: isNaN(lineTotal) ? 0 : lineTotal
       };
     });
@@ -187,9 +195,55 @@ class SalesService {
       paymentStatus: invoice.paymentStatus,
       status: invoice.status === 'cancelled' ? 'cancelled' : 'active',
       createdBy: invoice.createdBy,
-      meta: { fromInvoice: true }
+      meta: { 
+        fromInvoice: true,
+        snapshotDate: new Date() 
+      }
     };
   }
+  
+  // /* -------------------------------------------------------------
+  //  * Convert Invoice → Sales Object
+  //  * ------------------------------------------------------------- */
+  // static _mapInvoiceToSales(invoice) {
+  //   const items = (invoice.items || []).map(i => {
+  //     const qty = Number(i.quantity || 0);
+  //     const rate = Number(i.price || 0);
+  //     const discount = Number(i.discount || 0);
+  //     const tax = Number(i.taxRate || 0);
+  //     const lineTotal = qty * rate - discount + tax;
+
+  //     return {
+  //       productId: i.productId,
+  //       sku: i.sku || "",
+  //       name: i.name || "",
+  //       qty,
+  //       rate,
+  //       discount,
+  //       tax,
+  //       lineTotal: isNaN(lineTotal) ? 0 : lineTotal
+  //     };
+  //   });
+
+  //   return {
+  //     organizationId: invoice.organizationId,
+  //     branchId: invoice.branchId,
+  //     invoiceId: invoice._id,
+  //     invoiceNumber: invoice.invoiceNumber,
+  //     customerId: invoice.customerId,
+  //     items,
+  //     subTotal: invoice.subTotal || 0,
+  //     taxTotal: invoice.totalTax || 0,
+  //     discountTotal: invoice.totalDiscount || 0,
+  //     totalAmount: invoice.grandTotal || 0,
+  //     paidAmount: invoice.paidAmount || 0,
+  //     dueAmount: (invoice.grandTotal || 0) - (invoice.paidAmount || 0),
+  //     paymentStatus: invoice.paymentStatus,
+  //     status: invoice.status === 'cancelled' ? 'cancelled' : 'active',
+  //     createdBy: invoice.createdBy,
+  //     meta: { fromInvoice: true }
+  //   };
+  // }
   
   /* -------------------------------------------------------------
    * Create Sales FROM INVOICE (non-transactional wrapper)

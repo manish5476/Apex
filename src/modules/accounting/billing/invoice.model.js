@@ -3,24 +3,15 @@ const mongoose = require("mongoose");
 // --- Subdocument for Invoice Items ---
 const invoiceItemSchema = new mongoose.Schema(
     {
-        productId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Product",
-            required: true,
-        },
-        name: {
-            type: String,
-            required: true,
-            trim: true,
-        },
-        // Meta
+        productId: {type: mongoose.Schema.Types.ObjectId,ref: "Product",required: true,},
+        name: {type: String,required: true,trim: true,},
         reminderSent: { type: Boolean, default: false },
         overdueNoticeSent: { type: Boolean, default: false },
         overdueCount: { type: Number, default: 0 },
-
         hsnCode: { type: String, trim: true },
         quantity: { type: Number, required: true, min: 1 },
         unit: { type: String, trim: true, default: "pcs" },
+        purchasePriceAtSale: { type: Number, required: true, select: false }, // Hidden "Snapshot"
         price: { type: Number, required: true, min: 0 },
         discount: { type: Number, default: 0 },
         taxRate: { type: Number, default: 0 },
@@ -31,44 +22,29 @@ const invoiceItemSchema = new mongoose.Schema(
 // --- Main Invoice Schema ---
 const invoiceSchema = new mongoose.Schema(
     {
-        // --- Core Links ---
         organizationId: { type: mongoose.Schema.Types.ObjectId, ref: "Organization", required: true, index: true },
         branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", index: true },
         customerId: { type: mongoose.Schema.Types.ObjectId, ref: "Customer", index: true },
         saleId: { type: mongoose.Schema.Types.ObjectId, ref: "Sales" },
-
-        // --- Invoice Info ---
         invoiceNumber: { type: String, required: true, trim: true, uppercase: true, index: true },
         invoiceDate: { type: Date, default: Date.now },
         dueDate: { type: Date },
         status: { type: String, enum: ["draft", "issued", "paid", "cancelled"], default: "issued" },
-
-        // --- Billing Details ---
         billingAddress: { type: String, trim: true },
         shippingAddress: { type: String, trim: true },
         placeOfSupply: { type: String, trim: true },
-
-        // --- Items ---
         items: [invoiceItemSchema],
-
-        // --- Totals ---
         subTotal: { type: Number, default: 0 },
         totalTax: { type: Number, default: 0 },
         totalDiscount: { type: Number, default: 0 },
         roundOff: { type: Number, default: 0 },
         grandTotal: { type: Number, required: true, default: 0 },
-
-        // --- Payment Info ---
         paymentStatus: { type: String, enum: ["unpaid", "partial", "paid"], default: "unpaid" },
         paidAmount: { type: Number, default: 0 },
         balanceAmount: { type: Number, default: 0 },
         paymentMethod: { type: String, enum: ["cash", "bank", "credit", "upi", "other"], default: "cash" },
-        
-        // ⚠️ ADDED: To store Cheque No / UPI Ref on the invoice doc itself
-        paymentReference: { type: String, trim: true }, 
+        paymentReference: { type: String, trim: true },
         transactionId: { type: String, trim: true },
-
-        // --- E-Invoice / Tax Metadata ---
         gstType: { type: String, enum: ["intra-state", "inter-state", "export"], default: "intra-state" },
         irnNumber: { type: String, trim: true },
         qrCode: { type: String, trim: true },

@@ -7,11 +7,6 @@ const invoiceAuditSchema = new mongoose.Schema({
     required: true,
     index: true // Important for fast history lookups
   },
-  // action: {
-  //   type: String,
-  //   required: true,
-  //   enum: ['CREATE', 'UPDATE', 'STATUS_CHANGE', 'DELETE', 'EMAIL_SENT', 'DOWNLOADED']
-  // },
   action: {
     type: String,
     enum: ['CREATE', 'UPDATE','PAYMENT_ADDED', 'STATUS_CHANGE', 'DELETE', 'EMAIL_SENT', 'DOWNLOADED', 'PAYMENT', 'CONVERT_DRAFT', 'UPDATE_DRAFT', 'UPDATE_FINANCIAL', 'CANCEL'],

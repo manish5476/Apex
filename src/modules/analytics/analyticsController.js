@@ -1,22 +1,15 @@
-// const analyticsService = require("../services/analyticsService");
-const analyticsService = require("../../analytics/index");
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
+const analyticsService = require("./index");
+const catchAsync = require("../../core/utils/catchAsync");
+const AppError = require("../../core/utils/appError");
 const { performance } = require("perf_hooks");
 
-/**
- * Smart Date Range with Validation
- */
 const getDateRange = (query) => {
     const now = new Date();
-
-    // Helper to validate and parse date
     const parseDate = (dateStr) => {
         if (!dateStr) return null;
         const parsed = new Date(dateStr);
         return isNaN(parsed.getTime()) ? null : parsed;
     };
-
     let start =
         parseDate(query.startDate) ||
         new Date(now.getFullYear(), now.getMonth(), 1);
@@ -68,10 +61,7 @@ exports.getDashboardOverview = catchAsync(async (req, res, next) => {
     const { start, end } = getDateRange(req.query);
     const { branchId, cache = "true" } = req.query;
     const orgId = req.user.organizationId;
-
-    // Try cache first if enabled
     const cacheKey = `dashboard_${orgId}_${branchId || "all"}_${start.toISOString()}_${end.toISOString()}`;
-
     if (cache === "true") {
         const cached = await analyticsService.getCachedData(cacheKey);
         if (cached) {
@@ -80,46 +70,24 @@ exports.getDashboardOverview = catchAsync(async (req, res, next) => {
             });
         }
     }
-
-    // Get data from existing functions
-    const [
-        kpi,
-        charts,
-        inventory,
-        leaders,
-        alerts,
-        customerSegments,
-        operationalStats,
+    const [kpi, charts, inventory, leaders, alerts,topCategories, customerSegments, operationalStats,
     ] = await Promise.all([
-        // Financial KPIs
         analyticsService.getExecutiveStats(orgId, branchId, start, end),
-
-        // Charts and trends
+        analyticsService.getTopCategories(orgId, branchId, start, end), // 🟢 New
         analyticsService.getChartData(orgId, branchId, start, end, "auto"),
-
-        // Inventory health
         analyticsService.getInventoryAnalytics(orgId, branchId),
-
-        // Top performers
         analyticsService.getLeaderboards(orgId, branchId, start, end),
-
-        // System alerts
         analyticsService.getCriticalAlerts(orgId, branchId),
-
-        // Customer analytics
         analyticsService.getCustomerRFMAnalysis(orgId),
-
-        // Operational efficiency
         analyticsService.getOperationalStats(orgId, branchId, start, end),
     ]);
 
     const responseData = {
         period: {
-            start,
-            end,
-            days: Math.ceil((end - start) / (1000 * 60 * 60 * 24)),
+            start, end, days: Math.ceil((end - start) / (1000 * 60 * 60 * 24)),
         },
         financial: kpi,
+        
         trends: charts,
         inventory: {
             ...inventory,
@@ -130,6 +98,7 @@ exports.getDashboardOverview = catchAsync(async (req, res, next) => {
             ),
         },
         leaders,
+        topCategories,
         alerts: {
             ...alerts,
             total: (alerts.lowStockCount || 0) + (alerts.highRiskDebtCount || 0),
@@ -955,9 +924,9 @@ exports.exportAnalyticsData = catchAsync(async (req, res, next) => {
 
     // 2. Fetch Data
     const data = await analyticsService.getExportData(
-        req.user.organizationId, 
-        type, 
-        startDate, 
+        req.user.organizationId,
+        type,
+        startDate,
         endDate
     );
 
@@ -976,7 +945,7 @@ exports.exportAnalyticsData = catchAsync(async (req, res, next) => {
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    
+
     // Explicitly send the CSV string with 200 OK
     return res.status(200).send(csvData);
 });
