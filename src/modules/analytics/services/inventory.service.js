@@ -85,65 +85,145 @@ const getInventoryAnalytics = async (orgId, branchId) => {
     }
 };
 
+// const getProductPerformanceStats = async (orgId, branchId) => {
+//     try {
+//         if (!orgId) throw new Error('Organization ID is required');
+//         const match = { organizationId: toObjectId(orgId) };
+//         const highMargin = await Product.aggregate([
+//             { $match: { ...match, isActive: true } },
+//             { 
+//                 $project: { 
+//                     name: 1, 
+//                     sku: 1,
+//                     margin: { $subtract: ['$sellingPrice', '$purchasePrice'] },
+//                     marginPercent: {
+//                          $cond: [
+//                             { $eq: ['$purchasePrice', 0] }, 
+//                             100, 
+//                             { $multiply: [{ $divide: [{ $subtract: ['$sellingPrice', '$purchasePrice'] }, '$purchasePrice'] }, 100] }
+//                          ]
+//                     }
+//                 } 
+//             },
+//             { $sort: { margin: -1 } },
+//             { $limit: 10 }
+//         ]);
+
+//         // 2. Dead Stock (Items with Inventory > 0 but NO Sales in last 90 days)
+//         const ninetyDaysAgo = new Date();
+//         ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+//         const soldProducts = await Invoice.distinct('items.productId', { 
+//             ...match, 
+//             invoiceDate: { $gte: ninetyDaysAgo } 
+//         });
+
+//         const deadStock = await Product.aggregate([
+//             { 
+//                 $match: { 
+//                     ...match, 
+//                     _id: { $nin: soldProducts }, 
+//                     isActive: true
+//                 } 
+//             },
+//             { $unwind: "$inventory" }, 
+//             ...(branchId ? [{ $match: { "inventory.branchId": toObjectId(branchId) } }] : []),
+//             { $match: { "inventory.quantity": { $gt: 0 } } },
+//             {
+//                 $project: {
+//                     name: 1,
+//                     sku: 1,
+//                     stockQuantity: "$inventory.quantity",
+//                     value: { $multiply: ["$inventory.quantity", "$purchasePrice"] }
+//                 }
+//             },
+//             { $limit: 20 }
+//         ]);
+
+//         return { highMargin, deadStock };
+//     } catch (error) {
+//         console.error('Error in getProductPerformanceStats:', error);
+//         throw new Error(`Failed to fetch product performance stats: ${error.message}`);
+//     }
+// };
+
 const getProductPerformanceStats = async (orgId, branchId) => {
     try {
         if (!orgId) throw new Error('Organization ID is required');
-        const match = { organizationId: toObjectId(orgId) };
-        const highMargin = await Product.aggregate([
-            { $match: { ...match, isActive: true } },
-            { 
-                $project: { 
-                    name: 1, 
-                    sku: 1,
-                    margin: { $subtract: ['$sellingPrice', '$purchasePrice'] },
-                    marginPercent: {
-                         $cond: [
-                            { $eq: ['$purchasePrice', 0] }, 
-                            100, 
-                            { $multiply: [{ $divide: [{ $subtract: ['$sellingPrice', '$purchasePrice'] }, '$purchasePrice'] }, 100] }
-                         ]
-                    }
-                } 
-            },
-            { $sort: { margin: -1 } },
-            { $limit: 10 }
-        ]);
-
-        // 2. Dead Stock (Items with Inventory > 0 but NO Sales in last 90 days)
+        
+        const orgObjectId = toObjectId(orgId);
+        const branchObjectId = branchId ? toObjectId(branchId) : null;
+        
         const ninetyDaysAgo = new Date();
         ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-        const soldProducts = await Invoice.distinct('items.productId', { 
-            ...match, 
-            invoiceDate: { $gte: ninetyDaysAgo } 
-        });
+        // 1. Safe Sold Products Query (Aggregation instead of distinct)
+        const soldMatch = { 
+            organizationId: orgObjectId, 
+            invoiceDate: { $gte: ninetyDaysAgo },
+            status: { $ne: 'cancelled' }
+        };
+        if (branchObjectId) soldMatch.branchId = branchObjectId;
 
-        const deadStock = await Product.aggregate([
-            { 
-                $match: { 
-                    ...match, 
-                    _id: { $nin: soldProducts }, 
-                    isActive: true
-                } 
-            },
-            { $unwind: "$inventory" }, 
-            ...(branchId ? [{ $match: { "inventory.branchId": toObjectId(branchId) } }] : []),
-            { $match: { "inventory.quantity": { $gt: 0 } } },
-            {
-                $project: {
-                    name: 1,
-                    sku: 1,
-                    stockQuantity: "$inventory.quantity",
-                    value: { $multiply: ["$inventory.quantity", "$purchasePrice"] }
-                }
-            },
-            { $limit: 20 }
+        const soldProductsData = await Invoice.aggregate([
+            { $match: soldMatch },
+            { $unwind: '$items' },
+            { $group: { _id: '$items.productId' } }
+        ]);
+        const soldProductIds = soldProductsData.map(p => p._id);
+
+        // 2. Parallel Execution for Dashboard Speed
+        const [highMargin, deadStock] = await Promise.all([
+            // HIGH MARGIN ANALYTICS
+            Product.aggregate([
+                { $match: { organizationId: orgObjectId, isActive: true } },
+                { 
+                    $project: { 
+                        name: 1, 
+                        sku: 1,
+                        margin: { $subtract: ['$sellingPrice', '$purchasePrice'] },
+                        marginPercent: {
+                             $cond: [
+                                { $lte: ['$purchasePrice', 0] }, 
+                                100, 
+                                { $multiply: [{ $divide: [{ $subtract: ['$sellingPrice', '$purchasePrice'] }, '$purchasePrice'] }, 100] }
+                             ]
+                        }
+                    } 
+                },
+                { $sort: { margin: -1 } },
+                { $limit: 10 }
+            ]),
+
+            // DEAD STOCK ANALYTICS (Branch-aware and Scale-safe)
+            Product.aggregate([
+                { 
+                    $match: { 
+                        organizationId: orgObjectId, 
+                        _id: { $nin: soldProductIds }, 
+                        isActive: true
+                    } 
+                },
+                { $unwind: "$inventory" }, 
+                ...(branchObjectId ? [{ $match: { "inventory.branchId": branchObjectId } }] : []),
+                { $match: { "inventory.quantity": { $gt: 0 } } },
+                {
+                    $project: {
+                        name: 1,
+                        sku: 1,
+                        stockQuantity: "$inventory.quantity",
+                        value: { $multiply: ["$inventory.quantity", { $ifNull: ["$purchasePrice", 0] }] }
+                    }
+                },
+                { $sort: { value: -1 } },
+                { $limit: 20 }
+            ])
         ]);
 
         return { highMargin, deadStock };
     } catch (error) {
         console.error('Error in getProductPerformanceStats:', error);
-        throw new Error(`Failed to fetch product performance stats: ${error.message}`);
+        throw new Error(`Analytics Engine Error: ${error.message}`);
     }
 };
 
@@ -319,28 +399,51 @@ const calculateInventoryTurnover = async (orgId, branchId) => {
     }
 };
 
+// const calculateInventoryHealthScore = (analytics, performance, deadStock) => {
+//     try {
+//         let score = 100;
+
+//         // Deduct for low stock items
+//         const lowStockPenalty = Math.min(analytics.lowStockAlerts.length * 2, 30);
+//         score -= lowStockPenalty;
+
+//         // Deduct for dead stock
+//         const deadStockPenalty = Math.min(deadStock.length, 20);
+//         score -= deadStockPenalty;
+
+//         // Bonus for good turnover
+//         if (analytics.turnover?.turnover > 4) score += 10;
+
+//         const highMarginCount = performance.highMargin?.filter(p => p.marginPercent > 40).length || 0;
+//         if (highMarginCount > 5) score += 10;
+
+//         return Math.max(0, Math.min(100, score));
+//     } catch (error) {
+//         console.error('Error in calculateInventoryHealthScore:', error);
+//         return 0;
+//     }
+// };
+
 const calculateInventoryHealthScore = (analytics, performance, deadStock) => {
     try {
+        // Defensive coding: Provide safe fallbacks for all inputs
+        const lowStockCount = analytics?.lowStockAlerts?.length || 0;
+        const deadStockCount = deadStock?.length || 0;
+        const highMargins = performance?.highMargin || [];
+
         let score = 100;
+        score -= Math.min(lowStockCount * 2, 30);
+        score -= Math.min(deadStockCount, 20);
 
-        // Deduct for low stock items
-        const lowStockPenalty = Math.min(analytics.lowStockAlerts.length * 2, 30);
-        score -= lowStockPenalty;
+        if (analytics?.turnover?.turnover > 4) score += 10;
 
-        // Deduct for dead stock
-        const deadStockPenalty = Math.min(deadStock.length, 20);
-        score -= deadStockPenalty;
-
-        // Bonus for good turnover
-        if (analytics.turnover?.turnover > 4) score += 10;
-
-        const highMarginCount = performance.highMargin?.filter(p => p.marginPercent > 40).length || 0;
+        const highMarginCount = highMargins.filter(p => p.marginPercent > 40).length;
         if (highMarginCount > 5) score += 10;
 
         return Math.max(0, Math.min(100, score));
     } catch (error) {
-        console.error('Error in calculateInventoryHealthScore:', error);
-        return 0;
+        console.error('Safe Health Score Error:', error);
+        return 0; // Prevent crash, return neutral score
     }
 };
 
