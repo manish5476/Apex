@@ -9,16 +9,67 @@ const { toObjectId } = require('../utils/analytics.utils');
    📊 FULL SALES ANALYTICS SERVICE
    ========================================================================== */
 
-/**
- * 1. LEADERBOARDS: Top 5 Customers and Top 5 Products
- */
+// /**
+//  * 1. LEADERBOARDS: Top 5 Customers and Top 5 Products
+//  */
+// const getLeaderboards = async (orgId, branchId, startDate, endDate) => {
+//     const start = new Date(startDate);
+//     const end = new Date(endDate);
+//     const match = { 
+//         organizationId: toObjectId(orgId), 
+//         status: 'active',
+//         createdAt: { $gte: start, $lte: end }
+//     };
+//     if (branchId) match.branchId = toObjectId(branchId);
+
+//     const data = await Sales.aggregate([
+//         {
+//             $facet: {
+//                 topCustomers: [
+//                     { $match: match },
+//                     { $group: { _id: '$customerId', totalSpent: { $sum: '$totalAmount' }, transactions: { $sum: 1 } } },
+//                     { $sort: { totalSpent: -1 } },
+//                     { $limit: 5 },
+//                     { $lookup: { from: 'customers', localField: '_id', foreignField: '_id', as: 'customer' } },
+//                     { $unwind: '$customer' },
+//                     { $project: { name: '$customer.name', phone: '$customer.phone', totalSpent: 1, transactions: 1 } }
+//                 ],
+//                 topProducts: [
+//                     { $match: match },
+//                     { $unwind: '$items' },
+//                     {
+//                         $group: {
+//                             _id: '$items.productId',
+//                             name: { $first: '$items.name' },
+//                             soldQty: { $sum: '$items.qty' },
+//                             revenue: { $sum: '$items.lineTotal' },
+//                             profit: { 
+//                                 $sum: { 
+//                                     $subtract: [
+//                                         { $multiply: ['$items.qty', '$items.rate'] },
+//                                         { $multiply: ['$items.qty', '$items.purchasePriceAtSale'] }
+//                                     ]
+//                                 } 
+//                             }
+//                         }
+//                     },
+//                     { $sort: { revenue: -1 } },
+//                     { $limit: 5 }
+//                 ]
+//             }
+//         }
+//     ]);
+
+//     return {
+//         topCustomers: data[0]?.topCustomers || [],
+//         topProducts: data[0]?.topProducts || []
+//     };
+// };
 const getLeaderboards = async (orgId, branchId, startDate, endDate) => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
     const match = { 
         organizationId: toObjectId(orgId), 
         status: 'active',
-        createdAt: { $gte: start, $lte: end }
+        createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) }
     };
     if (branchId) match.branchId = toObjectId(branchId);
 
@@ -30,7 +81,14 @@ const getLeaderboards = async (orgId, branchId, startDate, endDate) => {
                     { $group: { _id: '$customerId', totalSpent: { $sum: '$totalAmount' }, transactions: { $sum: 1 } } },
                     { $sort: { totalSpent: -1 } },
                     { $limit: 5 },
-                    { $lookup: { from: 'customers', localField: '_id', foreignField: '_id', as: 'customer' } },
+                    // SECURE LOOKUP: Project only needed fields
+                    { $lookup: { 
+                        from: 'customers', 
+                        localField: '_id', 
+                        foreignField: '_id', 
+                        pipeline: [{ $project: { name: 1, phone: 1 } }],
+                        as: 'customer' 
+                    }},
                     { $unwind: '$customer' },
                     { $project: { name: '$customer.name', phone: '$customer.phone', totalSpent: 1, transactions: 1 } }
                 ],
@@ -43,10 +101,11 @@ const getLeaderboards = async (orgId, branchId, startDate, endDate) => {
                             name: { $first: '$items.name' },
                             soldQty: { $sum: '$items.qty' },
                             revenue: { $sum: '$items.lineTotal' },
+                            // ACCURATE PROFIT: Use lineTotal to account for discounts
                             profit: { 
                                 $sum: { 
                                     $subtract: [
-                                        { $multiply: ['$items.qty', '$items.rate'] },
+                                        '$items.lineTotal',
                                         { $multiply: ['$items.qty', '$items.purchasePriceAtSale'] }
                                     ]
                                 } 
@@ -131,13 +190,40 @@ const getTopCategories = async (orgId, branchId, startDate, endDate, limit = 5) 
     }));
 };
 
-/**
- * 4. RETURN ANALYTICS: Return rates vs actual Sales
- */
+// /**
+//  * 4. RETURN ANALYTICS: Return rates vs actual Sales
+//  */
+// const getReturnAnalytics = async (orgId, branchId, startDate, endDate) => {
+//     const start = new Date(startDate);
+//     const end = new Date(endDate);
+//     const match = { organizationId: toObjectId(orgId), createdAt: { $gte: start, $lte: end } };
+//     if (branchId) match.branchId = toObjectId(branchId);
+
+//     const [salesData, returnData] = await Promise.all([
+//         Sales.aggregate([
+//             { $match: { ...match, status: 'active' } },
+//             { $unwind: '$items' },
+//             { $group: { _id: '$items.productId', soldQty: { $sum: '$items.qty' } } }
+//         ]),
+//         SalesReturn.aggregate([
+//             { $match: { ...match, status: 'approved' } },
+//             { $unwind: '$items' },
+//             { $group: { _id: '$items.productId', name: { $first: '$items.name' }, returnedQty: { $sum: '$items.quantity' }, refundTotal: { $sum: '$items.refundAmount' } } }
+//         ])
+//     ]);
+
+//     return returnData.map(ret => {
+//         const sale = salesData.find(s => s._id.toString() === ret._id.toString());
+//         const soldQty = sale ? sale.soldQty : 0;
+//         return {
+//             ...ret,
+//             soldQty,
+//             returnRate: soldQty > 0 ? (ret.returnedQty / soldQty) * 100 : 0
+//         };
+//     }).sort((a, b) => b.returnRate - a.returnRate);
+// };
 const getReturnAnalytics = async (orgId, branchId, startDate, endDate) => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const match = { organizationId: toObjectId(orgId), createdAt: { $gte: start, $lte: end } };
+    const match = { organizationId: toObjectId(orgId), createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) } };
     if (branchId) match.branchId = toObjectId(branchId);
 
     const [salesData, returnData] = await Promise.all([
@@ -149,13 +235,15 @@ const getReturnAnalytics = async (orgId, branchId, startDate, endDate) => {
         SalesReturn.aggregate([
             { $match: { ...match, status: 'approved' } },
             { $unwind: '$items' },
-            { $group: { _id: '$items.productId', name: { $first: '$items.name' }, returnedQty: { $sum: '$items.quantity' }, refundTotal: { $sum: '$items.refundAmount' } } }
+            { $group: { _id: '$items.productId', name: { $first: '$items.name' }, returnedQty: { $sum: '$items.quantity' } } }
         ])
     ]);
 
+    // O(N) Hash-Map Pattern: Optimized for production scale
+    const salesMap = new Map(salesData.map(s => [s._id.toString(), s.soldQty]));
+
     return returnData.map(ret => {
-        const sale = salesData.find(s => s._id.toString() === ret._id.toString());
-        const soldQty = sale ? sale.soldQty : 0;
+        const soldQty = salesMap.get(ret._id.toString()) || 0;
         return {
             ...ret,
             soldQty,
@@ -163,7 +251,6 @@ const getReturnAnalytics = async (orgId, branchId, startDate, endDate) => {
         };
     }).sort((a, b) => b.returnRate - a.returnRate);
 };
-
 /**
  * 5. TIME-BASED TRENDS: Hourly, Daily, Monthly, and Weekly
  */

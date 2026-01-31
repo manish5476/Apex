@@ -158,59 +158,119 @@ async function getUserActivityLogs(orgId, userId = null, startDate, endDate, lim
 }
 
 /**
- * Detect suspicious activities
+ * Senior Architect Refactor: Suspicious Activity Detection
+ * Fixed: RAM limits, Data Privacy, and Timezone issues.
  */
 async function getSuspiciousActivities(orgId, thresholdHours = 24) {
     try {
         if (!orgId) throw new Error('Organization ID is required');
 
-        const cutoff = new Date();
-        cutoff.setHours(cutoff.getHours() - thresholdHours);
+        // Force UTC Absolute Time
+        const cutoff = new Date(Date.now() - (thresholdHours * 60 * 60 * 1000));
 
         return await AuditLog.aggregate([
             { 
                 $match: { 
                     organizationId: toObjectId(orgId),
-                    createdAt: { $gte: cutoff }
+                    createdAt: { $gte: cutoff } 
                 } 
             },
             {
                 $group: {
                     _id: '$userId',
                     activityCount: { $sum: 1 },
-                    differentActions: { $addToSet: '$action' },
                     ipAddresses: { $addToSet: '$ipAddress' },
-                    recentActivities: { $push: { action: '$action', time: '$createdAt', module: '$module' } }
+                    differentActions: { $addToSet: '$action' }
                 }
             },
-            { $match: { activityCount: { $gte: 20 } } }, // Suspicious if >20 activities in threshold period
-            { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
+            // Threshold: Keep the working set small for performance
+            { $match: { activityCount: { $gte: 20 } } }, 
+            { 
+                $lookup: { 
+                    from: 'users', 
+                    let: { uid: '$_id' },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ['$_id', '$$uid'] } } },
+                        { $project: { name: 1, email: 1 } } // ZERO sensitive data leakage
+                    ],
+                    as: 'user' 
+                } 
+            },
             { $unwind: '$user' },
             {
                 $project: {
-                    userId: '$_id',
                     userName: '$user.name',
-                    userEmail: '$user.email',
                     activityCount: 1,
-                    differentActionCount: { $size: '$differentActions' },
-                    uniqueIPs: { $size: '$ipAddresses' },
+                    uniqueIPCount: { $size: '$ipAddresses' },
+                    // Risk scoring logic: High IP diversity = High Risk
                     suspiciousScore: {
                         $add: [
-                            { $multiply: ['$activityCount', 0.5] },
-                            { $multiply: [{ $size: '$differentActions' }, 2] },
-                            { $multiply: [{ $size: '$ipAddresses' }, 3] }
+                            { $multiply: ['$activityCount', 0.2] },
+                            { $multiply: [{ $size: '$ipAddresses' }, 10] } 
                         ]
-                    },
-                    recentActivities: { $slice: ['$recentActivities', 10] }
+                    }
                 }
             },
             { $sort: { suspiciousScore: -1 } }
-        ]);
+        ]).allowDiskUse(true); // Prevent memory-limit crashes
     } catch (error) {
-        console.error('Error in getSuspiciousActivities:', error);
-        throw new Error(`Failed to fetch suspicious activities: ${error.message}`);
+        throw new Error(`Security Analytics Audit Failed: ${error.message}`);
     }
 }
+// /**
+//  * Detect suspicious activities
+//  */
+// async function getSuspiciousActivities(orgId, thresholdHours = 24) {
+//     try {
+//         if (!orgId) throw new Error('Organization ID is required');
+
+//         const cutoff = new Date();
+//         cutoff.setHours(cutoff.getHours() - thresholdHours);
+
+//         return await AuditLog.aggregate([
+//             { 
+//                 $match: { 
+//                     organizationId: toObjectId(orgId),
+//                     createdAt: { $gte: cutoff }
+//                 } 
+//             },
+//             {
+//                 $group: {
+//                     _id: '$userId',
+//                     activityCount: { $sum: 1 },
+//                     differentActions: { $addToSet: '$action' },
+//                     ipAddresses: { $addToSet: '$ipAddress' },
+//                     recentActivities: { $push: { action: '$action', time: '$createdAt', module: '$module' } }
+//                 }
+//             },
+//             { $match: { activityCount: { $gte: 20 } } }, // Suspicious if >20 activities in threshold period
+//             { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
+//             { $unwind: '$user' },
+//             {
+//                 $project: {
+//                     userId: '$_id',
+//                     userName: '$user.name',
+//                     userEmail: '$user.email',
+//                     activityCount: 1,
+//                     differentActionCount: { $size: '$differentActions' },
+//                     uniqueIPs: { $size: '$ipAddresses' },
+//                     suspiciousScore: {
+//                         $add: [
+//                             { $multiply: ['$activityCount', 0.5] },
+//                             { $multiply: [{ $size: '$differentActions' }, 2] },
+//                             { $multiply: [{ $size: '$ipAddresses' }, 3] }
+//                         ]
+//                     },
+//                     recentActivities: { $slice: ['$recentActivities', 10] }
+//                 }
+//             },
+//             { $sort: { suspiciousScore: -1 } }
+//         ]);
+//     } catch (error) {
+//         console.error('Error in getSuspiciousActivities:', error);
+//         throw new Error(`Failed to fetch suspicious activities: ${error.message}`);
+//     }
+// }
 
 module.exports = {
     getSecurityPulse,
