@@ -115,25 +115,76 @@ function init(server, options = {}) {
     }
   }
 
-  // Strict auth middleware: token required via AUTH OBJECT only
+  // // Strict auth middleware: token required via AUTH OBJECT only
+  // io.use(async (socket, next) => {
+  //   try {
+  //     const token = socket.handshake.auth?.token;
+      
+  //     if (!token) return next(new Error('auth required (token missing in handshake.auth)'));
+      
+  //     const secret = jwtSecret || process.env.JWT_SECRET;
+  //     const payload = jwt.verify(token, secret);
+
+  //     if (!payload || !payload.sub || !payload.organizationId) {
+  //       return next(new Error('invalid token payload'));
+  //     }
+
+  //     // Verify user exists and is active
+  //     const user = await User.findById(payload.sub).select('_id email organizationId role isActive').lean();
+  //     if (!user || !user.isActive) {
+  //       return next(new Error('user not found or inactive'));
+  //     }
+
+  //     socket.user = {
+  //       _id: user._id,
+  //       email: user.email,
+  //       organizationId: user.organizationId,
+  //       role: user.role || 'member',
+  //       name: user.name || user.email.split('@')[0],
+  //     };
+
+  //     // Initialize Set to track channels this specific socket joins
+  //     socket.joinedChannels = new Set();
+
+  //     return next();
+  //   } catch (err) {
+  //     console.error('Socket auth error:', err.message);
+  //     return next(new Error('auth failed'));
+  //   }
+  // });
+// 🟢 UPGRADED: Strict auth middleware with explicit Expiration Handling
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
       
-      if (!token) return next(new Error('auth required (token missing in handshake.auth)'));
+      if (!token) return next(new Error('AUTH_REQUIRED'));
       
       const secret = jwtSecret || process.env.JWT_SECRET;
-      const payload = jwt.verify(token, secret);
-
-      if (!payload || !payload.sub || !payload.organizationId) {
-        return next(new Error('invalid token payload'));
+      
+      // Verify JWT
+      let payload;
+      try {
+        payload = jwt.verify(token, secret);
+      } catch (err) {
+        if (err.name === 'TokenExpiredError') {
+          // ⚠️ CRITICAL FIX: Create an error object with machine-readable data
+          const expirationError = new Error('jwt expired');
+          expirationError.data = { code: 'TOKEN_EXPIRED' }; 
+          return next(expirationError);
+        }
+        return next(new Error('INVALID_TOKEN'));
       }
 
-      // Verify user exists and is active
-      const user = await User.findById(payload.sub).select('_id email organizationId role isActive').lean();
-      if (!user || !user.isActive) {
-        return next(new Error('user not found or inactive'));
+      if (!payload || (!payload.sub && !payload.id) || !payload.organizationId) {
+        return next(new Error('INVALID_PAYLOAD'));
       }
+
+      // Verify user exists and is active (using parallel ID check for flexibility)
+      const userId = payload.sub || payload.id;
+      const user = await User.findById(userId).select('_id email organizationId role isActive').lean();
+      
+      if (!user) return next(new Error('USER_NOT_FOUND'));
+      if (!user.isActive) return next(new Error('USER_INACTIVE'));
 
       socket.user = {
         _id: user._id,
@@ -148,11 +199,11 @@ function init(server, options = {}) {
 
       return next();
     } catch (err) {
-      console.error('Socket auth error:', err.message);
-      return next(new Error('auth failed'));
+      console.error('Socket Auth System Error:', err.message);
+      return next(new Error('INTERNAL_SERVER_ERROR'));
     }
   });
-
+  
   io.on('connection', (socket) => {
     const userId = String(socket.user._id);
     const orgId = String(socket.user.organizationId);
@@ -916,6 +967,21 @@ module.exports = {
   getOrgOnlineUsers,
   getIo: () => io 
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // // src/utils/socket.js
 // 'use strict';

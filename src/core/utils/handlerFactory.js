@@ -1,36 +1,26 @@
-const AppError = require("../utils/appError");
-const ApiFeatures = require("../utils/ApiFeatures");
-const catchAsync = require("../utils/catchAsync");
+'use strict';
+
+const AppError = require("./appError");
+const ApiFeatures = require("./ApiFeatures");
+const catchAsync = require("./catchAsync");
 
 /**
- * ===========================================================
  * CRUD HANDLER FACTORY
- * Universal handlers for all models with organization isolation
- * ===========================================================
+ * Enforces strict multi-tenant isolation across all system models.
  */
 
-/**
- * GET ALL DOCUMENTS
- * Supports: Filtering, Sorting, Pagination, Field Limiting, Search
- */
 exports.getAll = (Model, options = {}) =>
   catchAsync(async (req, res, next) => {
-    // 1. Base filter: only documents for this organization
-    const filter = {
-      organizationId: req.user.organizationId,
-    };
+    // 1. Mandatory Organization Filter
+    const filter = { organizationId: req.user.organizationId };
 
-    // 2. Exclude soft-deleted docs if applicable
-    if (Model.schema.path("isDeleted")) {
-      filter.isDeleted = { $ne: true };
-    }
-
-    // 3. Exclude inactive docs if applicable
-    if (Model.schema.path("isActive")) {
+    // 2. Automated status management
+    if (Model.schema.path("isDeleted")) filter.isDeleted = { $ne: true };
+    if (Model.schema.path("isActive") && !options.includeInactive) {
       filter.isActive = { $ne: false };
     }
 
-    // 4. Build query using ApiFeatures utility
+    // 3. Build Features
     const features = new ApiFeatures(Model.find(filter), req.query)
       .filter()
       .search(options.searchFields || ["name", "title", "description"])
@@ -38,460 +28,706 @@ exports.getAll = (Model, options = {}) =>
       .limitFields()
       .paginate();
 
-    // 5. Apply custom populate if provided
     if (options.populate) {
       features.query = features.query.populate(options.populate);
     }
 
-    // 6. Execute query and get pagination metadata
     const result = await features.execute();
 
-    // 7. Send response
     res.status(200).json({
       status: "success",
       results: result.results,
       pagination: result.pagination,
-      data: {
-        data: result.data,
-      },
+      data: { data: result.data },
     });
   });
 
-/**
- * GET ONE DOCUMENT
- * Optionally populate references
- */
 exports.getOne = (Model, options = {}) =>
   catchAsync(async (req, res, next) => {
-    // 1. Build base query
     let query = Model.findOne({
       _id: req.params.id,
       organizationId: req.user.organizationId,
     });
 
-    // 2. Apply populate if provided
-    if (options.populate) {
-      query = query.populate(options.populate);
-    }
+    if (options.populate) query = query.populate(options.populate);
+    const doc = await query.lean();
 
-    // 3. Execute query
-    const doc = await query;
+    if (!doc) return next(new AppError("Document not found or unauthorized", 404));
 
-    // 4. Check if document exists
-    if (!doc) {
-      return next(new AppError("No document found with that ID", 404));
-    }
-
-    // 5. Send response
-    res.status(200).json({
-      status: "success",
-      data: {
-        data: doc,
-      },
-    });
+    res.status(200).json({ status: "success", data: { data: doc } });
   });
 
-/**
- * CREATE ONE DOCUMENT
- * Automatically assigns organization and creator
- */
 exports.createOne = (Model) =>
   catchAsync(async (req, res, next) => {
-    // 1. Auto-assign organization and creator
+    // Zero-Trust: Force organization and creator IDs
     req.body.organizationId = req.user.organizationId;
-    req.body.createdBy = req.user.id;
+    req.body.createdBy = req.user._id || req.user.id;
 
-    // 2. Set default status if applicable
     if (Model.schema.path("isActive") && req.body.isActive === undefined) {
       req.body.isActive = true;
     }
 
-    // 3. Create document
     const doc = await Model.create(req.body);
-
-    // 4. Send response
-    res.status(201).json({
-      status: "success",
-      data: {
-        data: doc,
-      },
-    });
+    res.status(201).json({ status: "success", data: { data: doc } });
   });
 
-/**
- * UPDATE ONE DOCUMENT
- * Includes audit field and validation
- */
 exports.updateOne = (Model) =>
   catchAsync(async (req, res, next) => {
-    // 1. Add audit info
-    if (req.user) {
-      req.body.updatedBy = req.user.id;
-      req.body.updatedAt = Date.now();
-    }
+    // Audit Info
+    req.body.updatedBy = req.user._id || req.user.id;
+    req.body.updatedAt = Date.now();
 
-    // 2. Build query conditions
-    const conditions = {
-      _id: req.params.id,
-      organizationId: req.user.organizationId,
-    };
+    // 🟢 SECURITY: Remove organizationId from body to prevent tenant-hopping
+    delete req.body.organizationId;
 
-    // 3. Find and update
-    const doc = await Model.findOneAndUpdate(conditions, req.body, {
-      new: true,
-      runValidators: true,
-      context: "query",
-    });
+    const doc = await Model.findOneAndUpdate(
+      { _id: req.params.id, organizationId: req.user.organizationId },
+      req.body,
+      { new: true, runValidators: true }
+    );
 
-    // 4. Check if document exists
-    if (!doc) {
-      return next(new AppError("No document found with that ID", 404));
-    }
-
-    // 5. Send response
-    res.status(200).json({
-      status: "success",
-      data: {
-        data: doc,
-      },
-    });
+    if (!doc) return next(new AppError("Document not found or unauthorized", 404));
+    res.status(200).json({ status: "success", data: { data: doc } });
   });
 
-/**
- * DELETE ONE DOCUMENT
- * Soft delete preferred, hard delete as fallback
- */
 exports.deleteOne = (Model) =>
   catchAsync(async (req, res, next) => {
-    // 1. Check if model supports soft delete
+    const filter = { _id: req.params.id, organizationId: req.user.organizationId };
     const hasSoftDelete = !!Model.schema.path("isDeleted");
-
-    // 2. Build query conditions
-    const conditions = {
-      _id: req.params.id,
-      organizationId: req.user.organizationId,
-    };
-
     let doc;
 
-    // 3. Perform soft delete if supported
     if (hasSoftDelete) {
-      doc = await Model.findOneAndUpdate(
-        conditions,
-        {
-          isDeleted: true,
-          isActive: false,
-          deletedBy: req.user.id,
-          deletedAt: Date.now(),
-        },
-        { new: true },
-      );
-    }
-    // 4. Perform hard delete
-    else {
-      doc = await Model.findOneAndDelete(conditions);
+      doc = await Model.findOneAndUpdate(filter, {
+        isDeleted: true,
+        isActive: false,
+        deletedBy: req.user._id || req.user.id,
+        deletedAt: Date.now(),
+      }, { new: true });
+    } else {
+      doc = await Model.findOneAndDelete(filter);
     }
 
-    // 5. Check if document exists
-    if (!doc) {
-      return next(new AppError("No document found with that ID", 404));
-    }
-
-    // 6. Send response
-    res.status(204).json({
-      status: "success",
-      data: null,
-    });
+    if (!doc) return next(new AppError("Document not found", 404));
+    res.status(204).json({ status: "success", data: null });
   });
 
-/**
- * BULK CREATE DOCUMENTS
- * Create multiple documents at once
- */
 exports.bulkCreate = (Model) =>
   catchAsync(async (req, res, next) => {
-    // Validate that req.body is an array
-    if (!Array.isArray(req.body)) {
-      return next(new AppError("Request body must be an array", 400));
-    }
+    if (!Array.isArray(req.body)) return next(new AppError("Request body must be an array", 400));
 
-    // Add organization and creator info to each document
-    const documents = req.body.map((item) => ({
+    const docs = req.body.map((item) => ({
       ...item,
       organizationId: req.user.organizationId,
-      createdBy: req.user.id,
+      createdBy: req.user._id || req.user.id,
       isActive: item.isActive !== undefined ? item.isActive : true,
     }));
 
-    // Insert all documents
-    const docs = await Model.insertMany(documents);
-
-    // Send response
-    res.status(201).json({
-      status: "success",
-      results: docs.length,
-      data: {
-        data: docs,
-      },
-    });
+    const result = await Model.insertMany(docs);
+    res.status(201).json({ status: "success", results: result.length, data: { data: result } });
   });
 
-/**
- * BULK UPDATE DOCUMENTS
- * Update multiple documents by IDs
- */
 exports.bulkUpdate = (Model) =>
   catchAsync(async (req, res, next) => {
     const { ids, updates } = req.body;
+    if (!Array.isArray(ids) || !updates) return next(new AppError("IDs and Updates required", 400));
 
-    // Validate input
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return next(new AppError("IDs array is required", 400));
-    }
-
-    if (!updates || typeof updates !== "object") {
-      return next(new AppError("Updates object is required", 400));
-    }
-
-    // Add audit info
-    updates.updatedBy = req.user.id;
+    delete updates.organizationId;
+    updates.updatedBy = req.user._id || req.user.id;
     updates.updatedAt = Date.now();
 
-    // Update documents
     const result = await Model.updateMany(
-      {
-        _id: { $in: ids },
-        organizationId: req.user.organizationId,
-      },
+      { _id: { $in: ids }, organizationId: req.user.organizationId },
       updates,
-      { runValidators: true },
+      { runValidators: true }
     );
 
-    // Send response
-    res.status(200).json({
-      status: "success",
-      data: {
-        matchedCount: result.matchedCount,
-        modifiedCount: result.modifiedCount,
-      },
-    });
+    res.status(200).json({ status: "success", data: { matched: result.matchedCount, modified: result.modifiedCount } });
   });
 
-/**
- * BULK DELETE DOCUMENTS
- * Soft or hard delete multiple documents
- */
 exports.bulkDelete = (Model) =>
   catchAsync(async (req, res, next) => {
     const { ids, hardDelete = false } = req.body;
+    if (!Array.isArray(ids)) return next(new AppError("IDs array required", 400));
 
-    // Validate input
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return next(new AppError("IDs array is required", 400));
-    }
-
+    const filter = { _id: { $in: ids }, organizationId: req.user.organizationId };
     const hasSoftDelete = !!Model.schema.path("isDeleted");
     let result;
 
-    // Build query conditions
-    const conditions = {
-      _id: { $in: ids },
-      organizationId: req.user.organizationId,
-    };
-
-    // Perform bulk delete based on type
-    if (hardDelete && !hasSoftDelete) {
-      // Hard delete
-      result = await Model.deleteMany(conditions);
-    } else if (hasSoftDelete) {
-      // Soft delete
-      result = await Model.updateMany(conditions, {
+    if (!hardDelete && hasSoftDelete) {
+      result = await Model.updateMany(filter, {
         isDeleted: true,
         isActive: false,
-        deletedBy: req.user.id,
-        deletedAt: Date.now(),
+        deletedBy: req.user._id || req.user.id,
+        deletedAt: Date.now()
       });
     } else {
-      // Hard delete for non-soft-delete models
-      result = await Model.deleteMany(conditions);
+      result = await Model.deleteMany(filter);
     }
 
-    // Send response
-    res.status(200).json({
-      status: "success",
-      data: {
-        deletedCount: result.deletedCount || result.modifiedCount,
-      },
-    });
+    res.status(200).json({ status: "success", data: { deletedCount: result.deletedCount || result.modifiedCount } });
   });
 
-/**
- * RESTORE ONE DOCUMENT
- * For soft-deleted records only
- */
 exports.restoreOne = (Model) =>
   catchAsync(async (req, res, next) => {
-    // Check if model supports soft delete
-    if (!Model.schema.path("isDeleted")) {
-      return next(new AppError("This model does not support restoration", 400));
-    }
+    if (!Model.schema.path("isDeleted")) return next(new AppError("Model does not support restoration", 400));
 
-    // Build query conditions
-    const conditions = {
-      _id: req.params.id,
-      organizationId: req.user.organizationId,
-      isDeleted: true,
-    };
-
-    // Restore document
     const doc = await Model.findOneAndUpdate(
-      conditions,
-      {
-        isDeleted: false,
-        isActive: true,
-        restoredBy: req.user.id,
-        restoredAt: Date.now(),
-      },
-      { new: true },
+      { _id: req.params.id, organizationId: req.user.organizationId, isDeleted: true },
+      { isDeleted: false, isActive: true, restoredBy: req.user._id || req.user.id, restoredAt: Date.now() },
+      { new: true }
     );
 
-    // Check if document exists
-    if (!doc) {
-      return next(
-        new AppError("No soft-deleted document found with that ID", 404),
-      );
-    }
-
-    // Send response
-    res.status(200).json({
-      status: "success",
-      data: {
-        data: doc,
-      },
-    });
+    if (!doc) return next(new AppError("No deleted document found", 404));
+    res.status(200).json({ status: "success", data: { data: doc } });
   });
 
-/**
- * COUNT DOCUMENTS
- * Get count with optional filters
- */
 exports.count = (Model) =>
   catchAsync(async (req, res, next) => {
-    // Build base filter
-    const filter = {
-      organizationId: req.user.organizationId,
-    };
+    const filter = { organizationId: req.user.organizationId };
+    if (Model.schema.path("isDeleted")) filter.isDeleted = { $ne: true };
 
-    // Exclude soft-deleted
-    if (Model.schema.path("isDeleted")) {
-      filter.isDeleted = { $ne: true };
-    }
-
-    // Apply additional filters from query
     const features = new ApiFeatures(Model.find(filter), req.query).filter();
-    const countFilter = features.query.getFilter();
+    const count = await Model.countDocuments(features.query.getFilter());
 
-    // Get count
-    const count = await Model.countDocuments(countFilter);
-
-    // Send response
-    res.status(200).json({
-      status: "success",
-      data: {
-        count,
-      },
-    });
+    res.status(200).json({ status: "success", data: { count } });
   });
 
-/**
- * EXPORT DATA
- * Get data for export (CSV, Excel, etc.)
- */
 exports.exportData = (Model, options = {}) =>
   catchAsync(async (req, res, next) => {
-    // Build base filter
-    const filter = {
-      organizationId: req.user.organizationId,
-    };
+    const filter = { organizationId: req.user.organizationId };
+    if (Model.schema.path("isDeleted")) filter.isDeleted = { $ne: true };
 
-    // Exclude soft-deleted
-    if (Model.schema.path("isDeleted")) {
-      filter.isDeleted = { $ne: true };
-    }
-
-    // Build query with all filters but no pagination
     const features = new ApiFeatures(Model.find(filter), req.query)
       .filter()
-      .search(options.searchFields || ["name", "title", "description"])
+      .search(options.searchFields || ["name", "title"])
       .sort()
       .limitFields();
 
-    // Apply custom populate if provided
-    if (options.populate) {
-      features.query = features.query.populate(options.populate);
-    }
-
-    // Get all data (no pagination for export)
-    const data = await features.query;
-
-    // Send response
-    res.status(200).json({
-      status: "success",
-      results: data.length,
-      data: {
-        data,
-      },
-    });
+    const data = await features.query.lean();
+    res.status(200).json({ status: "success", results: data.length, data: { data } });
   });
 
-/**
- * GET STATISTICS
- * Get aggregated statistics for dashboard
- */
 exports.getStats = (Model) =>
   catchAsync(async (req, res, next) => {
-    const matchStage = {
-      organizationId: req.user.organizationId,
-    };
-
-    // Exclude soft-deleted
-    if (Model.schema.path("isDeleted")) {
-      matchStage.isDeleted = { $ne: true };
-    }
-
-    // Apply additional filters
-    const features = new ApiFeatures(
-      Model.find(matchStage),
-      req.query,
-    ).filter();
+    const features = new ApiFeatures(Model.find(), req.query).filter();
     const filter = features.query.getFilter();
+    
+    // Enforce isolation
+    filter.organizationId = req.user.organizationId;
+    if (Model.schema.path("isDeleted")) filter.isDeleted = { $ne: true };
 
-    // Get statistics
     const stats = await Model.aggregate([
       { $match: filter },
       {
         $group: {
           _id: null,
           total: { $sum: 1 },
-          active: {
-            $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] },
-          },
-          inactive: {
-            $sum: { $cond: [{ $eq: ["$isActive", false] }, 1, 0] },
-          },
-          // Add more aggregations as needed
-        },
-      },
+          active: { $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] } },
+          inactive: { $sum: { $cond: [{ $eq: ["$isActive", false] }, 1, 0] } }
+        }
+      }
     ]);
 
-    // Send response
     res.status(200).json({
       status: "success",
-      data: {
-        stats: stats[0] || { total: 0, active: 0, inactive: 0 },
-      },
+      data: { stats: stats[0] || { total: 0, active: 0, inactive: 0 } }
     });
   });
+  
+// const AppError = require("../utils/appError");
+// const ApiFeatures = require("../utils/ApiFeatures");
+// const catchAsync = require("../utils/catchAsync");
+
+// /**
+//  * ===========================================================
+//  * CRUD HANDLER FACTORY
+//  * Universal handlers for all models with organization isolation
+//  * ===========================================================
+//  */
+
+// /**
+//  * GET ALL DOCUMENTS
+//  * Supports: Filtering, Sorting, Pagination, Field Limiting, Search
+//  */
+// exports.getAll = (Model, options = {}) =>
+//   catchAsync(async (req, res, next) => {
+//     // 1. Base filter: only documents for this organization
+//     const filter = {
+//       organizationId: req.user.organizationId,
+//     };
+
+//     // 2. Exclude soft-deleted docs if applicable
+//     if (Model.schema.path("isDeleted")) {
+//       filter.isDeleted = { $ne: true };
+//     }
+
+//     // 3. Exclude inactive docs if applicable
+//     if (Model.schema.path("isActive")) {
+//       filter.isActive = { $ne: false };
+//     }
+
+//     // 4. Build query using ApiFeatures utility
+//     const features = new ApiFeatures(Model.find(filter), req.query)
+//       .filter()
+//       .search(options.searchFields || ["name", "title", "description"])
+//       .sort()
+//       .limitFields()
+//       .paginate();
+
+//     // 5. Apply custom populate if provided
+//     if (options.populate) {
+//       features.query = features.query.populate(options.populate);
+//     }
+
+//     // 6. Execute query and get pagination metadata
+//     const result = await features.execute();
+
+//     // 7. Send response
+//     res.status(200).json({
+//       status: "success",
+//       results: result.results,
+//       pagination: result.pagination,
+//       data: {
+//         data: result.data,
+//       },
+//     });
+//   });
+
+// /**
+//  * GET ONE DOCUMENT
+//  * Optionally populate references
+//  */
+// exports.getOne = (Model, options = {}) =>
+//   catchAsync(async (req, res, next) => {
+//     // 1. Build base query
+//     let query = Model.findOne({
+//       _id: req.params.id,
+//       organizationId: req.user.organizationId,
+//     });
+
+//     // 2. Apply populate if provided
+//     if (options.populate) {
+//       query = query.populate(options.populate);
+//     }
+
+//     // 3. Execute query
+//     const doc = await query;
+
+//     // 4. Check if document exists
+//     if (!doc) {
+//       return next(new AppError("No document found with that ID", 404));
+//     }
+
+//     // 5. Send response
+//     res.status(200).json({
+//       status: "success",
+//       data: {
+//         data: doc,
+//       },
+//     });
+//   });
+
+// /**
+//  * CREATE ONE DOCUMENT
+//  * Automatically assigns organization and creator
+//  */
+// exports.createOne = (Model) =>
+//   catchAsync(async (req, res, next) => {
+//     // 1. Auto-assign organization and creator
+//     req.body.organizationId = req.user.organizationId;
+//     req.body.createdBy = req.user.id;
+
+//     // 2. Set default status if applicable
+//     if (Model.schema.path("isActive") && req.body.isActive === undefined) {
+//       req.body.isActive = true;
+//     }
+
+//     // 3. Create document
+//     const doc = await Model.create(req.body);
+
+//     // 4. Send response
+//     res.status(201).json({
+//       status: "success",
+//       data: {
+//         data: doc,
+//       },
+//     });
+//   });
+
+// /**
+//  * UPDATE ONE DOCUMENT
+//  * Includes audit field and validation
+//  */
+// exports.updateOne = (Model) =>
+//   catchAsync(async (req, res, next) => {
+//     // 1. Add audit info
+//     if (req.user) {
+//       req.body.updatedBy = req.user.id;
+//       req.body.updatedAt = Date.now();
+//     }
+
+//     // 2. Build query conditions
+//     const conditions = {
+//       _id: req.params.id,
+//       organizationId: req.user.organizationId,
+//     };
+
+//     // 3. Find and update
+//     const doc = await Model.findOneAndUpdate(conditions, req.body, {
+//       new: true,
+//       runValidators: true,
+//       context: "query",
+//     });
+
+//     // 4. Check if document exists
+//     if (!doc) {
+//       return next(new AppError("No document found with that ID", 404));
+//     }
+
+//     // 5. Send response
+//     res.status(200).json({
+//       status: "success",
+//       data: {
+//         data: doc,
+//       },
+//     });
+//   });
+
+// /**
+//  * DELETE ONE DOCUMENT
+//  * Soft delete preferred, hard delete as fallback
+//  */
+// exports.deleteOne = (Model) =>
+//   catchAsync(async (req, res, next) => {
+//     // 1. Check if model supports soft delete
+//     const hasSoftDelete = !!Model.schema.path("isDeleted");
+
+//     // 2. Build query conditions
+//     const conditions = {
+//       _id: req.params.id,
+//       organizationId: req.user.organizationId,
+//     };
+
+//     let doc;
+
+//     // 3. Perform soft delete if supported
+//     if (hasSoftDelete) {
+//       doc = await Model.findOneAndUpdate(
+//         conditions,
+//         {
+//           isDeleted: true,
+//           isActive: false,
+//           deletedBy: req.user.id,
+//           deletedAt: Date.now(),
+//         },
+//         { new: true },
+//       );
+//     }
+//     // 4. Perform hard delete
+//     else {
+//       doc = await Model.findOneAndDelete(conditions);
+//     }
+
+//     // 5. Check if document exists
+//     if (!doc) {
+//       return next(new AppError("No document found with that ID", 404));
+//     }
+
+//     // 6. Send response
+//     res.status(204).json({
+//       status: "success",
+//       data: null,
+//     });
+//   });
+
+// /**
+//  * BULK CREATE DOCUMENTS
+//  * Create multiple documents at once
+//  */
+// exports.bulkCreate = (Model) =>
+//   catchAsync(async (req, res, next) => {
+//     // Validate that req.body is an array
+//     if (!Array.isArray(req.body)) {
+//       return next(new AppError("Request body must be an array", 400));
+//     }
+
+//     // Add organization and creator info to each document
+//     const documents = req.body.map((item) => ({
+//       ...item,
+//       organizationId: req.user.organizationId,
+//       createdBy: req.user.id,
+//       isActive: item.isActive !== undefined ? item.isActive : true,
+//     }));
+
+//     // Insert all documents
+//     const docs = await Model.insertMany(documents);
+
+//     // Send response
+//     res.status(201).json({
+//       status: "success",
+//       results: docs.length,
+//       data: {
+//         data: docs,
+//       },
+//     });
+//   });
+
+// /**
+//  * BULK UPDATE DOCUMENTS
+//  * Update multiple documents by IDs
+//  */
+// exports.bulkUpdate = (Model) =>
+//   catchAsync(async (req, res, next) => {
+//     const { ids, updates } = req.body;
+
+//     // Validate input
+//     if (!Array.isArray(ids) || ids.length === 0) {
+//       return next(new AppError("IDs array is required", 400));
+//     }
+
+//     if (!updates || typeof updates !== "object") {
+//       return next(new AppError("Updates object is required", 400));
+//     }
+
+//     // Add audit info
+//     updates.updatedBy = req.user.id;
+//     updates.updatedAt = Date.now();
+
+//     // Update documents
+//     const result = await Model.updateMany(
+//       {
+//         _id: { $in: ids },
+//         organizationId: req.user.organizationId,
+//       },
+//       updates,
+//       { runValidators: true },
+//     );
+
+//     // Send response
+//     res.status(200).json({
+//       status: "success",
+//       data: {
+//         matchedCount: result.matchedCount,
+//         modifiedCount: result.modifiedCount,
+//       },
+//     });
+//   });
+
+// /**
+//  * BULK DELETE DOCUMENTS
+//  * Soft or hard delete multiple documents
+//  */
+// exports.bulkDelete = (Model) =>
+//   catchAsync(async (req, res, next) => {
+//     const { ids, hardDelete = false } = req.body;
+
+//     // Validate input
+//     if (!Array.isArray(ids) || ids.length === 0) {
+//       return next(new AppError("IDs array is required", 400));
+//     }
+
+//     const hasSoftDelete = !!Model.schema.path("isDeleted");
+//     let result;
+
+//     // Build query conditions
+//     const conditions = {
+//       _id: { $in: ids },
+//       organizationId: req.user.organizationId,
+//     };
+
+//     // Perform bulk delete based on type
+//     if (hardDelete && !hasSoftDelete) {
+//       // Hard delete
+//       result = await Model.deleteMany(conditions);
+//     } else if (hasSoftDelete) {
+//       // Soft delete
+//       result = await Model.updateMany(conditions, {
+//         isDeleted: true,
+//         isActive: false,
+//         deletedBy: req.user.id,
+//         deletedAt: Date.now(),
+//       });
+//     } else {
+//       // Hard delete for non-soft-delete models
+//       result = await Model.deleteMany(conditions);
+//     }
+
+//     // Send response
+//     res.status(200).json({
+//       status: "success",
+//       data: {
+//         deletedCount: result.deletedCount || result.modifiedCount,
+//       },
+//     });
+//   });
+
+// /**
+//  * RESTORE ONE DOCUMENT
+//  * For soft-deleted records only
+//  */
+// exports.restoreOne = (Model) =>
+//   catchAsync(async (req, res, next) => {
+//     // Check if model supports soft delete
+//     if (!Model.schema.path("isDeleted")) {
+//       return next(new AppError("This model does not support restoration", 400));
+//     }
+
+//     // Build query conditions
+//     const conditions = {
+//       _id: req.params.id,
+//       organizationId: req.user.organizationId,
+//       isDeleted: true,
+//     };
+
+//     // Restore document
+//     const doc = await Model.findOneAndUpdate(
+//       conditions,
+//       {
+//         isDeleted: false,
+//         isActive: true,
+//         restoredBy: req.user.id,
+//         restoredAt: Date.now(),
+//       },
+//       { new: true },
+//     );
+
+//     // Check if document exists
+//     if (!doc) {
+//       return next(
+//         new AppError("No soft-deleted document found with that ID", 404),
+//       );
+//     }
+
+//     // Send response
+//     res.status(200).json({
+//       status: "success",
+//       data: {
+//         data: doc,
+//       },
+//     });
+//   });
+
+// /**
+//  * COUNT DOCUMENTS
+//  * Get count with optional filters
+//  */
+// exports.count = (Model) =>
+//   catchAsync(async (req, res, next) => {
+//     // Build base filter
+//     const filter = {
+//       organizationId: req.user.organizationId,
+//     };
+
+//     // Exclude soft-deleted
+//     if (Model.schema.path("isDeleted")) {
+//       filter.isDeleted = { $ne: true };
+//     }
+
+//     // Apply additional filters from query
+//     const features = new ApiFeatures(Model.find(filter), req.query).filter();
+//     const countFilter = features.query.getFilter();
+
+//     // Get count
+//     const count = await Model.countDocuments(countFilter);
+
+//     // Send response
+//     res.status(200).json({
+//       status: "success",
+//       data: {
+//         count,
+//       },
+//     });
+//   });
+
+// /**
+//  * EXPORT DATA
+//  * Get data for export (CSV, Excel, etc.)
+//  */
+// exports.exportData = (Model, options = {}) =>
+//   catchAsync(async (req, res, next) => {
+//     // Build base filter
+//     const filter = {
+//       organizationId: req.user.organizationId,
+//     };
+
+//     // Exclude soft-deleted
+//     if (Model.schema.path("isDeleted")) {
+//       filter.isDeleted = { $ne: true };
+//     }
+
+//     // Build query with all filters but no pagination
+//     const features = new ApiFeatures(Model.find(filter), req.query)
+//       .filter()
+//       .search(options.searchFields || ["name", "title", "description"])
+//       .sort()
+//       .limitFields();
+
+//     // Apply custom populate if provided
+//     if (options.populate) {
+//       features.query = features.query.populate(options.populate);
+//     }
+
+//     // Get all data (no pagination for export)
+//     const data = await features.query;
+
+//     // Send response
+//     res.status(200).json({
+//       status: "success",
+//       results: data.length,
+//       data: {
+//         data,
+//       },
+//     });
+//   });
+
+// /**
+//  * GET STATISTICS
+//  * Get aggregated statistics for dashboard
+//  */
+// exports.getStats = (Model) =>
+//   catchAsync(async (req, res, next) => {
+//     const matchStage = {
+//       organizationId: req.user.organizationId,
+//     };
+
+//     // Exclude soft-deleted
+//     if (Model.schema.path("isDeleted")) {
+//       matchStage.isDeleted = { $ne: true };
+//     }
+
+//     // Apply additional filters
+//     const features = new ApiFeatures(
+//       Model.find(matchStage),
+//       req.query,
+//     ).filter();
+//     const filter = features.query.getFilter();
+
+//     // Get statistics
+//     const stats = await Model.aggregate([
+//       { $match: filter },
+//       {
+//         $group: {
+//           _id: null,
+//           total: { $sum: 1 },
+//           active: {
+//             $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] },
+//           },
+//           inactive: {
+//             $sum: { $cond: [{ $eq: ["$isActive", false] }, 1, 0] },
+//           },
+//           // Add more aggregations as needed
+//         },
+//       },
+//     ]);
+
+//     // Send response
+//     res.status(200).json({
+//       status: "success",
+//       data: {
+//         stats: stats[0] || { total: 0, active: 0, inactive: 0 },
+//       },
+//     });
+//   });
 
 // const AppError = require('../utils/appError');
 // const ApiFeatures = require('../utils/ApiFeatures');
