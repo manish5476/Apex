@@ -12,10 +12,4 @@ router.get(
   checkPermission(PERMISSIONS.DASHBOARD.VIEW), // More specific than ANALYTICS.VIEW_EXECUTIVE
   dashboardController.getDashboardOverview
 );
-// router.get(
-//   "/",
-//   checkPermission(PERMISSIONS.ANALYTICS.VIEW_EXECUTIVE),
-//   dashboardController.getDashboardOverview
-// );
-
 module.exports = router;
