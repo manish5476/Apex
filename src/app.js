@@ -132,6 +132,16 @@ app.use(
 );
 
 // ---------------------- 3. HEALTH CHECK ----------------------
+// --- ADD THIS BLOCK ---
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "success",
+    message: "Apex Infinity API is live",
+    environment: process.env.NODE_ENV
+  });
+});
+
+
 app.get("/health", (req, res) => {
   const dbStatus = mongoose.connection.readyState;
   const statusMap = {
