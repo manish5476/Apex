@@ -17,6 +17,13 @@ const channelSchema = new mongoose.Schema({
     default: 'public',
   },
 
+  // ✅ ADD THIS FIELD
+  createdBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true 
+  },
+  
   // For private / DM channels
   members: [{
     type: mongoose.Schema.Types.ObjectId,

@@ -331,7 +331,7 @@ function init(server, options = {}) {
       removeUserFromChannel(channelId, userId);
       io.to(`channel:${channelId}`).emit('userLeftChannel', { userId, channelId });
       socket.emit('leftChannel', { channelId });
-      
+    
       console.log(`👋 User ${userId} left channel ${channelId}`);
     });
 
@@ -373,73 +373,7 @@ function init(server, options = {}) {
         socket.emit('error', { code: 'SERVER_ERROR' });
       }
     });
-
-    // UPDATE CHANNEL
-    // socket.on('updateChannel', async (payload = {}) => {
-    //   const { channelId, name, isActive, type } = payload;
-      
-    //   try {
-    //     // Permission check
-    //     const user = await User.findById(userId).select('role').lean();
-    //     if (!['admin', 'superadmin', 'owner'].includes(user?.role)) {
-    //       return socket.emit('error', { code: 'FORBIDDEN' });
-    //     }
-
-    //     const update = {};
-    //     if (name !== undefined) update.name = name;
-    //     if (isActive !== undefined) update.isActive = isActive;
-    //     if (type !== undefined) update.type = type;
-
-    //     const channel = await Channel.findByIdAndUpdate(
-    //       channelId,
-    //       update,
-    //       { new: true }
-    //     );
-
-    //     if (channel) {
-    //       io.to(`channel:${channelId}`).emit('channelUpdated', channel);
-    //       io.to(`org:${orgId}`).emit('channelUpdated', channel);
-    //     }
-        
-    //     socket.emit('channelUpdateSuccess', { channelId });
-
-    //   } catch (err) {
-    //     console.error('updateChannel err', err);
-    //     socket.emit('error', { code: 'SERVER_ERROR' });
-    //   }
-    // });
-// socket.on('updateChannel', async (payload = {}) => {
-//   const { channelId, name, isActive, type, members } = payload; // 🛑 Add members here
-  
-//   try {
-//     const user = await User.findById(userId).select('role').lean();
-//     if (!['admin', 'superadmin', 'owner'].includes(user?.role)) {
-//       return socket.emit('error', { code: 'FORBIDDEN' });
-//     }
-
-//     const update = {};
-//     if (name !== undefined) update.name = name;
-//     if (isActive !== undefined) update.isActive = isActive;
-//     if (type !== undefined) update.type = type;
-//     if (members !== undefined) update.members = members; // 🛑 Add this update logic
-
-//     const channel = await Channel.findByIdAndUpdate(
-//       channelId,
-//       update,
-//       { new: true }
-//     );
-
-//     if (channel) {
-//       io.to(`channel:${channelId}`).emit('channelUpdated', channel);
-//       io.to(`org:${orgId}`).emit('channelUpdated', channel);
-//     }
-    
-//     socket.emit('channelUpdateSuccess', { channelId });
-//   } catch (err) {
-//     socket.emit('error', { code: 'SERVER_ERROR' });
-//   }
-// });
-  socket.on('updateChannel', async (payload = {}) => {
+socket.on('updateChannel', async (payload = {}) => {
   // 1. Destructure 'members' from the incoming payload
   const { channelId, name, isActive, type, members } = payload;
   
@@ -537,88 +471,7 @@ function init(server, options = {}) {
       }
     });
 
-    // EDIT MESSAGE
-    // socket.on('editMessage', async (payload = {}) => {
-    //   const { messageId, body } = payload;
-      
-    //   if (!messageId || !body) {
-    //     return socket.emit('error', { code: 'INVALID_PAYLOAD' });
-    //   }
-      
-    //   try {
-    //     const message = await Message.findById(messageId);
-    //     if (!message) return socket.emit('error', { code: 'MESSAGE_NOT_FOUND' });
-        
-    //     // Check permissions
-    //     if (String(message.senderId) !== String(userId)) {
-    //       return socket.emit('error', { code: 'NOT_AUTHORIZED' });
-    //     }
-        
-    //     // Update message
-    //     message.body = body;
-    //     message.editedAt = new Date();
-    //     message.editedBy = userId;
-    //     await message.save();
-
-    //     const populatedMsg = await Message.findById(message._id)
-    //       .populate('senderId', 'name email avatar')
-    //       .lean();
-        
-    //     // Broadcast to channel
-    //     io.to(`channel:${message.channelId}`).emit('messageEdited', populatedMsg);
-        
-    //     console.log(`✏️ Message edited: ${messageId} by ${userId}`);
-
-    //   } catch (err) {
-    //     console.error('editMessage err', err);
-    //     socket.emit('error', { code: 'SERVER_ERROR' });
-    //   }
-    // });
-  // Inside io.on('connection', (socket) => { ...
-// const userId = String(socket.user._id); // Ensure this is at the top
-
-// socket.on('editMessage', async (payload = {}) => {
-//   const { messageId, body } = payload;
-  
-//   try {
-//     if (!messageId || !body) return;
-
-//     // 1. Find message and check if it exists
-//     const message = await Message.findById(messageId);
-//     if (!message) {
-//       return socket.emit('error', { code: 'NOT_FOUND', message: 'Message not found' });
-//     }
-
-//     // 2. 🛑 CRITICAL: Stringify both sides for comparison
-//     const isOwner = String(message.senderId) === userId;
-//     if (!isOwner) {
-//       console.warn(`Unauthorized edit attempt by ${userId} on message ${messageId}`);
-//       return socket.emit('error', { code: 'FORBIDDEN', message: 'You can only edit your own messages' });
-//     }
-
-//     // 3. Update
-//     message.body = body.trim();
-//     message.editedAt = new Date();
-//     message.editedBy = userId;
-//     await message.save();
-
-//     // 4. Populate so other clients get the sender's name/avatar
-//     const updatedMsg = await Message.findById(message._id)
-//       .populate('senderId', 'name email avatar')
-//       .lean();
-
-//     // 5. Broadcast to the room (Ensuring the room ID is a string)
-//     const channelRoom = `channel:${message.channelId.toString()}`;
-//     io.to(channelRoom).emit('messageEdited', updatedMsg);
-    
-//     console.log(`✏️ Message ${messageId} edited and broadcast to ${channelRoom}`);
-
-//   } catch (err) {
-//     console.error('❌ editMessage error:', err.message);
-//     socket.emit('error', { code: 'SERVER_ERROR' });
-//   }
-// });
-   socket.on('editMessage', async (payload = {}) => {
+  socket.on('editMessage', async (payload = {}) => {
     const { messageId, body } = payload;
     
     try {
@@ -664,54 +517,7 @@ if (String(message.senderId) !== String(socket.user._id)) {
       socket.emit('error', { code: 'SERVER_ERROR', message: 'Internal update failed' });
     }
   });
-// socket.on('editMessage', async (payload = {}) => {
-//   const { messageId, body } = payload;
-//   const currentUserId = socket.user?._id; // Get from socket context
 
-//   try {
-//     // 1. Basic Validation
-//     if (!messageId || !body) return;
-
-//     // 2. Fetch the message
-//     const message = await Message.findById(messageId);
-
-//     // 🛑 CRITICAL GUARD: If the message ID is wrong or deleted, don't proceed
-//     if (!message) {
-//       return socket.emit('error', { code: 'MESSAGE_NOT_FOUND' });
-//     }
-
-//     // 🛑 SECURITY GUARD: Ensure current user is the actual sender
-//     // Use .toString() or String() because one is usually an ObjectId and the other a String
-//     if (message.senderId.toString() !== currentUserId.toString()) {
-//       return socket.emit('error', { 
-//         code: 'UNAUTHORIZED', 
-//         message: 'You can only edit your own messages' 
-//       });
-//     }
-
-//     // 3. Update the document
-//     message.body = body;
-//     message.editedAt = new Date();
-//     message.editedBy = currentUserId;
-//     await message.save();
-
-//     // 4. Populate for the UI
-//     const populatedMsg = await Message.findById(message._id)
-//       .populate('senderId', 'name email avatar')
-//       .lean();
-
-//     // 5. Broadcast to the room
-//     const room = `channel:${message.channelId.toString()}`;
-//     io.to(room).emit('messageEdited', populatedMsg);
-
-//   } catch (err) {
-//     // Catch-all prevents the "Unhandled Rejection" crash
-//     console.error('❌ editMessage crash prevented:', err.message);
-//     socket.emit('error', { code: 'SERVER_ERROR' });
-//   }
-// });
-  
-  // UPDATED DELETE MESSAGE
 socket.on('deleteMessage', async (payload = {}) => {
   const { messageId } = payload;
   const userId = String(socket.user._id);
@@ -754,105 +560,8 @@ socket.on('deleteMessage', async (payload = {}) => {
     socket.emit('error', { code: 'SERVER_ERROR' });
   }
 });
-//   // DELETE MESSAGE
-// socket.on('deleteMessage', async (payload = {}) => {
-//   const { messageId } = payload;
-  
-//   if (!messageId) {
-//     return socket.emit('error', { code: 'INVALID_PAYLOAD', message: 'Message ID is required' });
-//   }
-  
-//   try {
-//     // 1. Find the message
-//     const message = await Message.findById(messageId);
-//     if (!message) return socket.emit('error', { code: 'MESSAGE_NOT_FOUND' });
-    
-//     // 2. Permission Check
-//     // userId is derived from the socket auth middleware
-//     const user = await User.findById(userId).select('role').lean();
-//     const isSender = String(message.senderId) === String(userId);
-//     const isAdmin = ['admin', 'superadmin', 'owner'].includes(user?.role);
-    
-//     if (!isSender && !isAdmin) {
-//       return socket.emit('error', { code: 'NOT_AUTHORIZED', message: 'You cannot delete this message' });
-//     }
-    
-//     // 3. Perform Soft Delete in DB
-//     message.body = '';
-//     message.attachments = [];
-//     message.deleted = true;
-//     message.deletedAt = new Date();
-//     message.deletedBy = userId;
-//     await message.save();
-    
-//     // 4. PREPARE IDs FOR SOCKET ROOMS
-//     // Crucial: Convert ObjectId to string to ensure the room match works
-//     const channelIdStr = message.channelId.toString();
-//     const messageIdStr = message._id.toString();
 
-//     // 5. BROADCAST TO EVERYONE IN THE CHANNEL
-//     // This will hit every socket joined to 'channel:ID', including other devices of this user
-//     io.to(`channel:${channelIdStr}`).emit('messageDeleted', { 
-//       messageId: messageIdStr,
-//       channelId: channelIdStr,
-//       deletedBy: userId,
-//       timestamp: new Date().toISOString()
-//     });
-    
-//     console.log(`🗑️ Message deleted: ${messageIdStr} by ${userId} in channel ${channelIdStr}`);
-
-//   } catch (err) {
-//     console.error('❌ deleteMessage System Error:', err);
-//     socket.emit('error', { code: 'SERVER_ERROR', message: 'Failed to delete message' });
-//   }
-// });
-//     // // DELETE MESSAGE
-//     // socket.on('deleteMessage', async (payload = {}) => {
-//     //   const { messageId } = payload;
-      
-//     //   if (!messageId) {
-//     //     return socket.emit('error', { code: 'INVALID_PAYLOAD' });
-//     //   }
-      
-//     //   try {
-//     //     const message = await Message.findById(messageId);
-//     //     if (!message) return socket.emit('error', { code: 'MESSAGE_NOT_FOUND' });
-        
-//     //     // Check permissions (sender or admin)
-//     //     const user = await User.findById(userId).select('role').lean();
-//     //     const isSender = String(message.senderId) === String(userId);
-//     //     const isAdmin = ['admin', 'superadmin', 'owner'].includes(user?.role);
-        
-//     //     if (!isSender && !isAdmin) {
-//     //       return socket.emit('error', { code: 'NOT_AUTHORIZED' });
-//     //     }
-        
-//     //     // Soft delete
-//     //     message.body = '';
-//     //     message.attachments = [];
-//     //     message.deleted = true;
-//     //     message.deletedAt = new Date();
-//     //     message.deletedBy = userId;
-//     //     await message.save();
-        
-//     //     // Broadcast to channel
-//     //     io.to(`channel:${message.channelId}`).emit('messageDeleted', { 
-//     //       messageId,
-//     //       channelId: message.channelId,
-//     //       deletedBy: userId,
-//     //       timestamp: new Date().toISOString()
-//     //     });
-        
-//     //     console.log(`🗑️ Message deleted: ${messageId} by ${userId}`);
-
-//     //   } catch (err) {
-//     //     console.error('deleteMessage err', err);
-//     //     socket.emit('error', { code: 'SERVER_ERROR' });
-//     //   }
-//     // });
-
-    // TYPING INDICATOR
-    socket.on('typing', ({ channelId, typing } = {}) => {
+  socket.on('typing', ({ channelId, typing } = {}) => {
       if (!channelId) return;
       socket.to(`channel:${channelId}`).emit('userTyping', { 
         userId, 
@@ -888,27 +597,6 @@ socket.on('deleteMessage', async (payload = {}) => {
       }
     });
 
-    // // FETCH MESSAGES
-    // socket.on('fetchMessages', async ({ channelId, before, limit = 50 } = {}) => {
-    //   if (!channelId) return socket.emit('error', { code: 'INVALID_PAYLOAD' });
-    //   try {
-    //     const filter = { channelId };
-    //     if (before) filter.createdAt = { $lt: new Date(before) };
-        
-    //     const messages = await Message.find(filter)
-    //       .populate('senderId', 'name email avatar')
-    //       .sort({ createdAt: -1 })
-    //       .limit(Number(limit))
-    //       .lean();
-          
-    //     socket.emit('messages', { channelId, messages });
-        
-    //   } catch (err) {
-    //     console.error('fetchMessages err', err);
-    //     socket.emit('error', { code: 'SERVER_ERROR' });
-    //   }
-    // });
-// socket.js
 socket.on('fetchMessages', async ({ channelId, before, limit = 50 } = {}) => {
   if (!channelId) return socket.emit('error', { code: 'INVALID_PAYLOAD' });
   
@@ -967,16 +655,7 @@ socket.on('fetchMessages', async ({ channelId, before, limit = 50 } = {}) => {
 
     // MARK NOTIFICATION AS READ
     socket.on('markNotificationRead', async ({ notificationId } = {}) => {
-      // try {
-      //   const notification = await NotificationModel.findByIdAndUpdate(
-      //     notificationId,
-      //     { 
-      //       isRead: true, 
-      //       readAt: new Date(),
-      //       readBy: userId
-      //     },
-      //     { new: true }
-      //   ).lean();
+    
         try {
     const notification = await NotificationModel.findOneAndUpdate(
       { _id: notificationId, recipientId: userId }, // 🛑 Ensure recipient is the current user
@@ -1153,31 +832,6 @@ socket.on('admin:getStats', async () => {
     socket.emit('error', { code: 'SERVER_ERROR', message: 'Internal server error occurred' });
   }
 });
-  
-    // // GET SYSTEM STATS
-    // socket.on('admin:getStats', async () => {
-    //   try {
-    //     const actor = await User.findById(userId).select('role').lean();
-    //     if (!['superadmin', 'admin', 'owner'].includes(String(actor.role))) {
-    //       return socket.emit('error', { code: 'FORBIDDEN' });
-    //     }
-
-    //     const stats = {
-    //       connectedUsers: activeSockets.size,
-    //       orgOnlineUsers: orgOnlineUsers.get(orgId)?.size || 0,
-    //       channelPresence: channelPresence.size,
-    //       totalConnections: io.engine.clientsCount,
-    //       timestamp: new Date().toISOString(),
-    //     };
-
-    //     socket.emit('systemStats', stats);
-        
-    //   } catch (err) {
-    //     console.error('admin:getStats err', err);
-    //     socket.emit('error', { code: 'SERVER_ERROR' });
-    //   }
-    // });
-
     // ==========================================================================
     // INITIAL DATA LOADING
     // ==========================================================================
@@ -1255,7 +909,6 @@ socket.on('admin:getStats', async () => {
         });
       }
     });
-
     // PING/PONG for connection health
     socket.on('ping', () => {
       socket.emit('pong', { timestamp: new Date().toISOString() });
@@ -1340,6 +993,13 @@ module.exports = {
   getOrgOnlineUsers,
   getIo: () => io 
 };
+
+
+
+
+
+
+
 
 
 

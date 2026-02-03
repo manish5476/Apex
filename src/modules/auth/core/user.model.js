@@ -59,6 +59,9 @@ userSchema.methods.correctPassword = async function(candidate, userPassword) {
 
 module.exports = mongoose.model('User', userSchema);
 
+
+
+
 // const crypto = require('crypto');
 // const mongoose = require('mongoose');
 // const bcrypt = require('bcryptjs');
