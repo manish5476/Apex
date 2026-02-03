@@ -467,43 +467,67 @@ function init(server, options = {}) {
     });
 
     // EDIT MESSAGE
-    socket.on('editMessage', async (payload = {}) => {
-      const { messageId, body } = payload;
+    // socket.on('editMessage', async (payload = {}) => {
+    //   const { messageId, body } = payload;
       
-      if (!messageId || !body) {
-        return socket.emit('error', { code: 'INVALID_PAYLOAD' });
-      }
+    //   if (!messageId || !body) {
+    //     return socket.emit('error', { code: 'INVALID_PAYLOAD' });
+    //   }
       
-      try {
-        const message = await Message.findById(messageId);
-        if (!message) return socket.emit('error', { code: 'MESSAGE_NOT_FOUND' });
+    //   try {
+    //     const message = await Message.findById(messageId);
+    //     if (!message) return socket.emit('error', { code: 'MESSAGE_NOT_FOUND' });
         
-        // Check permissions
-        if (String(message.senderId) !== String(userId)) {
-          return socket.emit('error', { code: 'NOT_AUTHORIZED' });
-        }
+    //     // Check permissions
+    //     if (String(message.senderId) !== String(userId)) {
+    //       return socket.emit('error', { code: 'NOT_AUTHORIZED' });
+    //     }
         
-        // Update message
-        message.body = body;
-        message.editedAt = new Date();
-        message.editedBy = userId;
-        await message.save();
+    //     // Update message
+    //     message.body = body;
+    //     message.editedAt = new Date();
+    //     message.editedBy = userId;
+    //     await message.save();
 
-        const populatedMsg = await Message.findById(message._id)
-          .populate('senderId', 'name email avatar')
-          .lean();
+    //     const populatedMsg = await Message.findById(message._id)
+    //       .populate('senderId', 'name email avatar')
+    //       .lean();
         
-        // Broadcast to channel
-        io.to(`channel:${message.channelId}`).emit('messageEdited', populatedMsg);
+    //     // Broadcast to channel
+    //     io.to(`channel:${message.channelId}`).emit('messageEdited', populatedMsg);
         
-        console.log(`✏️ Message edited: ${messageId} by ${userId}`);
+    //     console.log(`✏️ Message edited: ${messageId} by ${userId}`);
 
-      } catch (err) {
-        console.error('editMessage err', err);
-        socket.emit('error', { code: 'SERVER_ERROR' });
-      }
-    });
+    //   } catch (err) {
+    //     console.error('editMessage err', err);
+    //     socket.emit('error', { code: 'SERVER_ERROR' });
+    //   }
+    // });
+socket.on('editMessage', async (payload = {}) => {
+  const { messageId, body } = payload;
+  
+  try {
+    const message = await Message.findById(messageId);
+    if (!message) return;
 
+    // 1. Update the document
+    message.body = body;
+    message.editedAt = new Date();
+    await message.save();
+
+    // 2. Populate sender info so the UI has the full object
+    const populatedMsg = await Message.findById(message._id)
+      .populate('senderId', 'name email avatar')
+      .lean();
+
+    // 3. BROADCAST to the room
+    const room = `channel:${message.channelId.toString()}`;
+    io.to(room).emit('messageEdited', populatedMsg);
+
+  } catch (err) {
+    console.error('editMessage error:', err);
+  }
+});
   // UPDATED DELETE MESSAGE
 socket.on('deleteMessage', async (payload = {}) => {
   const { messageId } = payload;
