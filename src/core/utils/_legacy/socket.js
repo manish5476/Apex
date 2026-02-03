@@ -553,13 +553,20 @@ function init(server, options = {}) {
     try {
       if (!messageId || !body) return;
 
-      const message = await Message.findById(messageId);
+      // const message = await Message.findById(messageId);
       
-      // 2. Safety Check: Ensure message exists before doing anything else
-      if (!message) {
-        return socket.emit('error', { code: 'NOT_FOUND', message: 'Message not found' });
-      }
+      // // 2. Safety Check: Ensure message exists before doing anything else
+      // if (!message) {
+      //   return socket.emit('error', { code: 'NOT_FOUND', message: 'Message not found' });
+      // }
+const message = await Message.findById(messageId);
 
+if (!message) return socket.emit('error', { code: 'NOT_FOUND' });
+
+// 🛑 Use String() to prevent "ObjectID vs String" mismatch and null errors
+if (String(message.senderId) !== String(socket.user._id)) {
+  return socket.emit('error', { code: 'FORBIDDEN' });
+}
       // 3. Use the userId declared at the top of the connection block
       const isOwner = String(message.senderId) === userId;
       
