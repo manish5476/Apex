@@ -375,40 +375,111 @@ function init(server, options = {}) {
     });
 
     // UPDATE CHANNEL
-    socket.on('updateChannel', async (payload = {}) => {
-      const { channelId, name, isActive, type } = payload;
+    // socket.on('updateChannel', async (payload = {}) => {
+    //   const { channelId, name, isActive, type } = payload;
       
-      try {
-        // Permission check
-        const user = await User.findById(userId).select('role').lean();
-        if (!['admin', 'superadmin', 'owner'].includes(user?.role)) {
-          return socket.emit('error', { code: 'FORBIDDEN' });
-        }
+    //   try {
+    //     // Permission check
+    //     const user = await User.findById(userId).select('role').lean();
+    //     if (!['admin', 'superadmin', 'owner'].includes(user?.role)) {
+    //       return socket.emit('error', { code: 'FORBIDDEN' });
+    //     }
 
-        const update = {};
-        if (name !== undefined) update.name = name;
-        if (isActive !== undefined) update.isActive = isActive;
-        if (type !== undefined) update.type = type;
+    //     const update = {};
+    //     if (name !== undefined) update.name = name;
+    //     if (isActive !== undefined) update.isActive = isActive;
+    //     if (type !== undefined) update.type = type;
 
-        const channel = await Channel.findByIdAndUpdate(
-          channelId,
-          update,
-          { new: true }
-        );
+    //     const channel = await Channel.findByIdAndUpdate(
+    //       channelId,
+    //       update,
+    //       { new: true }
+    //     );
 
-        if (channel) {
-          io.to(`channel:${channelId}`).emit('channelUpdated', channel);
-          io.to(`org:${orgId}`).emit('channelUpdated', channel);
-        }
+    //     if (channel) {
+    //       io.to(`channel:${channelId}`).emit('channelUpdated', channel);
+    //       io.to(`org:${orgId}`).emit('channelUpdated', channel);
+    //     }
         
-        socket.emit('channelUpdateSuccess', { channelId });
+    //     socket.emit('channelUpdateSuccess', { channelId });
 
-      } catch (err) {
-        console.error('updateChannel err', err);
-        socket.emit('error', { code: 'SERVER_ERROR' });
-      }
-    });
+    //   } catch (err) {
+    //     console.error('updateChannel err', err);
+    //     socket.emit('error', { code: 'SERVER_ERROR' });
+    //   }
+    // });
+// socket.on('updateChannel', async (payload = {}) => {
+//   const { channelId, name, isActive, type, members } = payload; // 🛑 Add members here
+  
+//   try {
+//     const user = await User.findById(userId).select('role').lean();
+//     if (!['admin', 'superadmin', 'owner'].includes(user?.role)) {
+//       return socket.emit('error', { code: 'FORBIDDEN' });
+//     }
 
+//     const update = {};
+//     if (name !== undefined) update.name = name;
+//     if (isActive !== undefined) update.isActive = isActive;
+//     if (type !== undefined) update.type = type;
+//     if (members !== undefined) update.members = members; // 🛑 Add this update logic
+
+//     const channel = await Channel.findByIdAndUpdate(
+//       channelId,
+//       update,
+//       { new: true }
+//     );
+
+//     if (channel) {
+//       io.to(`channel:${channelId}`).emit('channelUpdated', channel);
+//       io.to(`org:${orgId}`).emit('channelUpdated', channel);
+//     }
+    
+//     socket.emit('channelUpdateSuccess', { channelId });
+//   } catch (err) {
+//     socket.emit('error', { code: 'SERVER_ERROR' });
+//   }
+// });
+  socket.on('updateChannel', async (payload = {}) => {
+  // 1. Destructure 'members' from the incoming payload
+  const { channelId, name, isActive, type, members } = payload;
+  
+  try {
+    // 2. Permission check
+    const user = await User.findById(userId).select('role organizationId').lean();
+    if (!['admin', 'superadmin', 'owner'].includes(user?.role)) {
+      return socket.emit('error', { code: 'FORBIDDEN', message: 'Insufficient permissions' });
+    }
+
+    // 3. Build the update object dynamically
+    const update = {};
+    if (name !== undefined) update.name = name;
+    if (isActive !== undefined) update.isActive = isActive;
+    if (type !== undefined) update.type = type;
+    if (members !== undefined) update.members = members; // ✅ Members added here
+
+    // 4. Update the channel
+    const channel = await Channel.findOneAndUpdate(
+      { _id: channelId, organizationId: user.organizationId }, // Security: ensure org match
+      update,
+      { new: true }
+    );
+
+    if (channel) {
+      // 5. Broadcast to the specific channel and the whole organization
+      io.to(`channel:${channelId}`).emit('channelUpdated', channel);
+      io.to(`org:${String(user.organizationId)}`).emit('channelUpdated', channel);
+      
+      socket.emit('channelUpdateSuccess', { channelId });
+      console.log(`✅ Channel ${channelId} updated by ${userId}`);
+    } else {
+      socket.emit('error', { code: 'NOT_FOUND', message: 'Channel not found in your organization' });
+    }
+
+  } catch (err) {
+    console.error('❌ updateChannel err:', err.message);
+    socket.emit('error', { code: 'SERVER_ERROR' });
+  }
+});
     // ==========================================================================
     // MESSAGE HANDLING
     // ==========================================================================
