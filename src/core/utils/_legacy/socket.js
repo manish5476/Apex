@@ -876,29 +876,68 @@ socket.on('deleteMessage', async (payload = {}) => {
       }
     });
 
-    // GET SYSTEM STATS
-    socket.on('admin:getStats', async () => {
-      try {
-        const actor = await User.findById(userId).select('role').lean();
-        if (!['superadmin', 'admin', 'owner'].includes(String(actor.role))) {
-          return socket.emit('error', { code: 'FORBIDDEN' });
-        }
+  // GET SYSTEM STATS
+socket.on('admin:getStats', async () => {
+  try {
+    // 1. Verify userId exists (from socket.user)
+    const currentUserId = socket.user?._id;
+    if (!currentUserId) {
+      return socket.emit('error', { code: 'UNAUTHORIZED', message: 'User session missing' });
+    }
 
-        const stats = {
-          connectedUsers: activeSockets.size,
-          orgOnlineUsers: orgOnlineUsers.get(orgId)?.size || 0,
-          channelPresence: channelPresence.size,
-          totalConnections: io.engine.clientsCount,
-          timestamp: new Date().toISOString(),
-        };
+    // 2. Fetch actor and CHECK IF NULL
+    const actor = await User.findById(currentUserId).select('role').lean();
 
-        socket.emit('systemStats', stats);
+    // 🛑 CRITICAL FIX: If actor is null, String(actor.role) will crash the server.
+    // We check if actor exists first.
+    if (!actor || !actor.role || !['superadmin', 'admin', 'owner'].includes(String(actor.role))) {
+      return socket.emit('error', { 
+        code: 'FORBIDDEN', 
+        message: 'You do not have permission to view system stats' 
+      });
+    }
+
+    // 3. Collect stats safely
+    const stats = {
+      connectedUsers: activeSockets.size,
+      orgOnlineUsers: orgOnlineUsers.get(String(orgId))?.size || 0,
+      channelPresence: channelPresence.size,
+      totalConnections: io.engine.clientsCount,
+      timestamp: new Date().toISOString(),
+    };
+
+    socket.emit('systemStats', stats);
+    
+  } catch (err) {
+    // This catch block now properly handles errors without crashing the process
+    console.error('❌ admin:getStats System Error:', err.message);
+    socket.emit('error', { code: 'SERVER_ERROR', message: 'Internal server error occurred' });
+  }
+});
+  
+    // // GET SYSTEM STATS
+    // socket.on('admin:getStats', async () => {
+    //   try {
+    //     const actor = await User.findById(userId).select('role').lean();
+    //     if (!['superadmin', 'admin', 'owner'].includes(String(actor.role))) {
+    //       return socket.emit('error', { code: 'FORBIDDEN' });
+    //     }
+
+    //     const stats = {
+    //       connectedUsers: activeSockets.size,
+    //       orgOnlineUsers: orgOnlineUsers.get(orgId)?.size || 0,
+    //       channelPresence: channelPresence.size,
+    //       totalConnections: io.engine.clientsCount,
+    //       timestamp: new Date().toISOString(),
+    //     };
+
+    //     socket.emit('systemStats', stats);
         
-      } catch (err) {
-        console.error('admin:getStats err', err);
-        socket.emit('error', { code: 'SERVER_ERROR' });
-      }
-    });
+    //   } catch (err) {
+    //     console.error('admin:getStats err', err);
+    //     socket.emit('error', { code: 'SERVER_ERROR' });
+    //   }
+    // });
 
     // ==========================================================================
     // INITIAL DATA LOADING
