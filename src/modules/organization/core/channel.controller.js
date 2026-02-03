@@ -2,7 +2,7 @@ const ChannelModel = require('./channel.model');
 const UserModel = require('../../auth/core/user.model');
 const Message = require("../../notification/core/message.model");
 const catchAsync = require("../../../core/utils/catchAsync");
-const socketUtil = require('../../../core/utils/_legacy/socket'); 
+const socketUtil = require('../../../core/utils/_legacy/socket');
 
 // ✅ 1. ADD MEMBERS
 exports.addMember = async (req, res) => {
@@ -13,7 +13,7 @@ exports.addMember = async (req, res) => {
 
     const channel = await ChannelModel.findOne({ _id: channelId, organizationId: orgId });
     if (!channel) return res.status(404).json({ message: 'Channel not found' });
-    
+
     // Check if user is already a member
     if (channel.members.includes(userId)) {
       return res.status(400).json({ message: 'User is already a member' });
@@ -25,10 +25,10 @@ exports.addMember = async (req, res) => {
 
     // ⚡ REAL-TIME UPDATE
     // 1. Notify the user they were added (so the channel appears in their list)
-    socketUtil.emitToUser(userId, 'channelCreated', channel); 
+    socketUtil.emitToUser(userId, 'addMember', channel);
     // 2. Notify the channel that a user joined (to update member counts/lists)
-    socketUtil.emitToChannel(channelId, 'userJoinedChannel', { 
-      channelId, 
+    socketUtil.emitToChannel(channelId, 'userJoinedChannel', {
+      channelId,
       userId,
       timestamp: new Date()
     });
@@ -54,13 +54,13 @@ exports.removeMember = async (req, res) => {
     console.log('Is SuperAdmin?', req.user.isSuperAdmin);
     console.log('Role:', req.user.role);
     console.log('------------------------');
-    
+
     // Permissions: Only Admin/Owner can remove OTHERS
     if (String(actorId) !== String(userId)) {
-        // You can check your specific permission flags here
-        if (!req.user.isOwner && !req.user.isSuperAdmin) {
-             return res.status(403).json({ message: 'Only admins can remove other members' });
-        }
+      // You can check your specific permission flags here
+      if (!req.user.isOwner && !req.user.isSuperAdmin) {
+        return res.status(403).json({ message: 'Only admins can remove other members' });
+      }
     }
 
     const channel = await ChannelModel.findOne({ _id: channelId, organizationId: orgId });
@@ -71,12 +71,12 @@ exports.removeMember = async (req, res) => {
     await channel.save();
 
     // ⚡ REAL-TIME UPDATE
-    socketUtil.emitToChannel(channelId, 'userLeftChannel', { 
-      channelId, 
+    socketUtil.emitToChannel(channelId, 'userLeftChannel', {
+      channelId,
       userId,
       kickedBy: actorId
     });
-    
+
     // Also explicitly tell the removed user's socket to leave the room
     // (This requires a specific socket event we'll handle in the service)
     socketUtil.emitToUser(userId, 'removedFromChannel', { channelId });
@@ -103,15 +103,15 @@ exports.leaveChannel = async (req, res) => {
     channel.members = channel.members.filter(m => String(m) !== String(userId));
 
     if (channel.members.length === initialCount) {
-        return res.status(400).json({ message: 'You are not a member of this channel' });
+      return res.status(400).json({ message: 'You are not a member of this channel' });
     }
 
     await channel.save();
 
     // ⚡ REAL-TIME UPDATE
-    socketUtil.emitToChannel(channelId, 'userLeftChannel', { 
-      channelId, 
-      userId 
+    socketUtil.emitToChannel(channelId, 'userLeftChannel', {
+      channelId,
+      userId
     });
 
     res.json({ success: true, message: 'Left channel successfully' });
@@ -145,7 +145,7 @@ exports.createChannel = async (req, res) => {
         organizationId: orgId,
         type: 'dm',
         // Ensure strictly only these 2 members exist
-        members: { $all: finalMembers, $size: finalMembers.length } 
+        members: { $all: finalMembers, $size: finalMembers.length }
       });
       if (existingDM) return res.status(200).json(existingDM);
     }
@@ -163,18 +163,18 @@ exports.createChannel = async (req, res) => {
     // ======================================================
     // ⚡ REAL-TIME UPDATE (THE FIX)
     // ======================================================
-    
+
     if (type === 'public') {
       // Scenario A: Public Channel -> Show to EVERYONE in the Org
       socketUtil.emitToOrg(orgId, 'channelCreated', channel);
-      
+
     } else {
       // Scenario B: Private/DM -> Show ONLY to the members
       // We loop through members and send the event to each one
       const memberIds = finalMembers.map(m => String(m));
       socketUtil.emitToUsers(memberIds, 'channelCreated', channel);
     }
-    
+
     return res.status(201).json(channel);
 
   } catch (err) {
@@ -213,115 +213,88 @@ exports.listChannels = async (req, res) => {
   }
 };
 
-exports.addMember = async (req, res) => {
-  try {
-    const { channelId } = req.params;
-    const { userId } = req.body;
-    const orgId = req.user.organizationId;
-
-    const channel = await ChannelModel.findById(channelId);
-    if (!channel) return res.status(404).json({ message: 'Channel not found' });
-    if (String(channel.organizationId) !== String(orgId)) return res.status(403).json({ message: 'Forbidden' });
-
-    if (channel.type === 'public') return res.status(400).json({ message: 'Public channels do not have specific members' });
-
-    const user = await UserModel.findById(userId);
-    if (!user || String(user.organizationId) !== String(orgId)) return res.status(400).json({ message: 'Invalid user' });
-
-    // Add if not already present
-    if (!channel.members.some(m => String(m) === String(userId))) {
-      channel.members.push(userId);
-      await channel.save();
-    }
-
-    res.json(channel);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error adding member' });
-  }
-};
-
-exports.removeMember = async (req, res) => {
-  try {
-    const { channelId, userId } = req.params; // userId is the person being removed
-    const actor = req.user; // The person clicking the button
-    
-    const channel = await ChannelModel.findById(channelId);
-    if (!channel) return res.status(404).json({ message: 'Channel not found' });
-
-    // 1. 🛡️ PROTECTION LOGIC: Check who created the channel
-    const isCreator = String(channel.createdBy) === String(userId);
-    
-    // If trying to remove the creator...
-    if (isCreator) {
-        // Only allow if the user is leaving THEMSELVES
-        if (String(actor._id) !== String(userId)) {
-            return res.status(403).json({ message: 'The Channel Owner cannot be removed.' });
-        }
-    }
-
-    // 2. 👮 PERMISSION CHECK
-    // If removing someone else, you must be:
-    // a) The Channel Creator
-    // b) A Super Admin / Org Owner
-    if (String(actor._id) !== String(userId)) {
-        const actorIsChannelOwner = String(channel.createdBy) === String(actor._id);
-        const actorIsSuperAdmin = actor.isSuperAdmin || actor.isOwner;
-
-        if (!actorIsChannelOwner && !actorIsSuperAdmin) {
-            return res.status(403).json({ message: 'Only the Channel Owner or Super Admins can remove members.' });
-        }
-    }
-
-    // 3. REMOVE FROM DB
-    channel.members = channel.members.filter(m => String(m) !== String(userId));
-    await channel.save();
-
-    // 4. ⚡ REAL-TIME FIX (Socket Emits)
-    const socketUtil = require('../../../core/utils/_legacy/socket'); // Ensure path is correct!
-
-    // A. Tell everyone REMAINING in the channel (updates member count for them)
-    socketUtil.emitToChannel(channelId, 'userLeftChannel', { 
-      channelId, 
-      userId,
-      kickedBy: actor._id
-    });
-
-    // B. Tell the REMOVED user (this removes the channel from their sidebar instantly)
-    // 🛑 THIS IS THE PART THAT FIXES YOUR REFRESH ISSUE
-    socketUtil.emitToUser(userId, 'removedFromChannel', { channelId });
-
-    res.json({ success: true, channelId, removedUserId: userId });
-
-  } catch (err) {
-    console.error('Remove Member Error:', err);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-// exports.removeMember = async (req, res) => {
+// exports.addMember = async (req, res) => {
 //   try {
-//     const { channelId, userId } = req.params;
+//     const { channelId } = req.params;
+//     const { userId } = req.body;
 //     const orgId = req.user.organizationId;
-
-//     // Inside removeMember
-//     if (req.user._id.toString() === userId.toString()) {
-//       // Allow self-leaving
-//     } else {
-//       // If removing someone else, check if actor is Admin/Owner
-//       if (!req.user.isOwner && !req.user.isSuperAdmin) {
-//         return res.status(403).json({ message: 'Only admins can remove other members' });
-//       }
-//     }
 
 //     const channel = await ChannelModel.findById(channelId);
 //     if (!channel) return res.status(404).json({ message: 'Channel not found' });
 //     if (String(channel.organizationId) !== String(orgId)) return res.status(403).json({ message: 'Forbidden' });
 
-//     channel.members = (channel.members || []).filter(m => String(m) !== String(userId));
-//     await channel.save();
+//     if (channel.type === 'public') return res.status(400).json({ message: 'Public channels do not have specific members' });
+
+//     const user = await UserModel.findById(userId);
+//     if (!user || String(user.organizationId) !== String(orgId)) return res.status(400).json({ message: 'Invalid user' });
+
+//     // Add if not already present
+//     if (!channel.members.some(m => String(m) === String(userId))) {
+//       channel.members.push(userId);
+//       await channel.save();
+//     }
+//     socketUtil.emitToUser(userId, 'addedMember', { channelId });
 //     res.json(channel);
 //   } catch (err) {
-//     res.status(500).json({ message: 'Server error removing member' });
+//     res.status(500).json({ message: 'Server error adding member' });
+//   }
+// };
+
+// exports.removeMember = async (req, res) => {
+//   try {
+//     const { channelId, userId } = req.params; // userId is the person being removed
+//     const actor = req.user; // The person clicking the button
+
+//     const channel = await ChannelModel.findById(channelId);
+//     if (!channel) return res.status(404).json({ message: 'Channel not found' });
+
+//     // 1. 🛡️ PROTECTION LOGIC: Check who created the channel
+//     const isCreator = String(channel.createdBy) === String(userId);
+
+//     // If trying to remove the creator...
+//     if (isCreator) {
+//       // Only allow if the user is leaving THEMSELVES
+//       if (String(actor._id) !== String(userId)) {
+//         return res.status(403).json({ message: 'The Channel Owner cannot be removed.' });
+//       }
+//     }
+
+//     // 2. 👮 PERMISSION CHECK
+//     // If removing someone else, you must be:
+//     // a) The Channel Creator
+//     // b) A Super Admin / Org Owner
+//     if (String(actor._id) !== String(userId)) {
+//       const actorIsChannelOwner = String(channel.createdBy) === String(actor._id);
+//       const actorIsSuperAdmin = actor.isSuperAdmin || actor.isOwner;
+
+//       if (!actorIsChannelOwner && !actorIsSuperAdmin) {
+//         return res.status(403).json({ message: 'Only the Channel Owner or Super Admins can remove members.' });
+//       }
+//     }
+
+//     // 3. REMOVE FROM DB
+//     channel.members = channel.members.filter(m => String(m) !== String(userId));
+//     await channel.save();
+
+//     // 4. ⚡ REAL-TIME FIX (Socket Emits)
+//     const socketUtil = require('../../../core/utils/_legacy/socket'); // Ensure path is correct!
+
+//     // A. Tell everyone REMAINING in the channel (updates member count for them)
+//     socketUtil.emitToChannel(channelId, 'userLeftChannel', {
+//       channelId,
+//       userId,
+//       kickedBy: actor._id
+//     });
+
+//     // B. Tell the REMOVED user (this removes the channel from their sidebar instantly)
+//     // 🛑 THIS IS THE PART THAT FIXES YOUR REFRESH ISSUE
+//     socketUtil.emitToUser(userId, 'removedFromChannel', { channelId });
+
+//     res.json({ success: true, channelId, removedUserId: userId });
+
+//   } catch (err) {
+//     console.error('Remove Member Error:', err);
+//     res.status(500).json({ message: 'Server error' });
 //   }
 // };
 
@@ -383,10 +356,10 @@ exports.globalSearch = catchAsync(async (req, res, next) => {
       .limit(limit).select("invoiceNumber grandTotal status").lean(),
 
     // 💬 CHAT SEARCH: Only show channels the user has access to
-    Channel.find({ 
-      organizationId: orgId, 
+    Channel.find({
+      organizationId: orgId,
       name: regex,
-      $or: [{ type: 'public' }, { members: userId }] 
+      $or: [{ type: 'public' }, { members: userId }]
     }).limit(limit).select("name type").lean(),
 
     // ✉️ MESSAGE SEARCH: Search content within user's accessible channels
@@ -395,10 +368,10 @@ exports.globalSearch = catchAsync(async (req, res, next) => {
       body: regex,
       deleted: false
     })
-    .populate('channelId', 'name')
-    .limit(limit)
-    .sort({ createdAt: -1 })
-    .lean()
+      .populate('channelId', 'name')
+      .limit(limit)
+      .sort({ createdAt: -1 })
+      .lean()
   ]);
 
   res.status(200).json({
