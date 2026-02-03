@@ -1,4 +1,4 @@
-'use strict';
+  'use strict';
 
 const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
@@ -504,50 +504,102 @@ function init(server, options = {}) {
       }
     });
 
-    // DELETE MESSAGE
-    socket.on('deleteMessage', async (payload = {}) => {
-      const { messageId } = payload;
-      
-      if (!messageId) {
-        return socket.emit('error', { code: 'INVALID_PAYLOAD' });
-      }
-      
-      try {
-        const message = await Message.findById(messageId);
-        if (!message) return socket.emit('error', { code: 'MESSAGE_NOT_FOUND' });
-        
-        // Check permissions (sender or admin)
-        const user = await User.findById(userId).select('role').lean();
-        const isSender = String(message.senderId) === String(userId);
-        const isAdmin = ['admin', 'superadmin', 'owner'].includes(user?.role);
-        
-        if (!isSender && !isAdmin) {
-          return socket.emit('error', { code: 'NOT_AUTHORIZED' });
-        }
-        
-        // Soft delete
-        message.body = '';
-        message.attachments = [];
-        message.deleted = true;
-        message.deletedAt = new Date();
-        message.deletedBy = userId;
-        await message.save();
-        
-        // Broadcast to channel
-        io.to(`channel:${message.channelId}`).emit('messageDeleted', { 
-          messageId,
-          channelId: message.channelId,
-          deletedBy: userId,
-          timestamp: new Date().toISOString()
-        });
-        
-        console.log(`🗑️ Message deleted: ${messageId} by ${userId}`);
+  // DELETE MESSAGE
+socket.on('deleteMessage', async (payload = {}) => {
+  const { messageId } = payload;
+  
+  if (!messageId) {
+    return socket.emit('error', { code: 'INVALID_PAYLOAD', message: 'Message ID is required' });
+  }
+  
+  try {
+    // 1. Find the message
+    const message = await Message.findById(messageId);
+    if (!message) return socket.emit('error', { code: 'MESSAGE_NOT_FOUND' });
+    
+    // 2. Permission Check
+    // userId is derived from the socket auth middleware
+    const user = await User.findById(userId).select('role').lean();
+    const isSender = String(message.senderId) === String(userId);
+    const isAdmin = ['admin', 'superadmin', 'owner'].includes(user?.role);
+    
+    if (!isSender && !isAdmin) {
+      return socket.emit('error', { code: 'NOT_AUTHORIZED', message: 'You cannot delete this message' });
+    }
+    
+    // 3. Perform Soft Delete in DB
+    message.body = '';
+    message.attachments = [];
+    message.deleted = true;
+    message.deletedAt = new Date();
+    message.deletedBy = userId;
+    await message.save();
+    
+    // 4. PREPARE IDs FOR SOCKET ROOMS
+    // Crucial: Convert ObjectId to string to ensure the room match works
+    const channelIdStr = message.channelId.toString();
+    const messageIdStr = message._id.toString();
 
-      } catch (err) {
-        console.error('deleteMessage err', err);
-        socket.emit('error', { code: 'SERVER_ERROR' });
-      }
+    // 5. BROADCAST TO EVERYONE IN THE CHANNEL
+    // This will hit every socket joined to 'channel:ID', including other devices of this user
+    io.to(`channel:${channelIdStr}`).emit('messageDeleted', { 
+      messageId: messageIdStr,
+      channelId: channelIdStr,
+      deletedBy: userId,
+      timestamp: new Date().toISOString()
     });
+    
+    console.log(`🗑️ Message deleted: ${messageIdStr} by ${userId} in channel ${channelIdStr}`);
+
+  } catch (err) {
+    console.error('❌ deleteMessage System Error:', err);
+    socket.emit('error', { code: 'SERVER_ERROR', message: 'Failed to delete message' });
+  }
+});
+    // // DELETE MESSAGE
+    // socket.on('deleteMessage', async (payload = {}) => {
+    //   const { messageId } = payload;
+      
+    //   if (!messageId) {
+    //     return socket.emit('error', { code: 'INVALID_PAYLOAD' });
+    //   }
+      
+    //   try {
+    //     const message = await Message.findById(messageId);
+    //     if (!message) return socket.emit('error', { code: 'MESSAGE_NOT_FOUND' });
+        
+    //     // Check permissions (sender or admin)
+    //     const user = await User.findById(userId).select('role').lean();
+    //     const isSender = String(message.senderId) === String(userId);
+    //     const isAdmin = ['admin', 'superadmin', 'owner'].includes(user?.role);
+        
+    //     if (!isSender && !isAdmin) {
+    //       return socket.emit('error', { code: 'NOT_AUTHORIZED' });
+    //     }
+        
+    //     // Soft delete
+    //     message.body = '';
+    //     message.attachments = [];
+    //     message.deleted = true;
+    //     message.deletedAt = new Date();
+    //     message.deletedBy = userId;
+    //     await message.save();
+        
+    //     // Broadcast to channel
+    //     io.to(`channel:${message.channelId}`).emit('messageDeleted', { 
+    //       messageId,
+    //       channelId: message.channelId,
+    //       deletedBy: userId,
+    //       timestamp: new Date().toISOString()
+    //     });
+        
+    //     console.log(`🗑️ Message deleted: ${messageId} by ${userId}`);
+
+    //   } catch (err) {
+    //     console.error('deleteMessage err', err);
+    //     socket.emit('error', { code: 'SERVER_ERROR' });
+    //   }
+    // });
 
     // TYPING INDICATOR
     socket.on('typing', ({ channelId, typing } = {}) => {
