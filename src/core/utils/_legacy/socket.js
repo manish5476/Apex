@@ -503,52 +503,97 @@ function init(server, options = {}) {
     //     socket.emit('error', { code: 'SERVER_ERROR' });
     //   }
     // });
+  // Inside io.on('connection', (socket) => { ...
+// const userId = String(socket.user._id); // Ensure this is at the top
+
 socket.on('editMessage', async (payload = {}) => {
   const { messageId, body } = payload;
-  const currentUserId = socket.user?._id; // Get from socket context
-
+  
   try {
-    // 1. Basic Validation
     if (!messageId || !body) return;
 
-    // 2. Fetch the message
+    // 1. Find message and check if it exists
     const message = await Message.findById(messageId);
-
-    // 🛑 CRITICAL GUARD: If the message ID is wrong or deleted, don't proceed
     if (!message) {
-      return socket.emit('error', { code: 'MESSAGE_NOT_FOUND' });
+      return socket.emit('error', { code: 'NOT_FOUND', message: 'Message not found' });
     }
 
-    // 🛑 SECURITY GUARD: Ensure current user is the actual sender
-    // Use .toString() or String() because one is usually an ObjectId and the other a String
-    if (message.senderId.toString() !== currentUserId.toString()) {
-      return socket.emit('error', { 
-        code: 'UNAUTHORIZED', 
-        message: 'You can only edit your own messages' 
-      });
+    // 2. 🛑 CRITICAL: Stringify both sides for comparison
+    const isOwner = String(message.senderId) === userId;
+    if (!isOwner) {
+      console.warn(`Unauthorized edit attempt by ${userId} on message ${messageId}`);
+      return socket.emit('error', { code: 'FORBIDDEN', message: 'You can only edit your own messages' });
     }
 
-    // 3. Update the document
-    message.body = body;
+    // 3. Update
+    message.body = body.trim();
     message.editedAt = new Date();
-    message.editedBy = currentUserId;
+    message.editedBy = userId;
     await message.save();
 
-    // 4. Populate for the UI
-    const populatedMsg = await Message.findById(message._id)
+    // 4. Populate so other clients get the sender's name/avatar
+    const updatedMsg = await Message.findById(message._id)
       .populate('senderId', 'name email avatar')
       .lean();
 
-    // 5. Broadcast to the room
-    const room = `channel:${message.channelId.toString()}`;
-    io.to(room).emit('messageEdited', populatedMsg);
+    // 5. Broadcast to the room (Ensuring the room ID is a string)
+    const channelRoom = `channel:${message.channelId.toString()}`;
+    io.to(channelRoom).emit('messageEdited', updatedMsg);
+    
+    console.log(`✏️ Message ${messageId} edited and broadcast to ${channelRoom}`);
 
   } catch (err) {
-    // Catch-all prevents the "Unhandled Rejection" crash
-    console.error('❌ editMessage crash prevented:', err.message);
+    console.error('❌ editMessage error:', err.message);
     socket.emit('error', { code: 'SERVER_ERROR' });
   }
 });
+  
+// socket.on('editMessage', async (payload = {}) => {
+//   const { messageId, body } = payload;
+//   const currentUserId = socket.user?._id; // Get from socket context
+
+//   try {
+//     // 1. Basic Validation
+//     if (!messageId || !body) return;
+
+//     // 2. Fetch the message
+//     const message = await Message.findById(messageId);
+
+//     // 🛑 CRITICAL GUARD: If the message ID is wrong or deleted, don't proceed
+//     if (!message) {
+//       return socket.emit('error', { code: 'MESSAGE_NOT_FOUND' });
+//     }
+
+//     // 🛑 SECURITY GUARD: Ensure current user is the actual sender
+//     // Use .toString() or String() because one is usually an ObjectId and the other a String
+//     if (message.senderId.toString() !== currentUserId.toString()) {
+//       return socket.emit('error', { 
+//         code: 'UNAUTHORIZED', 
+//         message: 'You can only edit your own messages' 
+//       });
+//     }
+
+//     // 3. Update the document
+//     message.body = body;
+//     message.editedAt = new Date();
+//     message.editedBy = currentUserId;
+//     await message.save();
+
+//     // 4. Populate for the UI
+//     const populatedMsg = await Message.findById(message._id)
+//       .populate('senderId', 'name email avatar')
+//       .lean();
+
+//     // 5. Broadcast to the room
+//     const room = `channel:${message.channelId.toString()}`;
+//     io.to(room).emit('messageEdited', populatedMsg);
+
+//   } catch (err) {
+//     // Catch-all prevents the "Unhandled Rejection" crash
+//     console.error('❌ editMessage crash prevented:', err.message);
+//     socket.emit('error', { code: 'SERVER_ERROR' });
+//   }
+// });
   
   // UPDATED DELETE MESSAGE
 socket.on('deleteMessage', async (payload = {}) => {
