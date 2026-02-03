@@ -772,27 +772,54 @@ socket.on('deleteMessage', async (payload = {}) => {
       }
     });
 
-    // FETCH MESSAGES
-    socket.on('fetchMessages', async ({ channelId, before, limit = 50 } = {}) => {
-      if (!channelId) return socket.emit('error', { code: 'INVALID_PAYLOAD' });
-      try {
-        const filter = { channelId };
-        if (before) filter.createdAt = { $lt: new Date(before) };
+    // // FETCH MESSAGES
+    // socket.on('fetchMessages', async ({ channelId, before, limit = 50 } = {}) => {
+    //   if (!channelId) return socket.emit('error', { code: 'INVALID_PAYLOAD' });
+    //   try {
+    //     const filter = { channelId };
+    //     if (before) filter.createdAt = { $lt: new Date(before) };
         
-        const messages = await Message.find(filter)
-          .populate('senderId', 'name email avatar')
-          .sort({ createdAt: -1 })
-          .limit(Number(limit))
-          .lean();
+    //     const messages = await Message.find(filter)
+    //       .populate('senderId', 'name email avatar')
+    //       .sort({ createdAt: -1 })
+    //       .limit(Number(limit))
+    //       .lean();
           
-        socket.emit('messages', { channelId, messages });
+    //     socket.emit('messages', { channelId, messages });
         
-      } catch (err) {
-        console.error('fetchMessages err', err);
-        socket.emit('error', { code: 'SERVER_ERROR' });
-      }
-    });
+    //   } catch (err) {
+    //     console.error('fetchMessages err', err);
+    //     socket.emit('error', { code: 'SERVER_ERROR' });
+    //   }
+    // });
+// socket.js
+socket.on('fetchMessages', async ({ channelId, before, limit = 50 } = {}) => {
+  if (!channelId) return socket.emit('error', { code: 'INVALID_PAYLOAD' });
+  
+  try {
+    const channel = await Channel.findById(channelId).lean();
+    if (!channel) return socket.emit('error', { code: 'CHANNEL_NOT_FOUND' });
 
+    // 🛑 SECURITY CHECK: Is the user allowed to see these messages?
+    if (channel.type !== 'public') {
+      const isMember = channel.members.some(m => String(m) === userId);
+      if (!isMember) return socket.emit('error', { code: 'FORBIDDEN', message: 'Not a member' });
+    }
+
+    const filter = { channelId };
+    if (before) filter.createdAt = { $lt: new Date(before) };
+    
+    const messages = await Message.find(filter)
+      .populate('senderId', 'name email avatar')
+      .sort({ createdAt: -1 })
+      .limit(Number(limit))
+      .lean();
+      
+    socket.emit('messages', { channelId, messages });
+  } catch (err) {
+    socket.emit('error', { code: 'SERVER_ERROR' });
+  }
+});
     // ==========================================================================
     // NOTIFICATION SYSTEM
     // ==========================================================================
@@ -824,17 +851,22 @@ socket.on('deleteMessage', async (payload = {}) => {
 
     // MARK NOTIFICATION AS READ
     socket.on('markNotificationRead', async ({ notificationId } = {}) => {
-      try {
-        const notification = await NotificationModel.findByIdAndUpdate(
-          notificationId,
-          { 
-            isRead: true, 
-            readAt: new Date(),
-            readBy: userId
-          },
-          { new: true }
-        ).lean();
-        
+      // try {
+      //   const notification = await NotificationModel.findByIdAndUpdate(
+      //     notificationId,
+      //     { 
+      //       isRead: true, 
+      //       readAt: new Date(),
+      //       readBy: userId
+      //     },
+      //     { new: true }
+      //   ).lean();
+        try {
+    const notification = await NotificationModel.findOneAndUpdate(
+      { _id: notificationId, recipientId: userId }, // 🛑 Ensure recipient is the current user
+      { isRead: true, readAt: new Date(), readBy: userId },
+      { new: true }
+    ).lean();
         if (notification) {
           // Acknowledge to sender
           socket.emit('notificationRead', { notificationId });
