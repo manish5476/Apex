@@ -8,6 +8,13 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: [true, 'Email is required'], lowercase: true, trim: true },
   password: { type: String, required: [true, 'Password is required'], minlength: 8, select: false },
   
+  themeId: { 
+      type: String, 
+      default: 'theme-glass',
+      enum: ['auto-theme', 'theme-glass', 'theme-light', 'theme-dark', 'theme-bio-frost','theme-premium', 'theme-titanium', 'theme-slate', 'theme-data-science', 'theme-cobalt-steel', 'theme-luminous', 'theme-minimal', 'theme-monochrome', 'theme-rose', 'theme-sunset', 'theme-bold', 'theme-nebula', 'theme-luxury', 'theme-futuristic', 'theme-midnight-royal', 'theme-emerald-regal', 'theme-material-you', 'theme-solar-flare', 'theme-horizon', 'theme-midnight-city', 'theme-synthwave', 'theme-crimson-night', 'theme-oceanic', 'theme-neumorphic', 'theme-deep-space'
+      ]
+    },
+    language: { type: String, default: 'en' },
   // Multi-Tenancy & RBAC
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
   branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', index: true },

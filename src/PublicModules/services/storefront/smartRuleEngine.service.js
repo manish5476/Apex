@@ -6,27 +6,15 @@ const AppError = require('../../../core/utils/appError');
 const redis = require('../../../core/utils/_legacy/redis');
 
 class SmartRuleEngine {
-  constructor() {
-    this.cachePrefix = 'smartrule:v1';
-    this.cacheEnabled = true;
-    this.MAX_LIMIT = 50;
-  }
+  constructor() { this.cachePrefix = 'smartrule:v1'; this.cacheEnabled = true; this.MAX_LIMIT = 50; }
 
   async executeRule(ruleId, organizationId, options = {}) {
     const start = Date.now();
-
-    const rule = await SmartRule.findOne({
-      _id: ruleId,
-      organizationId,
-      isActive: true
-    }).lean();
-
+    const rule = await SmartRule.findOne({ _id: ruleId, organizationId, isActive: true }).lean();
     if (!rule) {
       throw new AppError('Smart rule not found or inactive', 404);
     }
-
     const cacheKey = this.buildCacheKey(ruleId, organizationId);
-
     if (this.cacheEnabled) {
       const cached = await redis.get(cacheKey);
       if (cached) {
@@ -34,37 +22,17 @@ class SmartRuleEngine {
         return JSON.parse(cached);
       }
     }
-
     const query = RuleQueryBuilder.build(rule, organizationId);
-
-    // Prefer option limit over rule limit
-    const finalLimit = options.limit 
-        ? Math.min(parseInt(options.limit), this.MAX_LIMIT)
-        : Math.min(query.limit, this.MAX_LIMIT);
-
-    const products = await Product.aggregate([
-      ...query.pipeline,
-      { $sort: query.sort },
-      { $limit: finalLimit } 
-    ]);
-
+    const finalLimit = options.limit ? Math.min(parseInt(options.limit), this.MAX_LIMIT) : Math.min(query.limit, this.MAX_LIMIT);
+    const products = await Product.aggregate([...query.pipeline, { $sort: query.sort }, { $limit: finalLimit }]);
     const result = this.transform(products);
-
     await this.updateRuleStats(ruleId);
-
     if (this.cacheEnabled) {
-      await redis.setex(
-        cacheKey,
-        (rule.cacheDuration || 15) * 60,
-        JSON.stringify(result)
-      );
+      await redis.setex(cacheKey, (rule.cacheDuration || 15) * 60, JSON.stringify(result));
     }
-
     this.logExecution(ruleId, 'db-hit', Date.now() - start);
-
     return result;
   }
-
   async previewRule(ruleData, organizationId, limit = 5) {
     const tempRule = {
       ...ruleData,
@@ -72,12 +40,7 @@ class SmartRuleEngine {
     };
 
     const query = RuleQueryBuilder.build(tempRule, organizationId);
-
-    const products = await Product.aggregate([
-      ...query.pipeline,
-      { $sort: query.sort },
-      { $limit: tempRule.limit }
-    ]);
+    const products = await Product.aggregate([...query.pipeline, { $sort: query.sort }, { $limit: tempRule.limit }]);
 
     return {
       preview: this.transform(products),
@@ -91,15 +54,10 @@ class SmartRuleEngine {
   }
 
   async clearOrganizationCache(organizationId) {
-    const keys = await redis.keys(`${this.cachePrefix}:*:${organizationId}`);
-    if (keys.length) {
-      await redis.del(keys);
-    }
+    const keys = await redis.keys(`${this.cachePrefix}:*:${organizationId}`); if (keys.length) { await redis.del(keys); }
   }
 
-  buildCacheKey(ruleId, organizationId) {
-    return `${this.cachePrefix}:${organizationId}:${ruleId}`;
-  }
+  buildCacheKey(ruleId, organizationId) { return `${this.cachePrefix}:${organizationId}:${ruleId}`; }
 
   async updateRuleStats(ruleId) {
     await SmartRule.findByIdAndUpdate(ruleId, {
@@ -152,7 +110,7 @@ class SmartRuleEngine {
       limit: parseInt(config.limit || config.itemsPerView || 10),
       sortBy: 'createdAt', // Default sort
       sortOrder: 'desc',
-      filters: [] 
+      filters: []
     };
 
     // 2. Build the query using your existing Service

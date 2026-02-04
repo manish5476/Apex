@@ -1,9 +1,7 @@
 const SmartRuleEngine = require('../../services/storefront/smartRuleEngine.service');
 const { SmartRule } = require('../../models/storefront');
 const AppError = require('../../../core/utils/appError');
-
 class SmartRuleController {
-
   // ==========================================
   // 1. NEW CRUD METHODS (Required for Angular)
   // ==========================================

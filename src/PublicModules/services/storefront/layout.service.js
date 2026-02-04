@@ -7,10 +7,6 @@ class LayoutService {
   constructor() {
     this.CACHE_TTL = 3600; // 1 hour
   }
-
-  /**
-   * Get Layout with Caching Strategy
-   */
   async getLayout(organizationId) {
     const cacheKey = `layout:${organizationId}`;
     
@@ -101,7 +97,6 @@ class LayoutService {
     return await StorefrontLayout.create(defaultData);
   }
 }
-
 module.exports = new LayoutService();
 
 // const StorefrontLayout = require('../../models/storefront/storefrontLayout.model');

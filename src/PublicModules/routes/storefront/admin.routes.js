@@ -15,7 +15,7 @@ router.route('/layout')
 router.route('/pages')
   .get(storefrontAdminController.getPages)
   .post(storefrontAdminController.createPage);
-
+router.get('/themes', storefrontAdminController.getAvailableThemes);
 router.route('/pages/:pageId')
   .get(storefrontAdminController.getPageById)
   .put(storefrontAdminController.updatePage)

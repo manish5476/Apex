@@ -4,12 +4,46 @@ const SectionRegistry = require('../../services/storefront/sectionRegistry.servi
 const SectionValidator = require('../../middleware/validation/section.validator');
 const AppError = require('../../../core/utils/appError');
 const LayoutService = require('../../services/storefront/layout.service'); // ✅ NEW
-
+const { THEME_LIST } = require('../../utils/constants/storefront/themes.constants'); // ✅ Import
 class StorefrontAdminController {
 
-  // ============================================================
-  // 1. LAYOUT MANAGEMENT (Header/Footer) - ✅ NEW ADDITION
-  // ============================================================
+  sanitizePageTheme(themeData) {
+    if (!themeData) return {};
+
+    // If User selects PRESET, wipe the custom background data
+    // to prevent "ghost" colors from appearing.
+    if (themeData.mode === 'preset') {
+      return {
+        mode: 'preset',
+        presetId: themeData.presetId || 'auto-theme',
+        variant: themeData.variant || 'default',
+        // We purposefully nullify custom settings
+        customSettings: {
+          backgroundColor: null,
+          backgroundImage: null,
+          primaryColor: null, // Optional: Keep brand colors if you want them to mix with themes
+          secondaryColor: null
+        }
+      };
+    }
+
+    // If User selects CUSTOM, ignore the preset ID
+    if (themeData.mode === 'custom') {
+      return {
+        mode: 'custom',
+        presetId: null,
+        customSettings: {
+          backgroundColor: themeData.customSettings?.backgroundColor || '#ffffff',
+          backgroundImage: themeData.customSettings?.backgroundImage,
+          primaryColor: themeData.customSettings?.primaryColor,
+          secondaryColor: themeData.customSettings?.secondaryColor,
+          fontFamily: themeData.customSettings?.fontFamily
+        }
+      };
+    }
+
+    return themeData;
+  }
 
   /**
    * Get Master Layout
@@ -20,10 +54,10 @@ class StorefrontAdminController {
       const { organizationId } = req.user;
       // Uses the service which handles caching automatically
       const layout = await LayoutService.getLayout(organizationId);
-      
-      res.status(200).json({ 
+
+      res.status(200).json({
         status: 'success',
-        layout 
+        layout
       });
     } catch (error) {
       next(error);
@@ -44,8 +78,8 @@ class StorefrontAdminController {
         for (const section of header) {
           // Skip validation for simple navbars if SectionRegistry doesn't support them yet
           if (!section.type.includes('navbar')) {
-             const validation = await SectionValidator.validateSection(section);
-             if (!validation.valid) return next(new AppError(`Header Error: ${validation.error}`, 400));
+            const validation = await SectionValidator.validateSection(section);
+            if (!validation.valid) return next(new AppError(`Header Error: ${validation.error}`, 400));
           }
         }
       }
@@ -67,6 +101,28 @@ class StorefrontAdminController {
     }
   }
 
+  /**
+   * ============================================================
+   * 4. THEME REGISTRY (New)
+   * Serves the list of allowed themes to the Angular Page Builder
+   * Route: GET /admin/storefront/themes
+   * ============================================================
+   */
+  async getAvailableThemes(req, res, next) {
+    try {
+      // We return the full object so the UI can render previews (gradients/colors)
+      res.status(200).json({
+        status: 'success',
+        results: THEME_LIST.length,
+        data: {
+          themes: THEME_LIST
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // ============================================================
   // 2. PAGE MANAGEMENT (CRUD)
   // ============================================================
@@ -80,6 +136,7 @@ class StorefrontAdminController {
       const { organizationId } = req.user;
       const { status, pageType, search } = req.query;
 
+
       const query = { organizationId };
 
       if (status) query.status = status;
@@ -91,6 +148,7 @@ class StorefrontAdminController {
         ];
       }
 
+      // 1. Sanitize the Theme
       const pages = await StorefrontPage.find(query)
         .select('name slug pageType status isPublished isHomepage viewCount updatedAt sectionsCount')
         .sort({ isHomepage: -1, updatedAt: -1 }) // Home first, then newest
@@ -173,6 +231,7 @@ class StorefrontAdminController {
           { isHomepage: false }
         );
       }
+      const cleanTheme = this.sanitizePageTheme(req.body.theme);
 
       // 4. Create Page
       const page = await StorefrontPage.create({
@@ -184,7 +243,8 @@ class StorefrontAdminController {
         seo,
         theme,
         isHomepage,
-        status: 'draft' // Always start as draft
+        theme: cleanTheme,
+        status: 'draft'
       });
 
       res.status(201).json({
@@ -207,7 +267,10 @@ class StorefrontAdminController {
       const { organizationId } = req.user;
       const { pageId } = req.params;
       const updateData = req.body;
-
+      
+      if (updateData.theme) {
+        updateData.theme = this.sanitizePageTheme(updateData.theme);
+      }
       const page = await StorefrontPage.findOne({ _id: pageId, organizationId });
       if (!page) return next(new AppError('Page not found', 404));
 
@@ -318,7 +381,7 @@ class StorefrontAdminController {
       delete original._id;
       delete original.createdAt;
       delete original.updatedAt;
-      
+
       const newPage = await StorefrontPage.create({
         ...original,
         name: newName || `${original.name} (Copy)`,
@@ -374,7 +437,7 @@ class StorefrontAdminController {
     try {
       const { organizationId } = req.user;
       const { pageId } = req.params;
-      const { period = '7d' } = req.query; 
+      const { period = '7d' } = req.query;
 
       const page = await StorefrontPage.findOne({ _id: pageId, organizationId })
         .select('viewCount lastViewedAt name');
