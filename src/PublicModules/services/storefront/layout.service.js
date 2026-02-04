@@ -105,7 +105,8 @@ class LayoutService {
 module.exports = new LayoutService();
 
 // const StorefrontLayout = require('../../models/storefront/storefrontLayout.model');
-// const redis = require('../../../core/utils/_legacy/redis'); // Assuming your redis path
+// // We import the whole utility object
+// const redisUtils = require('../../../core/utils/_legacy/redis'); 
 // const { nanoid } = require('nanoid');
 
 // class LayoutService {
@@ -119,20 +120,25 @@ module.exports = new LayoutService();
 //   async getLayout(organizationId) {
 //     const cacheKey = `layout:${organizationId}`;
     
-//     // 1. Try Cache
-//     const cached = await redis.get(cacheKey);
-//     if (cached) return JSON.parse(cached);
+//     // FIX 1: Use safeCache.get
+//     // Your utility automatically parses JSON and checks validity
+//     const cached = await redisUtils.safeCache.get(cacheKey);
+    
+//     if (cached) {
+//       return cached; // Return the data directly
+//     }
 
 //     // 2. Try DB
 //     let layout = await StorefrontLayout.findOne({ organizationId }).lean();
 
-//     // 3. If no layout exists, return a default structure (Auto-generated)
+//     // 3. If no layout exists, return a default structure
 //     if (!layout) {
 //       layout = await this.createDefaultLayout(organizationId);
 //     }
 
-//     // 4. Set Cache
-//     await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(layout));
+//     // FIX 2: Use safeCache.set
+//     // Your utility automatically stringifies the object
+//     await redisUtils.safeCache.set(cacheKey, layout, this.CACHE_TTL);
 
 //     return layout;
 //   }
@@ -154,8 +160,8 @@ module.exports = new LayoutService();
 //       { new: true, upsert: true, setDefaultsOnInsert: true }
 //     );
 
-//     // Invalidate Cache immediately
-//     await redis.del(`layout:${organizationId}`);
+//     // FIX 3: Use safeCache.delete
+//     await redisUtils.safeCache.delete(`layout:${organizationId}`);
     
 //     return layout;
 //   }
