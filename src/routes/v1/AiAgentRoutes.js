@@ -1,8 +1,8 @@
 // src/routes/v1/aiAgentRoutes.js
 const express = require("express");
 const router = express.Router();
-const authController = require("../../controllers/authController");
-const { processUserMessage } = require("../../services/ai/agentService");
+const authController = require("../../modules/auth/core/auth.controller");
+const { processUserMessage } = require("../../modules/_legacy/services/ai/agentService");
 
 // Protect — this will attach req.user
 router.use(authController.protect);

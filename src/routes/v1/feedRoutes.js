@@ -1,12 +1,16 @@
 const express = require("express");
 const router = express.Router();
-const feedController = require("../../controllers/feedController");
-const authController = require("../../controllers/authController");
-const { checkPermission } = require("../../middleware/permissionMiddleware");
+const feedController = require("../../modules/_legacy/controllers/feedController");
+const authController = require("../../modules/auth/core/auth.controller");
+const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
 router.use(authController.protect);
+router.get("/customer/:customerId", 
+  checkPermission(PERMISSIONS.FEED.READ), 
+  feedController.getCustomerFeed
+);
 
-router.get("/customer/:customerId", checkPermission(PERMISSIONS.CUSTOMER.READ), feedController.getCustomerFeed);
+// router.get("/customer/:customerId", checkPermission(PERMISSIONS.CUSTOMER.READ), feedController.getCustomerFeed);
 
 module.exports = router;

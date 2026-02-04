@@ -1,0 +1,421 @@
+
+const mongoose = require('mongoose');
+const crypto = require('crypto');
+const Organization = require('./organization.model');
+const Branch = require('./branch.model');
+const User = require('../../auth/core/user.model');
+const Role = require('../../auth/core/role.model');
+const catchAsync = require('../../../core/utils/catchAsync');
+const AppError = require('../../../core/utils/appError');
+const factory = require('../../../core/utils/handlerFactory');
+const sendEmail = require('../../../core/utils/_legacy/email');
+const { signToken } = require('../../../core/utils/authUtils');
+const { emitToOrg, emitToUser } = require('../../../core/utils/_legacy/socket'); // ✅ IMPORTED SOCKET UTILITIES
+const Shift = require('../../hr/shift/shift.model'); // 🟢 NEW: Import Shift Model
+
+/* -------------------------------------------------------------
+ * Utility: Generate Unique Shop ID
+------------------------------------------------------------- */
+const generateUniqueShopId = () =>
+  `ORG-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+/* -------------------------------------------------------------
+ * Create New Organization (Transactional)
+------------------------------------------------------------- */
+exports.createOrganization = catchAsync(async (req, res, next) => {
+  const { 
+    organizationName, uniqueShopId, primaryEmail, primaryPhone, gstNumber, 
+    ownerName, ownerEmail, ownerPassword, 
+    mainBranchName, mainBranchAddress 
+  } = req.body;
+  
+  if (!organizationName || !ownerName || !ownerEmail || !ownerPassword)
+    return next(new AppError('Missing required organization or owner fields', 400));
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const tempOrgId = new mongoose.Types.ObjectId();
+
+    // Step 1: Create the Owner (Initial Save)
+    const newUser = await new User({
+      name: ownerName,
+      email: ownerEmail,
+      password: ownerPassword,
+      organizationId: tempOrgId,
+      status: 'approved',
+      // Initialize Config (Shift will be added later)
+      attendanceConfig: {
+        isAttendanceEnabled: true,
+        allowWebPunch: true, // Owners usually need web punch
+        allowMobilePunch: true
+      }
+    }).save({ session });
+
+    // Step 2: Create Role (Super Admin)
+    const newRole = await new Role({
+      name: 'Super Admin',
+      organizationId: tempOrgId,
+      permissions: Role.allPermissions || [], 
+      isSuperAdmin: true,
+    }).save({ session });
+
+    // Step 3: Create Organization
+    const newOrg = await new Organization({
+      _id: tempOrgId,
+      name: organizationName,
+      uniqueShopId: uniqueShopId || generateUniqueShopId(),
+      primaryEmail,
+      primaryPhone,
+      gstNumber,
+      owner: newUser._id,
+      // Default Preferences
+      whatsappWallet: { credits: 50 }, // Free credits
+      features: { whatsappEnabled: true }
+    }).save({ session });
+
+    // Step 4: Create Main Branch
+    const newBranch = await new Branch({
+      name: mainBranchName || 'Main Branch',
+      address: mainBranchAddress,
+      organizationId: newOrg._id,
+      isMainBranch: true,
+    }).save({ session });
+
+    // 🟢 STEP 4.5: Create Default Shift (CRITICAL FOR ATTENDANCE)
+    const defaultShift = await new Shift({
+        name: 'General Shift',
+        organizationId: newOrg._id,
+        startTime: '09:00',
+        endTime: '18:00',
+        gracePeriodMins: 15,
+        halfDayThresholdHrs: 4,
+        minFullDayHrs: 8,
+        weeklyOffs: [0], // Sunday
+        isActive: true
+    }).save({ session });
+
+    // Step 5: Link Everything & Update Owner
+    newOrg.mainBranch = newBranch._id;
+    newOrg.branches.push(newBranch._id);
+    newOrg.members.push(newUser._id);
+
+    // Update Owner Links
+    newUser.organizationId = newOrg._id;
+    newUser.branchId = newBranch._id;
+    newUser.role = newRole._id;
+    
+    // 🟢 Assign the Default Shift to Owner
+    newUser.attendanceConfig.shiftId = defaultShift._id;
+
+    // Final Save
+    await Promise.all([newOrg.save({ session }), newUser.save({ session })]);
+    
+    await session.commitTransaction();
+    
+    // Fetch clean data for response
+    const orgId = newOrg._id;
+    const [branches, roles] = await Promise.all([
+      Branch.find({ organizationId: orgId, isActive: true }).select('_id name address isMainBranch').lean(),
+      Role.find({ organizationId: orgId }).select('_id name permissions isSuperAdmin isDefault').lean()
+    ]);
+
+    const token = signToken(newUser);
+    newUser.password = undefined;
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Organization created successfully!',
+      token,
+      allbranches: branches,
+      allroles: roles,
+      data: { 
+          organization: newOrg, 
+          owner: newUser, 
+          branch: newBranch, 
+          role: newRole,
+          shift: defaultShift // Return shift so frontend can update state
+      },
+    });
+
+  } catch (err) {
+    await session.abortTransaction();
+    if (err.code === 11000) {
+      if (err.keyPattern?.uniqueShopId)
+        return next(new AppError('This Shop ID is already taken.', 400));
+      if (err.keyPattern?.email)
+        return next(new AppError('This email address is already in use.', 400));
+    }
+    next(err);
+  } finally {
+    session.endSession();
+  }
+});
+
+/* -------------------------------------------------------------
+ * Get Pending Members
+------------------------------------------------------------- */
+exports.getPendingMembers = catchAsync(async (req, res, next) => {
+  if (!req.user.organizationId) {
+    return next(new AppError('Not authorized to view pending members', 403));
+  }
+
+  // Directly query Users with status='pending' linked to this Org
+  const pendingMembers = await User.find({
+    organizationId: req.user.organizationId,
+    status: 'pending'
+  })
+  .select('name email phone createdAt status avatar')
+  .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    status: 'success',
+    results: pendingMembers.length,
+    data: {
+      pendingMembers
+    }
+  });
+});
+
+/* -------------------------------------------------------------
+ * Approve Member
+------------------------------------------------------------- */
+exports.approveMember = catchAsync(async (req, res, next) => {
+  const { userId, roleId, branchId } = req.body;
+
+  if (!userId || !roleId || !branchId)
+    return next(new AppError("Missing required fields: userId, roleId, branchId", 400));
+
+  const org = await Organization.findById(req.user.organizationId);
+  if (!org) return next(new AppError("Organization not found.", 404));
+
+  // Find pending user
+  const user = await User.findOne({
+    _id: userId,
+    organizationId: req.user.organizationId,
+    status: "pending",
+  });
+
+  if (!user) return next(new AppError("User is not pending or doesn't exist.", 404));
+
+  // Validate role & branch
+  const role = await Role.findOne({ _id: roleId, organizationId: req.user.organizationId });
+  if (!role) return next(new AppError("Invalid role ID.", 400));
+
+  const branch = await Branch.findOne({ _id: branchId, organizationId: req.user.organizationId });
+  if (!branch) return next(new AppError("Invalid branch ID.", 400));
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // 1. Update User
+    user.status = "approved";
+    user.role = roleId;
+    user.branchId = branchId;
+
+    // 2. Add to Org Members (if not exists)
+    if (!org.members.includes(user._id)) {
+      org.members.push(user._id);
+    }
+
+    // ❌ REMOVED: Old 'approvalRequests' array logic (Prevents Crash)
+
+    await Promise.all([
+      user.save({ session }),
+      org.save({ session })
+    ]);
+
+    await session.commitTransaction();
+
+    // 3. Prepare Safe Response (Inject Permissions for UI)
+    const userResponse = user.toObject();
+    userResponse.permissions = role.permissions || [];
+    userResponse.role = role;
+
+    // 4. Send Real-time Notification to Org Admins
+    if (typeof emitToOrg === "function") {
+      emitToOrg(req.user.organizationId, "newNotification", {
+        title: "Member Approved",
+        message: `${user.name} has been approved.`,
+        type: "success",
+        createdAt: new Date()
+      });
+    }
+
+    // 5. Send Email Notification to User (Async - don't await)
+    try {
+      sendEmail({
+        email: user.email,
+        subject: "Account Approved",
+        message: `Congratulations ${user.name}, your account for ${org.name} has been approved. You can now log in.`,
+      });
+    } catch (emailErr) {
+      console.error("Failed to send approval email:", emailErr.message);
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: "Member approved successfully",
+      data: { user: userResponse }
+    });
+
+  } catch (err) {
+    await session.abortTransaction();
+    next(err);
+  } finally {
+    session.endSession();
+  }
+});
+
+/* -------------------------------------------------------------
+ * Reject Member (With Email & Socket Notification)
+------------------------------------------------------------- */
+exports.rejectMember = catchAsync(async (req, res, next) => {
+  const { userId } = req.body;
+  if (!userId) {
+    return next(new AppError("User ID is required", 400));
+  }
+  const user = await User.findOne({
+    _id: userId,
+    organizationId: req.user.organizationId,
+    status: "pending"
+  });
+
+  if (!user) {
+    return next(new AppError("Pending request not found.", 404));
+  }
+
+  const userEmail = user.email;
+  const userName = user.name;
+  const orgName = req.user.organizationName || "the organization"; // You might want to fetch Org Name if not in req.user
+
+  // 2. Send Notifications BEFORE Deletion
+  // We do this first because once deleted, the user object is gone.
+  
+  // A. Socket Notification (If user happens to be connected with a temporary socket)
+  if (typeof emitToUser === "function") {
+    emitToUser(user._id, "accountRejected", {
+      message: "Your request to join the organization was declined.",
+      reason: "Admin decision"
+    });
+  }
+
+  // B. Email Notification
+  try {
+    await sendEmail({
+      email: userEmail,
+      subject: "Membership Request Declined",
+      message: `Hello ${userName},\n\nYour request to join ${orgName} has been declined by the administrator.\n\nIf you believe this is an error, please contact the administration directly.`,
+    });
+  } catch (emailErr) {
+    console.error(`Failed to send rejection email to ${userEmail}:`, emailErr.message);
+    // We continue with deletion even if email fails
+  }
+
+  // 3. Action: Delete the user document
+  // Since they were only 'pending', we remove the record entirely so they can signup again if needed.
+  await User.deleteOne({ _id: user._id });
+
+  // 4. Notify Admins (Real-time update to remove from list)
+  if (typeof emitToOrg === "function") {
+    emitToOrg(req.user.organizationId, "memberRejected", {
+      userId: userId,
+      message: `Request for ${userName} was rejected.`
+    });
+  }
+
+  res.status(200).json({
+    status: "success",
+    message: "Membership request rejected and user record removed."
+  });
+});
+
+/* -------------------------------------------------------------
+ * Self-service organization endpoints
+------------------------------------------------------------- */
+exports.getMyOrganization = catchAsync(async (req, res, next) => {
+  if (!req.user.organizationId) {
+    return next(new AppError('This user is not linked to any organization.', 400));
+  }
+
+  const org = await Organization.findById(req.user.organizationId)
+    .populate({ path: 'owner', select: 'name email' })
+    .populate({ path: 'members', select: 'name email role status' })
+    .populate({ path: 'branches', select: 'name city state' });
+
+  if (!org) {
+    return next(new AppError('Organization not found (ID mismatch).', 404));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: org 
+  });
+});
+
+exports.updateMyOrganization = catchAsync(async (req, res, next) => {
+  const orgId = req.user.organizationId;
+
+  if (!orgId) {
+    return next(new AppError("You are not linked to any organization.", 400));
+  }
+
+  if (req.body.owner) {
+    return next(new AppError("You cannot change the organization owner.", 403));
+  }
+
+  const allowedFields = [
+    "name", "primaryEmail", "primaryPhone", "gstNumber",
+    "uniqueShopId", "address", "city", "state", "country", "pincode"
+  ];
+
+  const updates = {};
+  Object.keys(req.body).forEach((key) => {
+    if (allowedFields.includes(key)) updates[key] = req.body[key];
+  });
+
+  if (Object.keys(updates).length === 0) {
+    return next(new AppError("No valid fields provided for update.", 400));
+  }
+
+  const updatedOrg = await Organization.findByIdAndUpdate(
+    orgId,
+    updates,
+    { new: true, runValidators: true }
+  );
+
+  if (!updatedOrg) {
+    return next(new AppError("Organization not found.", 404));
+  }
+
+  res.status(200).json({
+    status: "success",
+    message: "Organization updated successfully.",
+    data: updatedOrg
+  });
+});
+
+exports.deleteMyOrganization = catchAsync(async (req, res, next) => {
+  const org = await Organization.findById(req.user.organizationId);
+  if (!org) return next(new AppError('Organization not found.', 404));
+  if (org.owner.toString() !== req.user.id)
+    return next(new AppError('Only the owner can delete this organization.', 403));
+  req.params.id = req.user.organizationId;
+  return factory.deleteOne(Organization)(req, res, next);
+});
+
+
+/* -------------------------------------------------------------
+ * Platform-admin CRUD
+------------------------------------------------------------- */
+exports.getAllOrganizations = factory.getAll(Organization);
+exports.getOrganization = factory.getOne(Organization, [
+  { path: 'owner', select: 'name email' },
+  { path: 'members', select: 'name email role' },
+  { path: 'branches', select: 'name city state' },
+]);
+
+exports.updateOrganization = factory.updateOne(Organization);
+exports.deleteOrganization = factory.deleteOne(Organization);

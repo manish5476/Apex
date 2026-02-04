@@ -1,53 +1,27 @@
 const express = require('express');
-const holidayController = require('../../controllers/holidayController');
-const authController = require('../../controllers/authController');
+const holidayController = require('../../modules/hr/holiday/holiday.controller');
+const authController = require('../../modules/auth/core/auth.controller');
+const { checkPermission, } = require("../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require('../../config/permissions');
 
 const router = express.Router();
 
 // 🔒 All routes require login
 router.use(authController.protect);
 
+// Replace authController.restrictTo with checkPermission:
 router.route('/')
-    .get(holidayController.getHolidays) // Employees need to see holidays
-    .post(
-        // authController.restrictTo('admin', 'superadmin', 'manager'), 
-        holidayController.createHoliday
-    );
+  .get(checkPermission(PERMISSIONS.HOLIDAY.READ), holidayController.getHolidays)
+  .post(checkPermission(PERMISSIONS.HOLIDAY.MANAGE), holidayController.createHoliday);
+
+// 🟢 New Perfection Route
+router.post('/bulk-import',
+  checkPermission(PERMISSIONS.HOLIDAY.MANAGE),
+  holidayController.bulkCreateHolidays
+);
 
 router.route('/:id')
-    .get(holidayController.getHolidayById)
-    .patch(
-        // authController.restrictTo('admin', 'superadmin', 'manager'), 
-        holidayController.updateHoliday
-    )
-    .delete(
-        // authController.restrictTo('admin', 'superadmin'), 
-        holidayController.deleteHoliday
-    );
-
+  .get(checkPermission(PERMISSIONS.HOLIDAY.READ), holidayController.getHolidayById)
+  .patch(checkPermission(PERMISSIONS.HOLIDAY.MANAGE), holidayController.updateHoliday)
+  .delete(checkPermission(PERMISSIONS.HOLIDAY.MANAGE), holidayController.deleteHoliday);
 module.exports = router;
-
-// const express = require('express');
-// const holidayController = require('../../controllers/holidayController');
-// const authController = require('../../controllers/authController');
-
-// const router = express.Router();
-
-// // Protect all routes
-// router.use(authController.protect);
-
-// router.route('/')
-//     .get(holidayController.getHolidays)
-//     .post(
-        // authController.restrictTo('admin', 'superadmin', 'manager'), 
-//         holidayController.createHoliday
-//     );
-
-// router.route('/:id')
-//     // .patch(holidayController.updateHoliday) // Add if you implement update
-//     .delete(
-//         authController.restrictTo('admin', 'superadmin'), 
-//         holidayController.deleteHoliday
-//     );
-
-// module.exports = router;
