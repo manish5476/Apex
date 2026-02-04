@@ -1,7 +1,7 @@
-const productResolver = require('./resolvers/product.resolver');
-const categoryResolver = require('./resolvers/category.resolver');
-const navigationResolver = require('./resolvers/navigation.resolver');
-const branchResolver = require('./resolvers/branch.resolver');
+const productResolver = require('../storefront/resolvers/product.resolver');
+const categoryResolver = require('../storefront/resolvers/category.resolver');
+const navigationResolver = require('../storefront/resolvers/navigation.resolver');
+const branchResolver = require('../storefront/resolvers/branch.resolver');
 
 class SectionRegistry {
   constructor() {
