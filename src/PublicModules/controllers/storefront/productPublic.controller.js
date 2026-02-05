@@ -112,8 +112,6 @@ class ProductPublicController {
         Product.countDocuments(query),
         LayoutService.getLayout(org._id)
       ]);
-
-      // ... (Rest of Hydration & Response remains the same) ...
       
       const [hydratedHeader, hydratedFooter] = await Promise.all([
         DataHydrationService.hydrateSections(layoutData.header, org._id),
@@ -133,119 +131,8 @@ class ProductPublicController {
 
     } catch (err) { next(err); }
   }
-  // getProducts = async (req, res, next) => {
-  //   try {
-  //     const { organizationSlug } = req.params;
-  //     const org = await this._resolveOrg(organizationSlug);
-  //     if (!org) return next(new AppError('Store not found', 404));
-
-  //     let { 
-  //       page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'desc', 
-  //       category, brand, subCategory, 
-  //       minPrice, maxPrice, minDiscount,
-  //       search, tags, inStock 
-  //     } = req.query;
-
-  //     // --- A. Normalize Inputs ---
-  //     page = Math.max(parseInt(page, 10) || 1, 1);
-  //     limit = Math.min(parseInt(limit, 10) || 20, MAX_LIMIT);
-  //     sortBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? sortBy : 'createdAt';
-  //     const skip = (page - 1) * limit;
-
-  //     const query = { organizationId: org._id, isActive: true };
-
-  //     // --- B. Smart Filter Resolution (Name -> ID) ---
-  //     if (category) query.categoryId = await this._resolveMasterId(org._id, 'category', category);
-  //     if (brand) query.brandId = await this._resolveMasterId(org._id, 'brand', brand);
-  //     if (subCategory) query.subCategoryId = await this._resolveMasterId(org._id, 'category', subCategory);
-
-  //     // --- C. Standard Filters ---
-  //     if (tags) {
-  //       const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
-  //       if (tagList.length > 0) query.tags = { $in: tagList };
-  //     }
-
-  //     if (minPrice || maxPrice) {
-  //       query.sellingPrice = {};
-  //       if (minPrice) query.sellingPrice.$gte = Number(minPrice);
-  //       if (maxPrice) query.sellingPrice.$lte = Number(maxPrice);
-  //     }
-
-  //     if (inStock === 'true') {
-  //       query.inventory = { $elemMatch: { quantity: { $gt: 0 } } };
-  //     }
-
-  //     // --- D. Discount Filter (New) ---
-  //     if (minDiscount) {
-  //       const discountVal = parseInt(minDiscount);
-  //       if (discountVal > 0) {
-  //         query.discountedPrice = { $exists: true, $ne: null };
-  //         const factor = 1 - (discountVal / 100);
-  //         query.$expr = {
-  //           $lte: ["$discountedPrice", { $multiply: ["$sellingPrice", factor] }]
-  //         };
-  //       }
-  //     }
-
-  //     // --- E. Search Logic ---
-  //     if (search) {
-  //       const searchRegex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-  //       query.$or = [
-  //         { name: { $regex: searchRegex } },
-  //         { description: { $regex: searchRegex } },
-  //         { sku: { $regex: searchRegex } }
-  //       ];
-  //     }
-
-  //     // --- F. Execution (Parallel) ---
-  //     const [products, total, layoutData] = await Promise.all([
-  //       Product.find(query)
-  //         .select('name slug description images sellingPrice discountedPrice categoryId brandId tags sku inventory createdAt')
-  //         .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
-  //         .skip(skip)
-  //         .limit(limit)
-  //         .populate('categoryId brandId', 'name slug') 
-  //         .lean(),
-  //       Product.countDocuments(query),
-  //       LayoutService.getLayout(org._id)
-  //     ]);
-
-  //     // --- G. Hydration & Transform ---
-  //     const [hydratedHeader, hydratedFooter] = await Promise.all([
-  //       DataHydrationService.hydrateSections(layoutData.header, org._id),
-  //       DataHydrationService.hydrateSections(layoutData.footer, org._id)
-  //     ]);
-
-  //     const transformed = this._transformProducts(products, organizationSlug);
-
-  //     // --- H. Response ---
-  //     const listSchema = buildProductListSchema(transformed);
-      
-  //     res.set({
-  //       'Link': `<${buildCanonicalUrl(req)}>; rel="canonical"`,
-  //       'X-Robots-Tag': buildRobotsMeta(false)
-  //     });
-
-  //     res.status(200).json({
-  //       organization: this._formatOrg(org, organizationSlug),
-  //       layout: { header: hydratedHeader, footer: hydratedFooter },
-  //       settings: layoutData.globalSettings || {},
-  //       products: transformed,
-  //       pagination: {
-  //         page, limit, total,
-  //         pages: Math.ceil(total / limit)
-  //       },
-  //       seo: { canonical: buildCanonicalUrl(req), jsonLd: listSchema }
-  //     });
-
-  //   } catch (err) { next(err); }
-  // }
-
-  // =====================================================
-  // 2. GET SINGLE PRODUCT (Detailed)
-  // Route: GET /:organizationSlug/products/:productSlug
-  // =====================================================
-  getProductBySlug = async (req, res, next) => {
+  
+ getProductBySlug = async (req, res, next) => {
     try {
       const { organizationSlug, productSlug } = req.params;
       const org = await this._resolveOrg(organizationSlug);
@@ -533,77 +420,6 @@ class ProductPublicController {
   }
 
   // =====================================================
-  // ✅ NEW: GET STORE METADATA (Enums + Tags + Limits)
-  // Route: GET /:organizationSlug/meta
-  // Use this to populate all your Dropdowns & Filters in one go.
-  // =====================================================
-  // getStoreMetadata = async (req, res, next) => {
-  //   try {
-  //     const { organizationSlug } = req.params;
-  //     const org = await this._resolveOrg(organizationSlug);
-  //     if (!org) return next(new AppError('Store not found', 404));
-
-  //     // Execute 3 heavy queries in Parallel for speed
-  //     const [masters, tags, priceRange] = await Promise.all([
-        
-  //       // 1. Fetch All Masters (Categories & Brands)
-  //       Master.find({ 
-  //         organizationId: org._id, 
-  //         isActive: true, 
-  //         type: { $in: ['category', 'brand', 'unit'] } 
-  //       })
-  //       .select('name slug type imageUrl parentId metadata')
-  //       .sort({ 'metadata.sortOrder': 1, name: 1 })
-  //       .lean(),
-
-  //       // 2. Fetch Aggregated Tags (from Products)
-  //       Product.aggregate([
-  //         { $match: { organizationId: org._id, isActive: true, tags: { $exists: true, $ne: [] } } },
-  //         { $unwind: '$tags' },
-  //         { $group: { _id: '$tags', count: { $sum: 1 } } },
-  //         { $sort: { count: -1 } },
-  //         { $limit: 50 }
-  //       ]),
-
-  //       // 3. Fetch Price Limits (Min/Max for Sliders)
-  //       Product.aggregate([
-  //         { $match: { organizationId: org._id, isActive: true } },
-  //         { $group: { _id: null, min: { $min: '$sellingPrice' }, max: { $max: '$sellingPrice' } } }
-  //       ])
-  //     ]);
-
-  //     // Separate Masters into clean lists
-  //     const categories = masters.filter(m => m.type === 'category');
-  //     const brands = masters.filter(m => m.type === 'brand');
-  //     const units = masters.filter(m => m.type === 'unit'); // Useful for display logic
-
-  //     res.status(200).json({
-  //       organization: { id: org._id, slug: organizationSlug },
-  //       enums: {
-  //         categories: categories.map(c => ({
-  //            id: c._id, 
-  //            name: c.name, 
-  //            slug: c.slug, 
-  //            image: c.imageUrl,
-  //            parentId: c.parentId 
-  //         })),
-  //         brands: brands.map(b => ({
-  //            id: b._id, 
-  //            name: b.name, 
-  //            slug: b.slug
-  //         })),
-  //         units: units.map(u => ({ id: u._id, name: u.name })),
-  //         tags: tags.map(t => t._id) // Just return the array of strings
-  //       },
-  //       filters: {
-  //         price: priceRange[0] || { min: 0, max: 0 },
-  //         maxTags: tags.length
-  //       }
-  //     });
-
-  //   } catch (err) { next(err); }
-  // }
-  // =====================================================
   // ✅ FINAL: GET STORE METADATA (Hybrid Master + Counts)
   // Route: GET /:organizationSlug/meta
   // Fixes "No Data" issue and adds 'type' for UI grouping
@@ -690,33 +506,7 @@ class ProductPublicController {
 
     } catch (err) { next(err); }
   }
-  // =====================================================
-  // 🔒 PRIVATE HELPERS
-  // =====================================================
 
-  // async _resolveOrg(slug) {
-  //   // Basic cache logic could be added here later
-  //   return await Organization.findOne({
-  //     uniqueShopId: slug.toUpperCase(),
-  //     isActive: true
-  //   }).select('_id name uniqueShopId primaryEmail primaryPhone logo');
-  // }
-
-  // async _resolveMasterId(organizationId, type, value) {
-  //   if (!value) return null;
-  //   if (mongoose.Types.ObjectId.isValid(value)) return value;
-
-  //   const master = await Master.findOne({
-  //     organizationId,
-  //     type,
-  //     $or: [
-  //       { slug: value.toLowerCase() },
-  //       { name: { $regex: new RegExp(`^${value}$`, 'i') } }
-  //     ]
-  //   }).select('_id');
-    
-  //   return master ? master._id : null;
-  // }
 // =====================================================
   // 🔒 PRIVATE HELPERS (Keep these)
   // =====================================================
