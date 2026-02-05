@@ -66,11 +66,11 @@ const sectionSchema = new mongoose.Schema(
     },
 
     // Data Source Configuration
-    dataSource: {
-      type: String,
-      enum: ["static", "smart", "manual", "dynamic", "category"],
-      default: "static",
-    },
+    // dataSource: {
+    //   type: String,
+    //   enum: ["static", "smart", "manual", "dynamic", "category"],
+    //   default: "dynamic",
+    // },
 
     // For Smart Rules (Best Sellers, etc.)
     smartRuleId: {

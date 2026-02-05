@@ -7,43 +7,40 @@ const LayoutService = require('../../services/storefront/layout.service'); // âœ
 const { THEME_LIST } = require('../../utils/constants/storefront/themes.constants'); // âœ… Import
 class StorefrontAdminController {
 
-  sanitizePageTheme(themeData) {
-    if (!themeData) return {};
+  // sanitizePageTheme(themeData) {
+  //   if (!themeData) return {};
+  //   if (themeData.mode === 'preset') {
+  //     return {
+  //       mode: 'preset',
+  //       presetId: themeData.presetId || 'auto-theme',
+  //       variant: themeData.variant || 'default',
+  //       // We purposefully nullify custom settings
+  //       customSettings: {
+  //         backgroundColor: null,
+  //         backgroundImage: null,
+  //         primaryColor: null, // Optional: Keep brand colors if you want them to mix with themes
+  //         secondaryColor: null
+  //       }
+  //     };
+  //   }
 
-    // If User selects PRESET, wipe the custom background data
-    // to prevent "ghost" colors from appearing.
-    if (themeData.mode === 'preset') {
-      return {
-        mode: 'preset',
-        presetId: themeData.presetId || 'auto-theme',
-        variant: themeData.variant || 'default',
-        // We purposefully nullify custom settings
-        customSettings: {
-          backgroundColor: null,
-          backgroundImage: null,
-          primaryColor: null, // Optional: Keep brand colors if you want them to mix with themes
-          secondaryColor: null
-        }
-      };
-    }
+  //   // If User selects CUSTOM, ignore the preset ID
+  //   if (themeData.mode === 'custom') {
+  //     return {
+  //       mode: 'custom',
+  //       presetId: null,
+  //       customSettings: {
+  //         backgroundColor: themeData.customSettings?.backgroundColor || '#ffffff',
+  //         backgroundImage: themeData.customSettings?.backgroundImage,
+  //         primaryColor: themeData.customSettings?.primaryColor,
+  //         secondaryColor: themeData.customSettings?.secondaryColor,
+  //         fontFamily: themeData.customSettings?.fontFamily
+  //       }
+  //     };
+  //   }
 
-    // If User selects CUSTOM, ignore the preset ID
-    if (themeData.mode === 'custom') {
-      return {
-        mode: 'custom',
-        presetId: null,
-        customSettings: {
-          backgroundColor: themeData.customSettings?.backgroundColor || '#ffffff',
-          backgroundImage: themeData.customSettings?.backgroundImage,
-          primaryColor: themeData.customSettings?.primaryColor,
-          secondaryColor: themeData.customSettings?.secondaryColor,
-          fontFamily: themeData.customSettings?.fontFamily
-        }
-      };
-    }
-
-    return themeData;
-  }
+  //   return themeData;
+  // }
 
   /**
    * Get Master Layout
