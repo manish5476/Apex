@@ -25,7 +25,6 @@ const buildFilterQuery = (type, filters = {}, organizationId) => {
   // Common filters for most models
   if (filters.search) {
     const searchRegex = new RegExp(filters.search, 'i');
-    
     switch(type) {
       case 'customer':
         query.$or = [
@@ -221,7 +220,6 @@ const buildFilterQuery = (type, filters = {}, organizationId) => {
   if (filters.includeDeleted !== 'true') {
     query.isDeleted = { $ne: true };
   }
-
   return query;
 };
 
@@ -646,6 +644,7 @@ exports.getMasterList = catchAsync(async (req, res, next) => {
       products: enhancedProducts,
       accounts,
       users,
+      masterData:masters,
       masters: groupedMasters,
       recentInvoices: enhancedInvoices,
       recentPurchases: purchases,

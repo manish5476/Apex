@@ -1,826 +1,167 @@
 const mongoose = require('mongoose');
+const AppError = require('../../../core/utils/appError');
 
-/**
- * Translates SmartRule definitions into MongoDB Aggregation Pipelines.
- */
 class RuleQueryBuilder {
-    build(rule, organizationId) {
-        const match = {
-            organizationId: new mongoose.Types.ObjectId(organizationId),
-            isActive: true
-        };
 
-        let sort = { [rule.sortBy || 'createdAt']: rule.sortOrder === 'asc' ? 1 : -1 };
-        let pipeline = [];
+  /**
+   * Main Entry Point
+   * Builds a MongoDB Aggregation Pipeline from a Rule Configuration
+   * @param {Object} rule - The SmartRule object or ad-hoc config
+   * @param {String} organizationId 
+   */
+  build(rule, organizationId) {
+    if (!rule || !organizationId) {
+      throw new AppError('Invalid rule execution context', 400);
+    }
 
-        // Apply Rule-Specific Logic
-        switch (rule.ruleType) {
-            case 'new_arrivals':
-                const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-                match.createdAt = { $gte: ninetyDaysAgo };
-                sort = { createdAt: -1 };
-                break;
+    // 1. Base Match (Security: Always filter by Org & Active status)
+    const matchStage = {
+      organizationId: new mongoose.Types.ObjectId(organizationId),
+      isActive: true,
+      // Ensure we don't show deleted or archived products
+      // Assuming 'status' or 'isDeleted' fields exist on Product model
+      $or: [{ isDeleted: { $exists: false } }, { isDeleted: false }] 
+    };
 
-            case 'best_sellers':
-                match.lastSold = { $exists: true };
-                sort = { salesCount: -1 };
-                break;
+    let sortStage = { createdAt: -1 }; // Default Sort
+    let limit = rule.limit || 12;      // Default Limit
 
-            case 'clearance_sale':
-                pipeline.push({
-                    $addFields: {
-                        discountPercent: {
-                            $cond: [
-                                { $gt: ["$sellingPrice", 0] },
-                                { $multiply: [{ $divide: [{ $subtract: ["$sellingPrice", "$discountedPrice"] }, "$sellingPrice"] }, 100] },
-                                0
-                            ]
-                        }
-                    }
-                });
-                match.discountedPrice = { $exists: true, $lt: "$sellingPrice" };
-                sort = { discountPercent: -1 };
-                break;
-
-            case 'category_based':
-                const catFilter = rule.filters?.find(f => f.field === 'category');
-                if (catFilter) match.categoryId = new mongoose.Types.ObjectId(catFilter.value);
-                break;
-
-            case 'price_range':
-                const min = rule.filters?.find(f => f.field === 'price' && f.operator === 'greater_than')?.value || 0;
-                const max = rule.filters?.find(f => f.field === 'price' && f.operator === 'less_than')?.value || 9999999;
-                match.sellingPrice = { $gte: Number(min), $lte: Number(max) };
-                break;
+    // 2. Apply Rule Strategy
+    switch (rule.ruleType) {
+      
+      // --- MANUAL SELECTION ---
+      case 'manual_selection':
+        if (rule.manualProductIds && rule.manualProductIds.length > 0) {
+          // Convert string IDs to ObjectIds
+          const objectIds = rule.manualProductIds.map(id => new mongoose.Types.ObjectId(id));
+          matchStage._id = { $in: objectIds };
+          
+          // CRITICAL: Preserve manual order if possible (Requires complex aggregation, skipping for MVP)
+          // For MVP, we just return them. 
+          // If strict order is needed, we would need to use $addFields with $indexOfArray in the pipeline.
+          limit = rule.manualProductIds.length; // Override limit to show all selected
+        } else {
+          // Fallback: If manual type selected but no IDs provided, return nothing to prevent leaking random products
+          matchStage._id = { $in: [] }; 
         }
+        break;
 
-        // Apply Secondary Filters
-        this.applySecondaryFilters(match, rule.filters);
+      // --- SMART STRATEGIES ---
+      case 'new_arrivals':
+        sortStage = { createdAt: -1 };
+        break;
 
-        return {
-            pipeline: [{ $match: match }, ...pipeline],
-            sort,
-            limit: Math.min(rule.limit || 12, 50)
-        };
+      case 'best_sellers':
+        // Sort by sales count (descending)
+        // Ensure we only get items that have actually sold
+        sortStage = { 'analytics.salesCount': -1, lastSold: -1 };
+        matchStage['analytics.salesCount'] = { $gt: 0 };
+        break;
+
+      case 'trending':
+        // Products viewed/sold recently (e.g., last 7 or 30 days)
+        const trendingWindow = new Date();
+        trendingWindow.setDate(trendingWindow.getDate() - 30); // 30 Day Window
+        
+        matchStage.$or = [
+          { lastSold: { $gte: trendingWindow } },
+          { updatedAt: { $gte: trendingWindow } } // Fallback for new items
+        ];
+        sortStage = { lastSold: -1, viewCount: -1 };
+        break;
+
+      case 'clearance_sale':
+        // Products with a discount > 0
+        // Logic: Discounted Price exists AND is less than Selling Price
+        matchStage.discountedPrice = { $exists: true, $ne: null };
+        matchStage.$expr = { $lt: ["$discountedPrice", "$sellingPrice"] };
+        sortStage = { discountedPrice: 1 }; // Cheapest first? Or biggest discount? Let's go with Cheapest for now.
+        break;
+
+      case 'category_based':
+        // Explicit Category ID check
+        if (rule.categoryId) {
+          matchStage.categoryId = new mongoose.Types.ObjectId(rule.categoryId);
+        } else {
+          // Fallback logic if they forgot to pick a category: Don't crash, just show recent
+          // console.warn('Category rule missing category ID');
+        }
+        break;
+
+      case 'custom_query':
+        // Fallthrough to filter application below
+        break;
     }
 
-    applySecondaryFilters(match, filters = []) {
-        filters.forEach(f => {
-            if (['category', 'price'].includes(f.field)) return; // Already handled or custom logic needed
-            
-            if (f.field === 'tags') {
-                match.tags = { $in: Array.isArray(f.value) ? f.value : [f.value] };
-            }
-            
-            if (f.field === 'brand') {
-                match.brandId = new mongoose.Types.ObjectId(f.value);
-            }
-        });
+    // 3. Apply Explicit Filters (Array of {field, operator, value})
+    // This runs for ALL rule types (except manual potentially) to allow further refinement
+    // e.g. "New Arrivals" (Strategy) + "Price < 50" (Filter)
+    if (rule.ruleType !== 'manual_selection' && rule.filters && Array.isArray(rule.filters)) {
+      rule.filters.forEach(filter => {
+        this._applyFilter(matchStage, filter);
+      });
     }
+
+    // 4. Construct Final Pipeline
+    const pipeline = [
+      { $match: matchStage }
+    ];
+
+    // OPTIONAL: If Manual Selection, we might want to preserve the order of IDs
+    // This is an advanced aggregation pattern.
+    if (rule.ruleType === 'manual_selection' && rule.manualProductIds?.length > 0) {
+       // logic to preserve order could go here if needed later
+    }
+
+    return {
+      pipeline,
+      sort: sortStage,
+      limit: Math.min(limit, 50) // Hard cap at 50 to prevent massive queries
+    };
+  }
+
+  /**
+   * Helper: Mutates the match object based on operators
+   */
+  _applyFilter(match, { field, operator, value, value2 }) {
+    if (value === undefined || value === null || value === '') return;
+
+    // Field Mapping (Frontend friendly names -> DB paths)
+    const fieldMap = {
+      'category': 'categoryId',
+      'brand': 'brandId',
+      'price': 'sellingPrice',
+      'stock': 'inventory.quantity', // Requires deeper lookup usually, but simplified for root level if schema allows
+      'tags': 'tags'
+    };
+    
+    // Handle Special "Virtual" Fields if necessary
+    const dbField = fieldMap[field] || field;
+
+    switch (operator) {
+      case 'equals': 
+        match[dbField] = value; 
+        break;
+      case 'not_equals': 
+        match[dbField] = { $ne: value }; 
+        break;
+      case 'contains': 
+        match[dbField] = { $regex: value, $options: 'i' }; 
+        break;
+      case 'greater_than': 
+        match[dbField] = { $gt: Number(value) }; 
+        break;
+      case 'less_than': 
+        match[dbField] = { $lt: Number(value) }; 
+        break;
+      case 'between': 
+        match[dbField] = { $gte: Number(value), $lte: Number(value2) }; 
+        break;
+      case 'in': 
+        match[dbField] = { $in: Array.isArray(value) ? value : [value] }; 
+        break;
+    }
+  }
 }
 
 module.exports = new RuleQueryBuilder();
-// const mongoose = require('mongoose');
-// const AppError = require('../../../core/utils/appError');
-
-// class RuleQueryBuilder {
-
-//   build(rule, organizationId) {
-//     if (!rule || !organizationId) {
-//       throw new AppError('Invalid rule or organization', 400);
-//     }
-
-//     const match = {
-//       organizationId: new mongoose.Types.ObjectId(organizationId),
-//       isActive: true
-//     };
-
-//     const pipeline = [];
-//     switch (rule.ruleType) {
-//       case 'new_arrivals':
-//         this.newArrivals(match, rule);
-//         break;
-//       case 'best_sellers':
-//         this.bestSellers(match, rule);
-//         break;
-//       case 'trending':
-//         this.trending(match);
-//         break;
-//       case 'category_based':
-//         this.categoryBased(match, rule);
-//         break;
-//       case 'price_range':
-//         this.priceRange(match, rule);
-//         break;
-//       case 'low_stock':
-//         this.lowStock(match, rule);
-//         break;
-//       case 'clearance_sale':
-//       case 'clearance_sale': {
-//         return Product.aggregate([
-//           {
-//             $match: {
-//               organizationId: mongoose.Types.ObjectId(organizationId),
-//               isActive: true,
-//               discountedPrice: { $exists: true, $lt: '$sellingPrice' }
-//             }
-//           },
-//           {
-//             $addFields: {
-//               discountPercent: {
-//                 $multiply: [
-//                   {
-//                     $divide: [
-//                       { $subtract: ['$sellingPrice', '$discountedPrice'] },
-//                       '$sellingPrice'
-//                     ]
-//                   },
-//                   100
-//                 ]
-//               }
-//             }
-//           },
-//           { $match: { discountPercent: { $gte: 10 } } },
-//           { $sort: { discountPercent: -1 } },
-//           { $limit: rule.limit || 12 }
-//         ]);
-//       }
-
-//         // pipeline.push(...this.clearanceSale());
-//         break;
-//       case 'custom_query':
-//         this.applyFilters(match, rule.filters);
-//         break;
-//       default:
-//         throw new AppError(`Unsupported rule type: ${rule.ruleType}`, 400);
-//     }
-//     if (rule.ruleType !== 'custom_query') {
-//       this.applySecondaryFilters(match, rule.filters);
-//     }
-//     return {
-//       pipeline: pipeline.length ? [{ $match: match }, ...pipeline] : [{ $match: match }],
-//       sort: this.buildSort(rule),
-//       limit: Math.min(rule.limit || 10, 50),
-//       skip: rule.skip || 0
-//     };
-//   }
-//   // ---------------- SORT ----------------
-//   buildSort(rule) {
-//     return {
-//       [rule.sortBy || 'createdAt']:
-//         rule.sortOrder === 'asc' ? 1 : -1
-//     };
-//   }
-//   // ---------------- RULE LOGIC ----------------
-//   newArrivals(match, rule) {
-//     const days = this.getDays(rule.filters, 'createdAt') || 90;
-//     const date = new Date();
-//     date.setDate(date.getDate() - days);
-//     match.createdAt = { $gte: date };
-//     rule.sortBy = 'createdAt';
-//     rule.sortOrder = 'desc';
-//   }
-
-//   bestSellers(match, rule) {
-//     const days = this.getDays(rule.filters, 'lastSold');
-//     if (days) {
-//       const date = new Date();
-//       date.setDate(date.getDate() - days);
-//       match.lastSold = { $gte: date };
-//     }
-//     rule.sortBy = 'lastSold';
-//     rule.sortOrder = 'desc';
-//   }
-
-//   trending(match) {
-//     const date = new Date();
-//     date.setDate(date.getDate() - 7);
-//     match.lastSold = { $gte: date };
-//   }
-
-//   categoryBased(match, rule) {
-//     const categoryId = this.getFilter(rule.filters, 'category');
-//     if (!categoryId) {
-//       throw new AppError('Category is required for category_based rule', 400);
-//     }
-//     match.categoryId = new mongoose.Types.ObjectId(categoryId);
-//   }
-
-//   priceRange(match, rule) {
-//     const min = this.getFilter(rule.filters, 'price_min') ?? 0;
-//     const max = this.getFilter(rule.filters, 'price_max') ?? 999999;
-//     match.sellingPrice = { $gte: min, $lte: max };
-//   }
-
-//   lowStock(match) {
-//     match.inventory = {
-//       $elemMatch: { quantity: { $lte: 10 } }
-//     };
-//   }
-
-//   clearanceSale() {
-//     return [
-//       {
-//         $addFields: {
-//           discountPercent: {
-//             $multiply: [
-//               {
-//                 $divide: [
-//                   { $subtract: ['$sellingPrice', '$discountedPrice'] },
-//                   '$sellingPrice'
-//                 ]
-//               },
-//               100
-//             ]
-//           }
-//         }
-//       },
-//       { $match: { discountPercent: { $gte: 10 } } },
-//       { $sort: { discountPercent: -1 } }
-//     ];
-//   }
-
-//   // ---------------- FILTERS ----------------
-
-//   applyFilters(match, filters = []) {
-//     if (!filters?.length) return;
-
-//     filters.forEach(f => {
-//       if (!f.field || !f.operator) return;
-
-//       switch (f.field) {
-
-//         case 'category':
-//           match.categoryId = new mongoose.Types.ObjectId(f.value);
-//           break;
-
-//         case 'brand':
-//           match.brandId = new mongoose.Types.ObjectId(f.value);
-//           break;
-
-//         case 'price':
-//           this.applyPrice(match, f);
-//           break;
-
-//         case 'stock':
-//           this.applyStock(match, f);
-//           break;
-
-//         case 'tags':
-//           match.tags = { $in: [f.value] };
-//           break;
-
-//         case 'createdAt':
-//         case 'lastSold':
-//           this.applyDate(match, f);
-//           break;
-//       }
-//     });
-//   }
-
-//   applySecondaryFilters(match, filters = []) {
-//     filters?.forEach(f => {
-//       if (['category', 'price', 'stock'].includes(f.field)) return;
-//       if (f.field === 'tags') {
-//         match.tags = { $in: [f.value] };
-//       }
-//     });
-//   }
-
-//   // ---------------- HELPERS ----------------
-
-//   applyPrice(match, f) {
-//     if (f.operator === 'between') {
-//       match.sellingPrice = { $gte: f.value, $lte: f.value2 };
-//     }
-//   }
-
-//   applyStock(match, f) {
-//     match.inventory = {
-//       $elemMatch: { quantity: { $lte: Number(f.value) } }
-//     };
-//   }
-
-//   applyDate(match, f) {
-//     const date = new Date(f.value);
-//     if (f.operator === 'greater_than') {
-//       match[f.field] = { $gte: date };
-//     }
-//     if (f.operator === 'less_than') {
-//       match[f.field] = { $lte: date };
-//     }
-//   }
-
-//   getFilter(filters, field) {
-//     return filters?.find(f => f.field === field)?.value;
-//   }
-
-//   getDays(filters, field) {
-//     const val = this.getFilter(filters, field);
-//     if (!val) return null;
-//     return typeof val === 'string' && val.endsWith('d')
-//       ? parseInt(val)
-//       : Number(val);
-//   }
-// }
-
-// module.exports = new RuleQueryBuilder();
-
-
-
-
-
-
-
-
-// // const mongoose = require('mongoose');
-// // const { SMART_RULE_TYPES } = require('../../utils/constants/sectionTypes.constants');
-// // const AppError = require('../../../core/utils/appError');
-// // class RuleQueryBuilder {
-// //   build(rule, organizationId) {
-// //     if (!rule || !organizationId) {
-// //       throw new AppError('Invalid rule or organization', 400);
-// //     }
-
-// //     // 1. Base Match
-// //     const match = {
-// //       organizationId: mongoose.Types.ObjectId(organizationId),
-// //       isActive: true
-// //     };
-
-// //     const pipeline = [];
-
-// //     // 2. Switch Logic (Now includes Dead Stock & Heavy Discount)
-// //     switch (rule.ruleType) {
-// //       case SMART_RULE_TYPES.NEW_ARRIVALS:
-// //         this.newArrivals(match, rule);
-// //         console.log('[NEW ARRIVALS] since:', date);
-
-// //         break;
-
-// //       case SMART_RULE_TYPES.BEST_SELLERS:
-// //         this.bestSellers(match, rule);
-// //         break;
-
-// //       case SMART_RULE_TYPES.CLEARANCE_SALE:
-// //         pipeline.push(...this.clearanceSale());
-// //         break;
-
-// //       case SMART_RULE_TYPES.TRENDING:
-// //         this.trending(match);
-// //         break;
-
-// //       case SMART_RULE_TYPES.CATEGORY_BASED:
-// //         this.categoryBased(match, rule);
-// //         break;
-
-// //       case SMART_RULE_TYPES.LOW_STOCK:
-// //         this.lowStock(match, rule);
-// //         break;
-
-// //       case SMART_RULE_TYPES.PRICE_RANGE:
-// //         this.priceRange(match, rule);
-// //         break;
-
-// //       // ✅ NEW: Dead Stock Logic
-// //       case 'dead_stock': // Ensure this key matches your constants
-// //         this.deadStock(match, rule);
-// //         break;
-
-// //       // ✅ NEW: Heavy Discount Logic
-// //       case 'heavy_discount':
-// //         // heavyDiscount returns a pipeline stage because it needs $expr
-// //         const discountStage = this.heavyDiscount(match, rule);
-// //         if (discountStage) pipeline.push(discountStage);
-// //         break;
-
-// //       case SMART_RULE_TYPES.CUSTOM_QUERY:
-// //         this.applyFilters(match, rule.filters);
-// //         break;
-
-// //       default:
-// //         break;
-// //     }
-
-// //     // 3. Apply Generic Filters (Tags, Brand, etc.)
-// //     this.applyFilters(match, rule.filters);
-
-// //     // 4. Return Pipeline
-// //     return {
-// //       pipeline: pipeline.length
-// //         ? [{ $match: match }, ...pipeline]
-// //         : [{ $match: match }],
-// //       sort: this.buildSort(rule),
-// //       limit: Math.min(rule.limit || 10, 50)
-// //     };
-// //   }
-
-// //   buildSort(rule) {
-// //     // Default sort handling
-// //     const sortField = rule.sortBy || 'createdAt';
-// //     const sortDir = rule.sortOrder === 'asc' ? 1 : -1;
-// //     return { [sortField]: sortDir };
-// //   }
-
-// //   // --- LOGIC HANDLERS ---
-
-// //   newArrivals(match, rule) {
-// //     const days = this.getDays(rule.filters, 'createdAt') || 100;
-// //     const date = new Date();
-// //     date.setDate(date.getDate() - days);
-// //     match.createdAt = { $gte: date };
-
-// //     // Default sort for new arrivals
-// //     if (!rule.sortBy) rule.sortBy = 'createdAt';
-// //     if (!rule.sortOrder) rule.sortOrder = 'desc';
-// //   }
-
-// //   bestSellers(match, rule) {
-// //     const days = this.getDays(rule.filters, 'lastSold');
-// //     if (days) {
-// //       const date = new Date();
-// //       date.setDate(date.getDate() - days);
-// //       match.lastSold = { $gte: date };
-// //     }
-// //     // Force sort
-// //     rule.sortBy = 'lastSold';
-// //     rule.sortOrder = 'desc';
-
-// //   }
-
-// //   trending(match) {
-// //     const date = new Date();
-// //     date.setDate(date.getDate() - 7); // Last 7 days
-// //     match.lastSold = { $gte: date };
-// //   }
-
-// //   categoryBased(match, rule) {
-// //     const category = this.getFilter(rule.filters, 'category');
-// //     if (!category) {
-// //       // It's possible the rule is malformed, or user hasn't selected one yet
-// //       return;
-// //     }
-// //     // ✅ FIX: Use 'categoryId' for relational lookup, not 'category' string
-// //     // Assumes rule.filters stores the ObjectId as value
-// //     match.categoryId = mongoose.Types.ObjectId(category);
-// //   }
-
-// //   lowStock(match, rule) {
-// //     const threshold = this.getFilter(rule.filters, 'quantity') || 10;
-// //     match.inventory = {
-// //       $elemMatch: { quantity: { $lte: threshold } }
-// //     };
-// //   }
-
-// //   priceRange(match, rule) {
-// //     const min = this.getFilter(rule.filters, 'price_min') || 0;
-// //     const max = this.getFilter(rule.filters, 'price_max') || 999999;
-// //     match.sellingPrice = { $gte: min, $lte: max };
-// //   }
-
-// //   /**
-// //    * ✅ NEW: Dead Stock
-// //    * Strategy: Items with stock > 5 that haven't sold in 90 days (or ever)
-// //    */
-// //   deadStock(match, rule) {
-// //     const days = this.getDays(rule.filters, 'dormantDays') || 90;
-// //     const date = new Date();
-// //     date.setDate(date.getDate() - days);
-
-// //     match.inventory = { $elemMatch: { quantity: { $gt: 5 } } }; // Has stock
-// //     match.$or = [
-// //       { lastSold: { $exists: false } }, // Never sold
-// //       { lastSold: { $lt: date } }       // Sold long ago
-// //     ];
-
-// //     // Sort by oldest first to clear old inventory
-// //     rule.sortBy = 'createdAt';
-// //     rule.sortOrder = 'asc';
-// //   }
-
-// //   /**
-// //    * ✅ NEW: Heavy Discount
-// //    * Strategy: Calculates percentage dynamically using $expr
-// //    */
-// //   heavyDiscount(match, rule) {
-// //     // 1. Basic check
-// //     // match.discountedPrice = { $exists: true, $ne: null };
-// //     match.discountedPrice = { $gt: 0 };
-
-// //     // 2. Check for Min % Filter
-// //     const minDiscount = this.getFilter(rule.filters, 'minDiscount');
-// //     const minPct = minDiscount ? parseInt(minDiscount) : 0;
-
-// //     if (minPct > 0) {
-// //       const factor = 1 - (minPct / 100);
-
-// //       // We return a pipeline stage because we need $expr logic which is cleaner in a separate $match stage
-// //       // or we can attach it to the main match if we are careful.
-// //       // Returning a stage is safer for complex expressions.
-// //       return {
-// //         $match: {
-// //           $expr: {
-// //             $lte: ["$discountedPrice", { $multiply: ["$sellingPrice", factor] }]
-// //           }
-// //         }
-// //       };
-// //     }
-
-// //     // Default sort: Biggest savings? Or just newest?
-// //     if (!rule.sortBy) {
-// //       rule.sortBy = 'discountedPrice';
-// //       rule.sortOrder = 'asc';
-// //     }
-// //     return null;
-// //   }
-
-// //   clearanceSale() {
-// //     // This is a legacy complex aggregation that calculates discount % in projection
-// //     // You might prefer 'heavyDiscount' logic above for simpler queries,
-// //     // but we keep this for backward compatibility.
-// //     return [
-// //       {
-// //         $addFields: {
-// //           discountPercent: {
-// //             $multiply: [
-// //               {
-// //                 $divide: [
-// //                   { $subtract: ['$sellingPrice', '$discountedPrice'] },
-// //                   '$sellingPrice'
-// //                 ]
-// //               },
-// //               100
-// //             ]
-// //           }
-// //         }
-// //       },
-// //       {
-// //         $match: { discountPercent: { $gte: 10 } }
-// //       },
-// //       {
-// //         $sort: { discountPercent: -1 }
-// //       }
-// //     ];
-// //   }
-
-// //   // --- UTILS ---
-
-// //   applyFilters(match, filters = []) {
-// //     if (!filters) return;
-
-// //     filters.forEach(f => {
-// //       if (!f.field || !f.operator) return;
-// //       if (f.field === 'category') {
-// //         match.categoryId = mongoose.Types.ObjectId(f.value);
-// //         return;
-// //       }
-
-// //       // Handle special fields handled by dedicated methods (skip them here)
-// //       if (['category', 'price_min', 'price_max', 'minDiscount', 'dormantDays'].includes(f.field)) return;
-
-// //       switch (f.operator) {
-// //         case 'equals':
-// //           match[f.field] = f.value;
-// //           break;
-// //         case 'not_equals':
-// //           match[f.field] = { $ne: f.value };
-// //           break;
-// //         case 'greater_than':
-// //           match[f.field] = { $gt: f.value };
-// //           break;
-// //         case 'less_than':
-// //           match[f.field] = { $lt: f.value };
-// //           break;
-// //         case 'contains':
-// //           match[f.field] = { $regex: f.value, $options: 'i' };
-// //           break;
-// //         case 'in':
-// //           match[f.field] = { $in: Array.isArray(f.value) ? f.value : [f.value] };
-// //           break;
-// //         // ✅ NEW: Handle ID matching for Brands/Categories if passed generically
-// //         case 'id_equals':
-// //           match[f.field] = mongoose.Types.ObjectId(f.value);
-// //           break;
-// //       }
-// //     });
-// //   }
-
-// //   getFilter(filters, field) {
-// //     return filters?.find(f => f.field === field)?.value;
-// //   }
-
-// //   getDays(filters, field) {
-// //     const val = this.getFilter(filters, field);
-// //     if (!val) return null;
-// //     // Handle "30d" string or raw number
-// //     if (typeof val === 'string' && val.endsWith('d')) {
-// //       return parseInt(val);
-// //     }
-// //     return parseInt(val);
-// //   }
-// // }
-
-// // module.exports = new RuleQueryBuilder();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// // // src/services/storefront/ruleQueryBuilder.service.js
-
-// // const { SMART_RULE_TYPES } = require('../../utils/constants/sectionTypes.constants');
-// // const AppError = require('../../../core/utils/appError');
-
-// // class RuleQueryBuilder {
-// //   build(rule, organizationId) {
-// //     if (!rule || !organizationId) { throw new AppError('Invalid rule or organization', 400); }
-// //     const match = { organizationId, isActive: true };
-// //     const pipeline = [];
-// //     switch (rule.ruleType) {
-// //       case SMART_RULE_TYPES.NEW_ARRIVALS:
-// //         this.newArrivals(match, rule);
-// //         break;
-// //       case SMART_RULE_TYPES.BEST_SELLERS:
-// //         this.bestSellers(match, rule);
-// //         break;
-// //       case SMART_RULE_TYPES.CLEARANCE_SALE:
-// //         pipeline.push(...this.clearanceSale());
-// //         break;
-// //       case SMART_RULE_TYPES.TRENDING:
-// //         this.trending(match);
-// //         break;
-// //       case SMART_RULE_TYPES.CATEGORY_BASED:
-// //         this.categoryBased(match, rule);
-// //         break;
-// //       case SMART_RULE_TYPES.LOW_STOCK:
-// //         this.lowStock(match, rule);
-// //         break;
-// //       case SMART_RULE_TYPES.PRICE_RANGE:
-// //         this.priceRange(match, rule);
-// //         break;
-// //       case SMART_RULE_TYPES.CUSTOM_QUERY:
-// //         this.applyFilters(match, rule.filters);
-// //         break;
-// //       default:
-// //         break;
-// //     }
-// //     this.applyFilters(match, rule.filters);
-// //     return {
-// //       pipeline: pipeline.length
-// //         ? [{ $match: match }, ...pipeline]
-// //         : [{ $match: match }],
-// //       sort: this.buildSort(rule),
-// //       limit: Math.min(rule.limit || 10, 50)
-// //     };
-// //   }
-// //   buildSort(rule) {
-// //     return {
-// //       [rule.sortBy || 'createdAt']: rule.sortOrder === 'asc' ? 1 : -1
-// //     };
-// //   }
-// //   newArrivals(match, rule) {
-// //     const days = this.getDays(rule.filters, 'createdAt') || 30;
-// //     const date = new Date();
-// //     date.setDate(date.getDate() - days);
-// //     match.createdAt = { $gte: date };
-// //   }
-// //   bestSellers(match, rule) {
-// //     const days = this.getDays(rule.filters, 'lastSold');
-// //     if (days) {
-// //       const date = new Date();
-// //       date.setDate(date.getDate() - days);
-// //       match.lastSold = { $gte: date };
-// //     }
-// //     rule.sortBy = 'salesCount';
-// //     rule.sortOrder = 'desc';
-// //   }
-// //   trending(match) {
-// //     const date = new Date();
-// //     date.setDate(date.getDate() - 7);
-// //     match.lastSold = { $gte: date };
-// //   }
-// //   categoryBased(match, rule) {
-// //     const category = this.getFilter(rule.filters, 'category');
-// //     if (!category) {
-// //       throw new AppError('Category filter required', 400);
-// //     }
-// //     match.category = category;
-// //   }
-// //   lowStock(match, rule) {
-// //     const threshold = this.getFilter(rule.filters, 'quantity') || 10;
-// //     match.inventory = {
-// //       $elemMatch: { quantity: { $lte: threshold } }
-// //     };
-// //   }
-// //   priceRange(match, rule) {
-// //     const min = this.getFilter(rule.filters, 'price_min') || 0;
-// //     const max = this.getFilter(rule.filters, 'price_max') || 999999;
-// //     match.sellingPrice = { $gte: min, $lte: max };
-// //   }
-// //   clearanceSale() {
-// //     return [
-// //       {
-// //         $addFields: {
-// //           discountPercent: {
-// //             $multiply: [
-// //               {
-// //                 $divide: [
-// //                   { $subtract: ['$sellingPrice', '$discountedPrice'] },
-// //                   '$sellingPrice'
-// //                 ]
-// //               },
-// //               100
-// //             ]
-// //           }
-// //         }
-// //       },
-// //       {
-// //         $match: { discountPercent: { $gte: 10 } }
-// //       },
-// //       {
-// //         $sort: { discountPercent: -1 }
-// //       }
-// //     ];
-// //   }
-
-// //   applyFilters(match, filters = []) {
-// //     filters.forEach(f => {
-// //       if (!f.field || !f.operator) return;
-
-// //       switch (f.operator) {
-// //         case 'equals':
-// //           match[f.field] = f.value;
-// //           break;
-// //         case 'greater_than':
-// //           match[f.field] = { $gt: f.value };
-// //           break;
-// //         case 'less_than':
-// //           match[f.field] = { $lt: f.value };
-// //           break;
-// //         case 'in':
-// //           match[f.field] = { $in: Array.isArray(f.value) ? f.value : [f.value] };
-// //           break;
-// //       }
-// //     });
-// //   }
-
-// //   getFilter(filters, field) {
-// //     return filters?.find(f => f.field === field)?.value;
-// //   }
-
-// //   getDays(filters, field) {
-// //     const val = this.getFilter(filters, field);
-// //     if (typeof val === 'string' && val.endsWith('d')) {
-// //       return parseInt(val);
-// //     }
-// //     return null;
-// //   }
-// // }
-
-// // module.exports = new RuleQueryBuilder();

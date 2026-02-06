@@ -10,7 +10,6 @@ const cors = require("cors");
 const compression = require("compression");
 const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose"); 
-
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./bootstrap/swagger");
 const globalErrorHandler = require("./core/error/errorController");

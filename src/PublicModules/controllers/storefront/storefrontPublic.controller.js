@@ -3,8 +3,13 @@ const LayoutService = require('../../services/storefront/layout.service');
 const Organization = require('../../../modules/organization/core/organization.model');
 const DataHydrationService = require('../../services/storefront/dataHydration.service');
 const AppError = require('../../../core/utils/appError');
+const redisUtils = require('../../../core/utils/_legacy/redis'); // Import Redis for Page Caching
 
 class StorefrontPublicController {
+
+  constructor() {
+    this.PAGE_CACHE_TTL = 300; // 5 Minutes (Short TTL for pages to allow price updates to reflect relatively quickly)
+  }
 
   /**
    * ============================================================
@@ -18,40 +23,53 @@ class StorefrontPublicController {
       const { organizationSlug, pageSlug } = req.params;
       const start = Date.now();
 
-      // 1. Resolve Organization
-      // We select 'settings' too, in case you have legacy settings stored there
+      // 1. Resolve Organization (Lean & Fast)
       const organization = await Organization.findOne({
         uniqueShopId: organizationSlug.toUpperCase(),
         isActive: true
-      }).select('_id name uniqueShopId settings primaryEmail primaryPhone logo');
+      }).select('_id name uniqueShopId settings primaryEmail primaryPhone logo description address').lean();
 
       if (!organization) {
         return next(new AppError('Store not found or inactive', 404));
       }
 
-      // 2. Fetch Page and Layout CONCURRENTLY (Parallel Execution)
-      // This is crucial for performance. We don't wait for one to finish before starting the other.
-      const [pageData, layoutData] = await Promise.all([
-        this.findPage(organization._id, pageSlug),
-        LayoutService.getLayout(organization._id)
-      ]);
+      // 2. PAGE LEVEL CACHING
+      // We cache the *resolved* page structure (before hydration) or the hydrated result?
+      // Better to cache the Hydrated Result for max speed, but that risks stale stock.
+      // OPTIMAL STRATEGY: Cache the "Structure" (Page + Layout) and Hydrate fresh every time.
+      // This ensures Prices/Stock are always live, but we save the DB hit for the Page Document.
+      
+      const cacheKey = `page_structure:${organization._id}:${pageSlug}`;
+      let pageData = await redisUtils.safeCache.get(cacheKey);
+
+      if (!pageData) {
+        pageData = await this.findPage(organization._id, pageSlug);
+        if (pageData) {
+          // Cache the raw page structure (Sections + Config)
+          await redisUtils.safeCache.set(cacheKey, pageData, 3600); // 1 Hour TTL for structure
+        }
+      }
 
       if (!pageData) {
         return next(new AppError('Page not found', 404));
       }
 
-      // 3. Hydrate All Sections CONCURRENTLY
-      // We hydrate the Header, the Page Body, and the Footer all at the same time.
+      // 3. Fetch Layout (Cached internally)
+      const layoutData = await LayoutService.getLayout(organization._id);
+
+      // 4. Hydrate All Sections CONCURRENTLY (The heavy lifting)
+      // We hydrate specific sections that need live data (Products, Stock)
+      // Static content is passed through efficiently.
       const [hydratedHeader, hydratedBody, hydratedFooter] = await Promise.all([
         DataHydrationService.hydrateSections(layoutData.header, organization._id),
         DataHydrationService.hydrateSections(pageData.sections, organization._id),
         DataHydrationService.hydrateSections(layoutData.footer, organization._id)
       ]);
 
-      // 4. Increment View Count (Async - Fire and forget)
+      // 5. Increment View Count (Async - Fire and forget)
       this.incrementViewCount(pageData._id);
 
-      // 5. Construct The "Best Design" Response
+      // 6. Construct The "Best Design" Response
       const response = {
         meta: {
           generatedIn: `${Date.now() - start}ms`,
@@ -62,12 +80,14 @@ class StorefrontPublicController {
           name: organization.name,
           slug: organization.uniqueShopId.toLowerCase(),
           logo: organization.logo,
+          description: organization.description,
           contact: {
             email: organization.primaryEmail,
-            phone: organization.primaryPhone
+            phone: organization.primaryPhone,
+            address: organization.address
           }
         },
-        // GLOBAL SITE SETTINGS (Favicon, Social Links, etc.)
+        // GLOBAL SITE SETTINGS (Favicon, Social Links, Theme)
         settings: layoutData.globalSettings || {},
 
         // MASTER LAYOUT (Fixed elements)
@@ -82,7 +102,8 @@ class StorefrontPublicController {
           name: pageData.name,
           slug: pageData.slug,
           type: pageData.pageType,
-          // Hydrated sections (with Products/Categories inside)
+          
+          // Hydrated sections (with Live Products/Categories inside)
           sections: hydratedBody, 
           
           // SEO Logic: Use Page SEO, fallback to Global SEO
@@ -92,19 +113,19 @@ class StorefrontPublicController {
             image: pageData.seo?.ogImage || layoutData.globalSettings?.defaultSeo?.defaultImage,
             keywords: pageData.seo?.keywords || []
           },
-          theme: pageData.theme, // Page-specific theme overrides
-          viewCount: pageData.viewCount + 1
+          themeOverride: pageData.themeOverride, // Page-specific theme overrides
+          updatedAt: pageData.updatedAt
         }
       };
 
-      // 6. Set Response Headers
+      // 7. Set Response Headers for Browser Caching (Short TTL for live pricing)
       res.set({
         'X-Store-Name': organization.name,
         'X-Response-Time': `${Date.now() - start}ms`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate' // For dev. In prod, use: 'public, max-age=60'
+        'Cache-Control': 'public, max-age=60' // 60s Browser Cache
       });
 
-      res.status(200).json(response);
+      res.status(200).json({ status: 'success', data: response });
 
     } catch (error) {
       next(error);
@@ -127,7 +148,7 @@ class StorefrontPublicController {
     if (slug === 'home' || !slug) {
       query.isHomepage = true;
     } else {
-      query.slug = slug;
+      query.slug = slug.toLowerCase();
     }
 
     // Return lean object for performance
@@ -137,7 +158,7 @@ class StorefrontPublicController {
   /**
    * ============================================================
    * GET ORGANIZATION INFO
-   * Lightweight endpoint for initial app load if needed
+   * Lightweight endpoint for initial app shell or config
    * Route: GET /public/:organizationSlug
    * ============================================================
    */
@@ -148,7 +169,7 @@ class StorefrontPublicController {
       const organization = await Organization.findOne({
         uniqueShopId: organizationSlug.toUpperCase(),
         isActive: true
-      }).select('_id name uniqueShopId primaryEmail primaryPhone logo description');
+      }).select('_id name uniqueShopId primaryEmail primaryPhone logo description').lean();
 
       if (!organization) {
         return next(new AppError('Store not found', 404));
@@ -190,7 +211,7 @@ class StorefrontPublicController {
 
       const organization = await Organization.findOne({
         uniqueShopId: organizationSlug.toUpperCase()
-      }).select('_id');
+      }).select('_id').lean();
 
       if (!organization) {
         return next(new AppError('Store not found', 404));
@@ -207,7 +228,7 @@ class StorefrontPublicController {
       .lean();
 
       const sitemap = pages.map(page => ({
-        url: `/store/${organizationSlug}/${page.slug}`,
+        url: `/store/${organizationSlug.toLowerCase()}/${page.slug}`,
         pageType: page.pageType,
         title: page.seo?.title,
         lastModified: page.updatedAt

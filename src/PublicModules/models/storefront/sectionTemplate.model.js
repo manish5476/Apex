@@ -1,59 +1,47 @@
-const mongoose = require("mongoose");
+// src/models/storefront/sectionTemplate.model.js
+const mongoose = require('mongoose');
 
-/**
- * SectionTemplate Model
- * Blueprints for UI components available in the Page Builder.
- */
 const templateSchema = new mongoose.Schema({
-    name: { type: String, required: true, trim: true, maxlength: 100 },
-    description: { type: String, trim: true, maxlength: 500 },
-    
-    // Functional Classification
-    sectionType: { 
-        type: String, 
-        required: true, 
-        index: true,
-        // Maps to frontend React/Angular component names
-    },
-    category: { 
-        type: String, 
-        enum: ["hero", "content", "product", "marketing", "social", "navigation", "utility"], 
-        default: "content",
-        index: true
-    },
-
-    // The Payload structure expected by the component
-    configSchema: { 
-        type: mongoose.Schema.Types.Mixed, 
-        description: "JSON Schema defining expected config fields" 
-    },
-    defaultConfig: { type: mongoose.Schema.Types.Mixed, required: true },
-
-    // Visuals for Builder UI
-    previewImage: { type: String, trim: true },
-    icon: { type: String, default: 'pi pi-box' },
-    
-    // Access Control
-    isSystemTemplate: { type: Boolean, default: false, index: true },
-    isPublic: { type: Boolean, default: true, index: true },
-    organizationId: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: "Organization",
-        description: "If null, it's a global template. If present, it's a custom org template."
-    },
-
-    // Metadata
-    tags: [{ type: String, lowercase: true }],
-    usageCount: { type: Number, default: 0 },
-    version: { type: String, default: "1.0.0" }
+  name: { type: String, required: true, trim: true },
+  description: { type: String, maxlength: 500 },
+  
+  // Matches the SectionSchema type
+  sectionType: { 
+    type: String, 
+    required: true,
+    index: true
+  },
+  
+  // The default config payload
+  defaultConfig: { type: mongoose.Schema.Types.Mixed, required: true },
+  
+  previewImage: { type: String }, // URL
+  category: { 
+    type: String, 
+    enum: ['hero', 'content', 'product', 'marketing', 'social', 'utility', 'navigation'], 
+    default: 'content',
+    index: true
+  },
+  styleTags: [{ type: String }], // e.g., 'dark', 'minimal', 'glass'
+  
+  isSystemTemplate: { type: Boolean, default: false }, // Provided by the Platform
+  isPublic: { type: Boolean, default: false }, // Shared by community?
+  isPremium: { type: Boolean, default: false },
+  
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' }, // For custom saved templates
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  usageCount: { type: Number, default: 0 }
 }, {
-    timestamps: true
+  timestamps: true
 });
 
-// Index for fast filtering in the Page Builder selector
-templateSchema.index({ category: 1, isPublic: 1, isSystemTemplate: 1 });
+module.exports = mongoose.model('SectionTemplate', templateSchema);
 
-module.exports = mongoose.model("SectionTemplate", templateSchema);
+
+
+
+
+
 // const mongoose = require("mongoose");
 // const templateSchema = new mongoose.Schema(
 //   {

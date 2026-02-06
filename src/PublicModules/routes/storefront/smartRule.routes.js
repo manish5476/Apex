@@ -28,4 +28,3 @@ router.post('/preview', smartRuleController.previewRule);
 router.delete('/:ruleId/cache', smartRuleController.clearCache);
 
 module.exports = router;
-
