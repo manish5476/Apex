@@ -103,6 +103,7 @@ invoiceSchema.pre("save", function (next) {
 
 const Invoice = mongoose.model("Invoice", invoiceSchema);
 module.exports = Invoice;
+
 // const mongoose = require("mongoose");
 
 // // --- Subdocument for Invoice Items ---

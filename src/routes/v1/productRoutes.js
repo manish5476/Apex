@@ -11,10 +11,15 @@ router.use(authController.protect);
 router.get("/search", checkPermission(PERMISSIONS.PRODUCT.READ), productController.searchProducts);
 router.post("/bulk-import", checkPermission(PERMISSIONS.PRODUCT.CREATE), productController.bulkImportProducts);
 router.post('/bulk-update', checkPermission(PERMISSIONS.PRODUCT.UPDATE), productController.bulkUpdateProducts);
-router.post('/:id/stock-adjust', checkPermission(PERMISSIONS.PRODUCT.STOCK_ADJUST), productController.adjustStock);
-
+router.post(
+  '/:id/stock-adjust', 
+  checkPermission(PERMISSIONS.PRODUCT.STOCK_ADJUST), 
+  productController.adjustStock
+);
 router.patch('/:id/upload', checkPermission(PERMISSIONS.PRODUCT.UPDATE), upload.array('photos', 10), productController.uploadProductImage);
 router.patch("/:id/restore", checkPermission(PERMISSIONS.PRODUCT.UPDATE), productController.restoreProduct);
+// product.routes.js
+router.post('/:id/stock-transfer', checkPermission(PERMISSIONS.PRODUCT.STOCK_TRANSFER), productController.transferStock);
 
 router.route("/")
   .get(checkPermission(PERMISSIONS.PRODUCT.READ), productController.getAllProducts)
@@ -24,6 +29,10 @@ router.route("/:id")
   .get(checkPermission(PERMISSIONS.PRODUCT.READ), productController.getProduct)
   .patch(checkPermission(PERMISSIONS.PRODUCT.UPDATE), productController.updateProduct)
   .delete(checkPermission(PERMISSIONS.PRODUCT.DELETE), productController.deleteProduct);
+
+  // Analytics & Reports
+router.get('/reports/low-stock', checkPermission(PERMISSIONS.PRODUCT.VIEW), productController.getLowStockProducts);
+router.get('/:id/history', checkPermission(PERMISSIONS.PRODUCT.VIEW), productController.getProductHistory);
 
 module.exports = router;
 
