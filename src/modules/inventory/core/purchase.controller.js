@@ -37,49 +37,107 @@ async function getOrInitAccount(orgId, type, name, code, session) {
 /* ======================================================
    HELPER: Atomic Stock Update (Prevents WriteConflict)
 ====================================================== */
+// async function updateStockAtomically(items, branchId, orgId, type = 'increment', session) {
+//     for (const item of items) {
+//         const adjustment = type === 'increment' ? item.quantity : -item.quantity;
+        
+//         const update = { $inc: { "inventory.$.quantity": adjustment } };
+        
+//         // If purchasing, update the purchase price
+//         if (type === 'increment' && item.purchasePrice > 0) {
+//             update.$set = { purchasePrice: item.purchasePrice };
+//         }
+
+//         const result = await Product.findOneAndUpdate(
+//             { 
+//                 _id: item.productId, 
+//                 organizationId: orgId,
+//                 "inventory.branchId": branchId 
+//             },
+//             update,
+//             { session, new: true }
+//         );
+
+//         // If product exists but inventory doc doesn't, we need to push it
+//         if (!result) {
+//             const product = await Product.findById(item.productId).session(session);
+//             if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
+            
+//             // Add branch inventory if missing
+//             await Product.updateOne(
+//                 { _id: item.productId },
+//                 { 
+//                     $push: { 
+//                         inventory: { 
+//                             branchId: branchId, 
+//                             quantity: type === 'increment' ? item.quantity : 0 
+//                         } 
+//                     } 
+//                 },
+//                 { session }
+//             );
+//         }
+//     }
+// }
 async function updateStockAtomically(items, branchId, orgId, type = 'increment', session) {
-    for (const item of items) {
+    // Use Promise.all to run all updates in parallel (Performance Fix)
+    await Promise.all(items.map(async (item) => {
         const adjustment = type === 'increment' ? item.quantity : -item.quantity;
         
-        const update = { $inc: { "inventory.$.quantity": adjustment } };
-        
-        // If purchasing, update the purchase price
+        // 1. Prepare the Update (Increment logic)
+        const updateOp = { 
+            $inc: { "inventory.$.quantity": adjustment } 
+        };
+
+        // Update purchase price ONLY on increment (receiving goods)
         if (type === 'increment' && item.purchasePrice > 0) {
-            update.$set = { purchasePrice: item.purchasePrice };
+            updateOp.$set = { purchasePrice: item.purchasePrice };
         }
 
+        // 2. Try to Update Existing Branch Inventory
         const result = await Product.findOneAndUpdate(
             { 
                 _id: item.productId, 
-                organizationId: orgId,
+                organizationId: orgId, // Tenancy Check
                 "inventory.branchId": branchId 
             },
-            update,
-            { session, new: true }
+            updateOp,
+            { 
+                session, 
+                new: true, 
+                runValidators: true // CRITICAL: Prevents negative stock
+            }
         );
 
-        // If product exists but inventory doc doesn't, we need to push it
+        // 3. Fallback: If Product exists but Branch Inventory does not
         if (!result) {
-            const product = await Product.findById(item.productId).session(session);
-            if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
-            
-            // Add branch inventory if missing
-            await Product.updateOne(
-                { _id: item.productId },
-                { 
-                    $push: { 
-                        inventory: { 
-                            branchId: branchId, 
-                            quantity: type === 'increment' ? item.quantity : 0 
-                        } 
+            // Check if product actually exists (to avoid phantom updates)
+            const productExists = await Product.exists({ _id: item.productId, organizationId: orgId }).session(session);
+            if (!productExists) throw new AppError(`Product ${item.productId} not found`, 404);
+
+            // Prepare the Push Operation
+            const pushOp = {
+                $push: { 
+                    inventory: { 
+                        branchId: branchId, 
+                        quantity: type === 'increment' ? item.quantity : 0 
                     } 
-                },
-                { session }
+                }
+            };
+
+            // BUG FIX: Update price even if it's a new inventory entry
+            if (type === 'increment' && item.purchasePrice > 0) {
+                pushOp.$set = { purchasePrice: item.purchasePrice };
+            }
+
+            await Product.updateOne(
+                { _id: item.productId, organizationId: orgId },
+                pushOp,
+                { session, runValidators: true }
             );
         }
-    }
+    }));
 }
-
 /* ======================================================
    1. CREATE PURCHASE
 ====================================================== */
