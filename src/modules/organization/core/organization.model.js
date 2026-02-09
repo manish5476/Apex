@@ -16,9 +16,9 @@ const organizationSchema = new mongoose.Schema({
   isActive: {type: Boolean, default: true,  },
 }, { timestamps: true });
 // --- Hooks / Middleware ---
-organizationSchema.pre('save', function (next) {
-  if (this.isNew && this.owner && !this.members.includes(this.owner)) {this.members.push(this.owner);  }
-  next();
-});
+// organizationSchema.pre('save', function (next) {
+//   if (this.isNew && this.owner && !this.members.includes(this.owner)) {this.members.push(this.owner);  }
+//   next();
+// });
 const Organization = mongoose.model('Organization', organizationSchema);
 module.exports = Organization;
