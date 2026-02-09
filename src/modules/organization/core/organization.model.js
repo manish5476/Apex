@@ -4,7 +4,7 @@ const organizationSchema = new mongoose.Schema({
   name: {type: String, required: [true, 'Organization name is required'], trim: true,  },
   uniqueShopId: {type: String, required: [true, 'A unique Shop ID is required'], unique: true, uppercase: true, trim: true,  },
   owner: {type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true,  },
-  members: [{type: mongoose.Schema.Types.ObjectId, ref: 'User',  }],
+  // members: [{type: mongoose.Schema.Types.ObjectId, ref: 'User',  }],
   gstNumber: { type: String, trim: true, uppercase: true },
   primaryEmail: {type: String, required: [true, 'Primary email is required'], trim: true, lowercase: true,  },
   secondaryEmail: { type: String, trim: true, lowercase: true },
