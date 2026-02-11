@@ -311,6 +311,9 @@ exports.rejectMember = catchAsync(async (req, res, next) => {
 
 
 
+/* -------------------------------------------------------------
+ * Update My Organization (Fixed for Nested Objects)
+------------------------------------------------------------- */
 exports.updateMyOrganization = catchAsync(async (req, res, next) => {
   const orgId = req.user.organizationId;
 
@@ -319,18 +322,41 @@ exports.updateMyOrganization = catchAsync(async (req, res, next) => {
   }
 
   if (req.body.owner) {
-    return next(new AppError("You cannot change the organization owner.", 403));
+    return next(new AppError("You cannot change the organization owner here.", 403));
   }
 
+  // Define allowed root fields
   const allowedFields = [
-    "name", "primaryEmail", "primaryPhone", "gstNumber",
-    "uniqueShopId", "address", "city", "state", "country", "pincode"
+    "name", "primaryEmail", "primaryPhone", "secondaryEmail", "secondaryPhone", 
+    "gstNumber", "uniqueShopId", "logo"
   ];
 
   const updates = {};
+  
+  // 1. Process root level fields
   Object.keys(req.body).forEach((key) => {
     if (allowedFields.includes(key)) updates[key] = req.body[key];
   });
+
+  // 2. Process Nested Address safely (Dot Notation for MongoDB)
+  if (req.body.address) {
+    const addressFields = ["street", "city", "state", "zipCode", "country"];
+    addressFields.forEach(field => {
+      if (req.body.address[field] !== undefined) {
+        updates[`address.${field}`] = req.body.address[field];
+      }
+    });
+  }
+
+  // 3. Process Nested Settings
+  if (req.body.settings) {
+    const settingFields = ["currency", "timezone", "financialYearStart"];
+    settingFields.forEach(field => {
+      if (req.body.settings[field] !== undefined) {
+        updates[`settings.${field}`] = req.body.settings[field];
+      }
+    });
+  }
 
   if (Object.keys(updates).length === 0) {
     return next(new AppError("No valid fields provided for update.", 400));
@@ -338,7 +364,7 @@ exports.updateMyOrganization = catchAsync(async (req, res, next) => {
 
   const updatedOrg = await Organization.findByIdAndUpdate(
     orgId,
-    updates,
+    { $set: updates }, // Use $set to prevent overwriting the whole document
     { new: true, runValidators: true }
   );
 
@@ -352,6 +378,48 @@ exports.updateMyOrganization = catchAsync(async (req, res, next) => {
     data: updatedOrg
   });
 });
+
+// exports.updateMyOrganization = catchAsync(async (req, res, next) => {
+//   const orgId = req.user.organizationId;
+
+//   if (!orgId) {
+//     return next(new AppError("You are not linked to any organization.", 400));
+//   }
+
+//   if (req.body.owner) {
+//     return next(new AppError("You cannot change the organization owner.", 403));
+//   }
+
+//   const allowedFields = [
+//     "name", "primaryEmail", "primaryPhone", "gstNumber",
+//     "uniqueShopId", "address", "city", "state", "country", "pincode"
+//   ];
+
+//   const updates = {};
+//   Object.keys(req.body).forEach((key) => {
+//     if (allowedFields.includes(key)) updates[key] = req.body[key];
+//   });
+
+//   if (Object.keys(updates).length === 0) {
+//     return next(new AppError("No valid fields provided for update.", 400));
+//   }
+
+//   const updatedOrg = await Organization.findByIdAndUpdate(
+//     orgId,
+//     updates,
+//     { new: true, runValidators: true }
+//   );
+
+//   if (!updatedOrg) {
+//     return next(new AppError("Organization not found.", 404));
+//   }
+
+//   res.status(200).json({
+//     status: "success",
+//     message: "Organization updated successfully.",
+//     data: updatedOrg
+//   });
+// });
 
 
 exports.deleteMyOrganization = catchAsync(async (req, res, next) => {
