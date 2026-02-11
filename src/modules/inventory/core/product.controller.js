@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const { nanoid } = require('nanoid');
 const Product = require('./product.model');
+const Purchase = require('./purchase.model'); 
+const PurchaseReturn = require('./purchase.return.model');
 const AccountEntry = require('../../accounting/core/accountEntry.model');
 const Account = require('../../accounting/core/account.model');
 const factory = require('../../../core/utils/handlerFactory');
@@ -8,7 +10,6 @@ const catchAsync = require("../../../core/utils/catchAsync");
 const AppError = require("../../../core/utils/appError");
 const imageUploadService = require("../../_legacy/services/uploads/imageUploadService");
 const Invoice = require('../../accounting/billing/invoice.model'); 
-
 /* ======================================================
    HELPER: ATOMIC ACCOUNT GET/CREATE
    (Prevents duplicate key errors during parallel requests)
@@ -800,22 +801,127 @@ exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
 /* ======================================================
    🔥 7. PRODUCT HISTORY (Complete Stock Ledger)
 ====================================================== */
+// exports.getProductHistory = catchAsync(async (req, res, next) => {
+//   const productId = req.params.id;
+//   const orgId = req.user.organizationId;
+//   const { startDate, endDate } = req.query;
+
+//   const dateFilter = {};
+//   if (startDate && endDate) {
+//     const end = new Date(endDate);
+//     end.setHours(23, 59, 59, 999);
+//     dateFilter.$gte = new Date(startDate);
+//     dateFilter.$lte = end;
+//   }
+
+//   // 1. FETCH SALES (OUT)
+//   const invoiceQuery = { organizationId: orgId, "items.productId": productId, status: { $ne: "cancelled" } };
+//   if (Object.keys(dateFilter).length) invoiceQuery.invoiceDate = dateFilter;
+  
+//   const invoices = await Invoice.find(invoiceQuery).populate("customerId", "name").lean();
+//   const salesHistory = invoices.map(inv => {
+//     const item = inv.items.find(i => i.productId.toString() === productId.toString());
+//     if (!item) return null;
+//     return {
+//       _id: inv._id,
+//       type: 'SALE',
+//       date: inv.invoiceDate,
+//       reference: inv.invoiceNumber,
+//       party: inv.customerId?.name || 'Walk-in Customer',
+//       quantity: -Math.abs(item.quantity), // OUT
+//       value: item.price * item.quantity,
+//       description: 'Sale Invoice'
+//     };
+//   }).filter(Boolean);
+
+//   // 2. FETCH PURCHASES (IN) - 🟢 NEW
+//   const purchaseQuery = { organizationId: orgId, "items.productId": productId, status: { $ne: "cancelled" }, isDeleted: false };
+//   if (Object.keys(dateFilter).length) purchaseQuery.purchaseDate = dateFilter;
+
+//   const purchases = await Purchase.find(purchaseQuery).populate("supplierId", "companyName").lean();
+//   const purchaseHistory = purchases.map(pur => {
+//     const item = pur.items.find(i => i.productId.toString() === productId.toString());
+//     if (!item) return null;
+//     return {
+//       _id: pur._id,
+//       type: 'PURCHASE',
+//       date: pur.purchaseDate,
+//       reference: pur.invoiceNumber,
+//       party: pur.supplierId?.companyName || 'Unknown Supplier',
+//       quantity: Math.abs(item.quantity), // IN
+//       value: item.purchasePrice * item.quantity,
+//       description: 'Purchase Bill'
+//     };
+//   }).filter(Boolean);
+
+//   // 3. FETCH PURCHASE RETURNS (OUT) - 🟢 NEW
+//   const returnQuery = { organizationId: orgId, "items.productId": productId };
+//   if (Object.keys(dateFilter).length) returnQuery.returnDate = dateFilter;
+
+//   const returns = await PurchaseReturn.find(returnQuery).populate("supplierId", "companyName").lean();
+//   const returnHistory = returns.map(ret => {
+//     const item = ret.items.find(i => i.productId.toString() === productId.toString());
+//     if (!item) return null;
+//     return {
+//       _id: ret._id,
+//       type: 'PURCHASE_RETURN',
+//       date: ret.returnDate,
+//       reference: `Return to ${ret.supplierId?.companyName}`,
+//       party: ret.supplierId?.companyName,
+//       quantity: -Math.abs(item.quantity), // OUT
+//       value: item.returnPrice * item.quantity,
+//       description: ret.reason || 'Debit Note'
+//     };
+//   }).filter(Boolean);
+
+//   // 4. FETCH ADJUSTMENTS
+//   const entryQuery = { organizationId: orgId, referenceId: productId, referenceType: { $in: ['journal', 'opening_stock'] } };
+//   if (Object.keys(dateFilter).length) entryQuery.date = dateFilter;
+
+//   const adjustments = await AccountEntry.find(entryQuery).lean();
+//   const adjustmentHistory = adjustments.map(entry => {
+//     return {
+//       _id: entry._id,
+//       type: entry.referenceType === 'opening_stock' ? 'OPENING STOCK' : 'ADJUSTMENT',
+//       date: entry.date,
+//       reference: 'Journal',
+//       party: 'System Admin',
+//       quantity: null, // Ledger holds value, not qty
+//       value: entry.debit > 0 ? entry.debit : -entry.credit,
+//       description: entry.description
+//     };
+//   });
+
+//   // MERGE & SORT
+//   const fullHistory = [...salesHistory, ...purchaseHistory, ...returnHistory, ...adjustmentHistory]
+//     .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+//   res.status(200).json({ status: 'success', results: fullHistory.length, data: { history: fullHistory } });
+// });
 exports.getProductHistory = catchAsync(async (req, res, next) => {
   const productId = req.params.id;
   const orgId = req.user.organizationId;
   const { startDate, endDate } = req.query;
 
+  // 🟢 1. BULLETPROOF DATE FILTER
   const dateFilter = {};
-  if (startDate && endDate) {
+  
+  // Check if dates exist and are NOT the literal strings "null" or "undefined"
+  if (startDate && endDate && startDate !== 'null' && startDate !== 'undefined') {
+    const start = new Date(startDate);
     const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-    dateFilter.$gte = new Date(startDate);
-    dateFilter.$lte = end;
+    
+    // Ensure the dates are actually valid numbers before applying the filter
+    if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+      end.setHours(23, 59, 59, 999);
+      dateFilter.$gte = start;
+      dateFilter.$lte = end;
+    }
   }
 
-  // 1. FETCH SALES (OUT)
+  // 2. FETCH SALES (OUT)
   const invoiceQuery = { organizationId: orgId, "items.productId": productId, status: { $ne: "cancelled" } };
-  if (Object.keys(dateFilter).length) invoiceQuery.invoiceDate = dateFilter;
+  if (Object.keys(dateFilter).length > 0) invoiceQuery.invoiceDate = dateFilter; // Only apply if dates exist
   
   const invoices = await Invoice.find(invoiceQuery).populate("customerId", "name").lean();
   const salesHistory = invoices.map(inv => {
@@ -833,9 +939,9 @@ exports.getProductHistory = catchAsync(async (req, res, next) => {
     };
   }).filter(Boolean);
 
-  // 2. FETCH PURCHASES (IN) - 🟢 NEW
+  // 3. FETCH PURCHASES (IN)
   const purchaseQuery = { organizationId: orgId, "items.productId": productId, status: { $ne: "cancelled" }, isDeleted: false };
-  if (Object.keys(dateFilter).length) purchaseQuery.purchaseDate = dateFilter;
+  if (Object.keys(dateFilter).length > 0) purchaseQuery.purchaseDate = dateFilter;
 
   const purchases = await Purchase.find(purchaseQuery).populate("supplierId", "companyName").lean();
   const purchaseHistory = purchases.map(pur => {
@@ -853,10 +959,11 @@ exports.getProductHistory = catchAsync(async (req, res, next) => {
     };
   }).filter(Boolean);
 
-  // 3. FETCH PURCHASE RETURNS (OUT) - 🟢 NEW
+  // 4. FETCH PURCHASE RETURNS (OUT)
   const returnQuery = { organizationId: orgId, "items.productId": productId };
-  if (Object.keys(dateFilter).length) returnQuery.returnDate = dateFilter;
+  if (Object.keys(dateFilter).length > 0) returnQuery.returnDate = dateFilter;
 
+  // ⚠️ CRITICAL: Ensure you have required PurchaseReturn at the top of your file!
   const returns = await PurchaseReturn.find(returnQuery).populate("supplierId", "companyName").lean();
   const returnHistory = returns.map(ret => {
     const item = ret.items.find(i => i.productId.toString() === productId.toString());
@@ -873,9 +980,9 @@ exports.getProductHistory = catchAsync(async (req, res, next) => {
     };
   }).filter(Boolean);
 
-  // 4. FETCH ADJUSTMENTS
+  // 5. FETCH ADJUSTMENTS
   const entryQuery = { organizationId: orgId, referenceId: productId, referenceType: { $in: ['journal', 'opening_stock'] } };
-  if (Object.keys(dateFilter).length) entryQuery.date = dateFilter;
+  if (Object.keys(dateFilter).length > 0) entryQuery.date = dateFilter;
 
   const adjustments = await AccountEntry.find(entryQuery).lean();
   const adjustmentHistory = adjustments.map(entry => {
@@ -891,13 +998,12 @@ exports.getProductHistory = catchAsync(async (req, res, next) => {
     };
   });
 
-  // MERGE & SORT
+  // MERGE & SORT (Newest first)
   const fullHistory = [...salesHistory, ...purchaseHistory, ...returnHistory, ...adjustmentHistory]
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   res.status(200).json({ status: 'success', results: fullHistory.length, data: { history: fullHistory } });
 });
-
 /* ======================================================
    8. LOW STOCK REPORT
    Finds products where Total Stock <= Reorder Level

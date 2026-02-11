@@ -42,7 +42,7 @@ const supplierSchema = new mongoose.Schema(
       email: { type: String, trim: true, lowercase: true },
       isPrimary: { type: Boolean, default: false }
     }],
-    category: { type: String, trim: true }, // e.g., 'Raw Materials', 'IT', 'Logistics'
+    category: { type: String, trim: true }, 
     tags: [{ type: String, trim: true }],
 
     // --- 2. BASIC CONTACT INFO ---
@@ -73,7 +73,7 @@ const supplierSchema = new mongoose.Schema(
 
     // NEW: KYC Documents (Cloudinary)
     documents: [{
-      docType: { type: String, required: true }, // e.g., 'GST_CERTIFICATE', 'PAN_CARD', 'CANCELLED_CHEQUE'
+      docType: { type: String, required: true },
       url: { type: String, required: true },
       public_id: { type: String },
       uploadedAt: { type: Date, default: Date.now },

@@ -6,13 +6,13 @@ const cloudinary = require('cloudinary').v2;
 const Supplier = require('./supplier.model');
 const Purchase = require('../../inventory/core/purchase.model'); 
 const Payment = require('../../accounting/payments/payment.model');
-const PurchaseReturn = require('../../inventory/core/purchaseReturn.model'); // 🟢 Added for Defect Rate
+const PurchaseReturn = require('../../inventory/core/purchase.return.model'); // 🟢 Added for Defect Rate
 
 // Utils & Services
 const factory = require('../../../core/utils/handlerFactory');
 const catchAsync = require("../../../core/utils/catchAsync");
 const AppError = require("../../../core/utils/appError");
-const fileUploadService = require('../../../core/services/fileUploadService');
+const fileUploadService = require('../../_legacy/services/uploads/fileUploadService');
 
 // Helper: Escape Regex Special Characters to prevent crashes
 const escapeRegex = (text) => {
