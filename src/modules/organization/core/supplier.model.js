@@ -21,6 +21,13 @@ const supplierSchema = new mongoose.Schema(
       trim: true,
     },
     contactPerson: { type: String, trim: true },
+    contacts: [{
+    name: String,
+    department: { type: String, enum: ['Sales', 'Accounts', 'Support', 'Management'] },
+    phone: String,
+    email: String,
+    isPrimary: Boolean
+}],
     email: { type: String, trim: true, lowercase: true, default: null },
     phone: { type: String, trim: true, default: null },
     altPhone: { type: String, trim: true },
