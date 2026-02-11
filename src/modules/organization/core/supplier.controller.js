@@ -295,6 +295,76 @@ exports.downloadSupplierLedger = catchAsync(async (req, res, next) => {
     await workbook.xlsx.write(res);
     res.end();
 });
+
+const fileUploadService = require('../../../core/services/fileUploadService'); // Assuming this is your service
+const cloudinary = require('cloudinary').v2;
+
+
+/* ===================================================
+   ✅ KYC DOCUMENT MANAGEMENT
+==================================================== */
+exports.uploadKycDocument = catchAsync(async (req, res, next) => {
+  const { docType } = req.body;
+  if (!req.file || !docType) {
+    return next(new AppError("File and docType are required", 400));
+  }
+
+  const supplier = await Supplier.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
+  if (!supplier) return next(new AppError("Supplier not found", 404));
+
+  // Upload to Cloudinary
+  const uploadResult = await fileUploadService.uploadFile(req.file.buffer, "suppliers/kyc");
+
+  // Push to documents array
+  supplier.documents.push({
+    docType,
+    url: uploadResult.url,
+    public_id: uploadResult.public_id,
+    verified: false // Admin can verify later
+  });
+
+  await supplier.save();
+
+  res.status(200).json({ status: "success", message: "Document uploaded", data: { supplier } });
+});
+
+exports.deleteKycDocument = catchAsync(async (req, res, next) => {
+  const supplier = await Supplier.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
+  if (!supplier) return next(new AppError("Supplier not found", 404));
+
+  const docIndex = req.params.docIndex;
+  const doc = supplier.documents[docIndex];
+  
+  if (!doc) return next(new AppError("Document not found", 404));
+
+  // Delete from Cloudinary
+  if (doc.public_id) {
+    try { await cloudinary.uploader.destroy(doc.public_id); } 
+    catch (err) { console.warn("Cloudinary delete failed", err); }
+  }
+
+  supplier.documents.splice(docIndex, 1);
+  await supplier.save();
+
+  res.status(200).json({ status: "success", message: "Document deleted" });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // const Supplier = require('./supplier.model');
 // const Purchase = require('../../inventory/core/purchase.model');
 // const Payment = require('../../accounting/payments/payment.model');
