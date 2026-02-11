@@ -548,20 +548,95 @@ exports.bulkImportProducts = catchAsync(async (req, res, next) => {
 /* ======================================================
    BULK UPDATE PRODUCTS (Safe & Secured)
 ====================================================== */
+// exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
+//   const updates = req.body;
+//   if (!Array.isArray(updates) || updates.length === 0) {
+//     return next(new AppError("Provide an array of updates", 400));
+//   }
+
+//   // 1. Define Forbidden Fields (Financial integrity)
+//   const forbiddenFields = [
+//     'quantity', 'inventory', 'purchasePrice', 'costPrice',
+//     'openingStock', 'organizationId', 'createdBy', '_id'
+//   ];
+//   const allowedFields = [
+//     'name', 'description', 'sku', 'barcode', 'category',
+//     'brand', 'unit', 'sellingPrice', 'minSellingPrice',
+//     'taxRate', 'isActive', 'reorderLevel', 'images'
+//   ];
+
+//   const bulkOps = [];
+//   for (const u of updates) {
+//     if (!u._id || !u.update) {
+//       return next(new AppError("Each item must have _id and update object", 400));
+//     }
+
+//     // Filter the update object to only contain allowed fields
+//     const cleanUpdate = {};
+//     Object.keys(u.update).forEach(key => {
+//       if (forbiddenFields.includes(key)) {
+//         // Optionally throw error, or just ignore. 
+//         // Throwing error is safer to alert the frontend dev.
+//         throw new AppError(`Field '${key}' cannot be updated in bulk. Use stock adjustment.`, 400);
+//       }
+//       if (allowedFields.includes(key)) {
+//         cleanUpdate[key] = u.update[key];
+//       }
+//     });
+
+//     if (Object.keys(cleanUpdate).length > 0) {
+//       // If name is changing, we should probably update slug too
+//       if (cleanUpdate.name) {
+//         cleanUpdate.slug = `${slugify(cleanUpdate.name)}-${nanoid(6)}`;
+//       }
+
+//       bulkOps.push({
+//         updateOne: {
+//           filter: {
+//             _id: u._id,
+//             organizationId: req.user.organizationId
+//           },
+//           update: { $set: cleanUpdate } // Force $set to prevent operator injection
+//         }
+//       });
+//     }
+//   }
+
+//   // 3. Execute
+//   if (bulkOps.length > 0) {
+//     const result = await Product.bulkWrite(bulkOps);
+
+//     res.status(200).json({
+//       status: "success",
+//       message: "Bulk update completed",
+//       data: {
+//         matched: result.matchedCount,
+//         modified: result.modifiedCount
+//       }
+//     });
+//   } else {
+//     res.status(200).json({
+//       status: "success",
+//       message: "No valid fields to update were found."
+//     });
+//   }
+// });
+/* ======================================================
+   🔥 BULK UPDATE PRODUCTS (Fixed Security & Logic)
+====================================================== */
 exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
   const updates = req.body;
   if (!Array.isArray(updates) || updates.length === 0) {
     return next(new AppError("Provide an array of updates", 400));
   }
 
-  // 1. Define Forbidden Fields (Financial integrity)
   const forbiddenFields = [
     'quantity', 'inventory', 'purchasePrice', 'costPrice',
     'openingStock', 'organizationId', 'createdBy', '_id'
   ];
   const allowedFields = [
-    'name', 'description', 'sku', 'barcode', 'category',
-    'brand', 'unit', 'sellingPrice', 'minSellingPrice',
+    'name', 'description', 'sku', 'barcode', 'hsnCode', 'categoryId',
+    'brandId', 'unitId', 'sellingPrice', 'mrp',
     'taxRate', 'isActive', 'reorderLevel', 'images'
   ];
 
@@ -571,12 +646,9 @@ exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
       return next(new AppError("Each item must have _id and update object", 400));
     }
 
-    // Filter the update object to only contain allowed fields
     const cleanUpdate = {};
     Object.keys(u.update).forEach(key => {
       if (forbiddenFields.includes(key)) {
-        // Optionally throw error, or just ignore. 
-        // Throwing error is safer to alert the frontend dev.
         throw new AppError(`Field '${key}' cannot be updated in bulk. Use stock adjustment.`, 400);
       }
       if (allowedFields.includes(key)) {
@@ -585,183 +657,320 @@ exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
     });
 
     if (Object.keys(cleanUpdate).length > 0) {
-      // If name is changing, we should probably update slug too
       if (cleanUpdate.name) {
         cleanUpdate.slug = `${slugify(cleanUpdate.name)}-${nanoid(6)}`;
       }
 
       bulkOps.push({
         updateOne: {
-          filter: {
-            _id: u._id,
-            organizationId: req.user.organizationId
+          // 🟢 SECURITY FIX: Force ObjectId casting and Org Check
+          filter: { 
+            _id: new mongoose.Types.ObjectId(u._id), 
+            organizationId: new mongoose.Types.ObjectId(req.user.organizationId) 
           },
-          update: { $set: cleanUpdate } // Force $set to prevent operator injection
+          update: { $set: cleanUpdate } 
         }
       });
     }
   }
 
-  // 3. Execute
   if (bulkOps.length > 0) {
     const result = await Product.bulkWrite(bulkOps);
-
     res.status(200).json({
       status: "success",
       message: "Bulk update completed",
-      data: {
-        matched: result.matchedCount,
-        modified: result.modifiedCount
-      }
+      data: { matched: result.matchedCount, modified: result.modifiedCount }
     });
   } else {
-    res.status(200).json({
-      status: "success",
-      message: "No valid fields to update were found."
-    });
+    res.status(200).json({ status: "success", message: "No valid fields to update were found." });
   }
 });
-
 
 /* ======================================================
    7. PRODUCT HISTORY (Stock Card / Ledger)
    Aggregates movements from Invoices (Qty) and Ledger (Value)
 ====================================================== */
+// exports.getProductHistory = catchAsync(async (req, res, next) => {
+//   const productId = req.params.id;
+//   const { startDate, endDate } = req.query;
+
+//   // 1. Build Date Filter
+//   const dateFilter = {};
+//   if (startDate && endDate) {
+//     const start = new Date(startDate);
+//     const end = new Date(endDate);
+//     end.setHours(23, 59, 59, 999); // Include full end day
+    
+//     dateFilter.$gte = start;
+//     dateFilter.$lte = end;
+//   }
+
+//   // 2. FETCH SALES (From Invoices)
+//   // We find invoices containing this product that are NOT cancelled
+//   const invoiceQuery = {
+//     organizationId: req.user.organizationId,
+//     "items.productId": productId,
+//     status: { $ne: "cancelled" }
+//   };
+  
+//   if (Object.keys(dateFilter).length) {
+//     invoiceQuery.invoiceDate = dateFilter;
+//   }
+
+//   const invoices = await Invoice.find(invoiceQuery)
+//     .populate("customerId", "name email") // Get customer name
+//     .select("invoiceNumber invoiceDate items status customerId")
+//     .sort({ invoiceDate: -1 })
+//     .lean();
+
+//   const salesHistory = invoices.map(inv => {
+//     // Extract the specific line item for this product
+//     const item = inv.items.find(i => i.productId.toString() === productId.toString());
+    
+//     // Guard: Should theoretically always find it due to query, but safe to check
+//     if (!item) return null;
+
+//     return {
+//       _id: inv._id,
+//       type: 'SALE',
+//       date: inv.invoiceDate,
+//       reference: inv.invoiceNumber,
+//       party: inv.customerId?.name || 'Walk-in Customer',
+//       quantity: -Math.abs(item.quantity), // Negative because it's stock OUT
+//       unit: item.unit,
+//       value: item.price * item.quantity, // Revenue
+//       description: `Invoice generated`
+//     };
+//   }).filter(i => i !== null); // Remove any nulls
+
+
+//   // 3. FETCH ADJUSTMENTS (From AccountEntry)
+//   // Note: AccountEntry tracks VALUE ($), not QUANTITY. 
+//   // We display it to show *when* adjustments happened, even if we can't show exact qty.
+//   const entryQuery = {
+//     organizationId: req.user.organizationId,
+//     referenceId: productId,
+//     referenceType: { $in: ['journal', 'adjustment', 'opening_stock'] }
+//   };
+
+//   if (Object.keys(dateFilter).length) {
+//     entryQuery.date = dateFilter;
+//   }
+
+//   const adjustments = await AccountEntry.find(entryQuery)
+//     .select('date description debit credit referenceType')
+//     .sort({ date: -1 })
+//     .lean();
+
+//   const adjustmentHistory = adjustments.map(entry => {
+//     // Heuristic: Debit to Inventory Asset usually means Add, Credit means Remove.
+//     // However, AccountEntry is double-entry. We need to filter only the Inventory Asset side if we want to be precise,
+//     // OR just show the entry generic.
+//     // Simpler approach: Just show the event.
+    
+//     let type = 'ADJUSTMENT';
+//     if (entry.referenceType === 'opening_stock') type = 'OPENING STOCK';
+
+//     return {
+//       _id: entry._id,
+//       type: type,
+//       date: entry.date,
+//       reference: 'Journal',
+//       party: 'System / Admin',
+//       quantity: null, // Ledger doesn't store qty in your schema
+//       unit: '-',
+//       value: entry.debit > 0 ? entry.debit : -entry.credit,
+//       description: entry.description
+//     };
+//   });
+
+//   // 4. MERGE & SORT
+//   const fullHistory = [...salesHistory, ...adjustmentHistory]
+//     .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+//   res.status(200).json({
+//     status: 'success',
+//     results: fullHistory.length,
+//     data: { 
+//       history: fullHistory 
+//     }
+//   });
+// });
+
+/* ======================================================
+   🔥 7. PRODUCT HISTORY (Complete Stock Ledger)
+====================================================== */
 exports.getProductHistory = catchAsync(async (req, res, next) => {
   const productId = req.params.id;
+  const orgId = req.user.organizationId;
   const { startDate, endDate } = req.query;
 
-  // 1. Build Date Filter
   const dateFilter = {};
   if (startDate && endDate) {
-    const start = new Date(startDate);
     const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999); // Include full end day
-    
-    dateFilter.$gte = start;
+    end.setHours(23, 59, 59, 999);
+    dateFilter.$gte = new Date(startDate);
     dateFilter.$lte = end;
   }
 
-  // 2. FETCH SALES (From Invoices)
-  // We find invoices containing this product that are NOT cancelled
-  const invoiceQuery = {
-    organizationId: req.user.organizationId,
-    "items.productId": productId,
-    status: { $ne: "cancelled" }
-  };
+  // 1. FETCH SALES (OUT)
+  const invoiceQuery = { organizationId: orgId, "items.productId": productId, status: { $ne: "cancelled" } };
+  if (Object.keys(dateFilter).length) invoiceQuery.invoiceDate = dateFilter;
   
-  if (Object.keys(dateFilter).length) {
-    invoiceQuery.invoiceDate = dateFilter;
-  }
-
-  const invoices = await Invoice.find(invoiceQuery)
-    .populate("customerId", "name email") // Get customer name
-    .select("invoiceNumber invoiceDate items status customerId")
-    .sort({ invoiceDate: -1 })
-    .lean();
-
+  const invoices = await Invoice.find(invoiceQuery).populate("customerId", "name").lean();
   const salesHistory = invoices.map(inv => {
-    // Extract the specific line item for this product
     const item = inv.items.find(i => i.productId.toString() === productId.toString());
-    
-    // Guard: Should theoretically always find it due to query, but safe to check
     if (!item) return null;
-
     return {
       _id: inv._id,
       type: 'SALE',
       date: inv.invoiceDate,
       reference: inv.invoiceNumber,
       party: inv.customerId?.name || 'Walk-in Customer',
-      quantity: -Math.abs(item.quantity), // Negative because it's stock OUT
-      unit: item.unit,
-      value: item.price * item.quantity, // Revenue
-      description: `Invoice generated`
+      quantity: -Math.abs(item.quantity), // OUT
+      value: item.price * item.quantity,
+      description: 'Sale Invoice'
     };
-  }).filter(i => i !== null); // Remove any nulls
+  }).filter(Boolean);
 
+  // 2. FETCH PURCHASES (IN) - 🟢 NEW
+  const purchaseQuery = { organizationId: orgId, "items.productId": productId, status: { $ne: "cancelled" }, isDeleted: false };
+  if (Object.keys(dateFilter).length) purchaseQuery.purchaseDate = dateFilter;
 
-  // 3. FETCH ADJUSTMENTS (From AccountEntry)
-  // Note: AccountEntry tracks VALUE ($), not QUANTITY. 
-  // We display it to show *when* adjustments happened, even if we can't show exact qty.
-  const entryQuery = {
-    organizationId: req.user.organizationId,
-    referenceId: productId,
-    referenceType: { $in: ['journal', 'adjustment', 'opening_stock'] }
-  };
+  const purchases = await Purchase.find(purchaseQuery).populate("supplierId", "companyName").lean();
+  const purchaseHistory = purchases.map(pur => {
+    const item = pur.items.find(i => i.productId.toString() === productId.toString());
+    if (!item) return null;
+    return {
+      _id: pur._id,
+      type: 'PURCHASE',
+      date: pur.purchaseDate,
+      reference: pur.invoiceNumber,
+      party: pur.supplierId?.companyName || 'Unknown Supplier',
+      quantity: Math.abs(item.quantity), // IN
+      value: item.purchasePrice * item.quantity,
+      description: 'Purchase Bill'
+    };
+  }).filter(Boolean);
 
-  if (Object.keys(dateFilter).length) {
-    entryQuery.date = dateFilter;
-  }
+  // 3. FETCH PURCHASE RETURNS (OUT) - 🟢 NEW
+  const returnQuery = { organizationId: orgId, "items.productId": productId };
+  if (Object.keys(dateFilter).length) returnQuery.returnDate = dateFilter;
 
-  const adjustments = await AccountEntry.find(entryQuery)
-    .select('date description debit credit referenceType')
-    .sort({ date: -1 })
-    .lean();
+  const returns = await PurchaseReturn.find(returnQuery).populate("supplierId", "companyName").lean();
+  const returnHistory = returns.map(ret => {
+    const item = ret.items.find(i => i.productId.toString() === productId.toString());
+    if (!item) return null;
+    return {
+      _id: ret._id,
+      type: 'PURCHASE_RETURN',
+      date: ret.returnDate,
+      reference: `Return to ${ret.supplierId?.companyName}`,
+      party: ret.supplierId?.companyName,
+      quantity: -Math.abs(item.quantity), // OUT
+      value: item.returnPrice * item.quantity,
+      description: ret.reason || 'Debit Note'
+    };
+  }).filter(Boolean);
 
+  // 4. FETCH ADJUSTMENTS
+  const entryQuery = { organizationId: orgId, referenceId: productId, referenceType: { $in: ['journal', 'opening_stock'] } };
+  if (Object.keys(dateFilter).length) entryQuery.date = dateFilter;
+
+  const adjustments = await AccountEntry.find(entryQuery).lean();
   const adjustmentHistory = adjustments.map(entry => {
-    // Heuristic: Debit to Inventory Asset usually means Add, Credit means Remove.
-    // However, AccountEntry is double-entry. We need to filter only the Inventory Asset side if we want to be precise,
-    // OR just show the entry generic.
-    // Simpler approach: Just show the event.
-    
-    let type = 'ADJUSTMENT';
-    if (entry.referenceType === 'opening_stock') type = 'OPENING STOCK';
-
     return {
       _id: entry._id,
-      type: type,
+      type: entry.referenceType === 'opening_stock' ? 'OPENING STOCK' : 'ADJUSTMENT',
       date: entry.date,
       reference: 'Journal',
-      party: 'System / Admin',
-      quantity: null, // Ledger doesn't store qty in your schema
-      unit: '-',
+      party: 'System Admin',
+      quantity: null, // Ledger holds value, not qty
       value: entry.debit > 0 ? entry.debit : -entry.credit,
       description: entry.description
     };
   });
 
-  // 4. MERGE & SORT
-  const fullHistory = [...salesHistory, ...adjustmentHistory]
+  // MERGE & SORT
+  const fullHistory = [...salesHistory, ...purchaseHistory, ...returnHistory, ...adjustmentHistory]
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  res.status(200).json({
-    status: 'success',
-    results: fullHistory.length,
-    data: { 
-      history: fullHistory 
-    }
-  });
+  res.status(200).json({ status: 'success', results: fullHistory.length, data: { history: fullHistory } });
 });
-
 
 /* ======================================================
    8. LOW STOCK REPORT
    Finds products where Total Stock <= Reorder Level
 ====================================================== */
-exports.getLowStockProducts = catchAsync(async (req, res, next) => {
-  const products = await Product.find({
-    organizationId: req.user.organizationId,
-    isActive: true
-  }).lean();
+// exports.getLowStockProducts = catchAsync(async (req, res, next) => {
+//   const products = await Product.find({
+//     organizationId: req.user.organizationId,
+//     isActive: true
+//   }).lean();
 
-  // Filter in memory (easier than complex Mongo aggregation for computed virtuals)
-  const lowStockItems = products.filter(p => {
-    // Calculate total stock
-    const totalStock = p.inventory?.reduce((acc, item) => acc + (item.quantity || 0), 0) || 0;
+//   // Filter in memory (easier than complex Mongo aggregation for computed virtuals)
+//   const lowStockItems = products.filter(p => {
+//     // Calculate total stock
+//     const totalStock = p.inventory?.reduce((acc, item) => acc + (item.quantity || 0), 0) || 0;
     
-    // Determine reorder level (Max of branch levels or default)
-    const maxReorderLevel = p.inventory?.reduce((max, item) => Math.max(max, item.reorderLevel || 0), 0) || 10;
+//     // Determine reorder level (Max of branch levels or default)
+//     const maxReorderLevel = p.inventory?.reduce((max, item) => Math.max(max, item.reorderLevel || 0), 0) || 10;
     
-    return totalStock <= maxReorderLevel;
-  }).map(p => ({
-    _id: p._id,
-    name: p.name,
-    sku: p.sku,
-    currentStock: p.inventory.reduce((a, b) => a + b.quantity, 0),
-    reorderLevel: p.inventory[0]?.reorderLevel || 10,
-    image: p.images?.[0] || null
-  }));
+//     return totalStock <= maxReorderLevel;
+//   }).map(p => ({
+//     _id: p._id,
+//     name: p.name,
+//     sku: p.sku,
+//     currentStock: p.inventory.reduce((a, b) => a + b.quantity, 0),
+//     reorderLevel: p.inventory[0]?.reorderLevel || 10,
+//     image: p.images?.[0] || null
+//   }));
+
+//   res.status(200).json({
+//     status: 'success',
+//     results: lowStockItems.length,
+//     data: { products: lowStockItems }
+//   });
+// });
+/* ======================================================
+   🔥 8. LOW STOCK REPORT (High Performance Aggregation)
+====================================================== */
+exports.getLowStockProducts = catchAsync(async (req, res, next) => {
+  const orgId = new mongoose.Types.ObjectId(req.user.organizationId);
+
+  // 🟢 Use Aggregation to calculate totalStock dynamically and filter AT THE DATABASE LEVEL
+  const lowStockItems = await Product.aggregate([
+    { $match: { organizationId: orgId, isActive: true, isDeleted: false } },
+    
+    // Calculate total stock and max reorder level across branches
+    { $addFields: {
+        totalStockCalculated: { $sum: "$inventory.quantity" },
+        maxReorderLevel: { 
+          $cond: { 
+            if: { $gt: [{ $size: "$inventory" }, 0] }, 
+            then: { $max: "$inventory.reorderLevel" }, 
+            else: 10 // Default fallback
+          }
+        }
+    }},
+    
+    // Filter ONLY items where Stock <= Reorder Level
+    { $match: {
+        $expr: { $lte: ["$totalStockCalculated", "$maxReorderLevel"] }
+    }},
+
+    // Project only the fields needed for the UI
+    { $project: {
+        name: 1,
+        sku: 1,
+        barcode: 1,
+        currentStock: "$totalStockCalculated",
+        reorderLevel: "$maxReorderLevel",
+        image: { $arrayElemAt: ["$images", 0] } // Grab first image
+    }},
+    
+    { $sort: { currentStock: 1 } } // Sort by lowest stock first
+  ]);
 
   res.status(200).json({
     status: 'success',
