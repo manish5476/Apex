@@ -348,7 +348,23 @@ exports.updatePayment = catchAsync(async (req, res) => {
 /* ======================================================
    READ / EXPORT
 ====================================================== */
-exports.getAllPayments = factory.getAll(Payment);
+exports.getAllPayments = factory.getAll(Payment, {
+  populate: [
+    { 
+      path: 'customerId', 
+      select: 'name phone type email gstNumber' 
+    },
+    { 
+      path: 'invoiceId', 
+      select: 'invoiceNumber grandTotal invoiceDate balanceAmount' 
+    },
+    { 
+      path: 'branchId', 
+      select: 'name branchCode' 
+    }
+  ]
+});
+
 exports.getPayment = factory.getOne(Payment);
 exports.deletePayment = factory.deleteOne(Payment);
 

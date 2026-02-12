@@ -725,18 +725,12 @@ exports.getCalendarView = catchAsync(async (req, res) => {
     .lean();
 
   const calendarEvents = notes.map((note) => {
-    // 3. Defensive Date Logic
-    // Ensure we have at least ONE valid date object
     const startObj = note.startDate || note.dueDate || note.createdAt || new Date();
-    
-    // Safety check: ensure it is a real Date object (since .lean() might return strings depending on driver)
-    const start = new Date(startObj);
-    
+        const start = new Date(startObj);
     // Default duration: 1 hour if no end date
     const end = note.dueDate 
       ? new Date(note.dueDate) 
       : new Date(start.getTime() + 60 * 60 * 1000);
-
     return {
       id: note._id.toString(),
       title: note.title,
@@ -754,8 +748,6 @@ exports.getCalendarView = catchAsync(async (req, res) => {
       textColor: "#ffffff",
     };
   });
-
-  // 4. Add Meetings
   const meetings = await Meeting.find({
     organizationId: req.user.organizationId,
     startTime: { $gte: startDate, $lte: endDate },
@@ -765,9 +757,7 @@ exports.getCalendarView = catchAsync(async (req, res) => {
     .select("title startTime endTime status participants")
     .populate("participants.user", "name")
     .lean();
-
   meetings.forEach((meeting) => {
-    // Avoid duplicates if meeting is already linked to a note
     const isDuplicate = calendarEvents.some(
        e => e.extendedProps?.meetingId === meeting._id.toString()
     );
@@ -801,14 +791,11 @@ exports.getCalendarView = catchAsync(async (req, res) => {
 exports.getNotesForMonth = catchAsync(async (req, res) => {
   const year = parseInt(req.query.year) || new Date().getFullYear();
   const month = parseInt(req.query.month) - 1 || new Date().getMonth();
-
   const start = new Date(year, month, 1);
   const end = new Date(year, month + 1, 1);
-
   const stats = await Note.aggregate([
     {
       $match: {
-        // FIX: Added 'new'
         organizationId: new mongoose.Types.ObjectId(req.user.organizationId),
         owner: new mongoose.Types.ObjectId(req.user._id),
         isDeleted: false,
@@ -905,68 +892,9 @@ exports.getHeatMapData = catchAsync(async (req, res) => {
 });
 
 
-// /* ==================== SHARE NOTE ==================== */
-// exports.shareNote = catchAsync(async (req, res, next) => {
-//   const { noteId } = req.params;
-//   const { userIds, permission = "viewer" } = req.body;
-
-//   const note = await Note.findOne({
-//     _id: noteId,
-//     owner: req.user._id,
-//     isDeleted: false,
-//   });
-
-//   if (!note) {
-//     return next(new AppError("Note not found or you are not the owner", 404));
-//   }
-
-//   const uniqueUserIds = [
-//     ...new Set([
-//       ...note.sharedWith.map((id) => id.toString()),
-//       ...(Array.isArray(userIds) ? userIds : [userIds]),
-//     ]),
-//   ];
-
-//   note.sharedWith = uniqueUserIds.map((id) => mongoose.Types.ObjectId(id));
-
-//   userIds.forEach((userId) => {
-//     if (
-//       !note.participants.some((p) => p.user.toString() === userId.toString())
-//     ) {
-//       note.participants.push({
-//         user: userId,
-//         role: permission,
-//         rsvp: "pending",
-//       });
-//     }
-//   });
-
-//   await note.save();
-
-//   const socketPayload = {
-//     type: "NOTE_SHARED",
-//     data: {
-//       noteId: note._id,
-//       title: note.title,
-//       sharedBy: req.user.name,
-//       permission,
-//     },
-//   };
-
-//   if (Array.isArray(userIds)) {
-//     userIds.forEach((userId) => {
-//       emitToUser(userId, "noteShared", socketPayload);
-//     });
-//   }
-
-//   res.status(200).json({
-//     status: "success",
-//     message: "Note shared successfully",
-//     data: { note },
-//   });
-// });
 exports.shareNote = catchAsync(async (req, res, next) => {
-  const { noteId } = req.params;
+  const noteId = req.params.id || req.params.noteId; 
+
   const { userIds, permission = "viewer" } = req.body;
 
   const note = await Note.findOne({
@@ -976,11 +904,7 @@ exports.shareNote = catchAsync(async (req, res, next) => {
   });
 
   if (!note) return next(new AppError("Note not found", 404));
-
-  // Convert incoming IDs to Objects
-  const incomingIds = (Array.isArray(userIds) ? userIds : [userIds]).map(
-      // FIX: Added 'new'
-      id => new mongoose.Types.ObjectId(id)
+  const incomingIds = (Array.isArray(userIds) ? userIds : [userIds]).map(      id => new mongoose.Types.ObjectId(id)
   );
 
   // Merge with existing
@@ -1011,6 +935,7 @@ exports.shareNote = catchAsync(async (req, res, next) => {
 
   res.status(200).json({ status: "success", data: { note } });
 });
+
 /* ==================== GET NOTE ANALYTICS ==================== */
 exports.getNoteAnalytics = catchAsync(async (req, res) => {
   const { period = "month" } = req.query;
