@@ -94,35 +94,45 @@ exports.transferOwnership = catchAsync(async (req, res, next) => {
 // INVITE USER
 // POST /organization/invite
 // ======================================================
+/**
+ * @desc Invite a new user to the organization
+ * FIXED: Now accepts 'password' to satisfy Mongoose validation requirements
+ */
 exports.inviteUser = catchAsync(async (req, res, next) => {
-  const { email, name, role, branchId } = req.body;
+  const { email, name, role, branchId, password } = req.body;
 
-  if (!email || !name)
-    return next(new AppError("Name and email are required.", 400));
+  // 1. Validation
+  if (!email || !name || !password)
+    return next(new AppError("Name, email, and password are required.", 400));
 
   const orgId = req.user.organizationId;
 
+  // 2. Check for existing user
   const existing = await User.findOne({ email });
   if (existing && existing.status !== "pending")
-    return next(new AppError("Email already in use.", 400));
+    return next(new AppError("A user with this email already exists and is active.", 400));
 
+  // 3. Create User (Status is pending until they log in or are approved)
   const invitedUser = await User.create({
     name,
     email,
+    password, // This will be hashed by your User model's pre-save hook
     role,
     branchId,
     organizationId: orgId,
     status: "pending",
   });
 
+  // 4. Audit Log
   await logActivity(
     orgId,
     req.user.id,
     "INVITE_USER",
-    `Invited ${email} (${name}) to join.`,
+    `Invited ${email} (${name}) to join as ${role}.`,
     { userId: invitedUser._id }
   );
 
+  // 5. Response
   res.status(201).json({
     status: "success",
     message: "User invited successfully.",
