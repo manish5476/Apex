@@ -421,15 +421,15 @@ const createInvoiceSchema = z.object({
   customerId: z.string().min(1, "Customer ID is required"),
   items: z.array(z.object({
     productId: z.string().min(1, "Product ID is required"),
-    quantity: z.number().positive("Quantity must be positive"),
-    price: z.number().nonnegative("Price cannot be negative"), // Selling Price
+    quantity: z.coerce.number().positive("Quantity must be positive"),
+    price: z.coerce.number().nonnegative("Price cannot be negative"), // Selling Price
     
     // 🟢 ADDED: This will be populated by the backend, not the user
-    purchasePriceAtSale: z.number().nonnegative().optional(), 
+    purchasePriceAtSale: z.coerce.number().nonnegative().optional(), 
     
-    tax: z.number().optional().default(0),
-    taxRate: z.number().optional().default(0),
-    discount: z.number().optional().default(0),
+    tax: z.coerce.number().optional().default(0),
+    taxRate: z.coerce.number().optional().default(0),
+    discount: z.coerce.number().optional().default(0),
     unit: z.string().optional().default('pcs'),
     hsnCode: z.string().optional()
   })).min(1, "Invoice must have at least one item"),
@@ -447,7 +447,7 @@ const createInvoiceSchema = z.object({
   status: z.enum(['draft', 'issued', 'paid', 'cancelled']).optional().default('issued'),
   shippingCharges: z.coerce.number().min(0).optional().default(0),
   notes: z.string().optional(),
-  roundOff: z.number().optional(),
+  roundOff: z.coerce.number().optional(),
   gstType: z.string().optional(),
   attachedFiles: z.array(z.string()).optional()
 });
@@ -564,6 +564,9 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
   // 1. Schema Validation
   const validatedData = createInvoiceSchema.safeParse(req.body);
   if (!validatedData.success) {
+    // Log error for debugging
+    console.error("Zod Validation Error:", JSON.stringify(validatedData.error, null, 2));
+    
     // Check if error exists to prevent crash
     const errors = validatedData.error?.errors || [];
     const errorMessage = errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ') || "Invalid input data";
@@ -750,6 +753,7 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
     data: finalInvoice
   });
 });
+
 /* ======================================================
    2. UPDATE INVOICE WITH STOCK MANAGEMENT (REFACTORED)
 ====================================================== */
