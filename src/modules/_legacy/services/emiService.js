@@ -530,6 +530,136 @@ exports.getEmiLedgerReconciliation = async ({ organizationId, fromDate, toDate }
 /* ======================================================
    RECONCILE EXTERNAL PAYMENT WITH EMI
 ====================================================== */
+// exports.reconcileExternalPayment = async ({
+//   organizationId,
+//   branchId,
+//   invoiceId,
+//   amount,
+//   paymentDate,
+//   paymentMethod,
+//   transactionId,
+//   referenceNumber,
+//   remarks,
+//   createdBy
+// }) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     // 1. Find the EMI for this invoice
+//     const emi = await EMI.findOne({ invoiceId, organizationId }).session(session);
+//     if (!emi) {
+//       throw new AppError('No EMI plan found for this invoice', 404);
+//     }
+
+//     // 2. Create payment record
+//     const [payment] = await Payment.create([{
+//       organizationId,
+//       branchId,
+//       type: 'inflow',
+//       customerId: emi.customerId,
+//       invoiceId,
+//       amount: Number(amount),
+//       paymentMethod,
+//       referenceNumber: referenceNumber || transactionId,
+//       transactionId,
+//       remarks: remarks || 'External payment reconciled',
+//       transactionMode: 'auto',
+//       status: 'completed',
+//       paymentDate,
+//       createdBy
+//     }], { session });
+
+//     // 3. Apply payment to installments (oldest first)
+//     let remainingAmount = Number(amount);
+//     const updatedInstallments = [];
+    
+//     for (const installment of emi.installments.sort((a, b) => a.installmentNumber - b.installmentNumber)) {
+//       if (remainingAmount <= 0) break;
+      
+//       if (installment.paymentStatus !== 'paid') {
+//         const pendingAmount = installment.totalAmount - installment.paidAmount;
+//         const amountToApply = Math.min(remainingAmount, pendingAmount);
+        
+//         installment.paidAmount += amountToApply;
+//         remainingAmount -= amountToApply;
+        
+//         installment.paymentStatus = 
+//           installment.paidAmount >= installment.totalAmount ? 'paid' : 'partial';
+        
+//         if (amountToApply > 0 && !installment.paymentId) {
+//           installment.paymentId = payment._id;
+//         }
+        
+//         updatedInstallments.push({
+//           installmentNumber: installment.installmentNumber,
+//           appliedAmount: amountToApply
+//         });
+//       }
+//     }
+
+//     // 4. Handle any excess payment
+//     if (remainingAmount > 0) {
+//       // Option 1: Create prepayment/advance
+//       emi.advanceBalance = (emi.advanceBalance || 0) + remainingAmount;
+//       updatedInstallments.push({
+//         type: 'advance',
+//         amount: remainingAmount
+//       });
+//     }
+
+//     // 5. Update EMI status
+//     if (emi.installments.every(i => i.paymentStatus === 'paid')) {
+//       emi.status = 'completed';
+//     }
+
+//     await emi.save({ session });
+
+//     // 6. Update invoice payment status
+//     const invoice = await Invoice.findById(invoiceId).session(session);
+//     if (invoice) {
+//       invoice.paidAmount += Number(amount);
+//       invoice.balanceAmount = Math.max(0, invoice.grandTotal - invoice.paidAmount);
+//       invoice.paymentStatus = 
+//         invoice.balanceAmount <= 0 ? 'paid' : 
+//         invoice.paidAmount > 0 ? 'partial' : 'unpaid';
+//       await invoice.save({ session });
+//     }
+
+//     // 7. Apply accounting entries
+//     await applyEmiAccounting({
+//       organizationId,
+//       branchId,
+//       amount: Number(amount),
+//       paymentId: payment._id,
+//       customerId: emi.customerId,
+//       invoiceId,
+//       paymentMethod,
+//       referenceNumber,
+//       createdBy
+//     }, session);
+
+//     await session.commitTransaction();
+
+//     return {
+//       success: true,
+//       payment,
+//       emi: emi._id,
+//       appliedToInstallments: updatedInstallments,
+//       remainingAdvance: emi.advanceBalance || 0,
+//       message: `Payment of ₹${amount} reconciled successfully`
+//     };
+
+//   } catch (error) {
+//     await session.abortTransaction();
+//     throw error;
+//   } finally {
+//     session.endSession();
+//   }
+// };
+/* ======================================================
+   RECONCILE EXTERNAL PAYMENT (Corrected)
+====================================================== */
 exports.reconcileExternalPayment = async ({
   organizationId,
   branchId,
@@ -598,9 +728,8 @@ exports.reconcileExternalPayment = async ({
       }
     }
 
-    // 4. Handle any excess payment
+    // 4. Handle any excess payment (Advance)
     if (remainingAmount > 0) {
-      // Option 1: Create prepayment/advance
       emi.advanceBalance = (emi.advanceBalance || 0) + remainingAmount;
       updatedInstallments.push({
         type: 'advance',
@@ -615,18 +744,10 @@ exports.reconcileExternalPayment = async ({
 
     await emi.save({ session });
 
-    // 6. Update invoice payment status
-    const invoice = await Invoice.findById(invoiceId).session(session);
-    if (invoice) {
-      invoice.paidAmount += Number(amount);
-      invoice.balanceAmount = Math.max(0, invoice.grandTotal - invoice.paidAmount);
-      invoice.paymentStatus = 
-        invoice.balanceAmount <= 0 ? 'paid' : 
-        invoice.paidAmount > 0 ? 'partial' : 'unpaid';
-      await invoice.save({ session });
-    }
+    // ⚠️ CRITICAL CHANGE: 
+    // We REMOVED the invoice update logic here because applyEmiAccounting does it.
 
-    // 7. Apply accounting entries
+    // 6. Apply accounting entries (Updates Invoice + Ledger + Customer Balance)
     await applyEmiAccounting({
       organizationId,
       branchId,
@@ -646,7 +767,6 @@ exports.reconcileExternalPayment = async ({
       payment,
       emi: emi._id,
       appliedToInstallments: updatedInstallments,
-      remainingAdvance: emi.advanceBalance || 0,
       message: `Payment of ₹${amount} reconciled successfully`
     };
 
@@ -657,7 +777,6 @@ exports.reconcileExternalPayment = async ({
     session.endSession();
   }
 };
-
 /* ======================================================
    AUTO-RECONCILE PAYMENTS WEBHOOK
 ====================================================== */
