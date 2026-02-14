@@ -153,3 +153,117 @@ exports.bulkCreateMasters = catchAsync(async (req, res, next) => {
     return next(error);
   }
 });
+
+/**
+ * @desc Bulk soft-delete multiple master items by IDs
+ * @body { ids: string[] }  — array of master _id values
+ */
+exports.bulkDeleteMasters = catchAsync(async (req, res, next) => {
+  const { ids } = req.body;
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return next(new AppError("Please provide a non-empty array of IDs", 400));
+  }
+
+  // Validate all IDs are valid ObjectIds (optional but recommended)
+  const validIds = ids.filter(id => mongoose.isValidObjectId(id));
+  if (validIds.length !== ids.length) {
+    return next(new AppError("One or more invalid ID formats", 400));
+  }
+
+  const result = await Master.updateMany(
+    {
+      _id: { $in: validIds },
+      organizationId: req.user.organizationId,
+      isActive: true,           // only affect currently active ones (optional)
+    },
+    { isActive: false },
+    { new: true }
+  );
+
+  res.status(200).json({
+    status: "success",
+    message: `Deactivated ${result.modifiedCount} master items`,
+    modifiedCount: result.modifiedCount,
+  });
+});
+
+/**
+ * @desc Bulk update multiple master items
+ * @body {
+ *   ids: string[],               // required
+ *   data: {                      // fields to update (same as single update)
+ *     type?, name?, code?, description?, isActive?, parentId?, metadata?
+ *   }
+ * }
+ */
+exports.bulkUpdateMasters = catchAsync(async (req, res, next) => {
+  const { ids, data } = req.body;
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return next(new AppError("Please provide a non-empty array of IDs", 400));
+  }
+
+  if (!data || Object.keys(data).length === 0) {
+    return next(new AppError("No update data provided", 400));
+  }
+
+  // Validate IDs
+  const validIds = ids.filter(id => mongoose.isValidObjectId(id));
+  if (validIds.length !== ids.length) {
+    return next(new AppError("One or more invalid ID formats", 400));
+  }
+
+  // Prepare update object (same allowed fields logic as single update)
+  const allowedFields = ['type', 'name', 'code', 'description', 'isActive', 'parentId', 'metadata'];
+  const updateObj = {};
+
+  allowedFields.forEach(field => {
+    if (data[field] !== undefined) {
+      if (field === 'type') {
+        updateObj[field] = data[field].toLowerCase();
+      } else if (field === 'name') {
+        updateObj[field] = data[field].trim();
+      } else {
+        updateObj[field] = data[field];
+      }
+    }
+  });
+
+  if (Object.keys(updateObj).length === 0) {
+    return next(new AppError("No valid fields to update", 400));
+  }
+
+  // Note: bulk update with .updateMany() → DOES NOT trigger pre('save') hooks!
+  // → slug won't auto-update if you're changing 'name'
+  // If slug update on name change is critical → you must fetch → update one-by-one (slower)
+
+  const result = await Master.updateMany(
+    {
+      _id: { $in: validIds },
+      organizationId: req.user.organizationId,
+    },
+    { $set: updateObj },
+    { runValidators: true }   // still good to have
+  );
+
+  // If you really need slug regeneration when name changes in bulk:
+  // You would need to do something like this instead (slower but correct slugs):
+  /*
+  const masters = await Master.find({
+    _id: { $in: validIds },
+    organizationId: req.user.organizationId,
+  });
+
+  for (const master of masters) {
+    Object.assign(master, updateObj);
+    await master.save();           // triggers slug hook
+  }
+  */
+
+  res.status(200).json({
+    status: "success",
+    message: `Updated ${result.modifiedCount} master items`,
+    modifiedCount: result.modifiedCount,
+  });
+});
