@@ -360,27 +360,61 @@
 //     data: finalInvoice
 //   });
 // });
-const mongoose = require('mongoose');
-const { z } = require('zod');
+// const mongoose = require('mongoose');
+// const { z } = require('zod');
 
-// --- Models ---
-const Invoice = require('../../accounting/billing/invoice.model');
-const Product = require('../../inventory/core/product.model');
-const Account = require('../../accounting/core/account.model');
-const AccountEntry = require('../../accounting/core/accountEntry.model');
-const Payment = require('../../accounting/billing/payment.model');
-const Customer = require('../../organization/core/customer.model');
+// // --- Models ---
+// const Invoice = require('../../accounting/billing/invoice.model');
+// const Product = require('../../inventory/core/product.model');
+// const Account = require('../../accounting/core/account.model');
+// const AccountEntry = require('../../accounting/core/accountEntry.model');
+// const Payment = require('../../accounting/billing/payment.model');
+// const Customer = require('../../organization/core/customer.model');
 
-// --- Services ---
-const SalesService = require('../../inventory/core/sales.service');
-const salesJournalService = require('../../accounting/journals/salesJournal.service');
-const automationService = require('../../../core/services/automation.service');
-const { emitToOrg } = require('../../../core/services/socket.service');
+// // --- Services ---
+// const SalesService = require('../../inventory/core/sales.service');
+// const salesJournalService = require('../../accounting/journals/salesJournal.service');
+// const automationService = require('../../../core/services/automation.service');
+// const { emitToOrg } = require('../../../core/services/socket.service');
 
-// --- Utils ---
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
-const runInTransaction = require('../../../core/utils/runInTransaction');
+// // --- Utils ---
+// const catchAsync = require('../../../core/utils/catchAsync');
+// const AppError = require('../../../core/utils/appError');
+// const runInTransaction = require('../../../core/utils/runInTransaction');
+
+
+
+
+const mongoose = require("mongoose");
+const { z } = require("zod");
+const { format } = require('fast-csv');
+const { invalidateOpeningBalance } = require("../../core/ledgerCache.service");
+const ProfitCalculator = require('../utils/profitCalculator');
+
+const Invoice = require("../invoice.model");
+const Payment = require("../../payments/payment.model");
+const Product = require("../../../inventory/core/product.model");
+const Customer = require("../../../organization/core/customer.model");
+const AccountEntry = require('../../core/accountEntry.model');
+const Account = require('../../core/account.model');
+const Organization = require("../../../organization/core/organization.model");
+const InvoiceAudit = require('../invoiceAudit.model');
+
+const SalesService = require("../../../inventory/core/sales.service");
+const invoicePDFService = require("../../../_legacy/services/invoicePDFService");
+const StockValidationService = require("../../../_legacy/services/stockValidationService");
+const { createNotification } = require("../../../notification/core/notification.service");
+// CHANGED: Import the whole service to access reverseInvoiceJournal
+const salesJournalService = require('../../../inventory/core/salesJournal.service');
+
+const catchAsync = require("../../../../core/utils/catchAsync");
+const AppError = require("../../../../core/utils/appError");
+const factory = require("../../../../core/utils/handlerFactory");
+const { runInTransaction } = require("../../../../core/utils/runInTransaction");
+const { emitToOrg } = require("../../../../core/utils/_legacy/socket");
+const automationService = require('../../../_legacy/services/automationService');
+
+
 
 // ==============================================================================
 // 1. VALIDATION SCHEMA
