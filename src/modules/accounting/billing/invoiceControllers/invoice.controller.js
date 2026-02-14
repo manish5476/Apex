@@ -414,8 +414,6 @@ const { runInTransaction } = require("../../../../core/utils/runInTransaction");
 const { emitToOrg } = require("../../../../core/utils/_legacy/socket");
 const automationService = require('../../../_legacy/services/automationService');
 
-
-
 // ==============================================================================
 // 1. VALIDATION SCHEMA
 // ==============================================================================
@@ -566,21 +564,25 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
   // 1. Schema Validation
   const validatedData = createInvoiceSchema.safeParse(req.body);
   if (!validatedData.success) {
-    const errorMessage = validatedData.error.errors
-      .map(e => `${e.path.join('.')}: ${e.message}`)
-      .join(', ');
+    // Check if error exists to prevent crash
+    const errors = validatedData.error?.errors || [];
+    const errorMessage = errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ') || "Invalid input data";
     return next(new AppError(errorMessage, 400));
   }
 
+  // Use the validated/coerced data instead of raw req.body
+  // This guarantees 'items' is an array and defaults are applied
+  const { items, ...invoiceData } = validatedData.data;
+
   // 2. Resolve N+1 Problem: Bulk fetch all products once
-  const productIds = req.body.items.map(item => item.productId);
+  const productIds = items.map(item => item.productId);
   const products = await Product.find({
     _id: { $in: productIds },
     organizationId: req.user.organizationId
   }).select('name sku inventory hsnCode category purchasePrice');
 
   // 3. Enrich items and prepare snapshots
-  const enrichedItems = req.body.items.map(item => {
+  const enrichedItems = items.map(item => {
     const product = products.find(p => p._id.toString() === item.productId);
     if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
 
@@ -608,29 +610,29 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
 
   // 4. Mathematical Calculations (Pure Functions)
   const subtotal = enrichedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const shippingCharges = req.body.shippingCharges || 0;
-  const inputDiscount = req.body.discount || 0;
+  const shippingCharges = invoiceData.shippingCharges || 0;
+  const inputDiscount = invoiceData.discount || 0;
   
   const taxAmount = enrichedItems.reduce((sum, item) => {
     const lineTotal = (item.price * item.quantity) - (item.discount || 0);
     return sum + ((item.taxRate || 0) / 100 * lineTotal);
   }, 0);
 
-  const roundOff = req.body.roundOff || 0;
+  const roundOff = invoiceData.roundOff || 0;
   const grandTotal = Math.round(subtotal + shippingCharges + taxAmount - inputDiscount + roundOff);
-  const paidAmount = req.body.paidAmount || 0;
+  const paidAmount = invoiceData.paidAmount || 0;
 
   if (paidAmount > grandTotal) {
     return next(new AppError(`Paid amount (${paidAmount}) cannot exceed Grand Total (${grandTotal})`, 400));
   }
 
-  const invoiceNumber = req.body.invoiceNumber || `INV-${Date.now()}`;
+  const invoiceNumber = invoiceData.invoiceNumber || `INV-${Date.now()}`;
 
   // 5. Atomic Transaction Execution
   await runInTransaction(async (session) => {
     // A. Status & Payment Logic
     let paymentStatus = 'unpaid';
-    let status = req.body.status || 'issued';
+    let status = invoiceData.status || 'issued';
 
     if (paidAmount > 0) {
       paymentStatus = paidAmount >= grandTotal ? 'paid' : 'partial';
@@ -639,7 +641,7 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
 
     // B. Create Invoice Document
     const [invoice] = await Invoice.create([{
-      ...req.body,
+      ...invoiceData,
       invoiceNumber,
       items: enrichedItems,
       subTotal: subtotal,
@@ -650,10 +652,10 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
       status,
       organizationId: req.user.organizationId,
       branchId: req.user.branchId,
-      customerId: req.body.customerId,
+      customerId: invoiceData.customerId,
       createdBy: req.user._id,
-      paymentReference: req.body.paymentReference || req.body.referenceNumber,
-      transactionId: req.body.transactionId
+      paymentReference: invoiceData.paymentReference || invoiceData.referenceNumber,
+      transactionId: invoiceData.transactionId
     }], { session });
 
     // ❌ REMOVED: Stock reduction here caused Double Deduction logic error.
@@ -667,12 +669,12 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
         type: 'inflow',
         customerId: invoice.customerId,
         invoiceId: invoice._id,
-        paymentDate: req.body.invoiceDate || new Date(),
+        paymentDate: invoiceData.invoiceDate || new Date(),
         amount: paidAmount,
-        paymentMethod: req.body.paymentMethod || 'cash',
+        paymentMethod: invoiceData.paymentMethod || 'cash',
         transactionMode: 'auto',
-        referenceNumber: req.body.paymentReference || req.body.referenceNumber,
-        transactionId: req.body.transactionId,
+        referenceNumber: invoiceData.paymentReference || invoiceData.referenceNumber,
+        transactionId: invoiceData.transactionId,
         remarks: `Auto-payment for ${invoice.invoiceNumber}`,
         status: 'completed',
         allocationStatus: 'fully_allocated',
