@@ -87,6 +87,115 @@ async function applyEmiAccounting({
 /* ======================================================
    CREATE EMI PLAN (WITH DOWN PAYMENT ACCOUNTING)
 ====================================================== */
+// exports.createEmiPlan = async ({
+//   organizationId,
+//   branchId,
+//   invoiceId,
+//   createdBy,
+//   downPayment = 0,
+//   numberOfInstallments,
+//   interestRate = 0,
+//   emiStartDate
+// }) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const invoice = await Invoice.findOne({ _id: invoiceId, organizationId }).session(session);
+//     if (!invoice) throw new AppError('Invoice not found', 404);
+
+//     const existing = await EMI.findOne({ invoiceId }).session(session);
+//     if (existing) throw new AppError('EMI already exists for this invoice', 400);
+
+//     // Down payment accounting
+//     if (downPayment > 0) {
+//       const cashAccount = await Account.findOne({ organizationId, code: '1001' }).session(session);
+//       const arAccount = await Account.findOne({ organizationId, code: '1200' }).session(session);
+//       if (!cashAccount || !arAccount) throw new AppError('Missing Cash or AR account', 500);
+
+//       await AccountEntry.insertMany([
+//         {
+//           organizationId,
+//           branchId,
+//           accountId: cashAccount._id,
+//           debit: downPayment,
+//           credit: 0,
+//           description: 'EMI Down Payment',
+//           referenceType: 'emi_down_payment',
+//           referenceId: invoiceId,
+//           createdBy
+//         },
+//         {
+//           organizationId,
+//           branchId,
+//           accountId: arAccount._id,
+//           debit: 0,
+//           credit: downPayment,
+//           description: 'EMI Down Payment',
+//           referenceType: 'emi_down_payment',
+//           referenceId: invoiceId,
+//           createdBy
+//         }
+//       ], { session, ordered: true });
+
+//       invoice.paidAmount += downPayment;
+//       invoice.balanceAmount = Math.round((invoice.grandTotal - invoice.paidAmount) * 100) / 100;
+//       invoice.paymentStatus = invoice.balanceAmount <= 0 ? 'paid' : 'partial';
+//       await invoice.save({ session });
+
+//       await Customer.findByIdAndUpdate(invoice.customerId, { $inc: { outstandingBalance: -downPayment } }, { session });
+//     }
+
+//     // EMI calculation
+//     const balanceAmount = invoice.balanceAmount;
+//     const principalPerInstallment = Math.round((balanceAmount / numberOfInstallments) * 100) / 100;
+
+//     const installments = Array.from({ length: numberOfInstallments }).map((_, i) => {
+//       const dueDate = new Date(emiStartDate);
+//       dueDate.setMonth(dueDate.getMonth() + i);
+//       return {
+//         installmentNumber: i + 1,
+//         dueDate,
+//         principalAmount: principalPerInstallment,
+//         interestAmount: 0,
+//         totalAmount: principalPerInstallment,
+//         paidAmount: 0,
+//         paymentStatus: 'pending'
+//       };
+//     });
+
+//     const emiEndDate = new Date(emiStartDate);
+//     emiEndDate.setMonth(emiEndDate.getMonth() + numberOfInstallments - 1);
+
+//     const [emi] = await EMI.create([{
+//       organizationId,
+//       branchId,
+//       invoiceId,
+//       customerId: invoice.customerId,
+//       totalAmount: invoice.grandTotal,
+//       downPayment,
+//       balanceAmount,
+//       numberOfInstallments,
+//       interestRate,
+//       emiStartDate,
+//       emiEndDate,
+//       installments,
+//       createdBy
+//     }], { session });
+
+//     await session.commitTransaction();
+//     return emi;
+
+//   } catch (err) {
+//     await session.abortTransaction();
+//     throw err;
+//   } finally {
+//     session.endSession();
+//   }
+// };
+/* ======================================================
+   CREATE EMI PLAN (WITH DOWN PAYMENT RECORDING)
+====================================================== */
 exports.createEmiPlan = async ({
   organizationId,
   branchId,
@@ -107,48 +216,48 @@ exports.createEmiPlan = async ({
     const existing = await EMI.findOne({ invoiceId }).session(session);
     if (existing) throw new AppError('EMI already exists for this invoice', 400);
 
-    // Down payment accounting
+    let downPaymentRecord = null;
+
+    // 1. Create a Payment Record for the Down Payment
     if (downPayment > 0) {
-      const cashAccount = await Account.findOne({ organizationId, code: '1001' }).session(session);
-      const arAccount = await Account.findOne({ organizationId, code: '1200' }).session(session);
-      if (!cashAccount || !arAccount) throw new AppError('Missing Cash or AR account', 500);
+      const [payment] = await Payment.create([{
+        organizationId,
+        branchId,
+        type: 'inflow',
+        customerId: invoice.customerId,
+        invoiceId: invoice._id,
+        amount: Number(downPayment),
+        paymentMethod: 'cash', // Default for downpayment, can be made dynamic
+        transactionMode: 'auto',
+        remarks: `Down payment for EMI - Invoice ${invoice.invoiceNumber}`,
+        status: 'completed',
+        createdBy
+      }], { session });
 
-      await AccountEntry.insertMany([
-        {
-          organizationId,
-          branchId,
-          accountId: cashAccount._id,
-          debit: downPayment,
-          credit: 0,
-          description: 'EMI Down Payment',
-          referenceType: 'emi_down_payment',
-          referenceId: invoiceId,
-          createdBy
-        },
-        {
-          organizationId,
-          branchId,
-          accountId: arAccount._id,
-          debit: 0,
-          credit: downPayment,
-          description: 'EMI Down Payment',
-          referenceType: 'emi_down_payment',
-          referenceId: invoiceId,
-          createdBy
-        }
-      ], { session, ordered: true });
+      downPaymentRecord = payment;
 
-      invoice.paidAmount += downPayment;
-      invoice.balanceAmount = Math.round((invoice.grandTotal - invoice.paidAmount) * 100) / 100;
-      invoice.paymentStatus = invoice.balanceAmount <= 0 ? 'paid' : 'partial';
-      await invoice.save({ session });
-
-      await Customer.findByIdAndUpdate(invoice.customerId, { $inc: { outstandingBalance: -downPayment } }, { session });
+      // 2. Apply Accounting for Down Payment (Updates Ledger, Invoice, and Customer)
+      await applyEmiAccounting({
+        organizationId,
+        branchId,
+        amount: Number(downPayment),
+        paymentId: payment._id,
+        customerId: invoice.customerId,
+        invoiceId: invoice._id,
+        paymentMethod: 'cash',
+        referenceNumber: 'DOWN-PAYMENT',
+        createdBy,
+        isDownPayment: true // Custom flag if you want to change description in ledger
+      }, session);
     }
 
-    // EMI calculation
-    const balanceAmount = invoice.balanceAmount;
-    const principalPerInstallment = Math.round((balanceAmount / numberOfInstallments) * 100) / 100;
+    // 3. Re-fetch invoice or use calculated balance after accounting updates it
+    // Note: applyEmiAccounting already updates invoice.paidAmount and balanceAmount
+    const updatedInvoice = await Invoice.findById(invoiceId).session(session);
+    const balanceToFinance = updatedInvoice.balanceAmount;
+
+    // 4. EMI Installment Calculation
+    const principalPerInstallment = Math.round((balanceToFinance / numberOfInstallments) * 100) / 100;
 
     const installments = Array.from({ length: numberOfInstallments }).map((_, i) => {
       const dueDate = new Date(emiStartDate);
@@ -167,6 +276,7 @@ exports.createEmiPlan = async ({
     const emiEndDate = new Date(emiStartDate);
     emiEndDate.setMonth(emiEndDate.getMonth() + numberOfInstallments - 1);
 
+    // 5. Create the EMI Document
     const [emi] = await EMI.create([{
       organizationId,
       branchId,
@@ -174,7 +284,7 @@ exports.createEmiPlan = async ({
       customerId: invoice.customerId,
       totalAmount: invoice.grandTotal,
       downPayment,
-      balanceAmount,
+      balanceAmount: balanceToFinance,
       numberOfInstallments,
       interestRate,
       emiStartDate,
@@ -193,7 +303,6 @@ exports.createEmiPlan = async ({
     session.endSession();
   }
 };
-
 /* ======================================================
    PAY EMI INSTALLMENT
 ====================================================== */
