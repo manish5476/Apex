@@ -87,7 +87,24 @@ meetingSchema.virtual('isInProgress').get(function () {
   const now = new Date();
   return this.startTime <= now && this.endTime >= now;
 });
+// Add validation
+meetingSchema.pre('validate', function(next) {
+  if (this.endTime <= this.startTime) {
+    next(new Error('End time must be after start time'));
+  }
+  
+  if (this.locationType === 'virtual' && !this.virtualLink) {
+    next(new Error('Virtual link required for virtual meetings'));
+  }
+  
+  if (this.isRecurring && !this.recurrenceEndDate) {
+    next(new Error('Recurrence end date required for recurring meetings'));
+  }
+  next();
+});
 
+// Add TTL index for soft-deleted meetings
+meetingSchema.index({ deletedAt: 1 }, { expireAfterSeconds: 7776000 }); // 90 days
 // Indexes
 meetingSchema.index({ organizationId: 1, startTime: 1, status: 1 });
 meetingSchema.index({ organizer: 1, startTime: -1 });

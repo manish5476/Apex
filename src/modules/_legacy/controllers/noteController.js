@@ -52,86 +52,6 @@ exports.uploadMedia = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.createNote = catchAsync(async (req, res, next) => {
-  const { title, content, noteType, startDate, dueDate, priority, category, tags, isMeeting, meetingDetails, participants, visibility, projectId, attachments, relatedNotes, ...otherFields } = req.body;
-
-  // 1. Auto-tagging Logic
-  const extractedTags = extractHashtags(content);
-  const finalTags = [...new Set([...(tags || []), ...extractedTags])];
-
-  let meeting = null;
-  if (isMeeting && meetingDetails) {
-    meeting = await Meeting.create({
-      organizationId: req.user.organizationId,
-      organizer: req.user._id,
-      title: title,
-      description: content,
-      startTime: meetingDetails.startTime || startDate,
-      endTime: meetingDetails.endTime || dueDate,
-      locationType: meetingDetails.locationType,
-      virtualLink: meetingDetails.videoLink,
-      participants: participants?.map((p) => ({
-        user: p.user,
-        role: p.role || "attendee",
-      })),
-    });
-
-    if (participants && participants.length > 0) {
-      const socketPayload = {
-        type: "MEETING_INVITATION",
-        data: {
-          meetingId: meeting._id,
-          title: meeting.title,
-          organizer: req.user.name,
-          startTime: meeting.startTime,
-        },
-      };
-      participants.forEach((participant) => {
-        emitToUser(participant.user, "newMeeting", socketPayload);
-      });
-    }
-  }
-
-  const note = await Note.create({
-    organizationId: req.user.organizationId,
-    owner: req.user._id,
-    title,
-    content,
-    noteType: noteType || (isMeeting ? "meeting" : "note"),
-    startDate: startDate ? new Date(startDate) : undefined,
-    dueDate: dueDate ? new Date(dueDate) : undefined,
-    priority: priority || "medium",
-    category,
-    tags: finalTags,
-    isMeeting: !!isMeeting,
-    meetingDetails: meetingDetails || {},
-    participants: participants || [],
-    visibility: visibility || "private",
-    projectId,
-    attachments: attachments || [],
-    relatedNotes: relatedNotes || [],
-    ...otherFields,
-  });
-
-  if (meeting) {
-    note.meetingId = meeting._id;
-    await note.save();
-  }
-
-  // 2. Bidirectional Linking: Update referenced notes to point back to this new note
-  if (relatedNotes && relatedNotes.length > 0) {
-    await Note.updateMany(
-      { _id: { $in: relatedNotes } },
-      { $addToSet: { relatedNotes: note._id } }
-    );
-  }
-
-  res.status(201).json({
-    status: "success",
-    data: { note, meeting },
-  });
-});
-
 /* ==================== GET NOTES (Enhanced Filter) ==================== */
 exports.getNotes = catchAsync(async (req, res) => {
   const { type, status, priority, category, date, startDate, endDate, tag, search, isPinned, projectId, page = 1, limit = 20, sort = "-createdAt" } = req.query;
@@ -235,7 +155,6 @@ exports.getNoteById = catchAsync(async (req, res, next) => {
     data: { note },
   });
 });
-
 
 /* ==================== UPDATE NOTE ==================== */
 exports.updateNote = catchAsync(async (req, res, next) => {
@@ -369,75 +288,6 @@ exports.getKnowledgeGraph = catchAsync(async (req, res) => {
   });
 
   res.status(200).json({ status: 'success', data: { nodes, links } });
-});
-
-/* ==================== CALENDAR VIEW (Optimized) ==================== */
-exports.getCalendarView = catchAsync(async (req, res) => {
-  const { start, end } = req.query;
-  const startDate = start ? new Date(start) : new Date(new Date().setDate(1));
-  const endDate = end ? new Date(end) : new Date(new Date().setMonth(new Date().getMonth() + 1));
-
-  // Run Queries in Parallel
-  const [notes, meetings] = await Promise.all([
-    Note.find({
-      organizationId: req.user.organizationId,
-      isDeleted: false,
-      $or: [{ owner: req.user._id }, { sharedWith: req.user._id }, { "participants.user": req.user._id }],
-      $or: [
-        { startDate: { $gte: startDate, $lte: endDate } },
-        { dueDate: { $gte: startDate, $lte: endDate } },
-      ],
-    }).select("title noteType startDate dueDate priority status isMeeting participants").lean(),
-
-    Meeting.find({
-      organizationId: req.user.organizationId,
-      startTime: { $gte: startDate, $lte: endDate },
-      status: { $ne: "cancelled" },
-      $or: [{ organizer: req.user._id }, { "participants.user": req.user._id }],
-    }).select("title startTime endTime status participants").lean()
-  ]);
-
-  const calendarEvents = [];
-
-  // Process Notes
-  notes.forEach((note) => {
-    if (note.isMeeting && note.meetingId) return; // Skip meeting notes, we'll use actual meetings
-
-    calendarEvents.push({
-      id: note._id.toString(),
-      title: note.title,
-      start: note.startDate || note.createdAt,
-      end: note.dueDate || note.startDate,
-      allDay: !note.startDate?.getHours(), // Guess all day if no specific time
-      extendedProps: {
-        type: 'note',
-        noteType: note.noteType,
-        priority: note.priority,
-        status: note.status,
-      },
-      color: getEventColor(note.noteType, note.priority),
-      textColor: "#ffffff",
-    });
-  });
-
-  // Process Meetings
-  meetings.forEach((meeting) => {
-    calendarEvents.push({
-      id: `meeting_${meeting._id}`,
-      title: `📅 ${meeting.title}`,
-      start: meeting.startTime,
-      end: meeting.endTime,
-      extendedProps: {
-        type: 'meeting',
-        status: meeting.status,
-        meetingId: meeting._id
-      },
-      color: "#4f46e5",
-      textColor: "#ffffff",
-    });
-  });
-
-  res.status(200).json({ status: "success", data: { events: calendarEvents } });
 });
 
 exports.getNotesForMonth = catchAsync(async (req, res) => {
@@ -671,167 +521,7 @@ exports.createFromTemplate = catchAsync(async (req, res, next) => {
   });
 });
 
-/* ==================== CREATE MEETING ==================== */
-exports.createMeeting = catchAsync(async (req, res, next) => {
-  const { title, description, agenda, startTime, endTime, locationType, virtualLink, participants, recurrencePattern, ...otherFields } = req.body;
-  const meeting = await Meeting.create({
-    organizationId: req.user.organizationId,
-    organizer: req.user._id,
-    title,
-    description,
-    agenda,
-    startTime: new Date(startTime),
-    endTime: new Date(endTime),
-    locationType,
-    virtualLink,
-    participants: participants?.map((p) => ({
-      user: p.user,
-      role: p.role || "attendee",
-      invitationStatus: "pending",
-    })),
-    recurrencePattern,
-    ...otherFields,
-  });
 
-  const note = await Note.create({
-    organizationId: req.user.organizationId,
-    owner: req.user._id,
-    title: `Meeting: ${title}`,
-    content: agenda || description,
-    noteType: "meeting",
-    isMeeting: true,
-    startDate: startTime,
-    dueDate: endTime,
-    meetingId: meeting._id,
-    participants: participants || [],
-    visibility: "team",
-  });
-
-  if (participants && participants.length > 0) {
-    const socketPayload = {
-      type: "MEETING_INVITATION",
-      data: {
-        meetingId: meeting._id,
-        title: meeting.title,
-        organizer: req.user.name,
-        startTime: meeting.startTime,
-        virtualLink: meeting.virtualLink,
-      },
-    };
-
-    participants.forEach((participant) => {
-      emitToUser(participant.user, "meetingInvitation", socketPayload);
-    });
-  }
-
-  res.status(201).json({
-    status: "success",
-    data: { meeting, note },
-  });
-});
-
-/* ==================== GET USER MEETINGS ==================== */
-exports.getUserMeetings = catchAsync(async (req, res) => {
-  const { status, startDate, endDate, limit = 50 } = req.query;
-  const filter = {
-    organizationId: req.user.organizationId,
-    $or: [{ organizer: req.user._id }, { "participants.user": req.user._id }],
-  };
-  if (status) filter.status = status;
-  if (startDate) filter.startTime = { $gte: new Date(startDate) };
-  if (endDate) filter.endTime = { $lte: new Date(endDate) };
-
-  const meetings = await Meeting.find(filter).sort({ startTime: 1 }).limit(parseInt(limit)).populate("organizer", "name email avatar").populate("participants.user", "name email avatar").lean();
-  res.status(200).json({
-    status: "success",
-    data: { meetings },
-  });
-});
-
-/* ==================== UPDATE MEETING STATUS ==================== */
-exports.updateMeetingStatus = catchAsync(async (req, res, next) => {
-  const { meetingId } = req.params;
-  const { status, actionItems, minutes } = req.body;
-
-  const meeting = await Meeting.findOneAndUpdate(
-    {
-      _id: meetingId,
-      $or: [
-        { organizer: req.user._id },
-        {
-          "participants.user": req.user._id,
-          "participants.role": { $in: ["organizer", "presenter"] },
-        },
-      ],
-    },
-    {
-      $set: {
-        ...(status && { status }),
-        ...(minutes && { minutes }),
-        ...(actionItems && { actionItems }),
-      },
-    },
-    { new: true, runValidators: true },
-  );
-
-  if (!meeting) {
-    return next(
-      new AppError("Meeting not found or insufficient permissions", 404),
-    );
-  }
-
-  if (minutes) {
-    await Note.findOneAndUpdate(
-      { meetingId: meeting._id },
-      { content: minutes, summary: minutes.substring(0, 200) + "..." },
-    );
-  }
-
-  res.status(200).json({
-    status: "success",
-    data: { meeting },
-  });
-});
-
-/* ==================== MEETING RSVP ==================== */
-exports.meetingRSVP = catchAsync(async (req, res, next) => {
-  const { meetingId } = req.params;
-  const { response } = req.body;
-
-  const meeting = await Meeting.findOne({
-    _id: meetingId,
-    "participants.user": req.user._id,
-  });
-
-  if (!meeting) {
-    return next(new AppError("Meeting not found or you are not invited", 404));
-  }
-
-  const participantIndex = meeting.participants.findIndex(
-    (p) => p.user.toString() === req.user._id.toString(),
-  );
-
-  if (participantIndex > -1) {
-    meeting.participants[participantIndex].invitationStatus = response;
-    meeting.participants[participantIndex].responseAt = new Date();
-    await meeting.save();
-  }
-
-  emitToUser(meeting.organizer, "meetingRSVP", {
-    type: "MEETING_RSVP",
-    data: {
-      meetingId: meeting._id,
-      userId: req.user._id,
-      userName: req.user.name,
-      response,
-    },
-  });
-
-  res.status(200).json({
-    status: "success",
-    message: `You have ${response} the meeting`,
-  });
-});
 
 // Additional controller methods for the new routes
 
@@ -1460,353 +1150,605 @@ exports.linkNote = catchAsync(async (req, res, next) => {
   });
   res.status(200).json({ status: 'success', data: { note } });
 });
-module.exports = exports;
 
 
+/* ==================== CREATE MEETING ==================== */
 
-// /* ==================== DELETE NOTE ==================== */
-// exports.deleteNote = catchAsync(async (req, res, next) => {
-//   const note = await Note.findOneAndUpdate(
+// Fix createMeeting with proper error handling and validation
+exports.createMeeting = catchAsync(async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
+    const { title, description, agenda, startTime, endTime, participants } = req.body;
+    
+    // Validate participants exist
+    if (participants?.length) {
+      const existingUsers = await User.find({ 
+        _id: { $in: participants.map(p => p.user) },
+        organizationId: req.user.organizationId
+      }).session(session);
+      
+      if (existingUsers.length !== participants.length) {
+        throw new AppError('Some participants not found', 400);
+      }
+    }
+    
+    const meeting = await Meeting.create([{
+      organizationId: req.user.organizationId,
+      organizer: req.user._id,
+      title,
+      description,
+      agenda,
+      startTime: new Date(startTime),
+      endTime: new Date(endTime),
+      participants: participants?.map(p => ({
+        user: p.user,
+        role: p.role || "attendee",
+        invitationStatus: "pending",
+      }))
+    }], { session });
+    
+    const note = await Note.create([{
+      organizationId: req.user.organizationId,
+      owner: req.user._id,
+      title: `Meeting: ${title}`,
+      content: agenda || description,
+      noteType: "meeting",
+      isMeeting: true,
+      startDate: startTime,
+      dueDate: endTime,
+      meetingId: meeting[0]._id,
+      participants: participants || [],
+      visibility: "team",
+    }], { session });
+    
+    await session.commitTransaction();
+    
+    // Batch socket emissions
+    if (participants?.length) {
+      const socketPayload = {
+        type: "MEETING_INVITATION",
+        data: {
+          meetingId: meeting[0]._id,
+          title: meeting[0].title,
+          organizer: req.user.name,
+          startTime: meeting[0].startTime,
+          virtualLink: meeting[0].virtualLink,
+        },
+      };
+      
+      // Use batch emit if available
+      emitToUsers(participants.map(p => p.user), "meetingInvitation", socketPayload);
+    }
+    
+    res.status(201).json({
+      status: "success",
+      data: { meeting: meeting[0], note: note[0] },
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    next(error);
+  } finally {
+    session.endSession();
+  }
+});
+
+
+/* ==================== CREATE MEETING ==================== */
+exports.createMeeting = catchAsync(async (req, res, next) => {
+  const { 
+    title, description, agenda, startTime, endTime, 
+    locationType, virtualLink, participants, recurrencePattern, 
+    ...otherFields 
+  } = req.body;
+
+  // 1. Create the Meeting
+  const meeting = await Meeting.create({
+    organizationId: req.user.organizationId,
+    organizer: req.user._id,
+    title,
+    description,
+    agenda,
+    startTime: new Date(startTime),
+    endTime: new Date(endTime),
+    locationType,
+    virtualLink,
+    participants: participants?.map((p) => ({
+      user: p.user,
+      role: p.role || "attendee",
+      invitationStatus: "pending",
+    })),
+    recurrencePattern,
+    ...otherFields,
+  });
+
+  // 2. Create the Associated Note (Agenda/Minutes)
+  const note = await Note.create({
+    organizationId: req.user.organizationId,
+    owner: req.user._id,
+    title: `Meeting: ${title}`,
+    content: agenda || description || "No agenda provided.",
+    noteType: "meeting",
+    isMeeting: true,
+    meetingId: meeting._id, // Link to Meeting
+    startDate: startTime,
+    dueDate: endTime,
+    participants: participants || [],
+    visibility: "team",
+  });
+
+  // 3. Update Meeting with Note Reference (Bi-directional link)
+  meeting.meetingNotes = note._id;
+  await meeting.save();
+
+  // 4. Socket Notifications
+  if (participants && participants.length > 0) {
+    const socketPayload = {
+      type: "MEETING_INVITATION",
+      data: {
+        meetingId: meeting._id,
+        title: meeting.title,
+        organizer: req.user.name,
+        startTime: meeting.startTime,
+        virtualLink: meeting.virtualLink,
+      },
+    };
+
+    participants.forEach((participant) => {
+      // emitToUser(participant.user, "meetingInvitation", socketPayload);
+    });
+  }
+
+  res.status(201).json({
+    status: "success",
+    data: { meeting, note },
+  });
+});
+
+/* ==================== GET USER MEETINGS ==================== */
+exports.getUserMeetings = catchAsync(async (req, res) => {
+  const { status, startDate, endDate, limit = 50 } = req.query;
+  const filter = {
+    organizationId: req.user.organizationId,
+    $or: [{ organizer: req.user._id }, { "participants.user": req.user._id }],
+  };
+  
+  if (status) filter.status = status;
+  if (startDate) filter.startTime = { $gte: new Date(startDate) };
+  if (endDate) filter.endTime = { $lte: new Date(endDate) };
+
+  const meetings = await Meeting.find(filter)
+    .sort({ startTime: 1 })
+    .limit(parseInt(limit))
+    .populate("organizer", "name email avatar")
+    .populate("participants.user", "name email avatar")
+    .lean();
+
+  res.status(200).json({
+    status: "success",
+    data: { meetings },
+  });
+});
+
+/* ==================== UPDATE MEETING STATUS ==================== */
+exports.updateMeetingStatus = catchAsync(async (req, res, next) => {
+  const { meetingId } = req.params;
+  const { status, actionItems, minutes } = req.body;
+
+  const meeting = await Meeting.findOneAndUpdate(
+    {
+      _id: meetingId,
+      $or: [
+        { organizer: req.user._id },
+        {
+          "participants.user": req.user._id,
+          "participants.role": { $in: ["organizer", "presenter"] },
+        },
+      ],
+    },
+    {
+      $set: {
+        ...(status && { status }),
+        ...(minutes && { minutes }),
+        ...(actionItems && { actionItems }),
+      },
+    },
+    { new: true, runValidators: true }
+  );
+
+  if (!meeting) {
+    return next(
+      new AppError("Meeting not found or insufficient permissions", 404),
+    );
+  }
+
+  // Sync minutes to the associated Note
+  if (minutes) {
+    // Note: We use the meetingId field we added to the Note schema in Phase 1
+    await Note.findOneAndUpdate(
+      { meetingId: meeting._id },
+      { 
+        content: minutes, 
+        summary: minutes.length > 200 ? minutes.substring(0, 200) + "..." : minutes 
+      }
+    );
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: { meeting },
+  });
+});
+
+/* ==================== MEETING RSVP ==================== */
+exports.meetingRSVP = catchAsync(async (req, res, next) => {
+  const { meetingId } = req.params;
+  const { response } = req.body; // 'accepted', 'declined', 'tentative'
+
+  const meeting = await Meeting.findOne({
+    _id: meetingId,
+    "participants.user": req.user._id,
+  });
+
+  if (!meeting) {
+    return next(new AppError("Meeting not found or you are not invited", 404));
+  }
+
+  const participantIndex = meeting.participants.findIndex(
+    (p) => p.user.toString() === req.user._id.toString(),
+  );
+
+  if (participantIndex > -1) {
+    meeting.participants[participantIndex].invitationStatus = response;
+    meeting.participants[participantIndex].responseAt = new Date();
+    await meeting.save();
+  }
+
+  // Notify Organizer
+  // emitToUser(meeting.organizer, "meetingRSVP", {
+  //   type: "MEETING_RSVP",
+  //   data: {
+  //     meetingId: meeting._id,
+  //     userId: req.user._id,
+  //     userName: req.user.name,
+  //     response,
+  //   },
+  // });
+
+  res.status(200).json({
+    status: "success",
+    message: `You have ${response} the meeting`,
+  });
+});
+
+/* ==================== GET CALENDAR VIEW ==================== */
+exports.getCalendarView = catchAsync(async (req, res) => {
+  const { start, end } = req.query;
+  // Robust date parsing to prevent invalid date errors
+  const startDate = start && !isNaN(Date.parse(start)) ? new Date(start) : new Date(new Date().setDate(1));
+  const endDate = end && !isNaN(Date.parse(end)) ? new Date(end) : new Date(new Date().setMonth(new Date().getMonth() + 1));
+
+  // Run Queries in Parallel
+  const [notes, meetings] = await Promise.all([
+    Note.find({
+      organizationId: req.user.organizationId,
+      isDeleted: false,
+      // Filter out shadow notes created by meetings to prevent duplicates
+      $or: [
+        { owner: req.user._id }, 
+        { sharedWith: req.user._id }, 
+        { "participants.user": req.user._id }
+      ],
+      $or: [
+        { startDate: { $gte: startDate, $lte: endDate } },
+        { dueDate: { $gte: startDate, $lte: endDate } },
+      ],
+    }).select("title noteType startDate dueDate priority status isMeeting meetingId").lean(),
+
+    Meeting.find({
+      organizationId: req.user.organizationId,
+      startTime: { $gte: startDate, $lte: endDate },
+      status: { $ne: "cancelled" },
+      $or: [{ organizer: req.user._id }, { "participants.user": req.user._id }],
+    }).select("title startTime endTime status").lean()
+  ]);
+
+  const calendarEvents = [];
+
+  // Process Notes
+  notes.forEach((note) => {
+    // Skip notes that are just shadows of meetings (handled by Meeting query)
+    if (note.isMeeting && note.meetingId) return; 
+
+    calendarEvents.push({
+      id: note._id.toString(),
+      title: note.title,
+      start: note.startDate || note.createdAt,
+      end: note.dueDate || note.startDate, // Fallback if no due date
+      allDay: !note.startDate, // If no specific start time, treat as all day task
+      extendedProps: {
+        type: 'note',
+        noteType: note.noteType,
+        priority: note.priority,
+        status: note.status,
+      },
+      color: note.priority === 'urgent' ? '#ef4444' : '#10b981', // Red for urgent, Green for others
+    });
+  });
+
+  // Process Meetings
+  meetings.forEach((meeting) => {
+    calendarEvents.push({
+      id: `meeting_${meeting._id}`,
+      title: `📅 ${meeting.title}`,
+      start: meeting.startTime,
+      end: meeting.endTime,
+      extendedProps: {
+        type: 'meeting',
+        status: meeting.status,
+        meetingId: meeting._id
+      },
+      color: "#4f46e5", // Indigo for meetings
+    });
+  });
+
+  res.status(200).json({ status: "success", data: { events: calendarEvents } });
+});
+
+/* ==================== CREATE NOTE (With Meeting Option) ==================== */
+exports.createNote = catchAsync(async (req, res, next) => {
+  const { 
+    title, content, noteType, startDate, dueDate, 
+    priority, category, tags, isMeeting, meetingDetails, 
+    participants, visibility, projectId, attachments, 
+    relatedNotes, ...otherFields 
+  } = req.body;
+
+  let meeting = null;
+
+  // 1. Create Meeting if requested
+  if (isMeeting && meetingDetails) {
+    meeting = await Meeting.create({
+      organizationId: req.user.organizationId,
+      organizer: req.user._id,
+      title: title,
+      description: content,
+      startTime: meetingDetails.startTime || startDate || new Date(),
+      endTime: meetingDetails.endTime || dueDate || new Date(Date.now() + 3600000), // Default 1 hour
+      locationType: meetingDetails.locationType,
+      virtualLink: meetingDetails.videoLink,
+      participants: participants?.map((p) => ({
+        user: p.user,
+        role: p.role || "attendee",
+      })),
+    });
+    
+    // Notify participants
+    // if (participants && participants.length > 0) { ... socket logic ... }
+  }
+
+  // 2. Create Note
+  const note = await Note.create({
+    organizationId: req.user.organizationId,
+    owner: req.user._id,
+    title,
+    content,
+    noteType: noteType || (isMeeting ? "meeting" : "note"),
+    startDate: startDate ? new Date(startDate) : undefined,
+    dueDate: dueDate ? new Date(dueDate) : undefined,
+    priority: priority || "medium",
+    category,
+    tags: tags, 
+    isMeeting: !!isMeeting,
+    meetingId: meeting ? meeting._id : undefined, // Link to meeting if created
+    meetingDetails: meetingDetails || {},
+    participants: participants || [],
+    visibility: visibility || "private",
+    projectId,
+    attachments: attachments || [],
+    relatedNotes: relatedNotes || [],
+    ...otherFields,
+  });
+
+  // 3. Link Meeting back to Note (Bi-directional link)
+  if (meeting) {
+    meeting.meetingNotes = note._id;
+    await meeting.save();
+  }
+
+  // 4. Update referenced notes (Bidirectional linking for relatedNotes)
+  if (relatedNotes && relatedNotes.length > 0) {
+    await Note.updateMany(
+      { _id: { $in: relatedNotes } },
+      { $addToSet: { relatedNotes: note._id } }
+    );
+  }
+
+  res.status(201).json({
+    status: "success",
+    data: { note, meeting },
+  });
+});
+
+// /* ==================== GET USER MEETINGS ==================== */
+// exports.getUserMeetings = catchAsync(async (req, res) => {
+//   const { status, startDate, endDate, limit = 50 } = req.query;
+//   const filter = {
+//     organizationId: req.user.organizationId,
+//     $or: [{ organizer: req.user._id }, { "participants.user": req.user._id }],
+//   };
+//   if (status) filter.status = status;
+//   if (startDate) filter.startTime = { $gte: new Date(startDate) };
+//   if (endDate) filter.endTime = { $lte: new Date(endDate) };
+
+//   const meetings = await Meeting.find(filter).sort({ startTime: 1 }).limit(parseInt(limit)).populate("organizer", "name email avatar").populate("participants.user", "name email avatar").lean();
+//   res.status(200).json({
+//     status: "success",
+//     data: { meetings },
+//   });
+// });
+
+// /* ==================== UPDATE MEETING STATUS ==================== */
+// exports.updateMeetingStatus = catchAsync(async (req, res, next) => {
+//   const { meetingId } = req.params;
+//   const { status, actionItems, minutes } = req.body;
+
+//   const meeting = await Meeting.findOneAndUpdate(
 //     {
-//       _id: req.params.id,
-//       owner: req.user._id,
+//       _id: meetingId,
+//       $or: [
+//         { organizer: req.user._id },
+//         {
+//           "participants.user": req.user._id,
+//           "participants.role": { $in: ["organizer", "presenter"] },
+//         },
+//       ],
 //     },
 //     {
-//       isDeleted: true,
-//       deletedAt: new Date(),
-//       deletedBy: req.user._id,
+//       $set: {
+//         ...(status && { status }),
+//         ...(minutes && { minutes }),
+//         ...(actionItems && { actionItems }),
+//       },
 //     },
-//     { new: true },
+//     { new: true, runValidators: true },
 //   );
 
-//   if (!note) {
+//   if (!meeting) {
 //     return next(
-//       new AppError(
-//         "Note not found or you do not have permission to delete it",
-//         404,
-//       ),
+//       new AppError("Meeting not found or insufficient permissions", 404),
 //     );
 //   }
 
-//   res.status(204).json({
-//     status: "success",
-//     data: null,
-//   });
-// });
-
-// /* ==================== SEARCH NOTES ==================== */
-// exports.searchNotes = catchAsync(async (req, res) => {
-//   const query = req.query.q?.trim();
-//   if (!query) {
-//     return res.status(200).json({
-//       status: 'success',
-//       data: { notes: [] }
-//     });
+//   if (minutes) {
+//     await Note.findOneAndUpdate(
+//       { meetingId: meeting._id },
+//       { content: minutes, summary: minutes.substring(0, 200) + "..." },
+//     );
 //   }
-
-//   const notes = await Note.find(
-//     {
-//       $text: { $search: query },
-//       organizationId: req.user.organizationId,
-//       isDeleted: false,
-//       $or: [
-//         { owner: req.user._id },
-//         { sharedWith: req.user._id },
-//         { visibility: 'organization' }
-//       ]
-//     },
-//     {
-//       score: { $meta: 'textScore' }
-//     }
-//   )
-//     .sort({
-//       score: { $meta: 'textScore' },
-//       updatedAt: -1
-//     })
-//     .populate('owner', 'name email avatar')
-//     .lean();
 
 //   res.status(200).json({
-//     status: 'success',
-//     data: { notes }
+//     status: "success",
+//     data: { meeting },
 //   });
 // });
-// /* ==================== CALENDAR VIEW ==================== */
+
+// /* ==================== MEETING RSVP ==================== */
+// exports.meetingRSVP = catchAsync(async (req, res, next) => {
+//   const { meetingId } = req.params;
+//   const { response } = req.body;
+
+//   const meeting = await Meeting.findOne({
+//     _id: meetingId,
+//     "participants.user": req.user._id,
+//   });
+
+//   if (!meeting) {
+//     return next(new AppError("Meeting not found or you are not invited", 404));
+//   }
+
+//   const participantIndex = meeting.participants.findIndex(
+//     (p) => p.user.toString() === req.user._id.toString(),
+//   );
+
+//   if (participantIndex > -1) {
+//     meeting.participants[participantIndex].invitationStatus = response;
+//     meeting.participants[participantIndex].responseAt = new Date();
+//     await meeting.save();
+//   }
+
+//   emitToUser(meeting.organizer, "meetingRSVP", {
+//     type: "MEETING_RSVP",
+//     data: {
+//       meetingId: meeting._id,
+//       userId: req.user._id,
+//       userName: req.user.name,
+//       response,
+//     },
+//   });
+
+//   res.status(200).json({
+//     status: "success",
+//     message: `You have ${response} the meeting`,
+//   });
+// });
+
+// /* ==================== CALENDAR VIEW (Optimized) ==================== */
 // exports.getCalendarView = catchAsync(async (req, res) => {
-//   const { start, end, view = "month" } = req.query;
+//   const { start, end } = req.query;
 //   const startDate = start ? new Date(start) : new Date(new Date().setDate(1));
 //   const endDate = end ? new Date(end) : new Date(new Date().setMonth(new Date().getMonth() + 1));
-//   if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-//     return res.status(400).json({ status: 'fail', message: 'Invalid start or end date format' });
-//   }
-//   const filter = {
-//     organizationId: req.user.organizationId,
-//     isDeleted: false,
-//     $or: [
-//       { owner: req.user._id },
-//       { sharedWith: req.user._id },
-//       { "participants.user": req.user._id },
-//     ],
-//     $or: [
-//       { startDate: { $gte: startDate, $lte: endDate } },
-//       { dueDate: { $gte: startDate, $lte: endDate } },
-//       { createdAt: { $gte: startDate, $lte: endDate } },
-//     ],
-//   };
 
-//   // 2. FIX: Added 'createdAt' to select string
-//   const notes = await Note.find(filter)
-//     .select("title noteType startDate dueDate priority status isMeeting participants createdAt")
-//     .populate("participants.user", "name")
-//     .lean();
+//   // Run Queries in Parallel
+//   const [notes, meetings] = await Promise.all([
+//     Note.find({
+//       organizationId: req.user.organizationId,
+//       isDeleted: false,
+//       $or: [{ owner: req.user._id }, { sharedWith: req.user._id }, { "participants.user": req.user._id }],
+//       $or: [
+//         { startDate: { $gte: startDate, $lte: endDate } },
+//         { dueDate: { $gte: startDate, $lte: endDate } },
+//       ],
+//     }).select("title noteType startDate dueDate priority status isMeeting participants").lean(),
 
-//   const calendarEvents = notes.map((note) => {
-//     const startObj = note.startDate || note.dueDate || note.createdAt || new Date();
-//     const start = new Date(startObj);
-//     // Default duration: 1 hour if no end date
-//     const end = note.dueDate
-//       ? new Date(note.dueDate)
-//       : new Date(start.getTime() + 60 * 60 * 1000);
-//     return {
+//     Meeting.find({
+//       organizationId: req.user.organizationId,
+//       startTime: { $gte: startDate, $lte: endDate },
+//       status: { $ne: "cancelled" },
+//       $or: [{ organizer: req.user._id }, { "participants.user": req.user._id }],
+//     }).select("title startTime endTime status participants").lean()
+//   ]);
+
+//   const calendarEvents = [];
+
+//   // Process Notes
+//   notes.forEach((note) => {
+//     if (note.isMeeting && note.meetingId) return; // Skip meeting notes, we'll use actual meetings
+
+//     calendarEvents.push({
 //       id: note._id.toString(),
 //       title: note.title,
-//       start: start,
-//       end: end,
-//       allDay: !note.startDate && !note.dueDate,
+//       start: note.startDate || note.createdAt,
+//       end: note.dueDate || note.startDate,
+//       allDay: !note.startDate?.getHours(), // Guess all day if no specific time
 //       extendedProps: {
+//         type: 'note',
 //         noteType: note.noteType,
 //         priority: note.priority,
 //         status: note.status,
-//         isMeeting: note.isMeeting,
-//         participants: note.participants?.map((p) => p.user?.name).filter(Boolean),
 //       },
 //       color: getEventColor(note.noteType, note.priority),
 //       textColor: "#ffffff",
-//     };
+//     });
 //   });
-//   const meetings = await Meeting.find({
-//     organizationId: req.user.organizationId,
-//     startTime: { $gte: startDate, $lte: endDate },
-//     status: { $ne: "cancelled" },
-//     $or: [{ organizer: req.user._id }, { "participants.user": req.user._id }],
-//   })
-//     .select("title startTime endTime status participants")
-//     .populate("participants.user", "name")
-//     .lean();
+
+//   // Process Meetings
 //   meetings.forEach((meeting) => {
-//     const isDuplicate = calendarEvents.some(
-//       e => e.extendedProps?.meetingId === meeting._id.toString()
-//     );
-
-//     if (!isDuplicate) {
-//       calendarEvents.push({
-//         id: `meeting_${meeting._id}`,
-//         title: `📅 ${meeting.title}`,
-//         start: meeting.startTime,
-//         end: meeting.endTime,
-//         allDay: false,
-//         extendedProps: {
-//           noteType: "meeting",
-//           isMeeting: true,
-//           meetingId: meeting._id,
-//           status: meeting.status,
-//           participants: meeting.participants?.map((p) => p.user?.name).filter(Boolean),
-//         },
-//         color: "#4f46e5",
-//         textColor: "#ffffff",
-//       });
-//     }
-//   });
-
-//   res.status(200).json({
-//     status: "success",
-//     data: { events: calendarEvents },
-//   });
-// });
-
-// exports.getHeatMapData = catchAsync(async (req, res) => {
-//   const { startDate, endDate, userId } = req.query;
-
-//   const targetUserId = userId || req.user._id;
-//   const start = startDate ? new Date(startDate) : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
-//   const end = endDate ? new Date(endDate) : new Date();
-
-//   const heatMapData = await Note.aggregate([
-//     {
-//       $match: {
-//         // FIX: Added 'new'
-//         owner: new mongoose.Types.ObjectId(targetUserId),
-//         isDeleted: false,
-//         createdAt: { $gte: start, $lte: end },
+//     calendarEvents.push({
+//       id: `meeting_${meeting._id}`,
+//       title: `📅 ${meeting.title}`,
+//       start: meeting.startTime,
+//       end: meeting.endTime,
+//       extendedProps: {
+//         type: 'meeting',
+//         status: meeting.status,
+//         meetingId: meeting._id
 //       },
-//     },
-//     {
-//       $group: {
-//         _id: {
-//           year: { $year: "$createdAt" },
-//           month: { $month: "$createdAt" },
-//           day: { $dayOfMonth: "$createdAt" },
-//         },
-//         count: { $sum: 1 },
-//       },
-//     },
-//     {
-//       $project: {
-//         _id: 0,
-//         date: {
-//           $dateFromParts: {
-//             year: "$_id.year",
-//             month: "$_id.month",
-//             day: "$_id.day",
-//           },
-//         },
-//         count: 1,
-//       },
-//     },
-//     { $sort: { date: 1 } },
-//   ]);
-
-//   // Format array into object map { "2023-01-01": { count: 5, intensity: 0.5 } }
-//   const formattedData = heatMapData.reduce((acc, item) => {
-//     const dateStr = item.date.toISOString().split("T")[0];
-//     acc[dateStr] = {
-//       count: item.count,
-//       intensity: Math.min(item.count / 10, 1),
-//     };
-//     return acc;
-//   }, {});
-
-//   res.status(200).json({
-//     status: "success",
-//     data: {
-//       heatMap: formattedData,
-//       stats: { totalDays: Object.keys(formattedData).length },
-//     },
+//       color: "#4f46e5",
+//       textColor: "#ffffff",
+//     });
 //   });
-// });
-// /* ==================== NEW: LINKING ==================== */
-// exports.linkNote = catchAsync(async (req, res, next) => {
-//   const { id } = req.params;
-//   const { targetNoteId } = req.body;
 
-//   const note = await Note.findOneAndUpdate(
-//     { _id: id, owner: req.user._id },
-//     { $addToSet: { relatedNotes: targetNoteId } }, // addToSet prevents duplicates
-//     { new: true }
-//   ).populate('relatedNotes', 'title status');
-
-//   res.status(200).json({ status: 'success', data: { note } });
+//   res.status(200).json({ status: "success", data: { events: calendarEvents } });
 // });
 
-
-// /* ==================== MEDIA UPLOAD ==================== */
-// exports.uploadMedia = catchAsync(async (req, res, next) => {
-//   if (!req.files || !req.files.length) { return next(new AppError('Please upload at least one file.', 400)); }
-//   const uploadedFiles = [];
-//   for (const file of req.files) {
-//     if (!file.mimetype.startsWith('image/')) { return next(new AppError('Only image uploads are supported.', 400)) }
-//     const uploaded = await uploadImage(file.buffer, 'notes');
-//     uploadedFiles.push({ url: uploaded.url || uploaded, publicId: uploaded.publicId || null, fileType: 'image', fileName: file.originalname, size: file.size });
-//   }
-//   res.status(201).json({
-//     status: 'success',
-//     message: 'Media uploaded successfully',
-//     data: uploadedFiles
-//   });
-// });
-
-// /* ==================== GET NOTE BY ID ==================== */
-// exports.getNoteById = catchAsync(async (req, res, next) => {
-//   const note = await Note.findOne({
-//     _id: req.params.id,
-//     isDeleted: false,
-//     $or: [
-//       { owner: req.user._id },
-//       { sharedWith: req.user._id },
-//       { visibility: "organization" },
-//     ],
-//   })
-//     .populate("owner", "name email avatar")
-//     .populate("participants.user", "name email avatar")
-//     .populate("projectId", "name");
-
-//   if (!note) {
-//     return next(
-//       new AppError(
-//         "Note not found or you do not have permission to view it",
-//         404,
-//       ),
-//     );
-//   }
-
-//   note.logActivity("viewed", req.user._id);
-//   await note.save();
-
-//   res.status(200).json({
-//     status: "success",
-//     data: { note },
-//   });
-// });
-// /* ==================== GET NOTES ==================== */
-// exports.getNotes = catchAsync(async (req, res) => {
-//   const { type, status, priority, category, date, startDate, endDate, tag, search, page = 1, limit = 20, sort = "-createdAt", } = req.query;
-
-//   const filter = {
-//     organizationId: req.user.organizationId,
-//     isDeleted: false,
-//     $or: [
-//       { owner: req.user._id },
-//       { sharedWith: req.user._id },
-//       { visibility: "organization" },
-//     ],
-//   };
-
-//   if (date) {
-//     filter.$or = [
-//       { startDate: { $gte: startOfDay(date), $lte: endOfDay(date) } },
-//       { dueDate: { $gte: startOfDay(date), $lte: endOfDay(date) } },
-//       { createdAt: { $gte: startOfDay(date), $lte: endOfDay(date) } },
-//     ];
-//   }
-
-//   if (type) filter.noteType = type;
-//   if (status) filter.status = status;
-//   if (priority) filter.priority = priority;
-//   if (category) filter.category = category;
-//   if (tag) filter.tags = tag;
-
-//   if (startDate || endDate) {
-//     const dateFilter = {};
-//     if (startDate) dateFilter.$gte = new Date(startDate);
-//     if (endDate) dateFilter.$lte = new Date(endDate);
-//     filter.$or = [
-//       { startDate: dateFilter },
-//       { dueDate: dateFilter },
-//       { createdAt: dateFilter },
-//     ];
-//   }
-
-//   if (search) {
-//     filter.$text = { $search: search };
-//   }
-
-//   const skip = (page - 1) * limit;
-
-//   const [notes, total] = await Promise.all([
-//     Note.find(filter).sort(sort).skip(skip).limit(parseInt(limit)).populate("owner", "name email avatar").populate("participants.user", "name email avatar").lean(), Note.countDocuments(filter),
-//   ]);
-
-//   res.status(200).json({
-//     status: "success",
-//     data: {
-//       notes,
-//       pagination: { total, page: parseInt(page), pages: Math.ceil(total / limit), limit: parseInt(limit), },
-//     },
-//   });
-// });
-/* ==================== CREATE NOTE ==================== */
 // exports.createNote = catchAsync(async (req, res, next) => {
-//   const { title, content, noteType, startDate, dueDate, priority, category, tags, isMeeting, meetingDetails, participants, visibility, projectId, attachments, ...otherFields } = req.body;
+//   const { title, content, noteType, startDate, dueDate, priority, category, tags, isMeeting, meetingDetails, participants, visibility, projectId, attachments, relatedNotes, ...otherFields } = req.body;
+
+//   // 1. Auto-tagging Logic
+//   const extractedTags = extractHashtags(content);
+//   const finalTags = [...new Set([...(tags || []), ...extractedTags])];
 
 //   let meeting = null;
 //   if (isMeeting && meetingDetails) {
@@ -1835,7 +1777,6 @@ module.exports = exports;
 //           startTime: meeting.startTime,
 //         },
 //       };
-
 //       participants.forEach((participant) => {
 //         emitToUser(participant.user, "newMeeting", socketPayload);
 //       });
@@ -1852,13 +1793,14 @@ module.exports = exports;
 //     dueDate: dueDate ? new Date(dueDate) : undefined,
 //     priority: priority || "medium",
 //     category,
-//     tags: Array.isArray(tags) ? tags : tags ? [tags] : [],
+//     tags: finalTags,
 //     isMeeting: !!isMeeting,
 //     meetingDetails: meetingDetails || {},
 //     participants: participants || [],
 //     visibility: visibility || "private",
 //     projectId,
 //     attachments: attachments || [],
+//     relatedNotes: relatedNotes || [],
 //     ...otherFields,
 //   });
 
@@ -1867,47 +1809,78 @@ module.exports = exports;
 //     await note.save();
 //   }
 
+//   // 2. Bidirectional Linking: Update referenced notes to point back to this new note
+//   if (relatedNotes && relatedNotes.length > 0) {
+//     await Note.updateMany(
+//       { _id: { $in: relatedNotes } },
+//       { $addToSet: { relatedNotes: note._id } }
+//     );
+//   }
+
 //   res.status(201).json({
 //     status: "success",
 //     data: { note, meeting },
 //   });
 // });
-// /* ==================== UPDATE NOTE ==================== */
-// exports.updateNote = catchAsync(async (req, res, next) => {
-//   const note = await Note.findOneAndUpdate(
-//     {
-//       _id: req.params.id,
-//       owner: req.user._id,
-//       isDeleted: false,
-//     },
-//     {
-//       ...req.body,
-//       ...(req.body.tags && {
-//         tags: Array.isArray(req.body.tags) ? req.body.tags : [req.body.tags],
-//       }),
-//     },
-//     {
-//       new: true,
-//       runValidators: true,
-//     },
-//   )
-//     .populate("owner", "name email avatar")
-//     .populate("participants.user", "name email avatar");
 
-//   if (!note) {
-//     return next(
-//       new AppError(
-//         "Note not found or you do not have permission to update it",
-//         404,
-//       ),
-//     );
+module.exports = exports;
+
+
+
+// exports.createMeeting = catchAsync(async (req, res, next) => {
+//   const { title, description, agenda, startTime, endTime, locationType, virtualLink, participants, recurrencePattern, ...otherFields } = req.body;
+//   const meeting = await Meeting.create({
+//     organizationId: req.user.organizationId,
+//     organizer: req.user._id,
+//     title,
+//     description,
+//     agenda,
+//     startTime: new Date(startTime),
+//     endTime: new Date(endTime),
+//     locationType,
+//     virtualLink,
+//     participants: participants?.map((p) => ({
+//       user: p.user,
+//       role: p.role || "attendee",
+//       invitationStatus: "pending",
+//     })),
+//     recurrencePattern,
+//     ...otherFields,
+//   });
+
+//   const note = await Note.create({
+//     organizationId: req.user.organizationId,
+//     owner: req.user._id,
+//     title: `Meeting: ${title}`,
+//     content: agenda || description,
+//     noteType: "meeting",
+//     isMeeting: true,
+//     startDate: startTime,
+//     dueDate: endTime,
+//     meetingId: meeting._id,
+//     participants: participants || [],
+//     visibility: "team",
+//   });
+
+//   if (participants && participants.length > 0) {
+//     const socketPayload = {
+//       type: "MEETING_INVITATION",
+//       data: {
+//         meetingId: meeting._id,
+//         title: meeting.title,
+//         organizer: req.user.name,
+//         startTime: meeting.startTime,
+//         virtualLink: meeting.virtualLink,
+//       },
+//     };
+
+//     participants.forEach((participant) => {
+//       emitToUser(participant.user, "meetingInvitation", socketPayload);
+//     });
 //   }
 
-//   note.logActivity("updated", req.user._id);
-//   await note.save();
-
-//   res.status(200).json({
+//   res.status(201).json({
 //     status: "success",
-//     data: { note },
+//     data: { meeting, note },
 //   });
 // });
