@@ -12,7 +12,7 @@ const meetingSchema = new Schema({
   startTime: { type: Date, required: true, index: true },
   endTime: { type: Date, required: true, index: true },
   timezone: { type: String, default: 'UTC' },
-  locationType: { type: String, enum: ['physical', 'virtual', 'hybrid'], default: 'virtual' },
+  locationType: { type: String, enum: ['physical', 'virtual', 'hybrid','in-person'], default: 'virtual' },
   physicalLocation: String,
   virtualLink: String,
   meetingId: String,
