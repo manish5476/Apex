@@ -984,9 +984,8 @@ exports.bulkDeleteNotes = catchAsync(async (req, res) => {
   });
 });
 
-// Get all organization notes (for owners/super admins)
+// Get all organization notes with advanced filters
 exports.getAllOrganizationNotes = catchAsync(async (req, res) => {
-  // Only owners/super admins can access this
   if (!req.user.isOwner && !req.user.isSuperAdmin) {
     return res.status(403).json({
       status: "error",
@@ -994,19 +993,127 @@ exports.getAllOrganizationNotes = catchAsync(async (req, res) => {
     });
   }
 
-  const notes = await Note.find({
+  const {
+    status,
+    priority,
+    noteType,
+    category,
+    owner,
+    visibility,
+    isMeeting,
+    tags,
+    search,
+    overdue,
+    createdFrom,
+    createdTo,
+    dueFrom,
+    dueTo,
+    page = 1,
+    limit = 20,
+    sortBy = "createdAt",
+    order = "desc"
+  } = req.query;
+
+  const query = {
     organizationId: req.user.organizationId,
     isDeleted: false,
-  })
-    .populate("owner", "name email")
-    .sort({ createdAt: -1 })
-    .lean();
+  };
+
+  // --- Basic filters ---
+  if (status) query.status = status;
+  if (priority) query.priority = priority;
+  if (noteType) query.noteType = noteType;
+  if (category) query.category = category;
+  if (visibility) query.visibility = visibility;
+  if (owner) query.owner = owner;
+
+  // --- Meeting filter ---
+  if (isMeeting !== undefined) {
+    query.isMeeting = isMeeting === "true";
+  }
+
+  // --- Tags filter ---
+  if (tags) {
+    const tagArray = tags.split(",");
+    query.tags = { $in: tagArray };
+  }
+
+  // --- Overdue filter ---
+  if (overdue === "true") {
+    query.dueDate = { $lt: new Date() };
+    query.status = { $ne: "completed" };
+  }
+
+  // --- Created date range ---
+  if (createdFrom || createdTo) {
+    query.createdAt = {};
+    if (createdFrom) query.createdAt.$gte = new Date(createdFrom);
+    if (createdTo) query.createdAt.$lte = new Date(createdTo);
+  }
+
+  // --- Due date range ---
+  if (dueFrom || dueTo) {
+    query.dueDate = {};
+    if (dueFrom) query.dueDate.$gte = new Date(dueFrom);
+    if (dueTo) query.dueDate.$lte = new Date(dueTo);
+  }
+
+  // --- Text search ---
+  if (search) {
+    query.$text = { $search: search };
+  }
+
+  // --- Sorting ---
+  const sort = {};
+  sort[sortBy] = order === "asc" ? 1 : -1;
+
+  // --- Pagination ---
+  const skip = (page - 1) * limit;
+
+  const [notes, total] = await Promise.all([
+    Note.find(query)
+      .populate("owner", "name email")
+      .sort(sort)
+      .skip(skip)
+      .limit(Number(limit))
+      .lean(),
+
+    Note.countDocuments(query),
+  ]);
 
   res.status(200).json({
     status: "success",
+    results: notes.length,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
     data: { notes },
   });
 });
+
+
+// // Get all organization notes (for owners/super admins)
+// exports.getAllOrganizationNotes = catchAsync(async (req, res) => {
+//   if (!req.user.isOwner && !req.user.isSuperAdmin) {
+//     return res.status(403).json({
+//       status: "error",
+//       message: "Only organization owners or super admins can access all notes",
+//     });
+//   }
+
+//   const notes = await Note.find({organizationId: req.user.organizationId,isDeleted: false,  })
+//     .populate("owner", "name email")
+//     .sort({ createdAt: -1 })
+//     .lean();
+
+//   res.status(200).json({
+//     status: "success",
+//     data: { notes },
+//   });
+// });
 
 // Helper function for CSV export (you already have this)
 function convertToCSV(data) {
