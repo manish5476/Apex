@@ -14,7 +14,6 @@ const Shift = require('../../HRMS/models/shift.model');
 const LeaveBalance = require('../../HRMS/models/leaveBalance.model');
 const Department = require('../../HRMS/models/department.model');
 const Designation = require('../../HRMS/models/designation.model');
-const Shift = require('../../hr/shift/shift.model');
 const { emitToOrg, emitToUser } = require('../../../core/utils/_legacy/socket');
 /* -------------------------------------------------------------
  * Utility: Generate Unique Shop ID

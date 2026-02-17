@@ -222,12 +222,24 @@ app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1/feed", feedRoutes);
 app.use("/api/v1/reconciliation", require("./routes/v1/reconciliationRoutes"));
 app.use("/api/v1/automation", require("./routes/v1/automationRoutes"));
-app.use("/api/v1/shifts", shiftRoutes);
-app.use("/api/v1/holidays", holidayRoutes);
+// app.use("/api/v1/shifts", shiftRoutes);
+// app.use("/api/v1/holidays", holidayRoutes);
 app.use('/api/v1/stock', require('./routes/v1/stockRoutes'));
-app.use("/api/v1/attendance", attendanceRoutes);
+// app.use("/api/v1/attendance", attendanceRoutes);
 app.use('/api/v1/cron', cronRoutes);
 app.use('/api/v1/customeranalytics', customerAnalytics);
+
+
+
+// Example mounting
+const structureRouter = require('./modules/HRMS/routes/structure.routes');
+const shiftRouter = require('./modules/HRMS/routes/shift.routes');
+const attendanceRouter = require('./modules/HRMS/routes/attendance.routes');
+
+app.use('/api/v1/structure', structureRouter);
+app.use('/api/v1/shifts', shiftRouter);
+app.use('/api/v1/attendance', attendanceRouter);
+
 
 app.use((req, res, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));

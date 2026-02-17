@@ -52,8 +52,11 @@ const organizationSchema = new mongoose.Schema({
 
 const Organization = mongoose.model('Organization', organizationSchema);
 module.exports = Organization;
-// const mongoose = require('mongoose');
 
+
+
+
+// const mongoose = require('mongoose');
 // const organizationSchema = new mongoose.Schema({
 //   name: {type: String, required: [true, 'Organization name is required'], trim: true,  },
 //   uniqueShopId: {type: String, required: [true, 'A unique Shop ID is required'], unique: true, uppercase: true, trim: true,  },
