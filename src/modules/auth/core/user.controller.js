@@ -7,7 +7,8 @@ const catchAsync = require("../../../core/utils/catchAsync");
 const AppError = require("../../../core/utils/appError");
 const factory = require("../../../core/utils/handlerFactory");
 const imageUploadService = require("../../_legacy/services/uploads/imageUploadService");
-
+const LeaveBalance = require("../../HRMS/models/leaveBalance.model"); // Adjust path as needed
+const Shift = require("../../HRMS/models/shift.model"); // Adjust path
 /**
  * INTERNAL UTILITY: Hierarchy & Tenant Guard
  * Ensures cross-tenant protection and respects the power structure.
@@ -117,39 +118,7 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
   })(req, res, next);
 });
 
-// 🟢 SECURITY: Ensure new users are locked to the creator's organization
-exports.createUser = [
-  (req, res, next) => {
-    req.body.organizationId = req.user.organizationId;
-    req.body.createdBy = req.user._id;
-    next();
-  },
-  factory.createOne(User)
-];
 
-exports.updateUser = catchAsync(async (req, res, next) => {
-  const targetUser = await User.findById(req.params.id).populate('role');
-  if (!targetUser) return next(new AppError("User not found", 404));
-
-  // Security Hierarchy check
-  validateUserAction(req.user, targetUser);
-
-  // 🟢 SECURITY: Prevent mass assignment on sensitive security fields
-  const forbiddenFields = ["password", "passwordConfirm", "organizationId", "createdBy"];
-  forbiddenFields.forEach(f => delete req.body[f]);
-
-  // Ownership transfer protection (Must be current owner to pass the torch)
-  if (req.body.isOwner && !req.user.isOwner) {
-    return next(new AppError("Only the current organization owner can designate a new owner.", 403));
-  }
-
-  const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  }).populate("role", "name");
-
-  res.status(200).json({ status: "success", data: { user: updatedUser } });
-});
 
 exports.deleteUser = catchAsync(async (req, res, next) => {
   const targetUser = await User.findById(req.params.id).populate('role');
@@ -326,57 +295,193 @@ exports.searchUsers = (req, res, next) => {
     populate: { path: "role branchId", select: "name" },
   })(req, res, next);
 };
-// const User = require("./user.model");
-// const ActivityLog = require("../../_legacy/models/activityLogModel");
-// const catchAsync = require("../../../core/utils/catchAsync");
-// const AppError = require("../../../core/utils/appError");
-// const factory = require("../../../core/utils/handlerFactory"); // 👈 Import Factory
-// const imageUploadService = require("../../_legacy/services/uploads/imageUploadService");
 
-// // 🟢 FIX: Hierarchy & Tenant Guard
-// const checkTargetHierarchy = (req, targetUser) => {
-//   // 1. Cross-tenant protection
-//   if (targetUser.organizationId.toString() !== req.user.organizationId.toString()) {
-//     throw new AppError("You do not have permission to access users outside your organization.", 403);
-//   }
-//   // 2. Owner protection
-//   if (targetUser.isOwner && req.user._id.toString() !== targetUser._id.toString()) {
-//     throw new AppError("The Organization Owner cannot be modified or deleted by other users.", 403);
-//   }
-// };
-
-// // ======================================================
-// // 1. SELF MANAGEMENT (Logged in user)
-// // ======================================================
-// exports.getMyProfile = [
-//   catchAsync(async (req, res, next) => {
-//     req.params.id = req.user.id;
+// 🟢 SECURITY: Ensure new users are locked to the creator's organization
+// exports.createUser = [
+//   (req, res, next) => {
+//     req.body.organizationId = req.user.organizationId;
+//     req.body.createdBy = req.user._id;
 //     next();
-//   }),
-//   factory.getOne(User, {
-//     populate: [
-//       { path: "role", select: "name permissions" },
-//       { path: "branchId", select: "name address phone" },
-//     ],
-//   }),
+//   },
+//   factory.createOne(User)
 // ];
+exports.createUser = catchAsync(async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-// // ======================================================
-// // 1. SELF MANAGEMENT
-// // ======================================================
-// exports.updateMyProfile = catchAsync(async (req, res, next) => {
-//   if (req.body.password || req.body.passwordConfirm || req.body.role || req.body.isOwner) {
-//     return next(new AppError("This route is only for profile data (name, phone, avatar).", 400));
+  try {
+    // 1. Force Context & Defaults
+    const orgId = req.user.organizationId;
+    req.body.organizationId = orgId;
+    req.body.createdBy = req.user._id;
+
+    // 🔴 CRITICAL VALIDATION: Cross-Tenant & Existence Checks
+    // We must ensure the Shift/Dept/Designation actually belong to THIS organization.
+    const { employeeProfile, attendanceConfig } = req.body;
+
+    // A. Validate Shift
+    if (attendanceConfig?.shiftId) {
+      const validShift = await Shift.findOne({ _id: attendanceConfig.shiftId, organizationId: orgId }).session(session);
+      if (!validShift) throw new AppError("Invalid Shift ID or Shift belongs to another organization.", 400);
+    }
+
+    // B. Validate Department
+    if (employeeProfile?.departmentId) {
+      const validDept = await Department.findOne({ _id: employeeProfile.departmentId, organizationId: orgId }).session(session);
+      if (!validDept) throw new AppError("Invalid Department ID.", 400);
+    }
+
+    // C. Validate Designation
+    if (employeeProfile?.designationId) {
+      const validDesig = await Designation.findOne({ _id: employeeProfile.designationId, organizationId: orgId }).session(session);
+      if (!validDesig) throw new AppError("Invalid Designation ID.", 400);
+    }
+
+    // D. Validate Manager (Must exist in same Org)
+    if (employeeProfile?.reportingManagerId) {
+      const validManager = await User.findOne({ _id: employeeProfile.reportingManagerId, organizationId: orgId }).session(session);
+      if (!validManager) throw new AppError("Reporting Manager not found in this organization.", 400);
+    }
+
+    // 2. Set Default Password if missing (Common in HR Onboarding)
+    if (!req.body.password) {
+      req.body.password = "Employee@123"; // You should ideally make this configurable or random
+      req.body.passwordConfirm = "Employee@123";
+    }
+
+    // 3. Create the User Document
+    const [newUser] = await User.create([req.body], { session });
+
+    // 4. 🟢 HRMS MAGIC: Initialize Leave Balance
+    // Calculate current financial year (e.g., "2024-2025")
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const financialYear = now.getMonth() >= 3 ? `${currentYear}-${currentYear + 1}` : `${currentYear - 1}-${currentYear}`;
+
+    await LeaveBalance.create([{
+      user: newUser._id,
+      organizationId: orgId,
+      financialYear: financialYear,
+      // Default Balances (Could be fetched from global settings in future)
+      casualLeave: { total: 12, used: 0 },
+      sickLeave: { total: 10, used: 0 },
+      earnedLeave: { total: 0, used: 0 }
+    }], { session });
+
+    // 5. Commit Transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // 6. Response (Hide Password)
+    newUser.password = undefined;
+
+    res.status(201).json({
+      status: 'success',
+      data: {
+        user: newUser,
+        message: 'Employee onboarded successfully with leave balance initialized.'
+      }
+    });
+
+  } catch (error) {
+    // 🔴 Rollback everything if any step fails
+    await session.abortTransaction();
+    session.endSession();
+    
+    // Handle specific Mongo errors (like duplicate email) manually for better UX
+    if (error.code === 11000) {
+      return next(new AppError("Email or Employee ID already exists.", 400));
+    }
+    return next(error);
+  }
+});
+
+
+exports.updateUser = catchAsync(async (req, res, next) => {
+  const targetUser = await User.findById(req.params.id).populate('role');
+  
+  // 1. Basic Existence & Security Check
+  if (!targetUser) return next(new AppError("User not found", 404));
+  validateUserAction(req.user, targetUser); // Your existing helper
+
+  // 2. 🟢 SECURITY: Sanitize Body
+  // Prevent changing critical fields via this route
+  const forbiddenFields = ["password", "passwordConfirm", "organizationId", "createdBy", "isOwner"];
+  forbiddenFields.forEach(f => delete req.body[f]);
+
+  // 3. 🟢 LOGIC: Transform Nested Updates
+  // Mongoose `findByIdAndUpdate` with `req.body` will replace the ENTIRE 'employeeProfile' object if you aren't careful.
+  // We need to convert it to dot notation (e.g., "employeeProfile.departmentId") to update partial fields.
+  
+  const updatePayload = { ...req.body };
+  
+  // Flatten 'employeeProfile' if present
+  if (req.body.employeeProfile) {
+    Object.keys(req.body.employeeProfile).forEach(key => {
+      updatePayload[`employeeProfile.${key}`] = req.body.employeeProfile[key];
+    });
+    delete updatePayload.employeeProfile; // Remove the parent object to avoid overwrite
+  }
+
+  // Flatten 'attendanceConfig' if present
+  if (req.body.attendanceConfig) {
+    Object.keys(req.body.attendanceConfig).forEach(key => {
+      updatePayload[`attendanceConfig.${key}`] = req.body.attendanceConfig[key];
+    });
+    delete updatePayload.attendanceConfig;
+  }
+
+  // 4. 🔴 VALIDATION: Check References before updating
+  // If they are changing the manager, verify the new manager exists
+  if (updatePayload['employeeProfile.reportingManagerId']) {
+     const managerExists = await User.exists({ 
+       _id: updatePayload['employeeProfile.reportingManagerId'], 
+       organizationId: req.user.organizationId 
+     });
+     if (!managerExists) return next(new AppError("New Reporting Manager not found.", 400));
+  }
+  
+  // If they are changing Shift, verify shift exists
+  if (updatePayload['attendanceConfig.shiftId']) {
+     const shiftExists = await Shift.exists({ 
+       _id: updatePayload['attendanceConfig.shiftId'], 
+       organizationId: req.user.organizationId 
+     });
+     if (!shiftExists) return next(new AppError("New Shift invalid or access denied.", 400));
+  }
+
+  // 5. Perform Update
+  const updatedUser = await User.findByIdAndUpdate(req.params.id, { $set: updatePayload }, {
+    new: true,
+    runValidators: true,
+  })
+  .populate("employeeProfile.designationId", "title")
+  .populate("employeeProfile.departmentId", "name")
+  .populate("attendanceConfig.shiftId", "name startTime endTime");
+
+  res.status(200).json({ 
+    status: "success", 
+    data: { user: updatedUser } 
+  });
+});
+
+// exports.updateUser = catchAsync(async (req, res, next) => {
+//   const targetUser = await User.findById(req.params.id).populate('role');
+//   if (!targetUser) return next(new AppError("User not found", 404));
+
+//   // Security Hierarchy check
+//   validateUserAction(req.user, targetUser);
+
+//   // 🟢 SECURITY: Prevent mass assignment on sensitive security fields
+//   const forbiddenFields = ["password", "passwordConfirm", "organizationId", "createdBy"];
+//   forbiddenFields.forEach(f => delete req.body[f]);
+
+//   // Ownership transfer protection (Must be current owner to pass the torch)
+//   if (req.body.isOwner && !req.user.isOwner) {
+//     return next(new AppError("Only the current organization owner can designate a new owner.", 403));
 //   }
 
-//   // 🟢 PERFECTION: Whitelist allowed fields to prevent privilege escalation
-//   const allowedFields = ["name", "phone", "avatar", "preferences"];
-//   const filteredBody = {};
-//   Object.keys(req.body).forEach((el) => {
-//     if (allowedFields.includes(el)) filteredBody[el] = req.body[el];
-//   });
-
-//   const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
+//   const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
 //     new: true,
 //     runValidators: true,
 //   }).populate("role", "name");
@@ -384,273 +489,22 @@ exports.searchUsers = (req, res, next) => {
 //   res.status(200).json({ status: "success", data: { user: updatedUser } });
 // });
 
-// exports.uploadProfilePhoto = catchAsync(async (req, res, next) => {
-//   if (!req.file || !req.file.buffer)
-//     return next(new AppError("Please upload an image file.", 400));
-
-//   const folder = `profiles/${req.user.organizationId || "global"}`;
-//   const imageUrl = await imageUploadService.uploadImage(
-//     req.file.buffer,
-//     folder,
-//   );
-
-//   const updatedUser = await User.findByIdAndUpdate(
-//     req.user.id,
-//     { avatar: imageUrl.url || imageUrl },
-//     { new: true, runValidators: true },
-//   ).select("-password");
-
-//   res.status(200).json({
-//     status: "success",
-//     message: "Profile photo updated successfully.",
-//     data: { user: updatedUser },
-//   });
-// });
-
-// exports.uploadUserPhotoByAdmin = catchAsync(async (req, res, next) => {
-//   // 1. Get the target User ID from the URL parameters
-//   const userId = req.params.id;
-
-//   // 2. Check for uploaded file
-//   if (!req.file || !req.file.buffer) {
-//     return next(new AppError("Please upload an image file.", 400));
-//   }
-
-//   // 3. Optional: Determine the upload folder based on the organization of the user being updated.
-//   //    First, fetch the user to get organizationId.
-//   const targetUser = await User.findById(userId).select("organizationId");
-//   if (!targetUser) {
-//     return next(new AppError("User not found.", 404));
-//   }
-
-//   const folder = `profiles/${targetUser.organizationId || "global"}`;
-
-//   // 4. Upload the image to the service (e.g., S3, Cloudinary)
-//   const imageUrl = await imageUploadService.uploadImage(
-//     req.file.buffer,
-//     folder,
-//   );
-
-//   // 5. Update the target user's avatar field
-//   const updatedUser = await User.findByIdAndUpdate(
-//     userId, // Use the ID from the URL parameter
-//     { avatar: imageUrl.url || imageUrl },
-//     { new: true, runValidators: true },
-//   ).select("-password"); // Exclude password from the returned object
-
-//   // 6. Send success response
-//   res.status(200).json({
-//     status: "success",
-//     message: `Profile photo for user ${userId} updated successfully by admin.`,
-//     data: { user: updatedUser },
-//   });
-// });
-// // ======================================================
-// // 2. ADMIN USER MANAGEMENT (Using Factory)
-// // ======================================================
 
 
-// // ✅ GET ONE: Fetches user with Roles and Branch populated
-// exports.getUser = factory.getOne(User, {
-//   populate: [
-//     { path: "role", select: "name permissions isSuperAdmin" },
-//     { path: "branchId", select: "name address city" },
-//   ],
-// });
-
-// // 🟢 FIX: Ensure factory only pulls users for THIS organization
-// exports.getAllUsers = (req, res, next) => {
-//   req.query.organizationId = req.user.organizationId; // Force tenant filter
-//   factory.getAll(User, {
-//     searchFields: ["name", "email", "phone"],
-//     populate: [
-//       { path: "role", select: "name" },
-//       { path: "branchId", select: "name" },
-//       { path: "attendanceConfig.shiftId", select: "name startTime endTime" },
-//     ],
-//   })(req, res, next);
-// };
-
-// exports.updateUser = catchAsync(async (req, res, next) => {
-//   const targetUser = await User.findById(req.params.id);
-//   if (!targetUser) return next(new AppError("User not found", 404));
-
-//   // 🟢 PERFECTION: Hierarchy & Tenant Check
-//   checkTargetHierarchy(req, targetUser);
-
-//   // Prevent a non-owner from making someone else an owner
-//   if (req.body.isOwner && !req.user.isOwner) {
-//     return next(new AppError("Only the current owner can designate a new owner.", 403));
-//   }
-
-//   const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
-//     new: true,
-//     runValidators: true,
-//   });
-
-//   res.status(200).json({ status: "success", data: { user: updatedUser } });
-// });
-
-// // ✅ CREATE: Auto-assigns OrganizationId and CreatedBy from req.user
-// exports.createUser = factory.createOne(User);
-
-// exports.deleteUser = catchAsync(async (req, res, next) => {
-//   const targetUser = await User.findById(req.params.id);
-//   if (!targetUser) return next(new AppError("User not found", 404));
-
-//   // 🟢 PERFECTION: Hierarchy & Tenant Check
-//   checkTargetHierarchy(req, targetUser);
-
-//   // Perform soft delete
-//   targetUser.isActive = false;
-//   targetUser.status = 'inactive';
-//   await targetUser.save();
-
-//   res.status(204).json({ status: "success", data: null });
-// });
-// // // ✅ UPDATE: Auto-handles permissions and Organization check
-// // exports.updateUser = factory.updateOne(User);
-
-// // // ✅ DELETE: Handles Soft Delete automatically via Factory
-// // exports.deleteUser = factory.deleteOne(User);
-
-// // ======================================================
-// // 3. SPECIFIC ACTIONS (Custom Logic Preserved)
-// // ======================================================
-
-// // Wrapper to support legacy ?q= search param using the new Factory
-// exports.searchUsers = (req, res, next) => {
-//   if (req.query.q) req.query.search = req.query.q; // Adapt 'q' to 'search' for ApiFeatures
-//   factory.getAll(User, {
-//     searchFields: ["name", "email", "phone"],
-//     populate: { path: "role branchId", select: "name" },
-//   })(req, res, next);
-// };
-
-// exports.adminUpdatePassword = catchAsync(async (req, res, next) => {
-//   const { password, passwordConfirm } = req.body;
-//   if (password !== passwordConfirm) return next(new AppError("Passwords do not match", 400));
-
-//   const user = await User.findOne({
-//     _id: req.params.id,
-//     organizationId: req.user.organizationId, // Tenant Isolation
-//   }).select("+password");
-
-//   if (!user) return next(new AppError("User not found", 404));
-
-//   // 🟢 PERFECTION: Cannot reset owner password unless you ARE the owner
-//   if (user.isOwner && req.user._id.toString() !== user._id.toString()) {
-//     return next(new AppError("Admin cannot reset the Owner's password.", 403));
-//   }
-
-//   user.password = password;
-//   user.passwordConfirm = passwordConfirm;
-//   await user.save();
-
-//   res.status(200).json({ status: "success", message: "Password updated successfully" });
-// });
 
 
-// exports.deactivateUser = catchAsync(async (req, res, next) => {
-//   const user = await User.findOneAndUpdate(
-//     { _id: req.params.id, organizationId: req.user.organizationId },
-//     { status: "inactive", isActive: false },
-//     { new: true },
-//   ).select("-password");
-//   if (!user) return next(new AppError("User not found", 404));
-//   res.status(200).json({ status: "success", data: { user } });
-// });
 
-// exports.activateUser = catchAsync(async (req, res, next) => {
-//   const user = await User.findOneAndUpdate(
-//     { _id: req.params.id, organizationId: req.user.organizationId },
-//     { status: "approved", isActive: true },
-//     { new: true },
-//   ).select("-password");
-//   if (!user) return next(new AppError("User not found", 404));
-//   res.status(200).json({ status: "success", data: { user } });
-// });
 
-// exports.getUserActivity = catchAsync(async (req, res, next) => {
-//   const userId = req.params.id;
-//   const org = req.user.organizationId;
-
-//   // Note: ActivityLog might not support factory.getAll directly if it uses complex $or logic
-//   // Keeping custom logic here is safer for this specific query
-//   const activities = await ActivityLog.find({
-//     organizationId: org,
-//     $or: [{ userId: userId }, { user: userId }],
-//   })
-//     .sort({ createdAt: -1 })
-//     .limit(200);
-
-//   res
-//     .status(200)
-//     .json({
-//       status: "success",
-//       results: activities.length,
-//       data: { activities },
-//     });
-// });
-
-// // Get current user's permissions and role info
-// exports.getMyPermissions = catchAsync(async (req, res) => {
-//   const user = await User.findById(req.user._id).populate({
-//     path: "role",
-//     select: "name permissions isSuperAdmin",
-//   });
-
-//   // Check if user is organization owner
-//   const isOwner = await Organization.exists({
-//     _id: req.user.organizationId,
-//     owner: req.user._id,
-//   });
-
-//   const permissions = isOwner ? ["*"] : user.role?.permissions || [];
-
-//   res.status(200).json({
-//     status: "success",
-//     data: {
-//       permissions,
-//       role: user.role?.name,
-//       isOwner,
-//       isSuperAdmin: isOwner ? true : user.role?.isSuperAdmin || false,
-//       organizationId: req.user.organizationId,
-//     },
-//   });
-// });
-
-// // Check if user has specific permission
-// exports.checkPermission = catchAsync(async (req, res) => {
-//   const { permission } = req.body;
-
-//   if (!permission) {
-//     return next(new AppError("Permission to check is required", 400));
-//   }
-
-//   const user = await User.findById(req.user._id).populate({
-//     path: "role",
-//     select: "permissions isSuperAdmin",
-//   });
-
-//   // Check if user is organization owner
-//   const isOwner = await Organization.exists({
-//     _id: req.user.organizationId,
-//     owner: req.user._id,
-//   });
-
-//   const hasPerm =
-//     isOwner ||
-//     user.role?.isSuperAdmin ||
-//     user.role?.permissions?.includes(permission);
-
-//   res.status(200).json({
-//     status: "success",
-//     data: {
-//       hasPermission: hasPerm,
-//       permission,
-//       isOwner,
-//       isSuperAdmin: isOwner ? true : user.role?.isSuperAdmin || false,
-//     },
-//   });
-// });
+// HELPER: Get current Financial Year (e.g., "2025-2026")
+// Assuming FY starts in April (India Standard)
+const getFinancialYear = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0 = Jan, 3 = April
+  
+  if (month >= 3) {
+    return `${year}-${year + 1}`;
+  } else {
+    return `${year - 1}-${year}`;
+  }
+};
