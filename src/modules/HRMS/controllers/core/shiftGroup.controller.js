@@ -1,11 +1,11 @@
 // controllers/core/shiftGroup.controller.js
 const mongoose = require('mongoose');
-const ShiftGroup = require('../../models/hrms/shiftGroup.model');
-const Shift = require('../../models/hrms/shift.model');
-const User = require('../../models/user.model');
-const catchAsync = require('../../utils/catchAsync');
-const AppError = require('../../utils/appError');
-const factory = require('../../utils/handlerFactory');
+const ShiftGroup = require('../../models/shiftGroup.model');
+const Shift = require('../../models/shift.model');
+const User = require('../../../auth/core/user.model');
+const catchAsync = require('../../../../core/utils/catchAsync');
+const AppError = require('../../../../core/utils/appError');
+const factory = require('../../../../core/utils/handlerFactory');
 
 // ======================================================
 // HELPERS & VALIDATIONS

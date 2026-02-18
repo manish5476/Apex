@@ -1,10 +1,10 @@
 // controllers/core/designation.controller.js
 const mongoose = require('mongoose');
-const Designation = require('../../models/hrms/designation.model');
-const User = require('../../models/user.model');
-const catchAsync = require('../../utils/catchAsync');
-const AppError = require('../../utils/appError');
-const factory = require('../../utils/handlerFactory');
+const Designation = require('../../models/designation.model');
+const User = require('../../../auth/core/user.model');
+const catchAsync = require('../../../../core/utils/catchAsync');
+const AppError = require('../../../../core/utils/appError');
+const factory = require('../../../../core/utils/handlerFactory');
 
 // ======================================================
 // HELPERS & VALIDATIONS

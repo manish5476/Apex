@@ -1,14 +1,14 @@
 // controllers/attendance/attendanceDaily.controller.js
 const mongoose = require('mongoose');
-const AttendanceDaily = require('../../models/hrms/attendanceDaily.model');
-const AttendanceLog = require('../../models/hrms/attendanceLog.model');
-const User = require('../../models/user.model');
-const Shift = require('../../models/hrms/shift.model');
-const Holiday = require('../../models/hrms/holiday.model');
-const LeaveRequest = require('../../models/hrms/leaveRequest.model');
-const catchAsync = require('../../utils/catchAsync');
-const AppError = require('../../utils/appError');
-const factory = require('../../utils/handlerFactory');
+const AttendanceDaily = require('../../models/attendanceDaily.model');
+const AttendanceLog = require('../../models/attendanceLog.model');
+const Shift = require('../../models/shift.model');
+const Holiday = require('../../models/holiday.model');
+const LeaveRequest = require('../../models/leaveRequest.model');
+const User = require('../../../auth/core/user.model');
+const catchAsync = require('../../../../core/utils/catchAsync');
+const AppError = require('../../../../core/utils/appError');
+const factory = require('../../../../core/utils/handlerFactory');
 
 // ======================================================
 // HELPERS & UTILITIES

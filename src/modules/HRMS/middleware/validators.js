@@ -1,6 +1,6 @@
 // middleware/validators.js
 const { body, param, query, validationResult } = require('express-validator');
-const AppError = require('../utils/appError');
+const AppError = require('../../../core/utils/appError');
 
 // Validation middleware
 const validate = (req, res, next) => {

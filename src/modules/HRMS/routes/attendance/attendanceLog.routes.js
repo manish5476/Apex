@@ -7,10 +7,8 @@ const { validateAttendanceLog } = require('../../middleware/validators');
 
 // Machine routes (API key based)
 router.post('/bulk', machineAuth, attendanceLogController.bulkCreateLogs);
-
 // All other routes require user authentication
 router.use(protect);
-
 // User routes
 router.get('/my-logs', attendanceLogController.getMyLogs);
 router.post('/', validateAttendanceLog, attendanceLogController.createAttendanceLog);

@@ -1,11 +1,11 @@
 // controllers/attendance/geoFence.controller.js
 const mongoose = require('mongoose');
-const GeoFence = require('../../models/hrms/geoFence.model');
-const User = require('../../models/user.model');
-const AttendanceLog = require('../../models/hrms/attendanceLog.model');
-const catchAsync = require('../../utils/catchAsync');
-const AppError = require('../../utils/appError');
-const factory = require('../../utils/handlerFactory');
+const GeoFence = require('../../models/geoFencing.model');
+const AttendanceLog = require('../../models/attendanceLog.model');
+const User = require('../../../auth/core/user.model');
+const catchAsync = require('../../../../core/utils/catchAsync');
+const AppError = require('../../../../core/utils/appError');
+const factory = require('../../../../core/utils/handlerFactory');
 
 // ======================================================
 // HELPERS & VALIDATIONS
