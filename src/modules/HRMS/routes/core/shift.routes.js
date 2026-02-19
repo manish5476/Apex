@@ -2,25 +2,25 @@
 const express = require('express');
 const router = express.Router();
 const shiftController = require('../../controllers/core/shift.controller');
-const { protect, restrictTo } = require('../../middleware/auth');
 const { validateShift } = require('../../middleware/validators');
+const authController = require("../../../auth/core/auth.controller");
 
-router.use(protect);
+// All routes require authentication
+router.use(authController.protect);
 
 // Special routes
 router.post('/calculate-hours', shiftController.calculateShiftHours);
-router.get('/coverage', restrictTo('admin', 'hr', 'manager'), shiftController.getShiftCoverage);
+router.get('/coverage', shiftController.getShiftCoverage);
 router.get('/timeline', shiftController.getShiftTimeline);
 router.post('/validate-assignment', shiftController.validateShiftAssignment);
 
 // Clone shift
-router.post('/:id/clone', restrictTo('admin'), shiftController.cloneShift);
+router.post('/:id/clone', shiftController.cloneShift);
 
 // Standard CRUD
 router.route('/')
   .get(shiftController.getAllShifts)
   .post(
-    restrictTo('admin', 'hr'),
     validateShift,
     shiftController.createShift
   );
@@ -28,11 +28,10 @@ router.route('/')
 router.route('/:id')
   .get(shiftController.getShift)
   .patch(
-    restrictTo('admin', 'hr'),
     validateShift,
     shiftController.updateShift
   )
-  .delete(restrictTo('admin'), shiftController.deleteShift);
+  .delete( shiftController.deleteShift);
 
 // Shift assignments
 router.get('/:id/assignments', shiftController.getShiftAssignments);
