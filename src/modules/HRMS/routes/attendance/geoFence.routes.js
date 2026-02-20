@@ -2,28 +2,26 @@
 const express = require('express');
 const router = express.Router();
 const geoFenceController = require('../../controllers/attendance/geoFence.controller');
-const { protect, restrictTo } = require('../../middleware/auth');
+const { restrictTo } = require('../../middleware/auth');
 const { validateGeoFence } = require('../../middleware/validators');
+const authController = require("../../../auth/core/auth.controller");
 
-router.use(protect);
-
+router.use(authController.protect);
 // Geolocation operations
 router.post('/nearby', geoFenceController.findNearby);
-router.get('/violations', restrictTo('admin', 'hr'), geoFenceController.getViolations);
-
+router.get('/violations', geoFenceController.getViolations);
 // Geofence operations
 router.post('/:id/check-point', geoFenceController.checkPoint);
-router.get('/:id/stats', restrictTo('admin', 'hr'), geoFenceController.getGeofenceStats);
-
+router.get('/:id/stats', geoFenceController.getGeofenceStats);
 // Assignment routes
-router.post('/:id/assign-users', restrictTo('admin'), geoFenceController.assignToUsers);
-router.post('/:id/assign-departments', restrictTo('admin'), geoFenceController.assignToDepartments);
+router.post('/:id/assign-users', geoFenceController.assignToUsers);
+router.post('/:id/assign-departments', geoFenceController.assignToDepartments);
 
 // Standard CRUD
 router.route('/')
   .get(geoFenceController.getAllGeoFences)
   .post(
-    restrictTo('admin'),
+
     validateGeoFence,
     geoFenceController.createGeoFence
   );
@@ -31,10 +29,10 @@ router.route('/')
 router.route('/:id')
   .get(geoFenceController.getGeoFence)
   .patch(
-    restrictTo('admin'),
+
     validateGeoFence,
     geoFenceController.updateGeoFence
   )
-  .delete(restrictTo('admin'), geoFenceController.deleteGeoFence);
+  .delete(geoFenceController.deleteGeoFence);
 
 module.exports = router;
