@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const departmentSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
-  code: { type: String, required: true, trim: true, uppercase: true },
+  code: { type: String, required: false, trim: true, uppercase: true },
   description: String,
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
   branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
