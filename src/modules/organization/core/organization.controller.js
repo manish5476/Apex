@@ -29,6 +29,325 @@ const getFinancialYear = () => {
   return now.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
 };
 
+// exports.createOrganization = catchAsync(async (req, res, next) => {
+//   const { 
+//     organizationName, uniqueShopId, primaryEmail, primaryPhone, gstNumber, 
+//     ownerName, ownerEmail, ownerPassword, 
+//     mainBranchName, mainBranchAddress 
+//   } = req.body;
+  
+//   if (!organizationName || !ownerName || !ownerEmail || !ownerPassword)
+//     return next(new AppError('Missing required organization or owner fields', 400));
+
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     // 1. Generate IDs upfront (helps with circular deps)
+//     const orgId = new mongoose.Types.ObjectId();
+//     const branchId = new mongoose.Types.ObjectId();
+//     const roleId = new mongoose.Types.ObjectId();
+//     const ownerId = new mongoose.Types.ObjectId();
+//     const shiftId = new mongoose.Types.ObjectId();
+//     const deptId = new mongoose.Types.ObjectId();
+//     const desigId = new mongoose.Types.ObjectId();
+
+//     // 2. Create Organization
+//     const newOrg = new Organization({
+//       _id: orgId,
+//       name: organizationName,
+//       uniqueShopId: uniqueShopId, // Validation handles duplicates
+//       primaryEmail,
+//       primaryPhone,
+//       gstNumber,
+//       owner: ownerId, // Link to future owner
+//       mainBranch: branchId,
+//       branches: [branchId],
+//       whatsappWallet: { credits: 50 },
+//       features: { whatsappEnabled: true },
+//       settings: { 
+//         currency: 'INR', 
+//         timezone: 'Asia/Kolkata', 
+//         financialYearStart: 'April' 
+//       }
+//     });
+
+//     // 3. Create Main Branch
+//     const newBranch = new Branch({
+//       _id: branchId,
+//       name: mainBranchName || 'Main Branch',
+//       address: mainBranchAddress,
+//       organizationId: orgId,
+//       isMainBranch: true,
+//       managerId: ownerId // Owner manages main branch initially
+//     });
+
+//     // 4. Create Super Admin Role
+//     const newRole = new Role({
+//       _id: roleId,
+//       name: 'Super Admin',
+//       organizationId: orgId,
+//       permissions: ["*"], // Wildcard permission
+//       isSuperAdmin: true,
+//       isDefault: true
+//     });
+
+//     // 5. 🟢 HRMS DEFAULTS: Shift, Dept, Designation
+//     const defaultShift = new Shift({
+//       _id: shiftId,
+//       name: 'General Shift',
+//       organizationId: orgId,
+//       startTime: '09:00', 
+//       endTime: '18:00',
+//       gracePeriodMins: 15,
+//       halfDayThresholdHrs: 4,
+//       minFullDayHrs: 8,
+//       weeklyOffs: [0], // Sunday
+//       isActive: true
+//     });
+
+//     const defaultDept = new Department({
+//       _id: deptId,
+//       name: 'Administration',
+//       organizationId: orgId,
+//       branchId: branchId,
+//       headOfDepartment: ownerId
+//     });
+
+//     const defaultDesig = new Designation({
+//       _id: desigId,
+//       title: 'Director',
+//       organizationId: orgId,
+//       level: 10 // Top level
+//     });
+
+//     // 6. Create Owner (The First Employee)
+//     const newOwner = new User({
+//       _id: ownerId,
+//       name: ownerName,
+//       email: ownerEmail,
+//       password: ownerPassword,
+//       phone: primaryPhone,
+      
+//       organizationId: orgId,
+//       branchId: branchId,
+//       role: roleId,
+      
+//       isOwner: true,
+//       isSuperAdmin: true,
+//       status: 'approved',
+//       isActive: true,
+
+//       // 🟢 HRMS Profile Populated
+//       employeeProfile: {
+//         employeeId: 'EMP-001',
+//         departmentId: deptId,
+//         designationId: desigId,
+//         dateOfJoining: new Date(),
+//         reportingManagerId: null // Owners have no manager
+//       },
+
+//       attendanceConfig: {
+//         shiftId: shiftId,
+//         isAttendanceEnabled: true,
+//         allowWebPunch: true,
+//         allowMobilePunch: true,
+//         enforceGeoFence: false // Owners usually bypass geofence
+//       }
+//     });
+
+//     // 7. 🟢 HRMS: Create Leave Balance for Owner
+//     const leaveBalance = new LeaveBalance({
+//       user: ownerId,
+//       organizationId: orgId,
+//       financialYear: getFinancialYear(),
+//       casualLeave: { total: 12, used: 0 },
+//       sickLeave: { total: 10, used: 0 },
+//       earnedLeave: { total: 15, used: 0 } // Owners might give themselves more
+//     });
+
+//     // 8. SAVE EVERYTHING (Parallel for speed)
+//     await Promise.all([
+//       newOrg.save({ session }),
+//       newBranch.save({ session }),
+//       newRole.save({ session }),
+//       defaultShift.save({ session }),
+//       defaultDept.save({ session }),
+//       defaultDesig.save({ session }),
+//       newOwner.save({ session }),
+//       leaveBalance.save({ session })
+//     ]);
+
+//     // 9. Commit
+//     await session.commitTransaction();
+
+//     // 10. Clean Response
+//     const token = signToken(newOwner._id); // Pass ID or User based on your util
+//     newOwner.password = undefined;
+
+//     res.status(201).json({
+//       status: 'success',
+//       message: 'Organization set up successfully!',
+//       token,
+//       data: { 
+//         organization: newOrg, 
+//         owner: newOwner, 
+//         setup: {
+//           branch: newBranch.name,
+//           role: newRole.name,
+//           shift: defaultShift.name,
+//           department: defaultDept.name,
+//           designation: defaultDesig.name
+//         }
+//       },
+//     });
+
+//   } catch (err) {
+//     await session.abortTransaction();
+    
+//     // Better Error Handling
+//     if (err.code === 11000) {
+//       if (err.keyPattern?.uniqueShopId)
+//         return next(new AppError('This Shop ID is already taken. Please try another.', 400));
+//       if (err.keyPattern?.email)
+//         return next(new AppError('This email is already registered.', 400));
+//     }
+    
+//     next(err);
+//   } finally {
+//     session.endSession();
+//   }
+// });
+
+// // /* -------------------------------------------------------------
+// //  * Create New Organization (Transactional)
+// // ------------------------------------------------------------- */
+// // exports.createOrganization = catchAsync(async (req, res, next) => {
+// //   const { 
+// //     organizationName, uniqueShopId, primaryEmail, primaryPhone, gstNumber, 
+// //     ownerName, ownerEmail, ownerPassword, 
+// //     mainBranchName, mainBranchAddress 
+// //   } = req.body;
+  
+// //   if (!organizationName || !ownerName || !ownerEmail || !ownerPassword)
+// //     return next(new AppError('Missing required organization or owner fields', 400));
+
+// //   const session = await mongoose.startSession();
+// //   session.startTransaction();
+
+// //   try {
+// //     const tempOrgId = new mongoose.Types.ObjectId();
+
+// //     // Step 1: Create the Owner (Initial Save)
+// //     const newUser = await new User({
+// //       name: ownerName,
+// //       email: ownerEmail,
+// //       password: ownerPassword,
+// //       organizationId: tempOrgId, // Link User to Org
+// //       status: 'approved',
+// //       attendanceConfig: {
+// //         isAttendanceEnabled: true,
+// //         allowWebPunch: true,
+// //         allowMobilePunch: true
+// //       }
+// //     }).save({ session });
+
+// //     // Step 2: Create Role (Super Admin)
+// //     const newRole = await new Role({
+// //       name: 'Super Admin',
+// //       organizationId: tempOrgId,
+// //       permissions: Role.allPermissions || [], 
+// //       isSuperAdmin: true,
+// //     }).save({ session });
+
+// //     // Step 3: Create Organization
+// //     const newOrg = await new Organization({
+// //       _id: tempOrgId,
+// //       name: organizationName,
+// //       uniqueShopId: uniqueShopId || generateUniqueShopId(),
+// //       primaryEmail,
+// //       primaryPhone,
+// //       gstNumber,
+// //       owner: newUser._id,
+// //       whatsappWallet: { credits: 50 },
+// //       features: { whatsappEnabled: true }
+// //     }).save({ session });
+
+// //     // Step 4: Create Main Branch
+// //     const newBranch = await new Branch({
+// //       name: mainBranchName || 'Main Branch',
+// //       address: mainBranchAddress,
+// //       organizationId: newOrg._id,
+// //       isMainBranch: true,
+// //     }).save({ session });
+
+// //     // Step 4.5: Create Default Shift
+// //     const defaultShift = await new Shift({
+// //         name: 'General Shift',
+// //         organizationId: newOrg._id,
+// //         startTime: '09:00',
+// //         endTime: '18:00',
+// //         gracePeriodMins: 15,
+// //         halfDayThresholdHrs: 4,
+// //         minFullDayHrs: 8,
+// //         weeklyOffs: [0],
+// //         isActive: true
+// //     }).save({ session });
+
+// //     // Step 5: Link Everything & Update Owner
+// //     newOrg.mainBranch = newBranch._id;
+// //     newOrg.branches.push(newBranch._id);
+// //     // ❌ REMOVED: newOrg.members.push(...) - The array is gone!
+
+// //     // Update Owner Links
+// //     newUser.organizationId = newOrg._id;
+// //     newUser.branchId = newBranch._id;
+// //     newUser.role = newRole._id;
+// //     newUser.attendanceConfig.shiftId = defaultShift._id;
+
+// //     // Final Save
+// //     await Promise.all([newOrg.save({ session }), newUser.save({ session })]);
+    
+// //     await session.commitTransaction();
+    
+// //     // Fetch clean data for response
+// //     const orgId = newOrg._id;
+// //     const [branches, roles] = await Promise.all([
+// //       Branch.find({ organizationId: orgId, isActive: true }).select('_id name address isMainBranch').lean(),
+// //       Role.find({ organizationId: orgId }).select('_id name permissions isSuperAdmin isDefault').lean()
+// //     ]);
+
+// //     const token = signToken(newUser);
+// //     newUser.password = undefined;
+
+// //     res.status(201).json({
+// //       status: 'success',
+// //       message: 'Organization created successfully!',
+// //       token,
+// //       allbranches: branches,
+// //       allroles: roles,
+// //       data: { 
+// //           organization: newOrg, 
+// //           owner: newUser, 
+// //           branch: newBranch, 
+// //           role: newRole,
+// //           shift: defaultShift
+// //       },
+// //     });
+
+// //   } catch (err) {
+// //     await session.abortTransaction();
+// //     if (err.code === 11000) {
+// //       if (err.keyPattern?.uniqueShopId)
+// //         return next(new AppError('This Shop ID is already taken.', 400));
+// //       if (err.keyPattern?.email)
+// //         return next(new AppError('This email address is already in use.', 400));
+// //     }
+// //     next(err);
+// //   } finally {
+// //     session.endSession();
+// //   }
+// // });
 exports.createOrganization = catchAsync(async (req, res, next) => {
   const { 
     organizationName, uniqueShopId, primaryEmail, primaryPhone, gstNumber, 
@@ -43,7 +362,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
   session.startTransaction();
 
   try {
-    // 1. Generate IDs upfront (helps with circular deps)
+    // 1. Generate IDs upfront
     const orgId = new mongoose.Types.ObjectId();
     const branchId = new mongoose.Types.ObjectId();
     const roleId = new mongoose.Types.ObjectId();
@@ -56,7 +375,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
     const newOrg = new Organization({
       _id: orgId,
       name: organizationName,
-      uniqueShopId: uniqueShopId, // Validation handles duplicates
+      uniqueShopId, // Validation handles duplicates
       primaryEmail,
       primaryPhone,
       gstNumber,
@@ -92,7 +411,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       isDefault: true
     });
 
-    // 5. 🟢 HRMS DEFAULTS: Shift, Dept, Designation
+    // 5. HRMS Defaults: Shift, Dept, Designation
     const defaultShift = new Shift({
       _id: shiftId,
       name: 'General Shift',
@@ -121,7 +440,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       level: 10 // Top level
     });
 
-    // 6. Create Owner (The First Employee)
+    // 6. Create Owner (First Employee)
     const newOwner = new User({
       _id: ownerId,
       name: ownerName,
@@ -138,7 +457,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       status: 'approved',
       isActive: true,
 
-      // 🟢 HRMS Profile Populated
+      // HRMS Profile
       employeeProfile: {
         employeeId: 'EMP-001',
         departmentId: deptId,
@@ -156,17 +475,17 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       }
     });
 
-    // 7. 🟢 HRMS: Create Leave Balance for Owner
+    // 7. Create Leave Balance for Owner
     const leaveBalance = new LeaveBalance({
       user: ownerId,
       organizationId: orgId,
       financialYear: getFinancialYear(),
       casualLeave: { total: 12, used: 0 },
       sickLeave: { total: 10, used: 0 },
-      earnedLeave: { total: 15, used: 0 } // Owners might give themselves more
+      earnedLeave: { total: 15, used: 0 }
     });
 
-    // 8. SAVE EVERYTHING (Parallel for speed)
+    // 8. Save Everything (Parallel)
     await Promise.all([
       newOrg.save({ session }),
       newBranch.save({ session }),
@@ -178,11 +497,11 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       leaveBalance.save({ session })
     ]);
 
-    // 9. Commit
+    // 9. Commit Transaction
     await session.commitTransaction();
 
-    // 10. Clean Response
-    const token = signToken(newOwner._id); // Pass ID or User based on your util
+    // 10. Response Data
+    const token = signToken(newOwner._id);
     newOwner.password = undefined;
 
     res.status(201).json({
@@ -205,7 +524,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
   } catch (err) {
     await session.abortTransaction();
     
-    // Better Error Handling
+    // Improved error handling
     if (err.code === 11000) {
       if (err.keyPattern?.uniqueShopId)
         return next(new AppError('This Shop ID is already taken. Please try another.', 400));
@@ -218,136 +537,6 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
     session.endSession();
   }
 });
-
-// /* -------------------------------------------------------------
-//  * Create New Organization (Transactional)
-// ------------------------------------------------------------- */
-// exports.createOrganization = catchAsync(async (req, res, next) => {
-//   const { 
-//     organizationName, uniqueShopId, primaryEmail, primaryPhone, gstNumber, 
-//     ownerName, ownerEmail, ownerPassword, 
-//     mainBranchName, mainBranchAddress 
-//   } = req.body;
-  
-//   if (!organizationName || !ownerName || !ownerEmail || !ownerPassword)
-//     return next(new AppError('Missing required organization or owner fields', 400));
-
-//   const session = await mongoose.startSession();
-//   session.startTransaction();
-
-//   try {
-//     const tempOrgId = new mongoose.Types.ObjectId();
-
-//     // Step 1: Create the Owner (Initial Save)
-//     const newUser = await new User({
-//       name: ownerName,
-//       email: ownerEmail,
-//       password: ownerPassword,
-//       organizationId: tempOrgId, // Link User to Org
-//       status: 'approved',
-//       attendanceConfig: {
-//         isAttendanceEnabled: true,
-//         allowWebPunch: true,
-//         allowMobilePunch: true
-//       }
-//     }).save({ session });
-
-//     // Step 2: Create Role (Super Admin)
-//     const newRole = await new Role({
-//       name: 'Super Admin',
-//       organizationId: tempOrgId,
-//       permissions: Role.allPermissions || [], 
-//       isSuperAdmin: true,
-//     }).save({ session });
-
-//     // Step 3: Create Organization
-//     const newOrg = await new Organization({
-//       _id: tempOrgId,
-//       name: organizationName,
-//       uniqueShopId: uniqueShopId || generateUniqueShopId(),
-//       primaryEmail,
-//       primaryPhone,
-//       gstNumber,
-//       owner: newUser._id,
-//       whatsappWallet: { credits: 50 },
-//       features: { whatsappEnabled: true }
-//     }).save({ session });
-
-//     // Step 4: Create Main Branch
-//     const newBranch = await new Branch({
-//       name: mainBranchName || 'Main Branch',
-//       address: mainBranchAddress,
-//       organizationId: newOrg._id,
-//       isMainBranch: true,
-//     }).save({ session });
-
-//     // Step 4.5: Create Default Shift
-//     const defaultShift = await new Shift({
-//         name: 'General Shift',
-//         organizationId: newOrg._id,
-//         startTime: '09:00',
-//         endTime: '18:00',
-//         gracePeriodMins: 15,
-//         halfDayThresholdHrs: 4,
-//         minFullDayHrs: 8,
-//         weeklyOffs: [0],
-//         isActive: true
-//     }).save({ session });
-
-//     // Step 5: Link Everything & Update Owner
-//     newOrg.mainBranch = newBranch._id;
-//     newOrg.branches.push(newBranch._id);
-//     // ❌ REMOVED: newOrg.members.push(...) - The array is gone!
-
-//     // Update Owner Links
-//     newUser.organizationId = newOrg._id;
-//     newUser.branchId = newBranch._id;
-//     newUser.role = newRole._id;
-//     newUser.attendanceConfig.shiftId = defaultShift._id;
-
-//     // Final Save
-//     await Promise.all([newOrg.save({ session }), newUser.save({ session })]);
-    
-//     await session.commitTransaction();
-    
-//     // Fetch clean data for response
-//     const orgId = newOrg._id;
-//     const [branches, roles] = await Promise.all([
-//       Branch.find({ organizationId: orgId, isActive: true }).select('_id name address isMainBranch').lean(),
-//       Role.find({ organizationId: orgId }).select('_id name permissions isSuperAdmin isDefault').lean()
-//     ]);
-
-//     const token = signToken(newUser);
-//     newUser.password = undefined;
-
-//     res.status(201).json({
-//       status: 'success',
-//       message: 'Organization created successfully!',
-//       token,
-//       allbranches: branches,
-//       allroles: roles,
-//       data: { 
-//           organization: newOrg, 
-//           owner: newUser, 
-//           branch: newBranch, 
-//           role: newRole,
-//           shift: defaultShift
-//       },
-//     });
-
-//   } catch (err) {
-//     await session.abortTransaction();
-//     if (err.code === 11000) {
-//       if (err.keyPattern?.uniqueShopId)
-//         return next(new AppError('This Shop ID is already taken.', 400));
-//       if (err.keyPattern?.email)
-//         return next(new AppError('This email address is already in use.', 400));
-//     }
-//     next(err);
-//   } finally {
-//     session.endSession();
-//   }
-// });
 
 /* -------------------------------------------------------------
  * Get Pending Members
