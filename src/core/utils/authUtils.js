@@ -69,18 +69,18 @@ exports.decodeToken = (token) => {
 
 // const jwt = require('jsonwebtoken');
 
-// exports.signToken = (user) => {
-//   const payload = {
-//     id: user._id,
-//     organizationId: user.organizationId,
-//     branchId: user.branchId,
-//     role: user.role?._id || user.role,
-//   };
+exports.signToken = (user) => {
+  const payload = {
+    id: user._id,
+    organizationId: user.organizationId,
+    branchId: user.branchId,
+    role: user.role?._id || user.role,
+  };
 
-//   return jwt.sign(payload, process.env.JWT_SECRET, {
-//     expiresIn: process.env.JWT_EXPIRES_IN,
-//   });
-// };
+  return jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
+  });
+};
 
 // exports.signAccessToken = (user) => {
 //   const userId = user._id || user.id;

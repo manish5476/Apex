@@ -4,8 +4,7 @@ const catchAsync = require('../../../core/utils/catchAsync');
 const AppError = require('../../../core/utils/appError');
 const factory = require('../../../core/utils/handlerFactory');
 const sendEmail = require('../../../core/utils/_legacy/email');
-const { signToken } = require('../../../core/utils/authUtils');
-
+const { signToken, signAccessToken, signRefreshToken } = require('../../../core/utils/authUtils');
 const Organization = require('./organization.model');
 const Branch = require('./branch.model');
 const User = require('../../auth/core/user.model');
@@ -504,10 +503,17 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
     const token = signToken(newOwner._id);
     newOwner.password = undefined;
 
+    const accessToken = signAccessToken(newOwner);
+    const refreshToken = signRefreshToken(newOwner);
+
+    // Hide password before sending response
+    newOwner.password = undefined;
+
     res.status(201).json({
       status: 'success',
       message: 'Organization set up successfully!',
-      token,
+      token: accessToken, // Sending accessToken as 'token' for backward compatibility with your frontend
+      refreshToken,       // Sending the new refresh token
       data: { 
         organization: newOrg, 
         owner: newOwner, 
@@ -520,6 +526,22 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
         }
       },
     });
+    // res.status(201).json({
+    //   status: 'success',
+    //   message: 'Organization set up successfully!',
+    //   token,
+    //   data: { 
+    //     organization: newOrg, 
+    //     owner: newOwner, 
+    //     setup: {
+    //       branch: newBranch.name,
+    //       role: newRole.name,
+    //       shift: defaultShift.name,
+    //       department: defaultDept.name,
+    //       designation: defaultDesig.name
+    //     }
+    //   },
+    // });
 
   } catch (err) {
     // Safely attempt to abort the transaction in case it was already dropped by MongoDB
