@@ -425,6 +425,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       isActive: true
     });
 
+    // 6. Create Department
     const defaultDept = new Department({
       _id: deptId,
       name: 'Administration',
@@ -433,6 +434,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       headOfDepartment: ownerId
     });
 
+    // 7. Create Designation
     const defaultDesig = new Designation({
       _id: desigId,
       title: 'Director',
@@ -440,7 +442,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       level: 10 // Top level
     });
 
-    // 6. Create Owner (First Employee)
+    // 8. Create Owner (First Employee)
     const newOwner = new User({
       _id: ownerId,
       name: ownerName,
@@ -475,7 +477,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       }
     });
 
-    // 7. Create Leave Balance for Owner
+    // 9. Create Leave Balance for Owner
     const leaveBalance = new LeaveBalance({
       user: ownerId,
       organizationId: orgId,
@@ -485,22 +487,20 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       earnedLeave: { total: 15, used: 0 }
     });
 
-    // 8. Save Everything (Parallel)
-    await Promise.all([
-      newOrg.save({ session }),
-      newBranch.save({ session }),
-      newRole.save({ session }),
-      defaultShift.save({ session }),
-      defaultDept.save({ session }),
-      defaultDesig.save({ session }),
-      newOwner.save({ session }),
-      leaveBalance.save({ session })
-    ]);
+    // 10. Save Everything (SEQUENTIALLY to prevent Mongoose Transaction Errors)
+    await newOrg.save({ session });
+    await newBranch.save({ session });
+    await newRole.save({ session });
+    await defaultShift.save({ session });
+    await defaultDept.save({ session });
+    await defaultDesig.save({ session });
+    await newOwner.save({ session });
+    await leaveBalance.save({ session });
 
-    // 9. Commit Transaction
+    // 11. Commit Transaction
     await session.commitTransaction();
 
-    // 10. Response Data
+    // 12. Response Data
     const token = signToken(newOwner._id);
     newOwner.password = undefined;
 
@@ -522,7 +522,14 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
     });
 
   } catch (err) {
-    await session.abortTransaction();
+    // Safely attempt to abort the transaction in case it was already dropped by MongoDB
+    try {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+    } catch (abortErr) {
+      console.log('Transaction already aborted by server:', abortErr.message);
+    }
     
     // Improved error handling
     if (err.code === 11000) {
@@ -534,7 +541,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
     
     next(err);
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 });
 
