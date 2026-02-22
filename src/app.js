@@ -59,6 +59,7 @@ const cronRoutes = require('./routes/v1/cron.routes');
 const storefrontPublicRoutes = require('./PublicModules/routes/storefront/public.routes');
 const storefrontAdminRoutes = require('./PublicModules/routes/storefront/admin.routes');
 const smartRuleRoutes = require('./PublicModules/routes/storefront/smartRule.routes');
+const dropdownRoutes = require('./modules/master/core/dropdownlist');
 
 const app = express();
 
@@ -182,6 +183,7 @@ app.use("/api/v1/branches", branchRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/customers", customerRoutes);
 app.use("/api/v1/suppliers", supplierRoutes);
+app.use("/api/v1/dropdowns", dropdownRoutes);
 
 app.use("/api/v1/invoices", invoiceRoutes);
 app.use("/api/v1/invoices/pdf", invoicePDFRoutes);
