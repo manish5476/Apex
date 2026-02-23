@@ -41,8 +41,8 @@ router.post("/check-stock", checkPermission(PERMISSIONS.INVOICE.CREATE), checkSt
 });
 
 router.patch("/bulk/status", checkPermission(PERMISSIONS.INVOICE.UPDATE), invoiceController.bulkUpdateStatus);
-router.post("/bulk/create", checkPermission(PERMISSIONS.INVOICE.CREATE), validateStockForInvoice, invoiceController.bulkCreateInvoices);
-router.post("/bulk/cancel", checkPermission(PERMISSIONS.INVOICE.UPDATE), invoiceController.bulkCancelInvoices);
+// router.post("/bulk/create", checkPermission(PERMISSIONS.INVOICE.CREATE), validateStockForInvoice, invoiceController.bulkCreateInvoices);
+// router.post("/bulk/cancel", checkPermission(PERMISSIONS.INVOICE.UPDATE), invoiceController.bulkCancelInvoices);
 
 router.get("/validate/number/:number", checkPermission(PERMISSIONS.INVOICE.CREATE), invoiceController.validateNumber);
 router.get("/export/all", checkPermission(PERMISSIONS.INVOICE.EXPORT), invoiceController.exportInvoices);
@@ -52,12 +52,12 @@ router.get("/search/:query", checkPermission(PERMISSIONS.INVOICE.READ), invoiceC
     3. DRAFTS, TRASH & RECURRING
 ====================================================== */
 
-router.get("/drafts/all", checkPermission(PERMISSIONS.INVOICE.READ), invoiceController.getAllDrafts);
-router.delete("/drafts/bulk", checkPermission(PERMISSIONS.INVOICE.DELETE), invoiceController.bulkDeleteDrafts);
-router.get("/trash/all", checkPermission(PERMISSIONS.INVOICE.DELETE), invoiceController.getDeletedInvoices);
+// router.get("/drafts/all", checkPermission(PERMISSIONS.INVOICE.READ), invoiceController.getAllDrafts);
+// router.delete("/drafts/bulk", checkPermission(PERMISSIONS.INVOICE.DELETE), invoiceController.bulkDeleteDrafts);
+// router.get("/trash/all", checkPermission(PERMISSIONS.INVOICE.DELETE), invoiceController.getDeletedInvoices);
 
-router.post("/recurring", checkPermission(PERMISSIONS.INVOICE.CREATE), validateStockForInvoice, invoiceController.createRecurringInvoice);
-router.post("/recurring/generate", checkPermission(PERMISSIONS.INVOICE.CREATE), invoiceController.generateRecurringInvoices);
+// router.post("/recurring", checkPermission(PERMISSIONS.INVOICE.CREATE), validateStockForInvoice, invoiceController.createRecurringInvoice);
+// router.post("/recurring/generate", checkPermission(PERMISSIONS.INVOICE.CREATE), invoiceController.generateRecurringInvoices);
 
 /* ======================================================
     4. CUSTOMER SPECIFIC (Before Root)
@@ -93,11 +93,11 @@ router.route("/:id/payments")
 // PDF & Comms
 router.get("/:id/download", checkPermission(PERMISSIONS.INVOICE.DOWNLOAD), invoicePDFController.downloadInvoicePDF);
 router.post("/:id/email", checkPermission(PERMISSIONS.INVOICE.DOWNLOAD), invoicePDFController.emailInvoice);
-router.get("/:id/qr-code", checkPermission(PERMISSIONS.INVOICE.DOWNLOAD), invoiceController.generateQRCode);
+// router.get("/:id/qr-code", checkPermission(PERMISSIONS.INVOICE.DOWNLOAD), invoiceController.generateQRCode);
 
 // Sync & Webhooks
-router.post("/:id/restore", checkPermission(PERMISSIONS.INVOICE.DELETE), invoiceController.restoreInvoice);
-router.post("/:id/webhook", checkPermission(PERMISSIONS.INVOICE.UPDATE), invoiceController.triggerWebhook);
-router.post("/:id/sync/accounting", checkPermission(PERMISSIONS.INVOICE.UPDATE), invoiceController.syncWithAccounting);
+// router.post("/:id/restore", checkPermission(PERMISSIONS.INVOICE.DELETE), invoiceController.restoreInvoice);
+// router.post("/:id/webhook", checkPermission(PERMISSIONS.INVOICE.UPDATE), invoiceController.triggerWebhook);
+// router.post("/:id/sync/accounting", checkPermission(PERMISSIONS.INVOICE.UPDATE), invoiceController.syncWithAccounting);
 
 module.exports = router;

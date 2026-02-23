@@ -4,8 +4,9 @@ const attendanceLogController = require('../../controllers/attendance/attendance
 const { machineAuth } = require('../../middleware/auth');
 const { validateAttendanceLog } = require('../../middleware/validators');
 const authController = require("../../../auth/core/auth.controller");
-const { checkPermission } = require("../../../core/middleware/permission.middleware");
-const { PERMISSIONS } = require("../../../config/permissions");
+const { checkPermission } = require("../../../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../../../config/permissions");
+
 
 // ======================================================
 // 1. MACHINE ACCESS (Biometric Devices / IOT)

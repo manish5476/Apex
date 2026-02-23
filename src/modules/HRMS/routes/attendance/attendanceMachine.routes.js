@@ -4,8 +4,9 @@ const attendanceMachineController = require('../../controllers/attendance/attend
 const { machineAuth } = require('../../middleware/auth');
 const { validateMachine } = require('../../middleware/validators');
 const authController = require("../../../auth/core/auth.controller");
-const { checkPermission } = require("../../../core/middleware/permission.middleware");
-const { PERMISSIONS } = require("../../../config/permissions");
+const { checkPermission } = require("../../../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../../../config/permissions");
+
 
 // ======================================================
 // 1. HARDWARE COMMUNICATION (API Key / machineAuth)

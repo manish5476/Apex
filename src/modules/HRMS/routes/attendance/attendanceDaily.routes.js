@@ -3,8 +3,8 @@ const express = require('express');
 const router = express.Router();
 const attendanceDailyController = require('../../controllers/attendance/attendanceDaily.controller');
 const authController = require("../../../auth/core/auth.controller");
-const { checkPermission } = require("../../../core/middleware/permission.middleware");
-const { PERMISSIONS } = require("../../../config/permissions");
+const { checkPermission } = require("../../../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../../../config/permissions");
 
 // All routes require login
 router.use(authController.protect);

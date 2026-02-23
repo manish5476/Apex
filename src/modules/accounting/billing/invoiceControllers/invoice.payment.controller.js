@@ -238,21 +238,21 @@ const emiService = require('../../../_legacy/services/emiService'); // Adjust pa
 // /* ======================================================
 //    5. GET INVOICE PAYMENTS
 // ====================================================== */
-// exports.getInvoicePayments = catchAsync(async (req, res, next) => {
-//   const payments = await Payment.find({
-//     invoiceId: req.params.id,
-//     organizationId: req.user.organizationId,
-//     isDeleted: { $ne: true }
-//   })
-//   .sort({ paymentDate: -1 })
-//   .populate('createdBy', 'name email');
+exports.getInvoicePayments = catchAsync(async (req, res, next) => {
+  const payments = await Payment.find({
+    invoiceId: req.params.id,
+    organizationId: req.user.organizationId,
+    isDeleted: { $ne: true }
+  })
+  .sort({ paymentDate: -1 })
+  .populate('createdBy', 'name email');
 
-//   res.status(200).json({ 
-//     status: 'success', 
-//     results: payments.length, 
-//     data: { payments } 
-//   });
-// });
+  res.status(200).json({ 
+    status: 'success', 
+    results: payments.length, 
+    data: { payments } 
+  });
+});
 /* ======================================================
    4. ADD PAYMENT TO INVOICE (MUTUALLY EXCLUSIVE LOGIC)
 ====================================================== */

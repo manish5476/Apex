@@ -1,10 +1,10 @@
 // src/modules/accounting/payments/routes/cron.routes.js
 const express = require("express");
 const router = express.Router();
-const cronController = require("../controllers/cron.controller"); // Fixed relative path based on standard structure
-const authController = require('../../../auth/core/auth.controller');
-const { checkPermission } = require("../../../../core/middleware/permission.middleware");
-const { PERMISSIONS } = require("../../../../config/permissions");
+const cronController = require("../../modules/accounting/payments/cron.controller"); // Fixed relative path based on standard structure
+const authController = require("../../modules/auth/core/auth.controller");
+const { checkPermission } = require("../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../config/permissions");
 
 // ======================================================
 // SYSTEM-LEVEL JOB MANAGEMENT

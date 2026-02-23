@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const geoFenceController = require('../../controllers/attendance/geoFence.controller');
 const authController = require("../../../auth/core/auth.controller");
-const { checkPermission } = require("../../../core/middleware/permission.middleware");
-const { PERMISSIONS } = require("../../../config/permissions");
+const { checkPermission } = require("../../../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../../../config/permissions");
+
 const { validateGeoFence } = require('../../middleware/validators');
 
 // Protect all routes globally

@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const holidayController = require('../../controllers/attendance/holiday.controller');
 const authController = require("../../../auth/core/auth.controller");
-const { checkPermission } = require("../../../core/middleware/permission.middleware");
-const { PERMISSIONS } = require("../../../config/permissions");
+const { checkPermission } = require("../../../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../../../config/permissions");
+
 const { validateHoliday } = require('../../middleware/validators');
 
 // Protect all routes globally
