@@ -26,7 +26,27 @@ const factory = require("../../../../core/utils/handlerFactory");
 const { runInTransaction } = require("../../../../core/utils/runInTransaction");
 const { emitToOrg } = require("../../../../core/utils/_legacy/socket");
 const automationService = require('../../../_legacy/services/automationService');
+async function restoreStockFromInvoice(items, branchId, organizationId, session) {
+  for (const item of items) {
+    const updateResult = await Product.findOneAndUpdate(
+      { 
+        _id: item.productId, 
+        organizationId: organizationId, 
+        "inventory.branchId": branchId 
+      },
+      { 
+        $inc: { "inventory.$.quantity": item.quantity } 
+      },
+      { session, new: true }
+    );
 
+    if (!updateResult) {
+      console.error(`[STOCK_SYNC] Failed to restore stock for product ${item.productId} at branch ${branchId}`);
+      // We don't necessarily throw an error here to prevent blocking cancellation, 
+      // but you might want to log this for manual audit.
+    }
+  }
+}
 // ==============================================================================
 // 1. VALIDATION SCHEMA
 // ==============================================================================
@@ -450,11 +470,12 @@ exports.updateInvoice = catchAsync(async (req, res, next) => {
       updates.items = enrichedItems;
 
       // E. DELETE OLD ACCOUNTING ENTRIES
-      await AccountEntry.deleteMany({
-        invoiceId: oldInvoice._id,
-        referenceType: 'invoice'
-      }, { session });
-
+// Only delete Revenue recognition, NOT payment entries
+await AccountEntry.deleteMany({
+  referenceId: oldInvoice._id, // Using referenceId for specific invoice
+  referenceType: 'invoice',
+  organizationId: req.user.organizationId
+}, { session });
       // F. UPDATE CUSTOMER BALANCE (Remove old amount)
       await Customer.findByIdAndUpdate(
         oldInvoice.customerId,
@@ -829,8 +850,24 @@ exports.getInvoice = factory.getOne(Invoice, {
     { path: 'createdBy', select: 'name email' }
   ]
 });
+exports.deleteInvoice = catchAsync(async (req, res, next) => {
+  const invoice = await Invoice.findOne({ 
+      _id: req.params.id, 
+      organizationId: req.user.organizationId 
+  });
 
-exports.deleteInvoice = factory.deleteOne(Invoice);
+  if (!invoice) return next(new AppError("Invoice not found", 404));
+
+  // Guardrail: Don't allow deleting 'issued' or 'paid' invoices 
+  // without cancelling them first!
+  if (invoice.status !== 'draft' && invoice.status !== 'cancelled') {
+      return next(new AppError("Please cancel the invoice before deleting it to ensure stock and accounts are reversed.", 400));
+  }
+
+  // If it passes the check, use your existing factory logic
+  return factory.deleteOne(Invoice)(req, res, next);
+});
+// exports.deleteInvoice = factory.deleteOne(Invoice);
 
 exports.bulkUpdateStatus = catchAsync(async (req, res, next) => {
   const { ids, status } = req.body;
@@ -840,15 +877,22 @@ exports.bulkUpdateStatus = catchAsync(async (req, res, next) => {
 });
 
 exports.validateNumber = catchAsync(async (req, res, next) => {
-  const exists = await Invoice.exists({ invoiceNumber: req.params.number, organizationId: req.user.organizationId });
-  res.status(200).json({ status: "success", valid: !exists });
+  const { number } = req.params;
+  const exists = await Invoice.exists({ 
+    invoiceNumber: number, 
+    organizationId: req.user.organizationId 
+  });
+
+  res.status(200).json({ 
+    status: "success", 
+    data: { isAvailable: !exists } 
+  });
 });
 
 exports.exportInvoices = catchAsync(async (req, res, next) => {
   const docs = await Invoice.find({ organizationId: req.user.organizationId }).populate('customerId').lean();
   res.status(200).json({ status: "success", data: docs });
 });
-
 
 exports.getInvoicesByCustomer = catchAsync(async (req, res, next) => {
   const invoices = await Invoice.find({ organizationId: req.user.organizationId, customerId: req.params.customerId, isDeleted: { $ne: true } }).populate('items.productId', 'name sku').sort({ invoiceDate: -1 });
@@ -863,6 +907,69 @@ exports.downloadInvoice = catchAsync(async (req, res, next) => {
   res.send(buffer);
 });
 
+// --- Bulk Cancel Invoices ---
+exports.bulkCancelInvoices = catchAsync(async (req, res, next) => {
+  const { ids, reason } = req.body;
+  if (!ids || !Array.isArray(ids)) return next(new AppError("Invoice IDs are required", 400));
+
+  await runInTransaction(async (session) => {
+      for (const id of ids) {
+          const invoice = await Invoice.findOne({ _id: id, organizationId: req.user.organizationId }).session(session);
+          if (!invoice || invoice.status === 'cancelled') continue;
+
+          // 1. Restore Stock
+          await restoreStockFromInvoice(invoice.items, invoice.branchId, req.user.organizationId, session);
+
+          // 2. Reverse Accounting & Customer Balance
+          await salesJournalService.reverseInvoiceJournal({
+              orgId: req.user.organizationId,
+              branchId: invoice.branchId,
+              invoice,
+              userId: req.user._id,
+              session
+          });
+
+          // 3. Update Status
+          invoice.status = 'cancelled';
+          invoice.notes += `\nBulk Cancelled: ${reason}`;
+          await invoice.save({ session });
+      }
+  }, 3, { action: "BULK_CANCEL_INVOICE", userId: req.user._id });
+
+  res.status(200).json({ status: "success", message: `${ids.length} invoices cancelled.` });
+});
+
+// --- Restore Soft-Deleted Invoice ---
+exports.restoreInvoice = catchAsync(async (req, res, next) => {
+  const invoice = await Invoice.findOneAndUpdate(
+      { _id: req.params.id, organizationId: req.user.organizationId, isDeleted: true },
+      { isDeleted: false },
+      { new: true }
+  );
+
+  if (!invoice) return next(new AppError('Deleted invoice not found', 404));
+
+  res.status(200).json({ status: 'success', data: { invoice } });
+});
+
+exports.getAllDrafts = catchAsync(async (req, res, next) => {
+  const drafts = await Invoice.find({
+      organizationId: req.user.organizationId,
+      status: 'draft',
+      isDeleted: { $ne: true }
+  }).populate('customerId', 'name');
+  
+  res.status(200).json({ status: 'success', data: { invoices: drafts } });
+});
+
+exports.getDeletedInvoices = catchAsync(async (req, res, next) => {
+  const trash = await Invoice.find({
+      organizationId: req.user.organizationId,
+      isDeleted: true
+  }).populate('customerId', 'name');
+
+  res.status(200).json({ status: 'success', data: { invoices: trash } });
+});
 
 module.exports = exports;
 

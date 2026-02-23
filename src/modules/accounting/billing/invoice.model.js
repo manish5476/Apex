@@ -88,6 +88,9 @@ invoiceSchema.pre("save", function (next) {
         });
 
         const grand = subTotal + totalTax - totalDiscount + (this.roundOff || 0);
+        if (this.grandTotal < 0) {
+            return next(new Error("Grand total cannot be negative. Check discounts."));
+        }
         this.subTotal = subTotal;
         this.totalTax = totalTax;
         this.totalDiscount = totalDiscount;
