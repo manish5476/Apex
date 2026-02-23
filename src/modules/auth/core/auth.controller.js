@@ -83,29 +83,34 @@ const cleanPhone = (phone) => {
  * @route   POST /api/v1/auth/signup
  * @access  Public
  */
+/**
+ * @desc    Sign up new user
+ * @route   POST /api/v1/auth/signup
+ * @access  Public
+ */
 exports.signup = catchAsync(async (req, res, next) => {
   const { name, email, password, passwordConfirm, phone, uniqueShopId } = req.body;
 
-  // Validate required fields
+  // 1. Validate required fields
   if (!name || !email || !password || !passwordConfirm || !uniqueShopId || !phone) {
     return next(new AppError("All fields including phone are required", 400));
   }
 
-  // Validate phone format
+  // 2. Validate phone format
   if (!validatePhone(phone)) {
     return next(new AppError("Please provide a valid phone number", 400));
   }
 
-  // Find organization
+  // 3. Find organization
   const organization = await Organization.findOne({ uniqueShopId }).populate("owner", "name email");
   if (!organization) {
     return next(new AppError("Invalid Shop ID", 404));
   }
 
-  // Clean phone for storage
+  // 4. Clean phone for storage
   const cleanedPhone = cleanPhone(phone);
 
-  // Check for existing user with same email OR phone in this organization
+  // 5. Check for existing user with same email OR phone in this organization
   const existingUser = await User.findOne({
     organizationId: organization._id,
     $or: [
@@ -126,7 +131,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     }
   }
 
-  // Create new user
+  // 6. Create new user
   const newUser = await User.create({
     name,
     email: email.toLowerCase(),
@@ -138,8 +143,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     isActive: true,
     isLoginBlocked: false,
     employeeProfile: {
-      // Initialize empty employee profile
-      employmentType: 'permanent'
+      employmentType: 'permanent' // Initialize empty employee profile
     },
     attendanceConfig: {
       isAttendanceEnabled: true,
@@ -149,30 +153,38 @@ exports.signup = catchAsync(async (req, res, next) => {
     }
   });
 
-  // 🔔 NOTIFICATIONS
+  // 7. 🔔 NOTIFICATIONS
   if (organization.owner?._id) {
     const ownerId = organization.owner._id.toString();
     
     // Socket notification
-    emitToUser(ownerId, "newNotification", {
-      title: "New Signup Request",
-      message: `${newUser.name} (${newUser.email}) has signed up.`,
-      type: "info",
-      createdAt: new Date().toISOString(),
-    });
+    try {
+      emitToUser(ownerId, "newNotification", {
+        title: "New Signup Request",
+        message: `${newUser.name} (${newUser.email}) has signed up.`,
+        type: "info",
+        createdAt: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      console.error("Socket emission failed:", socketErr.message);
+    }
 
     // DB Notification
-    const io = req.app.get("io");
-    await createNotification(
-      organization._id,
-      ownerId,
-      "USER_SIGNUP",
-      "New Employee Signup Request",
-      `${name} (${email}) is waiting for approval. Phone: ${phone}`,
-      io,
-    );
+    try {
+      const io = req.app.get("io");
+      await createNotification(
+        organization._id,
+        ownerId,
+        "USER_SIGNUP", // ✅ This maps to your schema's required `businessType`
+        "New Employee Signup Request",
+        `${name} (${email}) is waiting for approval. Phone: ${phone}`,
+        io
+      );
+    } catch (dbNotifyErr) {
+      console.error("DB Notification creation failed:", dbNotifyErr.message);
+    }
 
-    // Email notification
+    // Email notification to Admin
     sendEmail({
       email: organization.owner.email,
       subject: "New Signup Request - Awaits Approval",
@@ -185,10 +197,10 @@ exports.signup = catchAsync(async (req, res, next) => {
         <p>Please login to the admin panel to approve or reject this request.</p>
         <a href="${process.env.FRONTEND_URL}/admin/users/pending">Review Request</a>
       `
-    }).catch(err => console.error("Signup Email failed:", err.message));
+    }).catch(err => console.error("Signup Email to admin failed:", err.message));
   }
 
-  // Send welcome email to user
+  // 8. Send welcome email to user
   sendEmail({
     email: newUser.email,
     subject: "Registration Received - Awaiting Approval",
@@ -200,8 +212,9 @@ exports.signup = catchAsync(async (req, res, next) => {
       <p><strong>Registered Email:</strong> ${email}</p>
       <p><strong>Registered Phone:</strong> ${phone}</p>
     `
-  }).catch(err => console.error("Welcome Email failed:", err.message));
+  }).catch(err => console.error("Welcome Email to user failed:", err.message));
 
+  // 9. Send Response
   res.status(201).json({
     status: "success",
     message: "Signup successful. Awaiting organization approval. You'll be notified via email once approved.",
@@ -901,11 +914,15 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
     .digest("hex");
 
   // Find user with valid reset token
-  const user = await User.findOne({
-    passwordResetToken: hashedToken,
-    passwordResetExpires: { $gt: Date.now() },
-  });
-
+  // const user = await User.findOne({
+  //   passwordResetToken: hashedToken,
+  //   passwordResetExpires: { $gt: Date.now() },
+  // });
+// Around line 545
+const user = await User.findOne({
+  passwordResetToken: hashedToken,
+  passwordResetExpires: { $gt: Date.now() },
+}).populate("role"); // ✅ ADD THIS
   if (!user) {
     return next(new AppError("Password reset token is invalid or has expired.", 400));
   }
@@ -998,8 +1015,12 @@ exports.updateMyPassword = catchAsync(async (req, res, next) => {
   }
 
   // Get user with password
-  const user = await User.findById(req.user.id).select("+password");
-  
+  // const user = await User.findById(req.user.id).select("+password");
+  // Around line 621
+  const user = await User.findById(req.user.id)
+    .select("+password")
+    .populate("role"); // ✅ ADD THIS
+    
   if (!user) {
     return next(new AppError("User not found.", 404));
   }
