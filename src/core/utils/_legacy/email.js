@@ -44,6 +44,12 @@ module.exports = async ({ email, subject, message, html, attachments = [] }) => 
   try {
     const info = await transporter.sendMail(mailOptions);
     console.log(`📧 Email Sent to ${email} | ID: ${info.messageId}`);
+     
+    // ADD THIS LINE: It gives you a clickable link in your terminal to see the email
+    const previewUrl = nodemailer.getTestMessageUrl(info);
+    if (previewUrl) {
+      console.log(`🔗 Preview URL: ${previewUrl}`);
+    }
     return info;
   } catch (err) {
     console.error(`💥 Email Error [To: ${email}]:`, err.message);
