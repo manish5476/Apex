@@ -117,33 +117,85 @@ async function processUserMessage(message, userContext = {}) {
       const { llm, prompt, createToolCallingAgent, AgentExecutor, DynamicStructuredTool, z } = deps;
 
       // PROPER FIX: Create tools inside the request so they inherit the specific user's organizationId
-      const tools = [
-        new DynamicStructuredTool({
-          name: "sales_tool",
-          description: "Fetch sales summary",
-          schema: z.object({ startDate: z.string().optional(), endDate: z.string().optional(), paymentStatus: z.string().optional() }),
-          func: async (args) => JSON.stringify(await salesTool({ ...args, organizationId, branchId }))
-        }),
-        new DynamicStructuredTool({
-          name: "product_tool",
-          description: "Check product inventory",
-          schema: z.object({ productName: z.string() }),
-          func: async (args) => JSON.stringify(await productTool({ ...args, organizationId, branchId }))
-        }),
-        new DynamicStructuredTool({
-          name: "customer_dues",
-          description: "Fetch customers with dues",
-          schema: z.object({ minAmount: z.number().optional() }),
-          func: async (args) => JSON.stringify(await customerDuesTool({ ...args, organizationId }))
-        }),
-        new DynamicStructuredTool({
-          name: "emi_tool",
-          description: "Check EMIs",
-          schema: z.object({ status: z.string().optional() }),
-          func: async (args) => JSON.stringify(await emiTool({ ...args, organizationId }))
-        }),
-      ];
-
+      // const tools = [
+      //   new DynamicStructuredTool({
+      //     name: "sales_tool",
+      //     description: "Fetch sales summary",
+      //     schema: z.object({ startDate: z.string().optional(), endDate: z.string().optional(), paymentStatus: z.string().optional() }),
+      //     func: async (args) => JSON.stringify(await salesTool({ ...args, organizationId, branchId }))
+      //   }),
+      //   new DynamicStructuredTool({
+      //     name: "product_tool",
+      //     description: "Check product inventory",
+      //     schema: z.object({ productName: z.string() }),
+      //     func: async (args) => JSON.stringify(await productTool({ ...args, organizationId, branchId }))
+      //   }),
+      //   new DynamicStructuredTool({
+      //     name: "customer_dues",
+      //     description: "Fetch customers with dues",
+      //     schema: z.object({ minAmount: z.number().optional() }),
+      //     func: async (args) => JSON.stringify(await customerDuesTool({ ...args, organizationId }))
+      //   }),
+      //   new DynamicStructuredTool({
+      //     name: "emi_tool",
+      //     description: "Check EMIs",
+      //     schema: z.object({ status: z.string().optional() }),
+      //     func: async (args) => JSON.stringify(await emiTool({ ...args, organizationId }))
+      //   }),
+      // ];
+// Inside your agentService.js -> tryInitLangchainAgent function
+const tools = [
+  new DynamicStructuredTool({
+    name: "sales_tool",
+    description: "Fetch sales & invoices. Use for revenue, invoices, or sales history.",
+    schema: z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      paymentStatus: z.string().optional(),
+      invoiceNumber: z.string().optional(),
+      minAmount: z.number().optional(),
+      maxAmount: z.number().optional()
+    }),
+    func: async (args) => JSON.stringify(await salesTool({ ...args, organizationId, branchId }))
+  }),
+  new DynamicStructuredTool({
+    name: "product_tool",
+    description: "Search products, check stock, pricing, and inventory by name, SKU, or barcode.",
+    schema: z.object({ 
+      searchQuery: z.string().optional(),
+      inStockOnly: z.boolean().optional()
+    }),
+    func: async (args) => JSON.stringify(await productTool({ ...args, organizationId, branchId }))
+  }),
+  new DynamicStructuredTool({
+    name: "customer_tool",
+    description: "Find customers by name/phone, or fetch customers with outstanding dues.",
+    schema: z.object({ 
+      searchQuery: z.string().optional(),
+      hasDues: z.boolean().optional(),
+      minDues: z.number().optional() 
+    }),
+    func: async (args) => JSON.stringify(await customerTool({ ...args, organizationId }))
+  }),
+  new DynamicStructuredTool({
+    name: "emi_tool",
+    description: "Check active, completed, or defaulted EMIs and their next installment dates.",
+    schema: z.object({ status: z.string().optional() }),
+    func: async (args) => JSON.stringify(await emiTool({ ...args, organizationId }))
+  }),
+  new DynamicStructuredTool({
+    name: "payment_tool",
+    description: "Fetch payment history, inflows (received), and outflows (paid).",
+    schema: z.object({ 
+      type: z.enum(['inflow', 'outflow']).optional(),
+      status: z.string().optional(),
+      method: z.string().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional()
+    }),
+    func: async (args) => JSON.stringify(await paymentTool({ ...args, organizationId, branchId }))
+  }),
+];
       const agent = await createToolCallingAgent({ llm, tools, prompt });
       const agentExecutor = new AgentExecutor({ agent, tools });
 
