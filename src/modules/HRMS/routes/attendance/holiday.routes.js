@@ -1,42 +1,88 @@
-// routes/attendance/holiday.routes.js
 const express = require('express');
 const router = express.Router();
 const holidayController = require('../../controllers/attendance/holiday.controller');
-const { protect, restrictTo } = require('../../middleware/auth');
-const { validateHoliday } = require('../../middleware/validators');
 const authController = require("../../../auth/core/auth.controller");
+const { checkPermission } = require("../../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../../config/permissions");
+const { validateHoliday } = require('../../middleware/validators');
 
+// Protect all routes globally
 router.use(authController.protect);
 
-// Public routes (within org)
-router.get('/upcoming', holidayController.getUpcomingHolidays);
-router.post('/check-date', holidayController.checkDate);
-router.get('/export', holidayController.exportHolidays);
-router.get('/stats', holidayController.getHolidayStats);
+// ======================================================
+// 1. PUBLIC CALENDAR (Employee View)
+// ======================================================
 
-// Year-based routes
-router.get('/year/:year', holidayController.getHolidaysByYear);
+// Get the next few holidays for the dashboard
+router.get('/upcoming', 
+  checkPermission(PERMISSIONS.HOLIDAY.READ), 
+  holidayController.getUpcomingHolidays
+);
 
-// Admin/HR routes
-router.post('/bulk', holidayController.bulkCreateHolidays);
-router.post('/copy-year', holidayController.copyHolidaysFromYear);
+// Browse holidays by a specific calendar year
+router.get('/year/:year', 
+  checkPermission(PERMISSIONS.HOLIDAY.READ), 
+  holidayController.getHolidaysByYear
+);
 
-// Standard CRUD
+// Check if a specific date is a holiday (useful for leave applications)
+router.post('/check-date', 
+  checkPermission(PERMISSIONS.HOLIDAY.READ), 
+  holidayController.checkDate
+);
+
+// ======================================================
+// 2. ANALYTICS & EXPORTS (HR/Management)
+// ======================================================
+
+router.get('/stats', 
+  checkPermission(PERMISSIONS.HOLIDAY.READ), 
+  holidayController.getHolidayStats
+);
+
+router.get('/export', 
+  checkPermission(PERMISSIONS.HOLIDAY.MANAGE), 
+  holidayController.exportHolidays
+);
+
+// ======================================================
+// 3. ADMINISTRATIVE BULK TOOLS
+// ======================================================
+
+// Import a full list of holidays (e.g., from a CSV or Govt list)
+router.post('/bulk', 
+  checkPermission(PERMISSIONS.HOLIDAY.MANAGE), 
+  holidayController.bulkCreateHolidays
+);
+
+// Duplicate the current year's calendar structure to the next year
+router.post('/copy-year', 
+  checkPermission(PERMISSIONS.HOLIDAY.MANAGE), 
+  holidayController.copyHolidaysFromYear
+);
+
+// ======================================================
+// 4. STANDARD CRUD
+// ======================================================
+
 router.route('/')
-  .get(holidayController.getAllHolidays)
+  .get(checkPermission(PERMISSIONS.HOLIDAY.READ), holidayController.getAllHolidays)
   .post(
-
-    validateHoliday,
+    checkPermission(PERMISSIONS.HOLIDAY.MANAGE),
+    validateHoliday, 
     holidayController.createHoliday
   );
 
 router.route('/:id')
-  .get(holidayController.getHoliday)
+  .get(checkPermission(PERMISSIONS.HOLIDAY.READ), holidayController.getHoliday)
   .patch(
-
-    validateHoliday,
+    checkPermission(PERMISSIONS.HOLIDAY.MANAGE),
+    validateHoliday, 
     holidayController.updateHoliday
   )
-  .delete(holidayController.deleteHoliday);
+  .delete(
+    checkPermission(PERMISSIONS.HOLIDAY.MANAGE), 
+    holidayController.deleteHoliday
+  );
 
 module.exports = router;

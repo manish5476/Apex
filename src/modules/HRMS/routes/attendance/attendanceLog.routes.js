@@ -1,36 +1,87 @@
-// routes/attendance/attendanceLog.routes.js
 const express = require('express');
 const router = express.Router();
 const attendanceLogController = require('../../controllers/attendance/attendanceLog.controller');
-const {  machineAuth } = require('../../middleware/auth');
+const { machineAuth } = require('../../middleware/auth');
 const { validateAttendanceLog } = require('../../middleware/validators');
 const authController = require("../../../auth/core/auth.controller");
+const { checkPermission } = require("../../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../../config/permissions");
 
-// Machine routes (API key based)
+// ======================================================
+// 1. MACHINE ACCESS (Biometric Devices / IOT)
+// ======================================================
+// No user protect here; uses API Key / machineAuth
 router.post('/bulk', machineAuth, attendanceLogController.bulkCreateLogs);
-// All other routes require user authentication
+
+// ======================================================
+// 2. USER ACCESS (Requires Identity)
+// ======================================================
 router.use(authController.protect);
-// User routes
-router.get('/my-logs', attendanceLogController.getMyLogs);
-router.post('/', validateAttendanceLog, attendanceLogController.createAttendanceLog);
 
-// Stats & feed
-router.get('/stats',  attendanceLogController.getLogStats);
-router.get('/realtime-feed',  attendanceLogController.getRealtimeFeed);
+// Self-Service
+router.get('/my-logs', 
+  checkPermission(PERMISSIONS.ATTENDANCE.LOG_READ), 
+  attendanceLogController.getMyLogs
+);
 
-// Admin routes
-router.get('/user/:userId',  attendanceLogController.getUserLogs);
+// Manual Log Entry (e.g., if mobile app is used)
+router.post('/', 
+  checkPermission(PERMISSIONS.ATTENDANCE.LOG_READ), 
+  validateAttendanceLog, 
+  attendanceLogController.createAttendanceLog
+);
 
-// Log actions
-router.patch('/:id/verify',  attendanceLogController.verifyLog);
-router.patch('/:id/flag',  attendanceLogController.flagLog);
-router.patch('/:id/correct',  attendanceLogController.correctLog);
+// ======================================================
+// 3. MONITORING & ADMIN (HR/Manager)
+// ======================================================
 
-// Standard CRUD
+// High-level monitoring
+router.get('/stats', 
+  checkPermission(PERMISSIONS.ATTENDANCE.LOG_READ), 
+  attendanceLogController.getLogStats
+);
+
+router.get('/realtime-feed', 
+  checkPermission(PERMISSIONS.ATTENDANCE.LOG_READ), 
+  attendanceLogController.getRealtimeFeed
+);
+
+// Specific User History
+router.get('/user/:userId', 
+  checkPermission(PERMISSIONS.ATTENDANCE.LOG_READ), 
+  attendanceLogController.getUserLogs
+);
+
+// ======================================================
+// 4. LOG MODERATION (Destructive/Corrective)
+// ======================================================
+
+// Verify a flagged log
+router.patch('/:id/verify', 
+  checkPermission(PERMISSIONS.ATTENDANCE.LOG_MANAGE), 
+  attendanceLogController.verifyLog
+);
+
+// Flag a suspicious log (e.g., mismatched GPS)
+router.patch('/:id/flag', 
+  checkPermission(PERMISSIONS.ATTENDANCE.LOG_MANAGE), 
+  attendanceLogController.flagLog
+);
+
+// Manual Correction
+router.patch('/:id/correct', 
+  checkPermission(PERMISSIONS.ATTENDANCE.LOG_MANAGE), 
+  attendanceLogController.correctLog
+);
+
+// ======================================================
+// 5. STANDARD CRUD
+// ======================================================
+
 router.route('/')
-  .get( attendanceLogController.getAllLogs);
+  .get(checkPermission(PERMISSIONS.ATTENDANCE.LOG_READ), attendanceLogController.getAllLogs);
 
 router.route('/:id')
-  .get(attendanceLogController.getLog);
+  .get(checkPermission(PERMISSIONS.ATTENDANCE.LOG_READ), attendanceLogController.getLog);
 
 module.exports = router;

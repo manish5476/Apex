@@ -3,14 +3,17 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const authController = require("../../modules/auth/core/auth.controller");
-const logsController = require("../../modules/_legacy/controllers/logs.controller");
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
 const router = express.Router();
 
-router.use(checkPermission(PERMISSIONS.LOGS.VIEW));
-router.use(authController.restrictTo("superadmin"));
+// ======================================================
+// 1. SECURITY STACK (Order Matters!)
+// ======================================================
+router.use(authController.protect);               // 1. Identify user
+router.use(authController.restrictTo("superadmin")); // 2. Verify elite role
+router.use(checkPermission(PERMISSIONS.LOGS.VIEW)); // 3. Verify specific permission
 
 // Supported log files
 const VALID_FILES = {
@@ -20,6 +23,9 @@ const VALID_FILES = {
   rejections: "rejections.log",
 };
 
+// ======================================================
+// 2. LOG VIEWER ENDPOINT
+// ======================================================
 router.get("/", (req, res) => {
   const {
     file = "combined",
@@ -33,61 +39,74 @@ router.get("/", (req, res) => {
   if (!targetFile) {
     return res.status(400).json({
       success: false,
-      message: "Invalid log file",
+      message: "Invalid log file. Choose from: combined, error, exceptions, rejections",
     });
   }
 
+  // Path resolution - Ensure this points correctly to your logs directory
   const filePath = path.join(__dirname, "../../logs", targetFile);
 
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({
       success: false,
-      message: "Log file not found",
+      message: `Log file ${targetFile} not found on server`,
     });
   }
-  const raw = fs.readFileSync(filePath, "utf8");
-  let lines = raw.split("\n");
 
-  // Apply date filtering
-  if (startDate || endDate) {
-    lines = lines.filter((line) => {
-      try {
-        const json = JSON.parse(line);
+  try {
+    const raw = fs.readFileSync(filePath, "utf8");
+    let lines = raw.split("\n").filter(line => line.trim() !== "");
 
-        if (!json.timestamp) return false;
+    // Apply date filtering (Assuming JSON format from Winston/Bunyan)
+    if (startDate || endDate) {
+      const startTs = startDate ? new Date(startDate).getTime() : null;
+      const endTs = endDate ? new Date(endDate).getTime() : null;
 
-        const ts = new Date(json.timestamp).getTime();
-        if (startDate && ts < new Date(startDate).getTime()) return false;
-        if (endDate && ts > new Date(endDate).getTime()) return false;
-
-        return true;
-      } catch {
-        return false;
-      }
-    });
-  }
-  if (search) {
-    lines = lines.filter((line) => line.toLowerCase().includes(search.toLowerCase()));
-  }
-  lines = lines.slice(-limit);
-  res.json({
-    success: true,
-    file,
-    count: lines.length,
-    content: lines
-      .map(l => {
-        const clean = l.trim();
-        if (!clean) return null;
-
+      lines = lines.filter((line) => {
         try {
-          return JSON.parse(clean);
+          const json = JSON.parse(line);
+          if (!json.timestamp) return false;
+          const ts = new Date(json.timestamp).getTime();
+          
+          if (startTs && ts < startTs) return false;
+          if (endTs && ts > endTs) return false;
+          return true;
         } catch {
-          return { raw: clean };
+          return false; // Skip malformed lines during date filtering
+        }
+      });
+    }
+
+    // Apply text search
+    if (search) {
+      const query = search.toLowerCase();
+      lines = lines.filter((line) => line.toLowerCase().includes(query));
+    }
+
+    // Slice to limit
+    const totalLines = lines.length;
+    lines = lines.slice(-Math.abs(limit));
+
+    res.json({
+      success: true,
+      file,
+      total_in_view: lines.length,
+      limit_requested: limit,
+      content: lines.map(l => {
+        try {
+          return JSON.parse(l);
+        } catch {
+          return { raw: l };
         }
       })
-      .filter(Boolean)
-  });
-
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error reading log files",
+      error: error.message
+    });
+  }
 });
 
 module.exports = router;

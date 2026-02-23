@@ -1,39 +1,80 @@
-// routes/core/shift.routes.js
 const express = require('express');
 const router = express.Router();
 const shiftController = require('../../controllers/core/shift.controller');
-const { validateShift } = require('../../middleware/validators');
 const authController = require("../../../auth/core/auth.controller");
+const { checkPermission } = require("../../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../../config/permissions");
+const { validateShift } = require('../../middleware/validators');
 
-// All routes require authentication
+// Protect all routes globally
 router.use(authController.protect);
 
-// Special routes
-router.post('/calculate-hours', shiftController.calculateShiftHours);
-router.get('/coverage', shiftController.getShiftCoverage);
-router.get('/timeline', shiftController.getShiftTimeline);
-router.post('/validate-assignment', shiftController.validateShiftAssignment);
+// ======================================================
+// 1. OPERATIONAL ANALYTICS & UTILS
+// ======================================================
 
-// Clone shift
-router.post('/:id/clone', shiftController.cloneShift);
+// Visual representation of shifts across a 24-hour block
+router.get('/timeline', 
+  checkPermission(PERMISSIONS.SHIFT.READ), 
+  shiftController.getShiftTimeline
+);
 
-// Standard CRUD
+// Check if enough staff are assigned to maintain operations
+router.get('/coverage', 
+  checkPermission(PERMISSIONS.SHIFT.READ), 
+  shiftController.getShiftCoverage
+);
+
+// Utility for calculating work duration minus break times
+router.post('/calculate-hours', 
+  checkPermission(PERMISSIONS.SHIFT.READ), 
+  shiftController.calculateShiftHours
+);
+
+// Validate if a shift conflict exists for a specific user
+router.post('/validate-assignment', 
+  checkPermission(PERMISSIONS.SHIFT.READ), 
+  shiftController.validateShiftAssignment
+);
+
+// ======================================================
+// 2. TEMPLATE MANAGEMENT (Admin/HR)
+// ======================================================
+
+// Create a new shift based on an existing one
+router.post('/:id/clone', 
+  checkPermission(PERMISSIONS.SHIFT.MANAGE), 
+  shiftController.cloneShift
+);
+
+// ======================================================
+// 3. CORE CRUD & ASSIGNMENT LISTING
+// ======================================================
+
 router.route('/')
-  .get(shiftController.getAllShifts)
+  .get(checkPermission(PERMISSIONS.SHIFT.READ), shiftController.getAllShifts)
   .post(
-    validateShift,
+    checkPermission(PERMISSIONS.SHIFT.MANAGE),
+    validateShift, 
     shiftController.createShift
   );
 
+// View all employees currently assigned to a specific shift
+router.get('/:id/assignments', 
+  checkPermission(PERMISSIONS.SHIFT.READ), 
+  shiftController.getShiftAssignments
+);
+
 router.route('/:id')
-  .get(shiftController.getShift)
+  .get(checkPermission(PERMISSIONS.SHIFT.READ), shiftController.getShift)
   .patch(
-    validateShift,
+    checkPermission(PERMISSIONS.SHIFT.MANAGE),
+    validateShift, 
     shiftController.updateShift
   )
-  .delete( shiftController.deleteShift);
-
-// Shift assignments
-router.get('/:id/assignments', shiftController.getShiftAssignments);
+  .delete(
+    checkPermission(PERMISSIONS.SHIFT.MANAGE), 
+    shiftController.deleteShift
+  );
 
 module.exports = router;

@@ -3,32 +3,59 @@ const express = require("express");
 const router = express.Router();
 const authController = require("../../modules/auth/core/auth.controller");
 const { processUserMessage } = require("../../modules/_legacy/services/ai/agentService");
+const { checkPermission } = require("../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../config/permissions");
 
-// Protect — this will attach req.user
+// Protect all AI routes globally
 router.use(authController.protect);
 
-// POST /api/v1/ai-agent/chat
-router.post("/chat", async (req, res) => {
+/**
+ * @route   POST /api/v1/ai-agent/chat
+ * @desc    Process natural language queries using AI
+ * @access  Private (Requires ai:chat permission)
+ */
+router.post("/chat", checkPermission(PERMISSIONS.AI.CHAT), async (req, res) => {
   try {
-    const message = req.body.message || req.query.message;
-    if (!message) return res.status(400).json({ success: false, message: "message is required" });
-
-    // organizationId: prefer req.user (auth), fallback to body
-    const organizationId = (req.user && req.user.organizationId) || req.body.organizationId || req.query.organizationId;
-    const branchId = (req.user && req.user.branchId) || req.body.branchId || req.query.branchId;
-
-    if (!organizationId) {
-      return res.status(400).json({ success: false, message: "organizationId required" });
+    const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Message is required" 
+      });
     }
 
-    const reply = await processUserMessage(message, { organizationId, branchId });
+    // SECURITY: Strictly use IDs from the authenticated user object.
+    // This prevents "ID spoofing" where a user queries data from another org.
+    const organizationId = req.user.organizationId;
+    const branchId = req.user.branchId;
 
-    res.json({ success: true, reply });
+    if (!organizationId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Your user account is not associated with an organization." 
+      });
+    }
+
+    // Process the message through your AI Service
+    const reply = await processUserMessage(message, { 
+      organizationId, 
+      branchId,
+      userId: req.user.id // Pass userId for auditing if needed
+    });
+
+    res.json({ 
+      success: true, 
+      reply 
+    });
+
   } catch (err) {
     console.error("AI Route Error:", err);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({ 
+      success: false, 
+      message: "The AI agent is currently unavailable. Please try again later." 
+    });
   }
 });
 
 module.exports = router;
-

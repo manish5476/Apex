@@ -1,44 +1,96 @@
-// routes/leave/leaveRequest.routes.js
 const express = require('express');
 const router = express.Router();
 const leaveRequestController = require('../../controllers/leave/leaveRequest.controller');
-const { protect, restrictTo } = require('../../middleware/auth');
+const authController = require("../../../auth/core/auth.controller");
+const { checkPermission } = require("../../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../../config/permissions");
 const { validateLeaveRequest } = require('../../middleware/validators');
 
-// All routes require authentication
-router.use(protect);
+// Protect all routes globally
+router.use(authController.protect);
 
-// User-specific routes (must come before /:id)
-router.get('/my-requests', leaveRequestController.getMyLeaveRequests);
-router.get('/balance-summary', leaveRequestController.getLeaveBalanceSummary);
-router.get('/pending-approvals', leaveRequestController.getPendingApprovals);
+// ======================================================
+// 1. EMPLOYEE SELF-SERVICE (Self-facing)
+// ======================================================
 
-// Team/Manager routes
-router.get('/team-calendar', restrictTo('manager', 'hr'), leaveRequestController.getTeamLeaveCalendar);
+router.get('/my-requests', 
+  checkPermission(PERMISSIONS.LEAVE.READ), 
+  leaveRequestController.getMyLeaveRequests
+);
 
-// Admin/HR routes
-router.get('/analytics', restrictTo('admin', 'hr'), leaveRequestController.getLeaveAnalytics);
-router.post('/bulk-approve', restrictTo('admin', 'hr'), leaveRequestController.bulkApproveLeaves);
+router.get('/balance-summary', 
+  checkPermission(PERMISSIONS.LEAVE.READ), 
+  leaveRequestController.getLeaveBalanceSummary
+);
 
-// Approval actions
-router.patch('/:id/approve', leaveRequestController.approveLeaveRequest);
-router.patch('/:id/reject', leaveRequestController.rejectLeaveRequest);
-router.patch('/:id/escalate', restrictTo('manager', 'hr'), leaveRequestController.escalateLeaveRequest);
+// ======================================================
+// 2. MANAGERIAL WORKFLOW (Approval Layer)
+// ======================================================
 
-// Standard CRUD
+// Dashboard for managers to see who needs an answer
+router.get('/pending-approvals', 
+  checkPermission(PERMISSIONS.LEAVE.APPROVE), 
+  leaveRequestController.getPendingApprovals
+);
+
+// Visibility to prevent scheduling conflicts
+router.get('/team-calendar', 
+  checkPermission(PERMISSIONS.LEAVE.READ), 
+  leaveRequestController.getTeamLeaveCalendar
+);
+
+// Specific Approval Actions
+router.patch('/:id/approve', 
+  checkPermission(PERMISSIONS.LEAVE.APPROVE), 
+  leaveRequestController.approveLeaveRequest
+);
+
+router.patch('/:id/reject', 
+  checkPermission(PERMISSIONS.LEAVE.APPROVE), 
+  leaveRequestController.rejectLeaveRequest
+);
+
+router.patch('/:id/escalate', 
+  checkPermission(PERMISSIONS.LEAVE.APPROVE), 
+  leaveRequestController.escalateLeaveRequest
+);
+
+// ======================================================
+// 3. ADMINISTRATIVE OVERSIGHT (HR/Admin)
+// ======================================================
+
+router.get('/analytics', 
+  checkPermission(PERMISSIONS.LEAVE.ADMIN), 
+  leaveRequestController.getLeaveAnalytics
+);
+
+router.post('/bulk-approve', 
+  checkPermission(PERMISSIONS.LEAVE.ADMIN), 
+  leaveRequestController.bulkApproveLeaves
+);
+
+// ======================================================
+// 4. CORE CRUD
+// ======================================================
+
 router.route('/')
-  .get(leaveRequestController.getAllLeaveRequests)
+  .get(checkPermission(PERMISSIONS.LEAVE.ADMIN), leaveRequestController.getAllLeaveRequests)
   .post(
-    validateLeaveRequest,
+    checkPermission(PERMISSIONS.LEAVE.REQUEST), 
+    validateLeaveRequest, 
     leaveRequestController.createLeaveRequest
   );
 
 router.route('/:id')
-  .get(leaveRequestController.getLeaveRequest)
+  .get(checkPermission(PERMISSIONS.LEAVE.READ), leaveRequestController.getLeaveRequest)
   .patch(
-    validateLeaveRequest,
+    checkPermission(PERMISSIONS.LEAVE.REQUEST), 
+    validateLeaveRequest, 
     leaveRequestController.updateLeaveRequest
   )
-  .delete(leaveRequestController.cancelLeaveRequest);
+  .delete(
+    checkPermission(PERMISSIONS.LEAVE.REQUEST), 
+    leaveRequestController.cancelLeaveRequest
+  );
 
 module.exports = router;

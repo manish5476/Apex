@@ -1,33 +1,67 @@
-// routes/core/shiftGroup.routes.js
 const express = require('express');
 const router = express.Router();
 const shiftGroupController = require('../../controllers/core/shiftGroup.controller');
-const { protect, restrictTo } = require('../../middleware/auth');
+const authController = require("../../../auth/core/auth.controller");
+const { checkPermission } = require("../../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../../config/permissions");
 const { validateShiftGroup } = require('../../middleware/validators');
 
-router.use(protect);
+// Protect all routes globally
+router.use(authController.protect);
 
-// Special routes
-router.post('/:id/generate-schedule', restrictTo('admin', 'hr'), shiftGroupController.generateRotationSchedule);
-router.post('/:id/assign', restrictTo('admin', 'hr'), shiftGroupController.assignGroupToUsers);
-router.get('/:id/assignments', shiftGroupController.getGroupAssignments);
+// ======================================================
+// 1. ROTATION LOGIC & AUTOMATION
+// ======================================================
 
-// Standard CRUD
+/**
+ * Automates the creation of calendar entries based on 
+ * the group's rotation pattern (e.g., 6/2 or 5/2).
+ */
+router.post('/:id/generate-schedule', 
+  checkPermission(PERMISSIONS.SHIFT.GROUP_MANAGE), 
+  shiftGroupController.generateRotationSchedule
+);
+
+/**
+ * Link multiple users to this specific shift group/rotation.
+ */
+router.post('/:id/assign', 
+  checkPermission(PERMISSIONS.SHIFT.GROUP_MANAGE), 
+  shiftGroupController.assignGroupToUsers
+);
+
+// ======================================================
+// 2. ASSIGNMENT VISIBILITY
+// ======================================================
+
+// View which employees are currently following this rotation
+router.get('/:id/assignments', 
+  checkPermission(PERMISSIONS.SHIFT.GROUP_READ), 
+  shiftGroupController.getGroupAssignments
+);
+
+// ======================================================
+// 3. CORE CRUD
+// ======================================================
+
 router.route('/')
-  .get(shiftGroupController.getAllShiftGroups)
+  .get(checkPermission(PERMISSIONS.SHIFT.GROUP_READ), shiftGroupController.getAllShiftGroups)
   .post(
-    restrictTo('admin', 'hr'),
-    validateShiftGroup,
+    checkPermission(PERMISSIONS.SHIFT.GROUP_MANAGE),
+    validateShiftGroup, 
     shiftGroupController.createShiftGroup
   );
 
 router.route('/:id')
-  .get(shiftGroupController.getShiftGroup)
+  .get(checkPermission(PERMISSIONS.SHIFT.GROUP_READ), shiftGroupController.getShiftGroup)
   .patch(
-    restrictTo('admin', 'hr'),
-    validateShiftGroup,
+    checkPermission(PERMISSIONS.SHIFT.GROUP_MANAGE),
+    validateShiftGroup, 
     shiftGroupController.updateShiftGroup
   )
-  .delete(restrictTo('admin'), shiftGroupController.deleteShiftGroup);
+  .delete(
+    checkPermission(PERMISSIONS.SHIFT.GROUP_MANAGE), 
+    shiftGroupController.deleteShiftGroup
+  );
 
 module.exports = router;

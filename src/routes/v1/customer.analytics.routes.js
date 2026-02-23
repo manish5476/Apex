@@ -1,4 +1,3 @@
-
 const express = require("express");
 const router = express.Router();
 const analyticsController = require("../../modules/organization/core/customerAnalytics");
@@ -6,25 +5,25 @@ const cacheMiddleware = require("../../core/middleware/cache.middleware");
 const authController = require("../../modules/auth/core/auth.controller");
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
-const { upload } = require("../../core/middleware/upload.middleware");
 
+// Protect all analytics routes globally
 router.use(authController.protect);
 
 /**
  * --------------------------------------------------------
- * CACHED ROUTES (Heavy Aggregations)
+ * 1. CACHED ROUTES (Heavy Aggregations)
  * --------------------------------------------------------
+ * We use a longer TTL (Time-To-Live) for LTV and Segmentation 
+ * as these metrics typically don't change minute-to-minute.
  */
 
-// 1. Dashboard Overview
 router.get(
     '/overview', 
     checkPermission(PERMISSIONS.ANALYTICS.READ),
-    cacheMiddleware(300), 
+    cacheMiddleware(300), // 5 mins
     analyticsController.getCustomerOverview
 );
 
-// 2. Financials & Charts
 router.get(
     '/financials', 
     checkPermission(PERMISSIONS.ANALYTICS.READ),
@@ -32,7 +31,6 @@ router.get(
     analyticsController.getCustomerFinancialAnalytics
 );
 
-// 3. Payment Behavior
 router.get(
     '/payment-behavior', 
     checkPermission(PERMISSIONS.ANALYTICS.READ),
@@ -40,15 +38,13 @@ router.get(
     analyticsController.getCustomerPaymentBehavior
 );
 
-// 4. LTV Analysis
 router.get(
     '/ltv', 
     checkPermission(PERMISSIONS.ANALYTICS.READ),
-    cacheMiddleware(600), 
+    cacheMiddleware(600), // 10 mins
     analyticsController.getCustomerLifetimeValue
 );
 
-// 5. Segmentation
 router.get(
     '/segmentation', 
     checkPermission(PERMISSIONS.ANALYTICS.READ),
@@ -56,7 +52,6 @@ router.get(
     analyticsController.getCustomerSegmentation
 );
 
-// 6. Geospatial
 router.get(
     '/geospatial', 
     checkPermission(PERMISSIONS.ANALYTICS.READ),
@@ -66,18 +61,17 @@ router.get(
 
 /**
  * --------------------------------------------------------
- * REAL-TIME ROUTES (No Cache)
+ * 2. REAL-TIME & SENSITIVE ROUTES (No Cache)
  * --------------------------------------------------------
  */
 
-// 7. Real-time Widgets
 router.get(
     '/realtime', 
     checkPermission(PERMISSIONS.ANALYTICS.READ),
     analyticsController.getRealTimeDashboard
 );
 
-// 8. EMI (Sensitive Data)
+// High-security permission for EMI debt data
 router.get(
     '/emi', 
     checkPermission(PERMISSIONS.ANALYTICS.EMI_READ),
@@ -86,11 +80,10 @@ router.get(
 
 /**
  * --------------------------------------------------------
- * EXPORT ROUTES (Streamed / No Cache)
+ * 3. EXPORT ROUTES (Streamed / No Cache)
  * --------------------------------------------------------
  */
 
-// 9. CSV Export
 router.get(
     '/export/financials', 
     checkPermission(PERMISSIONS.ANALYTICS.EXPORT),

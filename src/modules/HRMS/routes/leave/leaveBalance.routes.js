@@ -1,27 +1,80 @@
-// routes/leave/leaveBalance.routes.js
 const express = require('express');
 const router = express.Router();
 const leaveBalanceController = require('../../controllers/leave/leaveBalance.controller');
-const { protect, restrictTo } = require('../../middleware/auth');
+const authController = require("../../../auth/core/auth.controller");
+const { checkPermission } = require("../../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../../config/permissions");
 
-router.use(protect);
+// Protect all routes globally
+router.use(authController.protect);
 
-// User routes
-router.get('/my-balance', leaveBalanceController.getMyLeaveBalance);
+// ======================================================
+// 1. EMPLOYEE SELF-SERVICE
+// ======================================================
 
-// Admin/HR routes
-router.get('/report', restrictTo('admin', 'hr'), leaveBalanceController.getLeaveBalanceReport);
-router.get('/utilization-trends', restrictTo('admin', 'hr'), leaveBalanceController.getUtilizationTrends);
-router.post('/initialize', restrictTo('admin'), leaveBalanceController.initializeLeaveBalance);
-router.post('/bulk-initialize', restrictTo('admin'), leaveBalanceController.bulkInitializeLeaveBalances);
-router.post('/accrue-monthly', restrictTo('admin'), leaveBalanceController.accrueMonthlyLeave);
+// Get current user's available leave (Sick, Casual, Earned, etc.)
+router.get('/my-balance', 
+  checkPermission(PERMISSIONS.LEAVE.BALANCE_READ), 
+  leaveBalanceController.getMyLeaveBalance
+);
 
-// Standard CRUD (admin only for writes)
+// ======================================================
+// 2. ANALYTICS & REPORTING (HR/Admin)
+// ======================================================
+
+router.get('/report', 
+  checkPermission(PERMISSIONS.LEAVE.BALANCE_READ), 
+  leaveBalanceController.getLeaveBalanceReport
+);
+
+router.get('/utilization-trends', 
+  checkPermission(PERMISSIONS.LEAVE.BALANCE_READ), 
+  leaveBalanceController.getUtilizationTrends
+);
+
+// ======================================================
+// 3. ACCRUAL & INITIALIZATION (High-Security)
+// ======================================================
+
+// Setup leave for a new employee
+router.post('/initialize', 
+  checkPermission(PERMISSIONS.LEAVE.BALANCE_MANAGE), 
+  leaveBalanceController.initializeLeaveBalance
+);
+
+// Setup leave for the entire company or department
+router.post('/bulk-initialize', 
+  checkPermission(PERMISSIONS.LEAVE.BALANCE_MANAGE), 
+  leaveBalanceController.bulkInitializeLeaveBalances
+);
+
+/**
+ * Trigger the periodic addition of leave days 
+ * (e.g., adding 1.5 days to Earned Leave every month)
+ */
+router.post('/accrue-monthly', 
+  checkPermission(PERMISSIONS.LEAVE.BALANCE_MANAGE), 
+  leaveBalanceController.accrueMonthlyLeave
+);
+
+// ======================================================
+// 4. STANDARD CRUD
+// ======================================================
+
 router.route('/')
-  .get(restrictTo('admin', 'hr'), leaveBalanceController.getAllLeaveBalances);
+  .get(
+    checkPermission(PERMISSIONS.LEAVE.BALANCE_READ), 
+    leaveBalanceController.getAllLeaveBalances
+  );
 
 router.route('/:id')
-  .get(leaveBalanceController.getLeaveBalance)
-  .patch(restrictTo('admin'), leaveBalanceController.updateLeaveBalance);
+  .get(
+    checkPermission(PERMISSIONS.LEAVE.BALANCE_READ), 
+    leaveBalanceController.getLeaveBalance
+  )
+  .patch(
+    checkPermission(PERMISSIONS.LEAVE.BALANCE_MANAGE), 
+    leaveBalanceController.updateLeaveBalance
+  );
 
 module.exports = router;

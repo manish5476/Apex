@@ -1,106 +1,43 @@
-// routes/v1/auth.routes.js
 const express = require('express');
 const authController = require('../../modules/auth/core/auth.controller');
 const router = express.Router();
 const forgotPasswordLimiter = require("../../core/middleware/rateLimit.middleware");
 
 // ======================================================
-// PUBLIC ROUTES (No Authentication Required)
+// 1. PUBLIC ROUTES (Identity & Access)
 // ======================================================
 
-/**
- * @route   POST /api/v1/auth/signup
- * @desc    Register new user
- * @access  Public
- */
 router.post('/signup', authController.signup);
-
-/**
- * @route   POST /api/v1/auth/login
- * @desc    Login user (email or phone)
- * @access  Public
- */
 router.post('/login', authController.login);
-
-/**
- * @route   POST /api/v1/auth/refresh-token
- * @desc    Get new access token using refresh token
- * @access  Public (with refresh token cookie)
- */
 router.post('/refresh-token', authController.refreshToken);
 
-/**
- * @route   POST /api/v1/auth/forgotPassword
- * @desc    Send password reset email
- * @access  Public
- * @limits  5 requests per hour per IP
- */
+// Rate-limited to prevent brute-force/SMTP abuse
 router.post("/forgotPassword", forgotPasswordLimiter, authController.forgotPassword);
-
-/**
- * @route   PATCH /api/v1/auth/resetPassword/:token
- * @desc    Reset password with token
- * @access  Public
- */
 router.patch('/resetPassword/:token', authController.resetPassword);
 
-/**
- * @route   GET /api/v1/auth/verify-token
- * @desc    Verify if token is valid
- * @access  Public (but requires token)
- */
+// Verification & Status
 router.get('/verify-token', authController.verifyToken);
-
-/**
- * @route   GET /api/v1/auth/verify-email/:token
- * @desc    Verify email address with token
- * @access  Public
- */
 router.get('/verify-email/:token', authController.verifyEmail);
 
 // ======================================================
-// PROTECTED ROUTES (Authentication Required)
+// 2. PROTECTED ROUTES (Requires Login)
 // ======================================================
-
-// Apply protect middleware to all routes below
 router.use(authController.protect);
 
-/**
- * @route   PATCH /api/v1/auth/updateMyPassword
- * @desc    Update password (when logged in)
- * @access  Private
- */
 router.patch('/updateMyPassword', authController.updateMyPassword);
-
-/**
- * @route   POST /api/v1/auth/logout
- * @desc    Logout current user
- * @access  Private
- */
-router.post('/logout', authController.logout);
-
-/**
- * @route   POST /api/v1/auth/logout-all
- * @desc    Logout from all devices
- * @access  Private
- */
-router.post('/logout-all', authController.logoutAll);
-
-/**
- * @route   POST /api/v1/auth/send-verification-email
- * @desc    Send email verification link
- * @access  Private
- */
 router.post('/send-verification-email', authController.sendVerificationEmail);
 
+// Logout logic
+router.post('/logout', authController.logout);
+router.post('/logout-all', authController.logoutAll);
+
 // ======================================================
-// OPTIONAL: Session Management Routes
+// 3. SESSION MANAGEMENT (Device & Security)
 // ======================================================
 
 /**
- * @route   GET /api/v1/auth/sessions
- * @desc    Get all active sessions for current user
- * @access  Private
+ * Get all active devices/sessions
+ * In production, it's cleaner to move the logic below into authController.getSessions
  */
 router.get('/sessions', async (req, res, next) => {
   const Session = require('../../modules/auth/core/session.model');
@@ -117,9 +54,7 @@ router.get('/sessions', async (req, res, next) => {
 });
 
 /**
- * @route   DELETE /api/v1/auth/sessions/:sessionId
- * @desc    Terminate specific session
- * @access  Private
+ * Terminate a specific session (Remote Logout)
  */
 router.delete('/sessions/:sessionId', async (req, res, next) => {
   const Session = require('../../modules/auth/core/session.model');
@@ -134,7 +69,8 @@ router.delete('/sessions/:sessionId', async (req, res, next) => {
   );
   
   if (!session) {
-    return next(new AppError('Session not found', 404));
+    // Ensuring we handle the error gracefully if AppError isn't global
+    return res.status(404).json({ status: 'fail', message: 'Session not found' });
   }
 
   res.status(200).json({
@@ -144,22 +80,3 @@ router.delete('/sessions/:sessionId', async (req, res, next) => {
 });
 
 module.exports = router;
-
-// // Standard Auth - No permission changes needed
-// const express = require('express');
-// const authController = require('../../modules/auth/core/auth.controller');
-// const router = express.Router();
-// const forgotPasswordLimiter = require("../../core/middleware/rateLimit.middleware");
-// router.post('/signup', authController.signup);
-// router.post('/login', authController.login);
-// router.post('/refresh-token', authController.refreshToken);
-// router.post("/forgotPassword", forgotPasswordLimiter, authController.forgotPassword);
-// router.patch('/resetPassword/:token', authController.resetPassword);
-// router.get('/verify-token', authController.verifyToken);
-
-// // Protected routes
-// router.use(authController.protect);
-// router.patch('/updateMyPassword', authController.updateMyPassword);
-// router.post('/logout', authController.logout);
-
-// module.exports = router;

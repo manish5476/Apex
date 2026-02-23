@@ -1,47 +1,84 @@
-// routes/attendance/attendanceMachine.routes.js
 const express = require('express');
 const router = express.Router();
 const attendanceMachineController = require('../../controllers/attendance/attendanceMachine.controller');
 const { machineAuth } = require('../../middleware/auth');
 const { validateMachine } = require('../../middleware/validators');
 const authController = require("../../../auth/core/auth.controller");
+const { checkPermission } = require("../../../core/middleware/permission.middleware");
+const { PERMISSIONS } = require("../../../config/permissions");
 
-// Machine routes (API key based)
+// ======================================================
+// 1. HARDWARE COMMUNICATION (API Key / machineAuth)
+// ======================================================
+
+// These routes do NOT use authController.protect as they are hit by the hardware
 router.post('/:id/ping', machineAuth, attendanceMachineController.machinePing);
 router.post('/:id/sync', machineAuth, attendanceMachineController.syncMachine);
 
-// All other routes require user authentication
+// ======================================================
+// 2. ADMINISTRATIVE & USER ROUTES (Human Only)
+// ======================================================
 router.use(authController.protect);
 
-// User mapping routes
-router.get('/unmapped-users', attendanceMachineController.getUnmappedUsers);
-router.post('/map-user', attendanceMachineController.mapUserToMachine);
-router.post('/bulk-map', attendanceMachineController.bulkMapUsers);
-// Analytics
-router.get('/analytics', attendanceMachineController.getMachineAnalytics);
-// Machine status & operations
-router.get('/:id/status', attendanceMachineController.getMachineStatus);
-router.get('/:id/logs', attendanceMachineController.getMachineLogs);
-router.post('/:id/test-connection', attendanceMachineController.testConnection);
-router.post('/:id/regenerate-key', attendanceMachineController.regenerateApiKey);
-// Bulk operations
-router.post('/bulk-status', attendanceMachineController.bulkUpdateStatus);
-// Standard CRUD
-router.route('/')
-  .get(attendanceMachineController.getAllMachines)
-  .post(
+// User Mapping (Linking Biometric IDs to DB Users)
+router.get('/unmapped-users', 
+  checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_READ), 
+  attendanceMachineController.getUnmappedUsers
+);
 
-    validateMachine,
+router.post('/map-user', 
+  checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_MANAGE), 
+  attendanceMachineController.mapUserToMachine
+);
+
+router.post('/bulk-map', 
+  checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_MANAGE), 
+  attendanceMachineController.bulkMapUsers
+);
+
+// Analytics & Monitoring
+router.get('/analytics', 
+  checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_READ), 
+  attendanceMachineController.getMachineAnalytics
+);
+
+// ======================================================
+// 3. MACHINE OPERATIONS & SECURITY
+// ======================================================
+
+router.get('/:id/status', checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_READ), attendanceMachineController.getMachineStatus);
+router.get('/:id/logs', checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_READ), attendanceMachineController.getMachineLogs);
+
+router.post('/:id/test-connection', checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_READ), attendanceMachineController.testConnection);
+
+// High-security action
+router.post('/:id/regenerate-key', 
+  checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_MANAGE), 
+  attendanceMachineController.regenerateApiKey
+);
+
+// ======================================================
+// 4. STANDARD CRUD
+// ======================================================
+
+router.route('/')
+  .get(checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_READ), attendanceMachineController.getAllMachines)
+  .post(
+    checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_MANAGE),
+    validateMachine, 
     attendanceMachineController.createMachine
   );
 
 router.route('/:id')
-  .get(attendanceMachineController.getMachine)
+  .get(checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_READ), attendanceMachineController.getMachine)
   .patch(
-
-    validateMachine,
+    checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_MANAGE),
+    validateMachine, 
     attendanceMachineController.updateMachine
   )
-  .delete(attendanceMachineController.deleteMachine);
+  .delete(
+    checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_MANAGE), 
+    attendanceMachineController.deleteMachine
+  );
 
 module.exports = router;
