@@ -63,10 +63,10 @@ const shiftSchema = new mongoose.Schema({
 
   // --- Flexible Shift Config ---
   flexiConfig: {
-    coreStartTime: String, // Must be present during this time
+    coreStartTime: String, 
     coreEndTime: String,
-    flexibleBandStart: String, // Can come anytime after this
-    flexibleBandEnd: String, // Can leave anytime before this
+    flexibleBandStart: String, 
+    flexibleBandEnd: String, 
     minHoursPerDay: { type: Number, default: 4 }
   },
 
@@ -81,7 +81,8 @@ const shiftSchema = new mongoose.Schema({
 
 }, { 
   timestamps: true,
-  toJSON: { virtuals: true }
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 // --- INDEXES ---
@@ -90,14 +91,29 @@ shiftSchema.index({ organizationId: 1, shiftType: 1, isActive: 1 });
 
 // --- VIRTUALS ---
 shiftSchema.virtual('duration').get(function() {
-  const start = this.startTime.split(':').map(Number);
-  const end = this.endTime.split(':').map(Number);
-  let hours = end[0] - start[0];
-  let minutes = end[1] - start[1];
+  // FIX: Added null checks to prevent "split of undefined"
+  if (!this.startTime || !this.endTime) return '0h 0m';
   
-  if (hours < 0) hours += 24; // Cross midnight
-  
-  return `${hours}h ${minutes}m`;
+  try {
+    const start = this.startTime.split(':').map(Number);
+    const end = this.endTime.split(':').map(Number);
+    
+    if (start.length < 2 || end.length < 2) return '0h 0m';
+
+    let hours = end[0] - start[0];
+    let minutes = end[1] - start[1];
+    
+    if (minutes < 0) {
+      minutes += 60;
+      hours -= 1;
+    }
+    
+    if (hours < 0) hours += 24; // Cross midnight
+    
+    return `${hours}h ${minutes}m`;
+  } catch (e) {
+    return '0h 0m';
+  }
 });
 
 // --- MIDDLEWARE ---
@@ -107,11 +123,18 @@ shiftSchema.pre('save', function(next) {
     return next(new Error('Full day hours must be greater than half day threshold'));
   }
   
-  // Auto-detect night shift
-  const startHour = parseInt(this.startTime.split(':')[0]);
-  const endHour = parseInt(this.endTime.split(':')[0]);
-  this.isNightShift = startHour >= 20 || startHour <= 5 || endHour <= 5;
-  this.crossesMidnight = endHour < startHour;
+  // FIX: Added safe parsing for startTime and endTime
+  if (this.startTime && this.endTime) {
+    const startParts = this.startTime.split(':');
+    const endParts = this.endTime.split(':');
+    
+    const startHour = parseInt(startParts[0] || 0);
+    const endHour = parseInt(endParts[0] || 0);
+    
+    // Auto-detect night shift logic
+    this.isNightShift = startHour >= 20 || startHour <= 5 || endHour <= 5;
+    this.crossesMidnight = endHour < startHour;
+  }
   
   next();
 });
@@ -123,7 +146,7 @@ shiftSchema.methods.isWorkingDay = function(date) {
 };
 
 shiftSchema.methods.calculateOvertime = function(actualWorkHours) {
-  if (!this.overtimeRules.enabled) return 0;
+  if (!this.overtimeRules || !this.overtimeRules.enabled) return 0;
   
   const regularHours = this.overtimeRules.afterHours;
   if (actualWorkHours <= regularHours) return 0;
@@ -136,29 +159,163 @@ module.exports = mongoose.model('Shift', shiftSchema);
 
 // const shiftSchema = new mongoose.Schema({
 //   name: { type: String, required: true, trim: true },
+//   code: { type: String, required: false, trim: true, uppercase: true },
+//   description: String,
+  
 //   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
-  
-//   startTime: { type: String, required: true, default: '09:00' }, 
+
+//   // --- Timing ---
+//   startTime: { type: String, required: true, default: '09:00' },
 //   endTime: { type: String, required: true, default: '18:00' },
-//   breakDurationMins: { type: Number, default: 60 },
   
-//   gracePeriodMins: { type: Number, default: 15 }, 
-//   lateThresholdMins: { type: Number, default: 30 },
-//   halfDayThresholdHrs: { type: Number, default: 4 }, 
-//   minFullDayHrs: { type: Number, default: 8 }, 
-  
+//   // --- Breaks ---
+//   breakDurationMins: { type: Number, default: 60, min: 0 },
+//   breaks: [{
+//     name: String,
+//     startTime: String,
+//     endTime: String,
+//     isPaid: { type: Boolean, default: false }
+//   }],
+
+//   // --- Rules ---
+//   gracePeriodMins: { type: Number, default: 15, min: 0 },
+//   lateThresholdMins: { type: Number, default: 30, min: 0 },
+//   earlyDepartureThresholdMins: { type: Number, default: 15, min: 0 },
+//   halfDayThresholdHrs: { type: Number, default: 4, min: 0 },
+//   minFullDayHrs: { type: Number, default: 8, min: 0 },
+//   maxOvertimeHrs: { type: Number, default: 4, min: 0 },
+
+//   // --- Shift Type ---
+//   shiftType: {
+//     type: String,
+//     enum: ['fixed', 'rotating', 'flexi', 'split', 'night'],
+//     default: 'fixed'
+//   },
+
+//   // --- Night Shift Handling ---
 //   isNightShift: { type: Boolean, default: false },
-//   weeklyOffs: [{ type: Number, enum: [0,1,2,3,4,5,6], default: [0] }], // 0 = Sunday
-//   isActive: { type: Boolean, default: true }
-// }, { timestamps: true });
+//   crossesMidnight: { type: Boolean, default: false },
 
-// shiftSchema.index({ organizationId: 1, name: 1 }, { unique: true });
+//   // --- Weekly Offs ---
+//   weeklyOffs: [{ 
+//     type: Number, 
+//     enum: [0, 1, 2, 3, 4, 5, 6], 
+//     default: [0] 
+//   }], // 0 = Sunday
 
+//   // --- Applicability ---
+//   applicableDays: [{ 
+//     type: Number, 
+//     enum: [0, 1, 2, 3, 4, 5, 6] 
+//   }], // empty = all days
+
+//   // --- Overtime Rules ---
+//   overtimeRules: {
+//     enabled: { type: Boolean, default: false },
+//     multiplier: { type: Number, default: 1.5 },
+//     afterHours: { type: Number, default: 8 }, // OT after 8 hours
+//     doubleAfterHours: { type: Number, default: 12 }, // Double OT after 12 hours
+//     holidayMultiplier: { type: Number, default: 2.0 }
+//   },
+
+//   // --- Flexible Shift Config ---
+//   flexiConfig: {
+//     coreStartTime: String, // Must be present during this time
+//     coreEndTime: String,
+//     flexibleBandStart: String, // Can come anytime after this
+//     flexibleBandEnd: String, // Can leave anytime before this
+//     minHoursPerDay: { type: Number, default: 4 }
+//   },
+
+//   // --- Status ---
+//   isActive: { type: Boolean, default: true, index: true },
+//   effectiveFrom: Date,
+//   effectiveTo: Date,
+
+//   // --- Audit ---
+//   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+//   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+
+// }, { 
+//   timestamps: true,
+//   toJSON: { virtuals: true }
+// });
+
+// // --- INDEXES ---
+// shiftSchema.index({ organizationId: 1, code: 1 }, { unique: true });
+// shiftSchema.index({ organizationId: 1, shiftType: 1, isActive: 1 });
+
+// // --- VIRTUALS ---
+// shiftSchema.virtual('duration').get(function() {
+//   const start = this.startTime.split(':').map(Number);
+//   const end = this.endTime.split(':').map(Number);
+//   let hours = end[0] - start[0];
+//   let minutes = end[1] - start[1];
+  
+//   if (hours < 0) hours += 24; // Cross midnight
+  
+//   return `${hours}h ${minutes}m`;
+// });
+
+// // --- MIDDLEWARE ---
 // shiftSchema.pre('save', function(next) {
+//   // Validate full day vs half day threshold
 //   if (this.minFullDayHrs <= this.halfDayThresholdHrs) {
-//     return next(new Error('Full day hours must be greater than half day threshold.'));
+//     return next(new Error('Full day hours must be greater than half day threshold'));
 //   }
+  
+//   // Auto-detect night shift
+//   const startHour = parseInt(this.startTime.split(':')[0]);
+//   const endHour = parseInt(this.endTime.split(':')[0]);
+//   this.isNightShift = startHour >= 20 || startHour <= 5 || endHour <= 5;
+//   this.crossesMidnight = endHour < startHour;
+  
 //   next();
 // });
 
+// // --- METHODS ---
+// shiftSchema.methods.isWorkingDay = function(date) {
+//   const day = date.getDay();
+//   return !this.weeklyOffs.includes(day);
+// };
+
+// shiftSchema.methods.calculateOvertime = function(actualWorkHours) {
+//   if (!this.overtimeRules.enabled) return 0;
+  
+//   const regularHours = this.overtimeRules.afterHours;
+//   if (actualWorkHours <= regularHours) return 0;
+  
+//   return actualWorkHours - regularHours;
+// };
+
 // module.exports = mongoose.model('Shift', shiftSchema);
+// // const mongoose = require('mongoose');
+
+// // const shiftSchema = new mongoose.Schema({
+// //   name: { type: String, required: true, trim: true },
+// //   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
+  
+// //   startTime: { type: String, required: true, default: '09:00' }, 
+// //   endTime: { type: String, required: true, default: '18:00' },
+// //   breakDurationMins: { type: Number, default: 60 },
+  
+// //   gracePeriodMins: { type: Number, default: 15 }, 
+// //   lateThresholdMins: { type: Number, default: 30 },
+// //   halfDayThresholdHrs: { type: Number, default: 4 }, 
+// //   minFullDayHrs: { type: Number, default: 8 }, 
+  
+// //   isNightShift: { type: Boolean, default: false },
+// //   weeklyOffs: [{ type: Number, enum: [0,1,2,3,4,5,6], default: [0] }], // 0 = Sunday
+// //   isActive: { type: Boolean, default: true }
+// // }, { timestamps: true });
+
+// // shiftSchema.index({ organizationId: 1, name: 1 }, { unique: true });
+
+// // shiftSchema.pre('save', function(next) {
+// //   if (this.minFullDayHrs <= this.halfDayThresholdHrs) {
+// //     return next(new Error('Full day hours must be greater than half day threshold.'));
+// //   }
+// //   next();
+// // });
+
+// // module.exports = mongoose.model('Shift', shiftSchema);

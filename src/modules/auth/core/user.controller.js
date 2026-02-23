@@ -603,19 +603,25 @@ exports.createUser = catchAsync(async (req, res, next) => {
  * @route   PATCH /api/v1/users/:id
  * @access  Private (Admin/HR)
  */
+/**
+ * @desc    Update user
+ * @route   PATCH /api/v1/users/:id
+ * @access  Private (Admin/HR)
+ */
 exports.updateUser = catchAsync(async (req, res, next) => {
   const targetUser = await User.findById(req.params.id).populate('role');
   if (!targetUser) return next(new AppError("User not found", 404));
   
   validateUserAction(req.user, targetUser);
 
+  // 1. Filter out restricted fields
   const forbiddenFields = [
     "password", "passwordConfirm", "organizationId", "createdBy", 
     "isOwner", "refreshTokens", "loginAttempts", "lockUntil"
   ];
   forbiddenFields.forEach(f => delete req.body[f]);
 
-  // Validate phone if being updated
+  // 2. Validate phone if being updated
   if (req.body.phone) {
     if (!validatePhone(req.body.phone)) {
       return next(new AppError("Please provide a valid primary phone number", 400));
@@ -623,16 +629,19 @@ exports.updateUser = catchAsync(async (req, res, next) => {
     req.body.phone = cleanPhone(req.body.phone);
   }
 
+  // 3. Prepare Update Payload with Dot Notation for nested objects
   const updatePayload = { ...req.body, updatedBy: req.user._id };
 
-  // Transform nested updates to dot notation
   const flattenObject = (obj, prefix) => {
-    if (!obj || typeof obj !== 'object') return;
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
     Object.keys(obj).forEach(key => {
-      if (obj[key] !== undefined && obj[key] !== null) {
-        updatePayload[`${prefix}.${key}`] = obj[key];
+      const val = obj[key];
+      // Only set if value is not undefined (null is allowed for clearing fields)
+      if (val !== undefined) {
+        updatePayload[`${prefix}.${key}`] = val;
       }
     });
+    // Remove the original object from payload so it doesn't overwrite the whole map
     delete updatePayload[prefix];
   };
 
@@ -640,7 +649,7 @@ exports.updateUser = catchAsync(async (req, res, next) => {
   if (req.body.attendanceConfig) flattenObject(req.body.attendanceConfig, 'attendanceConfig');
   if (req.body.preferences) flattenObject(req.body.preferences, 'preferences');
 
-  // Validate References if changed
+  // 4. Validate Reference IDs (Organization-bound check)
   if (updatePayload['employeeProfile.reportingManagerId']) {
     const managerExists = await User.exists({ 
       _id: updatePayload['employeeProfile.reportingManagerId'], 
@@ -665,6 +674,9 @@ exports.updateUser = catchAsync(async (req, res, next) => {
     if (!desigExists) return next(new AppError("Designation not found.", 400));
   }
 
+  // 5. Execute Update and Populate Result
+  // 🛡️ CRITICAL: We MUST populate startTime and endTime. 
+  // If we only select 'name', the duration virtual in Shift model will crash on .split(':')
   const updatedUser = await User.findByIdAndUpdate(
     req.params.id, 
     { $set: updatePayload }, 
@@ -672,7 +684,7 @@ exports.updateUser = catchAsync(async (req, res, next) => {
   )
   .populate("employeeProfile.designationId", "title")
   .populate("employeeProfile.departmentId", "name")
-  .populate("attendanceConfig.shiftId", "name")
+  .populate("attendanceConfig.shiftId", "name startTime endTime") // <--- FIXED: Added timing fields
   .select("-password -refreshTokens -loginAttempts -lockUntil");
 
   res.status(200).json({ 
@@ -680,6 +692,83 @@ exports.updateUser = catchAsync(async (req, res, next) => {
     data: { user: updatedUser } 
   });
 });
+// exports.updateUser = catchAsync(async (req, res, next) => {
+//   const targetUser = await User.findById(req.params.id).populate('role');
+//   if (!targetUser) return next(new AppError("User not found", 404));
+  
+//   validateUserAction(req.user, targetUser);
+
+//   const forbiddenFields = [
+//     "password", "passwordConfirm", "organizationId", "createdBy", 
+//     "isOwner", "refreshTokens", "loginAttempts", "lockUntil"
+//   ];
+//   forbiddenFields.forEach(f => delete req.body[f]);
+
+//   // Validate phone if being updated
+//   if (req.body.phone) {
+//     if (!validatePhone(req.body.phone)) {
+//       return next(new AppError("Please provide a valid primary phone number", 400));
+//     }
+//     req.body.phone = cleanPhone(req.body.phone);
+//   }
+
+//   const updatePayload = { ...req.body, updatedBy: req.user._id };
+
+//   // Transform nested updates to dot notation
+//   const flattenObject = (obj, prefix) => {
+//     if (!obj || typeof obj !== 'object') return;
+//     Object.keys(obj).forEach(key => {
+//       if (obj[key] !== undefined && obj[key] !== null) {
+//         updatePayload[`${prefix}.${key}`] = obj[key];
+//       }
+//     });
+//     delete updatePayload[prefix];
+//   };
+
+//   if (req.body.employeeProfile) flattenObject(req.body.employeeProfile, 'employeeProfile');
+//   if (req.body.attendanceConfig) flattenObject(req.body.attendanceConfig, 'attendanceConfig');
+//   if (req.body.preferences) flattenObject(req.body.preferences, 'preferences');
+
+//   // Validate References if changed
+//   if (updatePayload['employeeProfile.reportingManagerId']) {
+//     const managerExists = await User.exists({ 
+//       _id: updatePayload['employeeProfile.reportingManagerId'], 
+//       organizationId: req.user.organizationId 
+//     });
+//     if (!managerExists) return next(new AppError("Reporting Manager not found.", 400));
+//   }
+
+//   if (updatePayload['employeeProfile.departmentId']) {
+//     const deptExists = await Department.exists({ 
+//       _id: updatePayload['employeeProfile.departmentId'], 
+//       organizationId: req.user.organizationId 
+//     });
+//     if (!deptExists) return next(new AppError("Department not found.", 400));
+//   }
+
+//   if (updatePayload['employeeProfile.designationId']) {
+//     const desigExists = await Designation.exists({ 
+//       _id: updatePayload['employeeProfile.designationId'], 
+//       organizationId: req.user.organizationId 
+//     });
+//     if (!desigExists) return next(new AppError("Designation not found.", 400));
+//   }
+
+//   const updatedUser = await User.findByIdAndUpdate(
+//     req.params.id, 
+//     { $set: updatePayload }, 
+//     { new: true, runValidators: true }
+//   )
+//   .populate("employeeProfile.designationId", "title")
+//   .populate("employeeProfile.departmentId", "name")
+//   .populate("attendanceConfig.shiftId", "name")
+//   .select("-password -refreshTokens -loginAttempts -lockUntil");
+
+//   res.status(200).json({ 
+//     status: "success", 
+//     data: { user: updatedUser } 
+//   });
+// });
 
 /**
  * @desc    Delete user (soft delete)
