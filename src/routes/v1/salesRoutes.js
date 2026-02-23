@@ -4,8 +4,8 @@ const salesReturnController = require('../../modules/inventory/core/salesReturn.
 const authController = require('../../modules/auth/core/auth.controller');
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
-// const { validate } = require("../../middleware/validationMiddleware"); // Assuming you have this helper
-const { createSalesSchema, updateSalesSchema } = require('../../shared/validations/salesValidation');
+// const { validate } = require("../../middleware/validationMiddleware"); 
+// const { createSalesSchema, updateSalesSchema } = require('../../shared/validations/salesValidation');
 const { checkStockBeforeSale } = require("../../core/middleware/stockValidation.middleware");
 
 const router = express.Router();
@@ -20,190 +20,49 @@ router.use(authController.protect);
  * These must be defined BEFORE /:id routes to avoid collisions
  * =============================================================
  */
+router.get('/stats', checkPermission(PERMISSIONS.SALES.VIEW), salesController.getSalesStats);
+router.get('/export', checkPermission(PERMISSIONS.SALES.VIEW), salesController.exportSales);
 
-// GET /api/v1/sales/stats
-router.get(
-  '/stats', 
-  checkPermission(PERMISSIONS.SALES.VIEW), 
-  salesController.getSalesStats
-);
 
-// GET /api/v1/sales/export
-router.get(
-  '/export', 
-  checkPermission(PERMISSIONS.SALES.VIEW), 
-  salesController.exportSales
-);
+/**
+ * =============================================================
+ * SALES RETURNS
+ * Changed paths to '/returns' to prevent collision with base '/'
+ * =============================================================
+ */
+router.post('/returns', checkPermission(PERMISSIONS.SALES_RETURN.MANAGE), salesReturnController.createReturn);
+router.get('/returns', checkPermission(PERMISSIONS.SALES_RETURN.READ), salesReturnController.getReturns);
+
 
 /**
  * =============================================================
  * CORE SALES OPERATIONS
  * =============================================================
  */
+// Specialized action: Create sale record from an existing Invoice
+router.post('/from-invoice/:invoiceId', checkPermission(PERMISSIONS.SALES.MANAGE), salesController.createFromInvoice);
 
-// In your sales routes
-router.post(
-  '/',
-  authController.protect,
-  checkStockBeforeSale,
-  salesController.createSales
-);
-
-router
-  .route('/')
+router.route('/')
   // List all sales (with filtering/search/pagination)
-  .get(
-    checkPermission(PERMISSIONS.SALES.VIEW), 
-    salesController.getAllSales
-  )
-  // Create a new direct sale
+  .get(checkPermission(PERMISSIONS.SALES.VIEW), salesController.getAllSales)
+  // Create a new direct sale (Merged stock validation here!)
   .post(
     checkPermission(PERMISSIONS.SALES.MANAGE), 
-    // validate(createSalesSchema), // Validate Joi schema before controller
+    checkStockBeforeSale, 
+    // validate(createSalesSchema), 
     salesController.createSales
   );
 
-// Specialized action: Create sale record from an existing Invoice
-router.post(
-  '/from-invoice/:invoiceId', 
-  checkPermission(PERMISSIONS.SALES.MANAGE), 
-  salesController.createFromInvoice
-);
-
-router
-  .route('/:id')
+router.route('/:id')
   // Get detailed view of a single sale
-  .get(
-    checkPermission(PERMISSIONS.SALES.VIEW), 
-    salesController.getSales
-  )
+  .get(checkPermission(PERMISSIONS.SALES.VIEW), salesController.getSales)
   // Update sale details
   .put(
     checkPermission(PERMISSIONS.SALES.MANAGE), 
-    // validate(updateSalesSchema), // Validate Joi schema before controller
+    // validate(updateSalesSchema), 
     salesController.updateSales
   )
   // Delete sale (supports soft-delete via Factory)
-  .delete(
-    checkPermission(PERMISSIONS.SALES.MANAGE), 
-    salesController.deleteSales
-  );
+  .delete(checkPermission(PERMISSIONS.SALES.MANAGE), salesController.deleteSales);
 
-  // Add permissions to sales return routes:
-// router.use(authController.protect);
-
-router.post('/', 
-  checkPermission(PERMISSIONS.SALES_RETURN.MANAGE), 
-  salesReturnController.createReturn
-);
-
-router.get('/', 
-  checkPermission(PERMISSIONS.SALES_RETURN.READ), 
-  salesReturnController.getReturns
-);
 module.exports = router;
-
-// const express = require('express');
-// const salesController = require('../../modules/inventory/core/sales.controller');
-// const salesReturnController = require('../../modules/inventory/core/salesReturn.controller');
-// const authController = require('../../modules/auth/core/auth.controller');
-// const { checkPermission } = require("../../core/middleware/permission.middleware");
-// const { PERMISSIONS } = require("../../config/permissions");
-// // const { validate } = require("../../middleware/validationMiddleware"); // Assuming you have this helper
-// const { createSalesSchema, updateSalesSchema } = require('../../shared/validations/salesValidation');
-// const { checkStockBeforeSale } = require("../../core/middleware/stockValidation.middleware");
-
-// const router = express.Router();
-
-// // 1. GLOBAL PROTECTION
-// // All sales routes require a logged-in user
-// router.use(authController.protect);
-
-// /**
-//  * =============================================================
-//  * SPECIALIZED ANALYTICS & EXPORTS
-//  * These must be defined BEFORE /:id routes to avoid collisions
-//  * =============================================================
-//  */
-
-// // GET /api/v1/sales/stats
-// router.get(
-//   '/stats', 
-//   checkPermission(PERMISSIONS.SALES.VIEW), 
-//   salesController.getSalesStats
-// );
-
-// // GET /api/v1/sales/export
-// router.get(
-//   '/export', 
-//   checkPermission(PERMISSIONS.SALES.VIEW), 
-//   salesController.exportSales
-// );
-
-// /**
-//  * =============================================================
-//  * CORE SALES OPERATIONS
-//  * =============================================================
-//  */
-
-// // In your sales routes
-// router.post(
-//   '/',
-//   authController.protect,
-//   checkStockBeforeSale,
-//   salesController.createSales
-// );
-
-// router
-//   .route('/')
-//   // List all sales (with filtering/search/pagination)
-//   .get(
-//     checkPermission(PERMISSIONS.SALES.VIEW), 
-//     salesController.getAllSales
-//   )
-//   // Create a new direct sale
-//   .post(
-//     checkPermission(PERMISSIONS.SALES.MANAGE), 
-//     // validate(createSalesSchema), // Validate Joi schema before controller
-//     salesController.createSales
-//   );
-
-// // Specialized action: Create sale record from an existing Invoice
-// router.post(
-//   '/from-invoice/:invoiceId', 
-//   checkPermission(PERMISSIONS.SALES.MANAGE), 
-//   salesController.createFromInvoice
-// );
-
-// router
-//   .route('/:id')
-//   // Get detailed view of a single sale
-//   .get(
-//     checkPermission(PERMISSIONS.SALES.VIEW), 
-//     salesController.getSales
-//   )
-//   // Update sale details
-//   .put(
-//     checkPermission(PERMISSIONS.SALES.MANAGE), 
-//     // validate(updateSalesSchema), // Validate Joi schema before controller
-//     salesController.updateSales
-//   )
-//   // Delete sale (supports soft-delete via Factory)
-//   .delete(
-//     checkPermission(PERMISSIONS.SALES.MANAGE), 
-//     salesController.deleteSales
-//   );
-
-//   // Add permissions to sales return routes:
-// // router.use(authController.protect);
-
-// router.post('/', 
-//   checkPermission(PERMISSIONS.SALES_RETURN.MANAGE), 
-//   salesReturnController.createReturn
-// );
-
-// router.get('/', 
-//   checkPermission(PERMISSIONS.SALES_RETURN.READ), 
-//   salesReturnController.getReturns
-// );
-// module.exports = router;
