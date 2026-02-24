@@ -35,10 +35,27 @@ router.get("/reports/outstanding", checkPermission(PERMISSIONS.REPORT.OUTSTANDIN
 /* ======================================================
     2. BULK & UTILITY OPERATIONS
 ====================================================== */
+// Stock check
+router.post(
+  "/check-stock",
+  checkPermission(PERMISSIONS.INVOICE.CREATE),
+  checkStockBeforeSale,
+  (req, res) => {
+    res.status(200).json({
+      status: 'success',
+      message: 'Stock validation passed',
+      warnings: req.stockWarnings,
+      stock: {
+        totalStock: req.stockSummary.totalStock,
+        totalRequested: req.stockSummary.totalRequested
+      }
+    });
+  }
+);
 
-router.post("/check-stock", checkPermission(PERMISSIONS.INVOICE.CREATE), checkStockBeforeSale, (req, res) => {
-    res.status(200).json({ status: 'success', message: 'Stock validation passed', warnings: req.stockWarnings, stock: req.stockSummary });
-});
+// router.post("/check-stock", checkPermission(PERMISSIONS.INVOICE.CREATE), checkStockBeforeSale, (req, res) => {
+//     res.status(200).json({ status: 'success', message: 'Stock validation passed', warnings: req.stockWarnings, stock: req.stockSummary });
+// });
 
 router.patch("/bulk/status", checkPermission(PERMISSIONS.INVOICE.UPDATE), invoiceController.bulkUpdateStatus);
 // router.post("/bulk/create", checkPermission(PERMISSIONS.INVOICE.CREATE), validateStockForInvoice, invoiceController.bulkCreateInvoices);
