@@ -10,6 +10,7 @@ const authController = require("../../modules/auth/core/auth.controller");
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 const { validateStockForInvoice, checkStockBeforeSale } = require("../../core/middleware/stockValidation.middleware");
+const catchAsync = require("../../core/utils/catchAsync");
 
 // Protect all routes
 router.use(authController.protect);
