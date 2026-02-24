@@ -318,10 +318,56 @@ exports.deleteRole = catchAsync(async (req, res, next) => {
 //   }
 // modules/auth/core/role.controller.js
 
+// exports.getAvailablePermissions = catchAsync(async (req, res) => {
+//   const { PERMISSIONS_LIST } = require("../../../config/permissions");
+//   let filteredPermissions = PERMISSIONS_LIST;
+
+//   if (!req.user.isOwner && !req.user.isSuperAdmin) {
+//     const sensitiveGroups = ["System", "Organization", "Platform"];
+//     filteredPermissions = PERMISSIONS_LIST.filter(
+//       (perm) => !sensitiveGroups.includes(perm.group),
+//     );
+//   }
+
+//   // perfection: provide unique groups so the UI can draw "Tabs" or "Sections"
+//   const groups = [...new Set(filteredPermissions.map(p => p.group))];
+
+//   res.status(200).json({
+//     status: 'success',
+//     data: {
+//       groups,
+//       permissions: filteredPermissions
+//     }
+//   });
+// });
+//   // Group by category
+//   const groupedPermissions = filteredPermissions.reduce((acc, perm) => {
+//     if (!acc[perm.group]) {
+//       acc[perm.group] = [];
+//     }
+//     acc[perm.group].push({
+//       tag: perm.tag,
+//       description: perm.description,
+//     });
+//     return acc;
+//   }, {});
+
+//   res.status(200).json({
+//     status: "success",
+//     data: {
+//       allPermissions: filteredPermissions,
+//       groupedPermissions,
+//       totalPermissions: filteredPermissions.length,
+//       canManageSensitive: req.user.isOwner || req.user.isSuperAdmin,
+//     },
+//   });
+// });
+// Get available permissions for UI
 exports.getAvailablePermissions = catchAsync(async (req, res) => {
   const { PERMISSIONS_LIST } = require("../../../config/permissions");
   let filteredPermissions = PERMISSIONS_LIST;
 
+  // If not owner or super admin, filter out sensitive permissions
   if (!req.user.isOwner && !req.user.isSuperAdmin) {
     const sensitiveGroups = ["System", "Organization", "Platform"];
     filteredPermissions = PERMISSIONS_LIST.filter(
@@ -329,17 +375,9 @@ exports.getAvailablePermissions = catchAsync(async (req, res) => {
     );
   }
 
-  // perfection: provide unique groups so the UI can draw "Tabs" or "Sections"
+  // Provide unique groups so the UI can draw "Tabs" or "Sections"
   const groups = [...new Set(filteredPermissions.map(p => p.group))];
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      groups,
-      permissions: filteredPermissions
-    }
-  });
-});
   // Group by category
   const groupedPermissions = filteredPermissions.reduce((acc, perm) => {
     if (!acc[perm.group]) {
@@ -352,9 +390,11 @@ exports.getAvailablePermissions = catchAsync(async (req, res) => {
     return acc;
   }, {});
 
+  // Send a single, combined response
   res.status(200).json({
     status: "success",
     data: {
+      groups,
       allPermissions: filteredPermissions,
       groupedPermissions,
       totalPermissions: filteredPermissions.length,
@@ -362,7 +402,6 @@ exports.getAvailablePermissions = catchAsync(async (req, res) => {
     },
   });
 });
-
 // Assign role to user - owners/super admins only
 exports.assignRoleToUser = catchAsync(async (req, res, next) => {
   const orgId = req.user.organizationId;
