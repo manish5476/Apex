@@ -36,21 +36,46 @@ router.get("/reports/outstanding", checkPermission(PERMISSIONS.REPORT.OUTSTANDIN
     2. BULK & UTILITY OPERATIONS
 ====================================================== */
 // Stock check
+/* ======================================================
+    2. BULK & UTILITY OPERATIONS
+====================================================== */
+// Stock check
 router.post(
   "/check-stock",
   checkPermission(PERMISSIONS.INVOICE.CREATE),
-  checkStockBeforeSale,
-  (req, res) => {
+  catchAsync(async (req, res) => {
+    const { items, branchId } = req.body;
+
+    // 1. Allow frontend to send branchId, fallback to user's branch
+    const targetBranchId = branchId || req.user.branchId;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ status: 'fail', message: 'Items are required' });
+    }
+
+    if (!targetBranchId) {
+      return res.status(400).json({ status: 'fail', message: 'Branch ID is missing' });
+    }
+
+    // 2. Call the service directly
+    const validation = await StockValidationService.validateSale(
+      items,
+      targetBranchId,
+      req.user.organizationId
+    );
+
+    // 3. ALWAYS return 200 OK so the frontend can read the report safely
     res.status(200).json({
       status: 'success',
-      message: 'Stock validation passed',
-      warnings: req.stockWarnings,
+      isValid: validation.isValid, // true or false
+      message: validation.isValid ? 'Stock validation passed' : 'Stock validation failed',
+      warnings: validation.warnings || [],
       stock: {
-        totalStock: req.stockSummary.totalStock,
-        totalRequested: req.stockSummary.totalRequested
+        summary: validation.summary || {},
+        items: validation.errors || [] // This contains the items with 0 stock
       }
     });
-  }
+  })
 );
 
 // router.post("/check-stock", checkPermission(PERMISSIONS.INVOICE.CREATE), checkStockBeforeSale, (req, res) => {
