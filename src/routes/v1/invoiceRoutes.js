@@ -11,7 +11,7 @@ const { checkPermission } = require("../../core/middleware/permission.middleware
 const { PERMISSIONS } = require("../../config/permissions");
 const { validateStockForInvoice, checkStockBeforeSale } = require("../../core/middleware/stockValidation.middleware");
 const catchAsync = require("../../core/utils/catchAsync");
-
+const StockValidationService = require('../../modules/_legacy/services/stockValidationService')
 // Protect all routes
 router.use(authController.protect);
 
@@ -33,10 +33,6 @@ router.get("/reports/sales", checkPermission(PERMISSIONS.REPORT.SALES), invoiceR
 router.get("/reports/tax", checkPermission(PERMISSIONS.REPORT.TAX), invoiceReport.getTaxReport || ((req, res) => res.status(200).json({ status: 'success', data: [] })));
 router.get("/reports/outstanding", checkPermission(PERMISSIONS.REPORT.OUTSTANDING), invoiceReport.getOutstandingInvoices || ((req, res) => res.status(200).json({ status: 'success', data: [] })));
 
-/* ======================================================
-    2. BULK & UTILITY OPERATIONS
-====================================================== */
-// Stock check
 /* ======================================================
     2. BULK & UTILITY OPERATIONS
 ====================================================== */
@@ -130,8 +126,8 @@ router.get("/:id/history", checkPermission(PERMISSIONS.INVOICE.READ), invoiceAud
 
 // Payments
 router.route("/:id/payments")
-  .get(checkPermission(PERMISSIONS.INVOICE.READ), invoicePayment.getInvoicePayments)
-  .post(checkPermission(PERMISSIONS.PAYMENT.CREATE), invoicePayment.addPayment);
+  .get(checkPermission(PERMISSIONS.INVOICE.READ), invoiceController.getInvoicePayments)
+  .post(checkPermission(PERMISSIONS.PAYMENT.CREATE), invoiceController.addPayment);
 
 // PDF & Comms
 router.get("/:id/download", checkPermission(PERMISSIONS.INVOICE.DOWNLOAD), invoicePDFController.downloadInvoicePDF);
