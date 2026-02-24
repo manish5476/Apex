@@ -31,8 +31,8 @@ class StockValidationService {
     }, {});
 
     for (const item of items) {
-      const requiredQty = Number(item.quantity ?? item.qty || 0);
-
+      // const requiredQty = Number(item.quantity ?? item.qty || 0);
+const requiredQty = Number(item.quantity || item.qty || 0);
       // ❗ HARD VALIDATION
       if (!requiredQty || requiredQty <= 0) {
         errors.push({
