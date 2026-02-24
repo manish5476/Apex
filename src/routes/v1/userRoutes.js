@@ -7,8 +7,8 @@ const { checkPermission } = require("../../core/middleware/permission.middleware
 const { PERMISSIONS } = require("../../config/permissions");
 
 // Configure Multer (Memory Storage)
-const upload = multer({ 
-  storage: multer.memoryStorage(), 
+const upload = multer({
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB Limit
 });
 
@@ -27,7 +27,7 @@ router.get("/me/permissions", userController.getMyPermissions);
 router.get("/me/devices", userController.getMyDevices);
 router.delete("/me/devices/:sessionId", userController.revokeDevice);
 router.post("/check-permission", userController.checkPermission); // Utility for frontend
-
+router.get("/all-permissions", checkPermission(PERMISSIONS.ROLE.MANAGE), userController.getAllAvailablePermissions);
 // ======================================================
 // 2. ADMIN USER MANAGEMENT (Requires RBAC Permissions)
 // ======================================================
@@ -46,9 +46,9 @@ router.post("/", checkPermission(PERMISSIONS.USER.MANAGE), userController.create
 router.patch("/:id", checkPermission(PERMISSIONS.USER.MANAGE), userController.updateUser);
 router.delete("/:id", checkPermission(PERMISSIONS.USER.MANAGE), userController.deleteUser);
 router.patch(
-  "/:id/photo", 
-  checkPermission(PERMISSIONS.USER.MANAGE), 
-  upload.single("photo"), 
+  "/:id/photo",
+  checkPermission(PERMISSIONS.USER.MANAGE),
+  upload.single("photo"),
   userController.uploadUserPhotoByAdmin
 );
 router.patch("/:id/password", checkPermission(PERMISSIONS.USER.MANAGE), userController.adminUpdatePassword);

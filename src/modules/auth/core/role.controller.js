@@ -304,19 +304,42 @@ exports.deleteRole = catchAsync(async (req, res, next) => {
 });
 
 // Get available permissions for UI
+// exports.getAvailablePermissions = catchAsync(async (req, res) => {
+//   const { PERMISSIONS_LIST } = require("../../../config/permissions");
+//   let filteredPermissions = PERMISSIONS_LIST;
+
+//   // If not owner or super admin, filter out sensitive permissions
+//   if (!req.user.isOwner && !req.user.isSuperAdmin) {
+//     // Define which permissions are sensitive (only for owners/super admins)
+//     const sensitiveGroups = ["System", "Organization", "Platform"];
+//     filteredPermissions = PERMISSIONS_LIST.filter(
+//       (perm) => !sensitiveGroups.includes(perm.group),
+//     );
+//   }
+// modules/auth/core/role.controller.js
+
 exports.getAvailablePermissions = catchAsync(async (req, res) => {
   const { PERMISSIONS_LIST } = require("../../../config/permissions");
   let filteredPermissions = PERMISSIONS_LIST;
 
-  // If not owner or super admin, filter out sensitive permissions
   if (!req.user.isOwner && !req.user.isSuperAdmin) {
-    // Define which permissions are sensitive (only for owners/super admins)
     const sensitiveGroups = ["System", "Organization", "Platform"];
     filteredPermissions = PERMISSIONS_LIST.filter(
       (perm) => !sensitiveGroups.includes(perm.group),
     );
   }
 
+  // perfection: provide unique groups so the UI can draw "Tabs" or "Sections"
+  const groups = [...new Set(filteredPermissions.map(p => p.group))];
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      groups,
+      permissions: filteredPermissions
+    }
+  });
+});
   // Group by category
   const groupedPermissions = filteredPermissions.reduce((acc, perm) => {
     if (!acc[perm.group]) {

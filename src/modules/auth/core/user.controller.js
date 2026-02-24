@@ -26,6 +26,18 @@ const getFinancialYear = () => {
   return now.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
 };
 
+// modules/auth/core/user.controller.ts or .js
+const { PERMISSIONS_LIST, getPermissionGroups } = require('../../../config/permissions');
+exports.getAllAvailablePermissions = (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    results: PERMISSIONS_LIST.length,
+    data: {
+      groups: getPermissionGroups(), // ['System', 'Finance', 'HR', etc.]
+      permissions: PERMISSIONS_LIST
+    }
+  });
+};
 /**
  * 🛡️ SECURITY: Hierarchy & Tenant Guard
  */
