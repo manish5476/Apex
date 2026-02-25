@@ -54,15 +54,9 @@ router.route('/')
   );
 
 router.route('/:id')
-  // Get detailed view of a single sale
   .get(checkPermission(PERMISSIONS.SALES.VIEW), salesController.getSales)
-  // Update sale details
-  .put(
-    checkPermission(PERMISSIONS.SALES.MANAGE), 
-    // validate(updateSalesSchema), 
-    salesController.updateSales
+  .put(checkPermission(PERMISSIONS.SALES.MANAGE),     salesController.updateSales
   )
-  // Delete sale (supports soft-delete via Factory)
   .delete(checkPermission(PERMISSIONS.SALES.MANAGE), salesController.deleteSales);
 
 module.exports = router;
