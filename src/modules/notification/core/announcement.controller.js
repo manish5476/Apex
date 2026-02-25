@@ -1,9 +1,9 @@
 const Announcement = require('./announcement.model');
 const User = require('../../auth/core/user.model');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
-const factory = require('../../../core/utils/handlerFactory');
-const { emitToOrg, emitToUsers } = require('../../../core/utils/_legacy/socket');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
+const factory = require('../../../core/utils/api/handlerFactory');
+const { emitToOrg, emitToUsers } = require('../../../socketHandlers/socket');
 
 // exports.createAnnouncement = catchAsync(async (req, res, next) => {
 //   const { title, message, type, targetAudience, targetIds, expiresAt } = req.body;

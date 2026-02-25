@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Product = require('../../../modules/inventory/core/product.model');
 const Organization = require('../../../modules/organization/core/organization.model');
 const Master = require('../../../modules/master/core/master.model'); 
-const AppError = require('../../../core/utils/appError');
+const AppError = require('../../../core/utils/api/appError');
 
 // Services
 const LayoutService = require('../../services/storefront/layout.service');
@@ -589,7 +589,7 @@ module.exports = new ProductPublicController();
 // const Product = require('../../../modules/inventory/core/product.model');
 // const Organization = require('../../../modules/organization/core/organization.model');
 // const Master = require('../../../modules/master/core/master.model'); 
-// const AppError = require('../../../core/utils/appError');
+// const AppError = require('../../../core/utils/api/appError');
 
 // // Services
 // const LayoutService = require('../../services/storefront/layout.service');
@@ -1004,7 +1004,7 @@ module.exports = new ProductPublicController();
 // // const Product = require('../../../modules/inventory/core/product.model');
 // // const Organization = require('../../../modules/organization/core/organization.model');
 // // const Master = require('../../../modules/master/core/master.model'); // ✅ Import Master for lookups
-// // const AppError = require('../../../core/utils/appError');
+// // const AppError = require('../../../core/utils/api/appError');
 
 // // // ✅ IMPORTS FOR LAYOUT
 // // const LayoutService = require('../../services/storefront/layout.service');

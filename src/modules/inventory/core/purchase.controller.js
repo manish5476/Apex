@@ -6,14 +6,14 @@ const Payment = require("../../accounting/payments/payment.model"); // Fixed pat
 const Product = require("../../inventory/core/product.model"); // Fixed path
 const AccountEntry = require("../../accounting/core/accountEntry.model");
 const Account = require("../../accounting/core/account.model");
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
-const factory = require("../../../core/utils/handlerFactory");
-const { runInTransaction } = require("../../../core/utils/runInTransaction");
-const fileUploadService = require("../../_legacy/services/uploads/fileUploadService");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
+const factory = require("../../../core/utils/api/handlerFactory");
+const { runInTransaction } = require("../../../core/utils/db/runInTransaction");
+const fileUploadService = require("../../uploads/fileUploadService");
 const cloudinary = require("cloudinary").v2;
 const { invalidateOpeningBalance } = require("../../accounting/core/ledgerCache.service");
-const StockValidationService = require('../../_legacy/services/stockValidationService'); // Ensure correct path
+const StockValidationService = require('./stockValidationService'); // Ensure correct path
 
 /* ======================================================
    HELPER: Get or Init Account

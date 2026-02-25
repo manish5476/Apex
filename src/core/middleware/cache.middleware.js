@@ -1,6 +1,6 @@
 // 1. Change the import to point to your new config file
 //    and destructure 'safeCache' from it.
-const { safeCache } = require("../utils/_legacy/redis"); 
+const { safeCache } = require("../../config/redis"); 
 
 const cacheMiddleware = (duration = 300) => {
   return async (req, res, next) => {

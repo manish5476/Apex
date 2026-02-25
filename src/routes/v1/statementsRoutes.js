@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const statementsController = require('../../modules/_legacy/controllers/statementsController');
+const statementsController = require('../../modules/accounting/core/statementsController');
 const authController = require('../../modules/auth/core/auth.controller');
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");

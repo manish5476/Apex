@@ -1,6 +1,6 @@
 const chartService = require('../services/chartService');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
 
 // Helper for dates
 const getRange = (req) => {

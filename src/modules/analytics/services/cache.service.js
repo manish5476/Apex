@@ -1,4 +1,4 @@
-const { safeCache } = require('../../../core/utils/_legacy/redis');
+const { safeCache } = require('../../../config/redis');
 const memoryCache = new Map();
 
 /* ==========================================================================
@@ -190,7 +190,7 @@ module.exports = {
     getWithCache
 };
 
-// const { safeCache } = require('../../../core/utils/_legacy/redis');
+// const { safeCache } = require('../../../config/redis');
 // const memoryCache = new Map();
 
 // module.exports = {

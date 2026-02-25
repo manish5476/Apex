@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // 1. Core Utils & Middleware
-const dropdownFactory = require('../../../core/utils/dropdownFactory');
+const dropdownFactory = require('../../../core/utils/api/dropdownFactory');
 const { protect } = require('../../auth/core/auth.controller'); // Assuming you have auth middleware
 
 // 2. Organization & Auth Models

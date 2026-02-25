@@ -1,5 +1,5 @@
 // src/utils/openingBalanceCache.js
-const { safeCache } = require("../../../core/utils/_legacy/redis");
+const { safeCache } = require("../../../config/redis");
 
 // Cache TTL configuration
 const CACHE_TTL = 120; // seconds (2 minutes)

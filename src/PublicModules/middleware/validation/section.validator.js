@@ -1,6 +1,6 @@
 // src/middleware/validation/section.validator.js
 const SectionRegistry = require('../../services/storefront/sectionRegistry.service');
-const AppError = require('../../../core/utils/appError');
+const AppError = require('../../../core/utils/api/appError');
 
 class SectionValidator {
   /**
@@ -96,7 +96,7 @@ module.exports = SectionValidator;
 
 // // src/middleware/validation/section.validator.js
 // const SectionRegistry = require('../../services/storefront/sectionRegistry.service');
-// const AppError = require('../../../core/utils/appError');
+// const AppError = require('../../../core/utils/api/appError');
 
 // class SectionValidator {
 //   /**

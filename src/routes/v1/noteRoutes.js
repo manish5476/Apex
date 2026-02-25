@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const noteController = require("../../modules/_legacy/controllers/noteController");
+const noteController = require("../../modules/Notes/noteController");
 const authController = require("../../modules/auth/core/auth.controller");
 const { upload } = require("../../core/middleware/upload.middleware");
 const { checkPermission, checkAnyPermission, checkAllPermissions, checkIsSuperAdmin} = require("../../core/middleware/permission.middleware");

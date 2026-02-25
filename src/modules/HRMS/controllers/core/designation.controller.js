@@ -2,9 +2,9 @@
 const mongoose = require('mongoose');
 const Designation = require('../../models/designation.model');
 const User = require('../../../auth/core/user.model');
-const catchAsync = require('../../../../core/utils/catchAsync');
-const AppError = require('../../../../core/utils/appError');
-const factory = require('../../../../core/utils/handlerFactory');
+const catchAsync = require('../../../../core/utils/api/catchAsync');
+const AppError = require('../../../../core/utils/api/appError');
+const factory = require('../../../../core/utils/api/handlerFactory');
 
 // ======================================================
 // HELPERS & VALIDATIONS

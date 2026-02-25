@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { nanoid } = require('nanoid');
-const redis = require('../../../core/utils/_legacy/redis');
+const redis = require('../../../config/redis');
 
 // Sub-schema for Branch Inventory
 const inventorySchema = new mongoose.Schema({

@@ -1,7 +1,7 @@
 const Session = require("./session.model");
 const User = require("./user.model");
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
 const mongoose = require("mongoose");
 
 

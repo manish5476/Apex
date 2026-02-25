@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const feedController = require("../../modules/_legacy/controllers/feedController");
+const feedController = require("../../modules/feed/feedController");
 const authController = require("../../modules/auth/core/auth.controller");
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");

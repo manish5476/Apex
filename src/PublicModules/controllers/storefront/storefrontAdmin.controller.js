@@ -2,7 +2,7 @@ const { StorefrontPage, SectionTemplate } = require('../../models/storefront');
 const SectionRegistry = require('../../services/storefront/sectionRegistry.service');
 const LayoutService = require('../../services/storefront/layout.service');
 const { THEME_LIST } = require('../../utils/constants/storefront/themes.constants');
-const AppError = require('../../../core/utils/appError');
+const AppError = require('../../../core/utils/api/appError');
 
 class StorefrontAdminController {
 
@@ -445,7 +445,7 @@ module.exports = new StorefrontAdminController();
 // const SectionRegistry = require('../../services/storefront/sectionRegistry.service');
 // const LayoutService = require('../../services/storefront/layout.service');
 // const { THEME_LIST } = require('../../utils/constants/storefront/themes.constants');
-// const AppError = require('../../../core/utils/appError');
+// const AppError = require('../../../core/utils/api/appError');
 
 // class StorefrontAdminController {
 
@@ -844,7 +844,7 @@ module.exports = new StorefrontAdminController();
 // // const StorefrontLayout = require('../../models/storefront/storefrontLayout.model'); // ✅ NEW
 // // const SectionRegistry = require('../../services/storefront/sectionRegistry.service');
 // // const SectionValidator = require('../../middleware/validation/section.validator');
-// // const AppError = require('../../../core/utils/appError');
+// // const AppError = require('../../../core/utils/api/appError');
 // // const LayoutService = require('../../services/storefront/layout.service'); // ✅ NEW
 // // const { THEME_LIST } = require('../../utils/constants/storefront/themes.constants'); // ✅ Import
 // // class StorefrontAdminController {

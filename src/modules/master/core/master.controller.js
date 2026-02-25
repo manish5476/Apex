@@ -1,6 +1,6 @@
 const Master = require("./master.model");
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
 
 /**
  * @desc Create new master item (category, brand, etc.)
@@ -208,8 +208,8 @@ exports.bulkDeleteMasters = catchAsync(async (req, res, next) => {
     });
 });
 // const Master = require("./master.model");
-// const catchAsync = require("../../../core/utils/catchAsync");
-// const AppError = require("../../../core/utils/appError");
+// const catchAsync = require("../../../core/utils/api/catchAsync");
+// const AppError = require("../../../core/utils/api/appError");
 
 // /**
 //  * @desc Create new master item (category, brand, etc.)

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const AuditLog = require('../../../modules/_legacy/models/auditLogModel'); // Adjust path as needed
+const AuditLog = require('../../../core/utils/db/auditLogModel'); // Adjust path as needed
 const { toObjectId } = require('../utils/analytics.utils');
 
 

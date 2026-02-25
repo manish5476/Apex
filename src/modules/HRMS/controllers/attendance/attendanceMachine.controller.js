@@ -4,9 +4,9 @@ const crypto = require('crypto');
 const AttendanceMachine = require('../../models/attendanceMachine.model');
 const AttendanceLog = require('../../models/attendanceLog.model');
 const User = require('../../../auth/core/user.model');
-const catchAsync = require('../../../../core/utils/catchAsync');
-const AppError = require('../../../../core/utils/appError');
-const factory = require('../../../../core/utils/handlerFactory');
+const catchAsync = require('../../../../core/utils/api/catchAsync');
+const AppError = require('../../../../core/utils/api/appError');
+const factory = require('../../../../core/utils/api/handlerFactory');
 
 // ======================================================
 // HELPERS & UTILITIES

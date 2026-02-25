@@ -1,15 +1,15 @@
 // src/services/paymentPDFService.js
 const Payment = require("./payment.model"); // Assuming you have a Payment model
-const { generatePaymentSlipBuffer } = require("../../../core/utils/_legacy/paymentSlipTemplate");
-const { getPaymentEmailHTML } = require("../../../core/utils/_legacy/templates/paymentEmailTemplate");
-const sendEmail = require("../../../core/utils/_legacy/email");
-const AppError = require("../../../core/utils/appError");
+const { generatePaymentSlipBuffer } = require("./template/paymentSlipTemplate");
+const { getPaymentEmailHTML } = require("./template/paymentEmailTemplate");
+const sendEmail = require("../../../core/infra/email");
+const AppError = require("../../../core/utils/api/appError");
 
 exports.downloadPaymentPDF = async (paymentId, organizationId) => {
   const payment = await Payment.findOne({ _id: paymentId, organizationId })
     .populate("customerId", "name email")
     .populate("organizationId", "name primaryEmail")
-    .populate("branchId", "address"); // Critical for header address
+    .populate("branchId", "address"); 
 
   if (!payment) throw new AppError("Payment not found", 404);
 

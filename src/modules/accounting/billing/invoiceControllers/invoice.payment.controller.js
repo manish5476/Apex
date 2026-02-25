@@ -13,14 +13,14 @@ const Account = require('../../core/account.model');
 const Organization = require("../../../organization/core/organization.model");
 const InvoiceAudit = require('../invoiceAudit.model');
 
-const catchAsync = require("../../../../core/utils/catchAsync");
-const AppError = require("../../../../core/utils/appError");
-const factory = require("../../../../core/utils/handlerFactory");
-const { runInTransaction } = require("../../../../core/utils/runInTransaction");
-const { emitToOrg } = require("../../../../core/utils/_legacy/socket");
-const automationService = require('../../../_legacy/services/automationService');
+const catchAsync = require("../../../../core/utils/api/catchAsync");
+const AppError = require("../../../../core/utils/api/appError");
+const factory = require("../../../../core/utils/api/handlerFactory");
+const { runInTransaction } = require("../../../../core/utils/db/runInTransaction");
+const { emitToOrg } = require("../../../../socketHandlers/socket");
+const automationService = require('../../../webhook/automationService');
 const EMI = require('../../payments/emi.model'); // Adjust path to your EMI model
-const emiService = require('../../../_legacy/services/emiService'); // Adjust path to your Service
+const emiService = require('../../payments/emiService'); // Adjust path to your Service
 /* ======================================================
    4. ADD PAYMENT TO INVOICE (FIXED)
 ====================================================== */

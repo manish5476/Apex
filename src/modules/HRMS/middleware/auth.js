@@ -4,9 +4,9 @@ const jwt = require('jsonwebtoken');
 // const User = require('../models/user.model');
 const AttendanceMachine = require('../models/attendanceMachine.model');
 const User = require('../../auth/core/user.model');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
-const factory = require('../../../core/utils/handlerFactory');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
+const factory = require('../../../core/utils/api/handlerFactory');
 
 exports.protect = catchAsync(async (req, res, next) => {
   let token;

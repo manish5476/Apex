@@ -13,8 +13,8 @@ const Payment = require("../../accounting/payments/payment.model");
 const EMI = require("../../accounting/payments/emi.model");
 const { PERMISSIONS_LIST } = require('../../../config/permissions');
 
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
 
 /* ============================================================================
    FILTER BUILDER UTILITY

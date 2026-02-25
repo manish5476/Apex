@@ -1,6 +1,6 @@
 const StorefrontLayout = require('../../models/storefront/storefrontLayout.model');
 // We import the whole utility object to access safeCache
-const redisUtils = require('../../../core/utils/_legacy/redis'); 
+const redisUtils = require('../../../config/redis'); 
 const { nanoid } = require('nanoid');
 
 class LayoutService {

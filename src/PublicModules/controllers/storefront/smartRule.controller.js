@@ -1,7 +1,7 @@
 const SmartRuleEngine = require('../../services/storefront/smartRuleEngine.service');
 const SmartRule = require('../../models/storefront/smartRule.model');
 const { validateSmartRule } = require('../../services/storefront/smartRule.validator');
-const AppError = require('../../../core/utils/appError');
+const AppError = require('../../../core/utils/api/appError');
 
 class SmartRuleController {
 

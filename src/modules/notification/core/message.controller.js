@@ -2,10 +2,10 @@ const mongoose = require('mongoose');
 const MessageModel = require('./message.model');
 const ChannelModel = require('../../organization/core/channel.model'); 
 const User = require('../../auth/core/user.model'); 
-const fileUploadService = require('../../_legacy/services/uploads/fileUploadService'); 
+const fileUploadService = require('../../uploads/fileUploadService'); 
 
 // 🛑 IMPORTANT: Update this path to point to your actual socket utility file
-const socketUtil = require('../../../core/utils/_legacy/socket'); 
+const socketUtil = require('../../../socketHandlers/socket'); 
 
 // ==============================================================================
 // 1. GET MESSAGES (With Pagination)
@@ -333,7 +333,7 @@ exports.markMessageAsRead = async (req, res) => {
 
 //     // Notify via socket (Optional: wrap in try-catch so it doesn't fail request)
 //     try { 
-//       const socketUtil = require('../../../core/utils/_legacy/socket'); 
+//       const socketUtil = require('../../../socketHandlers/socket'); 
 //       socketUtil.emitToOrg(msg.organizationId, 'messageEdited', msg); 
 //     } catch(e) { console.error('Socket emit failed', e); }
 
@@ -374,7 +374,7 @@ exports.markMessageAsRead = async (req, res) => {
 //     await msg.save();
 
 //     try { 
-//       const socketUtil = require('../../../core/utils/_legacy/socket'); 
+//       const socketUtil = require('../../../socketHandlers/socket'); 
 //       socketUtil.emitToOrg(msg.organizationId, 'messageDeleted', { messageId }); 
 //     } catch(e) { console.error('Socket emit failed', e); }
 
@@ -428,7 +428,7 @@ exports.markMessageAsRead = async (req, res) => {
 //   if (!message) return res.status(404).json({ message: 'Message not found' });
   
 //   // Real-time Signal
-//   const socketUtil = require('../../../core/utils/_legacy/socket');
+//   const socketUtil = require('../../../socketHandlers/socket');
 //   socketUtil.emitToChannel(message.channelId, 'messageRead', { messageId, userId });
 
 //   res.json({ success: true });
@@ -503,7 +503,7 @@ exports.markMessageAsRead = async (req, res) => {
 
 //     // 5. Emit Socket Event (Real-time update)
 //     try {
-//       const socketUtil = require('../../../core/utils/_legacy/socket'); 
+//       const socketUtil = require('../../../socketHandlers/socket'); 
 //       if (socketUtil && socketUtil.getIo()) {
 //         socketUtil.emitToChannel(channelId, 'newMessage', populatedMsg);
 //       }
@@ -538,7 +538,7 @@ exports.markMessageAsRead = async (req, res) => {
     
 // //     // Emit read receipt
 // //     try {
-// //       const socketUtil = require('../../../core/utils/_legacy/socket');
+// //       const socketUtil = require('../../../socketHandlers/socket');
 // //       socketUtil.emitToChannel(message.channelId, 'messageRead', {
 // //         messageId,
 // //         userId,

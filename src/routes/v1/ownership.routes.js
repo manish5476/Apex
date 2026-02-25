@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const ownership = require('../../modules/_legacy/controllers/ownership.controller');
+const ownership = require('../../modules/organization/core/ownership.controller');
 const authController = require('../../modules/auth/core/auth.controller');
 const { checkPermission, checkIsOwner } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require('../../config/permissions');

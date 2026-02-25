@@ -1,7 +1,7 @@
 // src/controllers/invoicePDFController.js
-const invoicePDFService = require("../../_legacy/services/invoicePDFService");
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
+const invoicePDFService = require("./invoicePDFService");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
 
 exports.downloadInvoicePDF = catchAsync(async (req, res, next) => {
   // FIXED: Calling 'downloadInvoicePDF' to match your Service file

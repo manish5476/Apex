@@ -3,7 +3,7 @@
 const mongoose = require('mongoose');
 const User = require("./user.model");
 const Organization = require("../../organization/core/organization.model");
-const ActivityLog = require("../../_legacy/models/activityLogModel");
+const ActivityLog = require("../../activity/activityLogModel");
 const LeaveBalance = require("../../HRMS/models/leaveBalance.model");
 const Shift = require("../../HRMS/models/shift.model");
 const Department = require("../../HRMS/models/department.model");
@@ -11,10 +11,10 @@ const Designation = require("../../HRMS/models/designation.model");
 const Branch = require("../../organization/core/branch.model");
 const Session = require("./session.model");
 
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
-const factory = require("../../../core/utils/handlerFactory");
-const imageUploadService = require("../../_legacy/services/uploads/imageUploadService");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
+const factory = require("../../../core/utils/api/handlerFactory");
+const imageUploadService = require("../../uploads/imageUploadService");
 
 // ======================================================
 //  INTERNAL HELPERS
@@ -1181,9 +1181,9 @@ module.exports = exports;
 // const Designation = require("../../HRMS/models/designation.model");
 // const Branch = require("../../organization/core/branch.model");
 
-// const catchAsync = require("../../../core/utils/catchAsync");
-// const AppError = require("../../../core/utils/appError");
-// const factory = require("../../../core/utils/handlerFactory");
+// const catchAsync = require("../../../core/utils/api/catchAsync");
+// const AppError = require("../../../core/utils/api/appError");
+// const factory = require("../../../core/utils/api/handlerFactory");
 // const imageUploadService = require("../../_legacy/services/uploads/imageUploadService");
 
 // // ======================================================
@@ -1614,9 +1614,9 @@ module.exports = exports;
 // // const User = require("./user.model");
 // // const Organization = require("../../organization/core/organization.model");
 // // const ActivityLog = require("../../_legacy/models/activityLogModel");
-// // const catchAsync = require("../../../core/utils/catchAsync");
-// // const AppError = require("../../../core/utils/appError");
-// // const factory = require("../../../core/utils/handlerFactory");
+// // const catchAsync = require("../../../core/utils/api/catchAsync");
+// // const AppError = require("../../../core/utils/api/appError");
+// // const factory = require("../../../core/utils/api/handlerFactory");
 // // const imageUploadService = require("../../_legacy/services/uploads/imageUploadService");
 // // const LeaveBalance = require("../../HRMS/models/leaveBalance.model"); // Adjust path as needed
 // // const Shift = require("../../HRMS/models/shift.model"); // Adjust path

@@ -2,8 +2,8 @@ const { StorefrontPage } = require('../../models/storefront');
 const LayoutService = require('../../services/storefront/layout.service');
 const Organization = require('../../../modules/organization/core/organization.model');
 const DataHydrationService = require('../../services/storefront/dataHydration.service');
-const AppError = require('../../../core/utils/appError');
-const redisUtils = require('../../../core/utils/_legacy/redis'); // Import Redis for Page Caching
+const AppError = require('../../../core/utils/api/appError');
+const redisUtils = require('../../../config/redis'); // Import Redis for Page Caching
 
 class StorefrontPublicController {
 

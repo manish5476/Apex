@@ -1,6 +1,6 @@
 const LayoutService = require('../../services/storefront/layout.service');
 const SectionValidator = require('../../middleware/validation/section.validator');
-const AppError = require('../../../core/utils/appError');
+const AppError = require('../../../core/utils/api/appError');
 
 class LayoutAdminController {
   

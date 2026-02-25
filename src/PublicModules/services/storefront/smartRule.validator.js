@@ -1,4 +1,4 @@
-const AppError = require('../../../core/utils/appError');
+const AppError = require('../../../core/utils/api/appError');
 
 // Optimization: Use Sets for O(1) lookup
 const RULE_FILTER_MATRIX = {

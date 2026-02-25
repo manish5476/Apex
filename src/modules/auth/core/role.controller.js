@@ -2,8 +2,8 @@
 const Role = require("./role.model");
 const User = require("./user.model");
 const Organization = require("../../organization/core/organization.model");
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
 const { VALID_TAGS } = require("../../../config/permissions");
 
 // Helper: Check if user can manage roles

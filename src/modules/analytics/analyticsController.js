@@ -1,6 +1,6 @@
 const analyticsService = require("./index");
-const catchAsync = require("../../core/utils/catchAsync");
-const AppError = require("../../core/utils/appError");
+const catchAsync = require("../../core/utils/api/catchAsync");
+const AppError = require("../../core/utils/api/appError");
 const { performance } = require("perf_hooks");
 
 const getDateRange = (query) => {
@@ -1018,7 +1018,7 @@ exports.getCustomerInsights = catchAsync(async (req, res, next) => {
 exports.customQuery = exports.customAnalyticsQuery;
 
 exports.getRedisStatus = catchAsync(async (req, res, next) => {
-    const { isRedisAvailable, REDIS_ENABLED } = require('../../../core/utils/_legacy/redis');
+    const { isRedisAvailable, REDIS_ENABLED } = require('../../../config/redis');
 
     res.status(200).json({
         status: 'success',
@@ -1040,8 +1040,8 @@ module.exports = exports;
 
 
 // const analyticsService = require("../services/analyticsService");
-// const catchAsync = require("../utils/catchAsync");
-// const AppError = require("../utils/appError");
+// const catchAsync = require("../utils/api/catchAsync");
+// const AppError = require("../utils/api/appError");
 // const { performance } = require("perf_hooks");
 
 // /**
@@ -2534,8 +2534,8 @@ module.exports = exports;
 // */
 
 // // const analyticsService = require("../services/analyticsService");
-// // const catchAsync = require("../utils/catchAsync");
-// // const AppError = require("../utils/appError");
+// // const catchAsync = require("../utils/api/catchAsync");
+// // const AppError = require("../utils/api/appError");
 // // const { performance } = require("perf_hooks");
 
 // // /**
@@ -3287,8 +3287,8 @@ module.exports = exports;
 // // // Export the original getFinancialReport for backward compatibility
 // // exports.getFinancialReport = exports.getFinancialDashboard;
 // // // const analyticsService = require("../services/analyticsService");
-// // // const catchAsync = require("../utils/catchAsync");
-// // // const AppError = require("../utils/appError");
+// // // const catchAsync = require("../utils/api/catchAsync");
+// // // const AppError = require("../utils/api/appError");
 // // // const { performance } = require("perf_hooks");
 
 // // // /**
@@ -4028,8 +4028,8 @@ module.exports = exports;
 // // // });
 
 // // // // const analyticsService = require('../services/analyticsService');
-// // // // const catchAsync = require('../utils/catchAsync');
-// // // // const AppError = require('../utils/appError');
+// // // // const catchAsync = require('../utils/api/catchAsync');
+// // // // const AppError = require('../utils/api/appError');
 
 // // // // /**
 // // // //  * UTILITY: Get Safe Date Range
@@ -4335,8 +4335,8 @@ module.exports = exports;
 // // // // });
 // // // // // const analyticsService = require('../services/analyticsService');
 // // // // // const { Parser } = require('json2csv');
-// // // // // const catchAsync = require('../utils/catchAsync'); // ✅ Standardized
-// // // // // const AppError = require('../utils/appError');
+// // // // // const catchAsync = require('../utils/api/catchAsync'); // ✅ Standardized
+// // // // // const AppError = require('../utils/api/appError');
 
 // // // // // /**
 // // // // //  * UTILITY: Get Safe Date Range

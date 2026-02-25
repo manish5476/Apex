@@ -2,9 +2,9 @@
 const Notification = require('./notification.model');
 const User = require('../../auth/core/user.model');
 const mongoose = require('mongoose');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
-const { emitToUser, emitToUsers } = require('../../../core/utils/_legacy/socket');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
+const { emitToUser, emitToUsers } = require('../../../socketHandlers/socket');
 
 // /**
 //  * Get user's notifications with pagination
@@ -469,9 +469,9 @@ exports.getMyNotifications = catchAsync(async (req, res, next) => {
 
 
 // const Notification = require('./notification.model');
-// const catchAsync = require('../../../core/utils/catchAsync');
-// const AppError = require('../../../core/utils/appError');
-// const APIFeatures = require('../../../core/utils/ApiFeatures'); // Standardize if you have it, else manual logic below
+// const catchAsync = require('../../../core/utils/api/catchAsync');
+// const AppError = require('../../../core/utils/api/appError');
+// const APIFeatures = require('../../../core/utils/api/ApiFeatures'); // Standardize if you have it, else manual logic below
 
 // // 1. Get My Notifications (Paginated)
 // exports.getMyNotifications = catchAsync(async (req, res, next) => {

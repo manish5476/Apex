@@ -5,9 +5,9 @@ const AttendanceDaily = require('../../models/attendanceDaily.model');
 const Shift = require('../../models/shift.model');
 const GeoFence = require('../../models/geoFencing.model');
 const User = require('../../../auth/core/user.model');
-const catchAsync = require('../../../../core/utils/catchAsync');
-const AppError = require('../../../../core/utils/appError');
-const factory = require('../../../../core/utils/handlerFactory');
+const catchAsync = require('../../../../core/utils/api/catchAsync');
+const AppError = require('../../../../core/utils/api/appError');
+const factory = require('../../../../core/utils/api/handlerFactory');
 
 // ======================================================
 // HELPERS & UTILITIES

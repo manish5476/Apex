@@ -9,10 +9,10 @@ const Payment = require('../../accounting/payments/payment.model');
 const PurchaseReturn = require('../../inventory/core/purchase.return.model'); // 🟢 Added for Defect Rate
 
 // Utils & Services
-const factory = require('../../../core/utils/handlerFactory');
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
-const fileUploadService = require('../../_legacy/services/uploads/fileUploadService');
+const factory = require('../../../core/utils/api/handlerFactory');
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
+const fileUploadService = require('../../uploads/fileUploadService');
 
 // Helper: Escape Regex Special Characters to prevent crashes
 const escapeRegex = (text) => {
@@ -385,9 +385,9 @@ exports.deleteKycDocument = catchAsync(async (req, res, next) => {
 // // Corrected paths based on your previous messages
 // const Purchase = require('../../inventory/core/purchase.model'); 
 // const Payment = require('../../accounting/payments/payment.model');
-// const factory = require('../../../core/utils/handlerFactory');
-// const catchAsync = require("../../../core/utils/catchAsync");
-// const AppError = require("../../../core/utils/appError");
+// const factory = require('../../../core/utils/api/handlerFactory');
+// const catchAsync = require("../../../core/utils/api/catchAsync");
+// const AppError = require("../../../core/utils/api/appError");
 
 // // Helper: Escape Regex Special Characters to prevent crashes
 // const escapeRegex = (text) => {
@@ -749,9 +749,9 @@ exports.deleteKycDocument = catchAsync(async (req, res, next) => {
 // // const Supplier = require('./supplier.model');
 // // const Purchase = require('../../inventory/core/purchase.model');
 // // const Payment = require('../../accounting/payments/payment.model');
-// // const factory = require('../../../core/utils/handlerFactory');
-// // const catchAsync = require("../../../core/utils/catchAsync");
-// // const AppError = require("../../../core/utils/appError");
+// // const factory = require('../../../core/utils/api/handlerFactory');
+// // const catchAsync = require("../../../core/utils/api/catchAsync");
+// // const AppError = require("../../../core/utils/api/appError");
 // // const mongoose = require('mongoose');
 // // const imageUploadService = require("../../_legacy/services/uploads/imageUploadService");
 // // const ExcelJS = require('exceljs'); // 🟢 ADDED MISSING IMPORT

@@ -4,7 +4,7 @@ const Product = require("../../inventory/core/product.model");
 const Customer = require("../../organization/core/customer.model");
 const Notification = require("./notification.model");
 const EMI = require("../../accounting/payments/emi.model");
-const sendEmail = require("../../../core/utils/_legacy/email");
+const sendEmail = require("../../../core/infra/email");
 const inventoryAlertService = require("../../inventory/core/inventoryAlert.service");
 
 // exports.createNotification = async (organizationId, recipientId, type, title, message, io = null) => {
@@ -35,7 +35,7 @@ exports.createNotification = async (organizationId, recipientId, type, title, me
 
   // Also use socket utils if available
   try {
-    const { emitToUser } = require("../../../core/utils/_legacy/socket");
+    const { emitToUser } = require("../../../socketHandlers/socket");
     emitToUser(recipientId.toString(), "newNotification", notification);
   } catch (err) {
     console.log("Socket utils not available");

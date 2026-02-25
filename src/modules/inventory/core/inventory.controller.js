@@ -1,9 +1,9 @@
 const Product = require('./product.model');
 const AccountEntry = require('../../accounting/core/accountEntry.model');
 const Account = require('../../accounting/core/account.model');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
-const { runInTransaction } = require('../../../core/utils/runInTransaction');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
+const { runInTransaction } = require('../../../core/utils/db/runInTransaction');
 
 async function getAccount(orgId, code, name, type, session) {
   let acc = await Account.findOne({ organizationId: orgId, code }).session(session);
@@ -118,8 +118,8 @@ exports.adjustStock = catchAsync(async (req, res) => {
 
 
 // const Product = require('../models/productModel');
-// const catchAsync = require('../utils/catchAsync');
-// const AppError = require('../utils/appError');
+// const catchAsync = require('../utils/api/catchAsync');
+// const AppError = require('../utils/api/appError');
 // const { runInTransaction } = require('../utils/runInTransaction');
 // const { postStockAdjustmentJournal } = require('../services/inventoryJournalService');
 
@@ -216,8 +216,8 @@ exports.adjustStock = catchAsync(async (req, res) => {
 // // const Product = require('../models/productModel');
 // // const AccountEntry = require('../models/accountEntryModel');
 // // const Account = require('../models/accountModel');
-// // const catchAsync = require('../utils/catchAsync');
-// // const AppError = require('../utils/appError');
+// // const catchAsync = require('../utils/api/catchAsync');
+// // const AppError = require('../utils/api/appError');
 // // const { runInTransaction } = require('../utils/runInTransaction');
 
 // // async function getOrInitAccount(orgId, type, name, code, session) {

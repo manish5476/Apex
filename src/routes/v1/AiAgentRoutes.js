@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const authController = require("../../modules/auth/core/auth.controller");
-const { processUserMessage } = require("../../modules/_legacy/services/ai/agentService");
+const { processUserMessage } = require("../../modules/ai/agentService");
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 

@@ -5,10 +5,10 @@ const Purchase = require('./purchase.model');
 const PurchaseReturn = require('./purchase.return.model');
 const AccountEntry = require('../../accounting/core/accountEntry.model');
 const Account = require('../../accounting/core/account.model');
-const factory = require('../../../core/utils/handlerFactory');
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
-const imageUploadService = require("../../_legacy/services/uploads/imageUploadService");
+const factory = require('../../../core/utils/api/handlerFactory');
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
+const imageUploadService = require("../../uploads/imageUploadService");
 const Invoice = require('../../accounting/billing/invoice.model'); 
 /* ======================================================
    HELPER: ATOMIC ACCOUNT GET/CREATE

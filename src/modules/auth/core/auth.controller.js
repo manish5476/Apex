@@ -10,12 +10,12 @@ const Organization = require("../../organization/core/organization.model");
 const Role = require("./role.model");
 const Session = require("./session.model");
 
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
-const sendEmail = require("../../../core/utils/_legacy/email");
-const { signAccessToken, signRefreshToken } = require("../../../core/utils/authUtils");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
+const sendEmail = require("../../../core/infra/email");
+const { signAccessToken, signRefreshToken } = require("../../../core/utils/helpers/authUtils");
 const { createNotification } = require("../../notification/core/notification.service");
-const { emitToUser } = require("../../../core/utils/_legacy/socket");
+const { emitToUser } = require("../../../socketHandlers/socket");
 
 // ======================================================
 //  1. HELPERS
@@ -1167,12 +1167,12 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
 // const Role = require("./role.model"); // Ensure this path is correct relative to your structure
 // const Session = require("./session.model");
 
-// const catchAsync = require("../../../core/utils/catchAsync");
-// const AppError = require("../../../core/utils/appError");
-// const sendEmail = require("../../../core/utils/_legacy/email");
-// const { signAccessToken, signRefreshToken } = require("../../../core/utils/authUtils");
+// const catchAsync = require("../../../core/utils/api/catchAsync");
+// const AppError = require("../../../core/utils/api/appError");
+// const sendEmail = require("../../../core/infra/email");
+// const { signAccessToken, signRefreshToken } = require("../../../core/utils/helpers/authUtils");
 // const { createNotification } = require("../../notification/core/notification.service");
-// const { emitToUser } = require("../../../core/utils/_legacy/socket");
+// const { emitToUser } = require("../../../socketHandlers/socket");
 
 // // ======================================================
 // //  1. HELPERS
@@ -1626,12 +1626,12 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
 // // const Role = require("./role.model");
 // // const Session = require("./session.model");
 
-// // const catchAsync = require("../../../core/utils/catchAsync");
-// // const AppError = require("../../../core/utils/appError");
-// // const sendEmail = require("../../../core/utils/_legacy/email");
-// // const { signAccessToken, signRefreshToken } = require("../../../core/utils/authUtils");
+// // const catchAsync = require("../../../core/utils/api/catchAsync");
+// // const AppError = require("../../../core/utils/api/appError");
+// // const sendEmail = require("../../../core/infra/email");
+// // const { signAccessToken, signRefreshToken } = require("../../../core/utils/helpers/authUtils");
 // // const { createNotification } = require("../../notification/core/notification.service");
-// // const { emitToUser } = require("../../../core/utils/_legacy/socket");
+// // const { emitToUser } = require("../../../socketHandlers/socket");
 
 // // // ======================================================
 // // //  HELPERS

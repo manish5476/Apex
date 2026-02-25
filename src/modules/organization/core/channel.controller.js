@@ -1,8 +1,8 @@
 const ChannelModel = require('./channel.model');
 const UserModel = require('../../auth/core/user.model');
 const Message = require("../../notification/core/message.model");
-const catchAsync = require("../../../core/utils/catchAsync");
-const socketUtil = require('../../../core/utils/_legacy/socket');
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const socketUtil = require('../../../socketHandlers/socket');
 
 // ✅ 1. ADD MEMBERS
 exports.addMember = async (req, res) => {
@@ -277,7 +277,7 @@ exports.listChannels = async (req, res) => {
 //     await channel.save();
 
 //     // 4. ⚡ REAL-TIME FIX (Socket Emits)
-//     const socketUtil = require('../../../core/utils/_legacy/socket'); // Ensure path is correct!
+//     const socketUtil = require('../../../socketHandlers/socket'); // Ensure path is correct!
 
 //     // A. Tell everyone REMAINING in the channel (updates member count for them)
 //     socketUtil.emitToChannel(channelId, 'userLeftChannel', {

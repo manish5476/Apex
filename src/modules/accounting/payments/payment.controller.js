@@ -6,14 +6,14 @@ const Customer = require('../../organization/core/customer.model');
 const Supplier = require('../../organization/core/supplier.model');
 const AccountEntry = require('../core/accountEntry.model');
 const Account = require('../core/account.model');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
-const factory = require('../../../core/utils/handlerFactory');
-const emiService = require('../../_legacy/services/emiService');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
+const factory = require('../../../core/utils/api/handlerFactory');
+const emiService = require('./emiService');
 const paymentPDFService = require('./paymentPDF.service');
-const automationService = require('../../_legacy/services/automationService');
+const automationService = require('../../webhook/automationService');
 const { invalidateOpeningBalance } = require('../core/ledgerCache.service');
-const PendingReconciliation = require('../../_legacy/models/pendingReconciliationModel');
+const PendingReconciliation = require('../core/pendingReconciliationModel');
 const paymentAllocationService = require('./paymentAllocation.service');
 
 /* ======================================================

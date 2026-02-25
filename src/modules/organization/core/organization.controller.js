@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
-const factory = require('../../../core/utils/handlerFactory');
-const sendEmail = require('../../../core/utils/_legacy/email');
-const { signToken, signAccessToken, signRefreshToken } = require('../../../core/utils/authUtils');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
+const factory = require('../../../core/utils/api/handlerFactory');
+const sendEmail = require('../../../core/infra/email');
+const { signToken, signAccessToken, signRefreshToken } = require('../../../core/utils/helpers/authUtils');
 const Organization = require('./organization.model');
 const Branch = require('./branch.model');
 const User = require('../../auth/core/user.model');
@@ -13,7 +13,7 @@ const Shift = require('../../HRMS/models/shift.model');
 const LeaveBalance = require('../../HRMS/models/leaveBalance.model');
 const Department = require('../../HRMS/models/department.model');
 const Designation = require('../../HRMS/models/designation.model');
-const { emitToOrg, emitToUser } = require('../../../core/utils/_legacy/socket');
+const { emitToOrg, emitToUser } = require('../../../socketHandlers/socket');
 /* -------------------------------------------------------------
  * Utility: Generate Unique Shop ID
 ------------------------------------------------------------- */
@@ -921,12 +921,12 @@ exports.deleteOrganization = factory.deleteOne(Organization);
 // const Branch = require('./branch.model');
 // const User = require('../../auth/core/user.model');
 // const Role = require('../../auth/core/role.model');
-// const catchAsync = require('../../../core/utils/catchAsync');
-// const AppError = require('../../../core/utils/appError');
-// const factory = require('../../../core/utils/handlerFactory');
-// const sendEmail = require('../../../core/utils/_legacy/email');
-// const { signToken } = require('../../../core/utils/authUtils');
-// const { emitToOrg, emitToUser } = require('../../../core/utils/_legacy/socket'); // ✅ IMPORTED SOCKET UTILITIES
+// const catchAsync = require('../../../core/utils/api/catchAsync');
+// const AppError = require('../../../core/utils/api/appError');
+// const factory = require('../../../core/utils/api/handlerFactory');
+// const sendEmail = require('../../../core/infra/email');
+// const { signToken } = require('../../../core/utils/helpers/authUtils');
+// const { emitToOrg, emitToUser } = require('../../../socketHandlers/socket'); // ✅ IMPORTED SOCKET UTILITIES
 // const Shift = require('../../hr/shift/shift.model'); // 🟢 NEW: Import Shift Model
 
 // /* -------------------------------------------------------------

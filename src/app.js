@@ -13,10 +13,10 @@ const mongoose = require("mongoose");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./bootstrap/swagger");
 const globalErrorHandler = require("./core/error/errorController");
-const AppError = require("./core/utils/appError");
+const AppError = require("./core/utils/api/appError");
 const logger = require("./bootstrap/logger");
 const { updateSessionActivity } = require("./core/middleware/session.middleware");
-const assignRequestId = require("./shared/middleware/requestId");
+const assignRequestId = require("./core/middleware/requestId");
 
 // ---------------------- ROUTES ----------------------
 const organizationRoutes = require("./routes/v1/organizationRoutes");

@@ -1,8 +1,8 @@
 const Product = require('../../../modules/inventory/core/product.model');
 const SmartRule = require('../../models/storefront/smartRule.model');
 const RuleQueryBuilder = require('./ruleQueryBuilder.service');
-const redis = require('../../../core/utils/_legacy/redis'); // Using legacy redis path
-const AppError = require('../../../core/utils/appError');
+const redis = require('../../../config/redis'); // Using legacy redis path
+const AppError = require('../../../core/utils/api/appError');
 
 class SmartRuleEngine {
   constructor() {

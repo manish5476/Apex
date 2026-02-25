@@ -1,7 +1,7 @@
 // src/core/middleware/stockValidation.middleware.js
-const StockValidationService = require("../../modules/_legacy/services/stockValidationService");
-const catchAsync = require("../utils/catchAsync");
-const AppError = require("../utils/appError");
+const StockValidationService = require("../../modules/inventory/core/stockValidationService");
+const catchAsync = require("../utils/api/catchAsync");
+const AppError = require("../utils/api/appError");
 
 exports.checkStockBeforeSale = catchAsync(async (req, res, next) => {
   const { items, branchId } = req.body; // <-- Add branchId here
@@ -46,8 +46,8 @@ exports.validateStockForInvoice = catchAsync(async (req, res, next) => {
 });
 // // src/core/middleware/stockValidation.middleware.js
 // const StockValidationService = require("../../modules/_legacy/services/stockValidationService");
-// const catchAsync = require("../utils/catchAsync");
-// const AppError = require("../utils/appError");
+// const catchAsync = require("../utils/api/catchAsync");
+// const AppError = require("../utils/api/appError");
 
 // /**
 //  * Middleware to validate stock before sale
@@ -95,8 +95,8 @@ exports.validateStockForInvoice = catchAsync(async (req, res, next) => {
 // });
 // // // src/core/middleware/stockValidation.middleware.js
 // // const StockValidationService = require("../../modules/_legacy/services/stockValidationService");
-// // const catchAsync = require("../utils/catchAsync");
-// // const AppError = require("../utils/appError");
+// // const catchAsync = require("../utils/api/catchAsync");
+// // const AppError = require("../utils/api/appError");
 
 // // /**
 // //  * Middleware to validate stock before sale

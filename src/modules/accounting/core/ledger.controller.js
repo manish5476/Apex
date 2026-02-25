@@ -1,9 +1,9 @@
 const AccountEntry = require('./accountEntry.model');
 const Account = require('./account.model');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
-const factory = require('../../../core/utils/handlerFactory');
-const ApiFeatures = require('../../../core/utils/ApiFeatures');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
+const factory = require('../../../core/utils/api/handlerFactory');
+const ApiFeatures = require('../../../core/utils/api/ApiFeatures');
 const mongoose = require('mongoose');
 const { 
   getOpeningBalance, 

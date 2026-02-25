@@ -2,10 +2,10 @@
 
 const Customer = require('./customer.model');
 const Invoice = require('../../accounting/billing/invoice.model'); // ✅ Added for Integrity Check
-const factory = require('../../../core/utils/handlerFactory');
-const AppError = require("../../../core/utils/appError");
-const catchAsync = require("../../../core/utils/catchAsync");
-const imageUploadService = require("../../_legacy/services/uploads/imageUploadService");
+const factory = require('../../../core/utils/api/handlerFactory');
+const AppError = require("../../../core/utils/api/appError");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const imageUploadService = require("../../uploads/imageUploadService");
 
 // PATCH /v1/customers/:id/credit-limit
 exports.updateCreditLimit = catchAsync(async (req, res, next) => {
@@ -195,9 +195,9 @@ exports.checkDuplicate = catchAsync(async (req, res, next) => {
 // const Note = require("../models/noteModel");
 // const ActivityLog = require("../models/activityLogModel");
 // const CreditLimitLog = require("../models/creditLimitLogModel");
-// const { CrudHandlerFactory } = require("../utils/handlerFactory");
-// const AppError = require("../utils/appError");
-// const catchAsync = require("../utils/catchAsync");
+// const { CrudHandlerFactory } = require("../utils/api/handlerFactory");
+// const AppError = require("../utils/api/appError");
+// const catchAsync = require("../utils/api/catchAsync");
 // const imageUploadService = require("../services/uploads/imageUploadService");
 
 // // ======================================================

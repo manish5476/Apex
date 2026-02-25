@@ -1,5 +1,5 @@
 // const mongoose = require('mongoose');
-// const AppError = require('../../../core/utils/appError');
+// const AppError = require('../../../core/utils/api/appError');
 
 // class RuleQueryBuilder {
 
@@ -166,7 +166,7 @@
 
 // module.exports = new RuleQueryBuilder();
 const mongoose = require('mongoose');
-const AppError = require('../../../core/utils/appError');
+const AppError = require('../../../core/utils/api/appError');
 
 class RuleQueryBuilder {
 

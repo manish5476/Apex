@@ -1,6 +1,6 @@
 // src/middleware/validation/section.validator.js
 const SectionRegistry = require('../../services/storefront/sectionRegistry.service');
-const AppError = require('../../../core/utils/appError');
+const AppError = require('../../../core/utils/api/appError');
 
 class SectionValidator {
   /**
@@ -95,7 +95,7 @@ class SectionValidator {
 module.exports = SectionValidator;
 // // src/middleware/security/organizationAccess.js
 // const { Organization } = require('../../../modules/organization/core/organization.model');
-// const AppError = require('../../utils/appError');
+// const AppError = require('../../utils/api/appError');
 
 // /**
 //  * Middleware to check if user has access to organization

@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 const AccountEntry = require('./accountEntry.model'); // ✅ Single Source of Truth
-const { logAudit } = require('../../../core/utils/auditLogger');
+const { logAudit } = require('../../../core/utils/db/auditLogger');
 const { format } = require('fast-csv');
-const ApiFeatures = require('../../../core/utils/ApiFeatures');
+const ApiFeatures = require('../../../core/utils/api/ApiFeatures');
 
 const asyncHandler = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 

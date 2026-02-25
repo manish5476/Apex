@@ -1,9 +1,9 @@
 const User = require("../../auth/core/user.model");
 const Organization = require("./organization.model");
-const AppError = require("../../../core/utils/appError");
-const catchAsync = require("../../../core/utils/catchAsync");
-const ActivityLog = require("../../_legacy/models/activityLogModel");
-const { logActivity } = require("../../_legacy/services/activityLogService");
+const AppError = require("../../../core/utils/api/appError");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const ActivityLog = require("../../activity/activityLogModel");
+const { logActivity } = require("../../activity/activityLogService");
 const mongoose = require("mongoose"); // ✅ Added
 const Role = require("../../auth/core/role.model"); // ✅ Added
 
