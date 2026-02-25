@@ -12,7 +12,7 @@ router.post('/login', authController.login);
 router.post('/refresh-token', authController.refreshToken);
 
 // Rate-limited to prevent brute-force/SMTP abuse
-router.post("/forgotPassword", forgotPasswordLimiter, authController.forgotPassword);
+router.post("/forgotPassword/:token", forgotPasswordLimiter, authController.forgotPassword);
 router.patch('/resetPassword/:token', authController.resetPassword);
 
 // Verification & Status
