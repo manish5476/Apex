@@ -15,13 +15,12 @@ router.use(authController.protect);
 router.get("/search", checkPermission(PERMISSIONS.PRODUCT.READ), productController.searchProducts);
 router.post("/bulk-import", checkPermission(PERMISSIONS.PRODUCT.CREATE), productController.bulkImportProducts);
 router.post('/bulk-update', checkPermission(PERMISSIONS.PRODUCT.UPDATE), productController.bulkUpdateProducts);
-
-// 🟢 CRITICAL FIX: Moved this up so "reports" doesn't get treated as an :id
 router.get('/reports/low-stock', checkPermission(PERMISSIONS.PRODUCT.READ), productController.getLowStockProducts);
 
 // ==============================================================================
 // 2. ROOT ROUTES
 // ==============================================================================
+
 router.route("/")
   .get(checkPermission(PERMISSIONS.PRODUCT.READ), productController.getAllProducts)
   .post(checkPermission(PERMISSIONS.PRODUCT.CREATE), productController.createProduct);
@@ -29,16 +28,12 @@ router.route("/")
 // ==============================================================================
 // 3. ID-BASED ROUTES (Dynamic :id)
 // ==============================================================================
+router.post('/scan', checkPermission(PERMISSIONS.PRODUCT.STOCK_ADJUST), productController.scanProduct);
 router.post('/:id/stock-adjust', checkPermission(PERMISSIONS.PRODUCT.STOCK_ADJUST), productController.adjustStock);
-
-// Fixed: Mapped to STOCK.MANAGE since PRODUCT.STOCK_TRANSFER doesn't exist in your config
 router.post('/:id/stock-transfer', checkPermission(PERMISSIONS.STOCK.MANAGE), productController.transferStock);
-
 router.patch('/:id/upload', checkPermission(PERMISSIONS.PRODUCT.UPDATE), upload.array('photos', 10), productController.uploadProductImage);
 router.patch("/:id/restore", checkPermission(PERMISSIONS.PRODUCT.UPDATE), productController.restoreProduct);
 router.get('/:id/history', checkPermission(PERMISSIONS.PRODUCT.READ), productController.getProductHistory);
-
-// Standard CRUD
 router.route("/:id")
   .get(checkPermission(PERMISSIONS.PRODUCT.READ), productController.getProduct)
   .patch(checkPermission(PERMISSIONS.PRODUCT.UPDATE), productController.updateProduct)

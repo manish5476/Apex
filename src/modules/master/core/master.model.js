@@ -17,13 +17,8 @@ const masterSchema = new mongoose.Schema({
     code: { type: String, trim: true, uppercase: true },
     description: { type: String, trim: true },
     imageUrl: { type: String, trim: true },
-    
-    // ✅ NEW: Parent for sub-categories (Electronics -> Mobile Phones)
     parentId: { type: mongoose.Schema.Types.ObjectId, ref: "Master", default: null },
-
     isActive: { type: Boolean, default: true },
-    
-    // ✅ NEW: Metadata for sorting/featuring in UI
     metadata: {
         isFeatured: { type: Boolean, default: false },
         sortOrder: { type: Number, default: 0 }

@@ -38,11 +38,6 @@ const slugify = (value) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-// const slugify = (value) =>
-//   value.toString().trim().toLowerCase()
-//     .replace(/[^a-z0-9]+/g, "-")
-//     .replace(/^-+|-+$/g, "");
-
 /* ======================================================
    1. CREATE PRODUCT (OPENING STOCK — ONCE ONLY)
 ====================================================== */
@@ -547,81 +542,160 @@ exports.bulkImportProducts = catchAsync(async (req, res, next) => {
 });
 
 /* ======================================================
-   BULK UPDATE PRODUCTS (Safe & Secured)
+   🔥 8. LOW STOCK REPORT (High Performance Aggregation)
 ====================================================== */
-// exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
-//   const updates = req.body;
-//   if (!Array.isArray(updates) || updates.length === 0) {
-//     return next(new AppError("Provide an array of updates", 400));
-//   }
+exports.getLowStockProducts = catchAsync(async (req, res, next) => {
+  const orgId = new mongoose.Types.ObjectId(req.user.organizationId);
 
-//   // 1. Define Forbidden Fields (Financial integrity)
-//   const forbiddenFields = [
-//     'quantity', 'inventory', 'purchasePrice', 'costPrice',
-//     'openingStock', 'organizationId', 'createdBy', '_id'
-//   ];
-//   const allowedFields = [
-//     'name', 'description', 'sku', 'barcode', 'category',
-//     'brand', 'unit', 'sellingPrice', 'minSellingPrice',
-//     'taxRate', 'isActive', 'reorderLevel', 'images'
-//   ];
+  // 🟢 Use Aggregation to calculate totalStock dynamically and filter AT THE DATABASE LEVEL
+  const lowStockItems = await Product.aggregate([
+    { $match: { organizationId: orgId, isActive: true, isDeleted: false } },
+    
+    // Calculate total stock and max reorder level across branches
+    { $addFields: {
+        totalStockCalculated: { $sum: "$inventory.quantity" },
+        maxReorderLevel: { 
+          $cond: { 
+            if: { $gt: [{ $size: "$inventory" }, 0] }, 
+            then: { $max: "$inventory.reorderLevel" }, 
+            else: 10 // Default fallback
+          }
+        }
+    }},
+    
+    // Filter ONLY items where Stock <= Reorder Level
+    { $match: {
+        $expr: { $lte: ["$totalStockCalculated", "$maxReorderLevel"] }
+    }},
 
-//   const bulkOps = [];
-//   for (const u of updates) {
-//     if (!u._id || !u.update) {
-//       return next(new AppError("Each item must have _id and update object", 400));
-//     }
+    // Project only the fields needed for the UI
+    { $project: {
+        name: 1,
+        sku: 1,
+        barcode: 1,
+        currentStock: "$totalStockCalculated",
+        reorderLevel: "$maxReorderLevel",
+        image: { $arrayElemAt: ["$images", 0] } // Grab first image
+    }},
+    
+    { $sort: { currentStock: 1 } } // Sort by lowest stock first
+  ]);
 
-//     // Filter the update object to only contain allowed fields
-//     const cleanUpdate = {};
-//     Object.keys(u.update).forEach(key => {
-//       if (forbiddenFields.includes(key)) {
-//         // Optionally throw error, or just ignore. 
-//         // Throwing error is safer to alert the frontend dev.
-//         throw new AppError(`Field '${key}' cannot be updated in bulk. Use stock adjustment.`, 400);
-//       }
-//       if (allowedFields.includes(key)) {
-//         cleanUpdate[key] = u.update[key];
-//       }
-//     });
+  res.status(200).json({
+    status: 'success',
+    results: lowStockItems.length,
+    data: { products: lowStockItems }
+  });
+});
 
-//     if (Object.keys(cleanUpdate).length > 0) {
-//       // If name is changing, we should probably update slug too
-//       if (cleanUpdate.name) {
-//         cleanUpdate.slug = `${slugify(cleanUpdate.name)}-${nanoid(6)}`;
-//       }
 
-//       bulkOps.push({
-//         updateOne: {
-//           filter: {
-//             _id: u._id,
-//             organizationId: req.user.organizationId
-//           },
-//           update: { $set: cleanUpdate } // Force $set to prevent operator injection
-//         }
-//       });
-//     }
-//   }
+exports.getProductHistory = catchAsync(async (req, res, next) => {
+  const productId = req.params.id;
+  const orgId = req.user.organizationId;
+  const { startDate, endDate } = req.query;
 
-//   // 3. Execute
-//   if (bulkOps.length > 0) {
-//     const result = await Product.bulkWrite(bulkOps);
+  // 🟢 1. BULLETPROOF DATE FILTER
+  const dateFilter = {};
+  
+  // Check if dates exist and are NOT the literal strings "null" or "undefined"
+  if (startDate && endDate && startDate !== 'null' && startDate !== 'undefined') {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Ensure the dates are actually valid numbers before applying the filter
+    if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+      end.setHours(23, 59, 59, 999);
+      dateFilter.$gte = start;
+      dateFilter.$lte = end;
+    }
+  }
 
-//     res.status(200).json({
-//       status: "success",
-//       message: "Bulk update completed",
-//       data: {
-//         matched: result.matchedCount,
-//         modified: result.modifiedCount
-//       }
-//     });
-//   } else {
-//     res.status(200).json({
-//       status: "success",
-//       message: "No valid fields to update were found."
-//     });
-//   }
-// });
+  // 2. FETCH SALES (OUT)
+  const invoiceQuery = { organizationId: orgId, "items.productId": productId, status: { $ne: "cancelled" } };
+  if (Object.keys(dateFilter).length > 0) invoiceQuery.invoiceDate = dateFilter; // Only apply if dates exist
+  
+  const invoices = await Invoice.find(invoiceQuery).populate("customerId", "name").lean();
+  const salesHistory = invoices.map(inv => {
+    const item = inv.items.find(i => i.productId.toString() === productId.toString());
+    if (!item) return null;
+    return {
+      _id: inv._id,
+      type: 'SALE',
+      date: inv.invoiceDate,
+      reference: inv.invoiceNumber,
+      party: inv.customerId?.name || 'Walk-in Customer',
+      quantity: -Math.abs(item.quantity), // OUT
+      value: item.price * item.quantity,
+      description: 'Sale Invoice'
+    };
+  }).filter(Boolean);
+
+  // 3. FETCH PURCHASES (IN)
+  const purchaseQuery = { organizationId: orgId, "items.productId": productId, status: { $ne: "cancelled" }, isDeleted: false };
+  if (Object.keys(dateFilter).length > 0) purchaseQuery.purchaseDate = dateFilter;
+
+  const purchases = await Purchase.find(purchaseQuery).populate("supplierId", "companyName").lean();
+  const purchaseHistory = purchases.map(pur => {
+    const item = pur.items.find(i => i.productId.toString() === productId.toString());
+    if (!item) return null;
+    return {
+      _id: pur._id,
+      type: 'PURCHASE',
+      date: pur.purchaseDate,
+      reference: pur.invoiceNumber,
+      party: pur.supplierId?.companyName || 'Unknown Supplier',
+      quantity: Math.abs(item.quantity), // IN
+      value: item.purchasePrice * item.quantity,
+      description: 'Purchase Bill'
+    };
+  }).filter(Boolean);
+
+  // 4. FETCH PURCHASE RETURNS (OUT)
+  const returnQuery = { organizationId: orgId, "items.productId": productId };
+  if (Object.keys(dateFilter).length > 0) returnQuery.returnDate = dateFilter;
+
+  // ⚠️ CRITICAL: Ensure you have required PurchaseReturn at the top of your file!
+  const returns = await PurchaseReturn.find(returnQuery).populate("supplierId", "companyName").lean();
+  const returnHistory = returns.map(ret => {
+    const item = ret.items.find(i => i.productId.toString() === productId.toString());
+    if (!item) return null;
+    return {
+      _id: ret._id,
+      type: 'PURCHASE_RETURN',
+      date: ret.returnDate,
+      reference: `Return to ${ret.supplierId?.companyName}`,
+      party: ret.supplierId?.companyName,
+      quantity: -Math.abs(item.quantity), // OUT
+      value: item.returnPrice * item.quantity,
+      description: ret.reason || 'Debit Note'
+    };
+  }).filter(Boolean);
+
+  // 5. FETCH ADJUSTMENTS
+  const entryQuery = { organizationId: orgId, referenceId: productId, referenceType: { $in: ['journal', 'opening_stock'] } };
+  if (Object.keys(dateFilter).length > 0) entryQuery.date = dateFilter;
+
+  const adjustments = await AccountEntry.find(entryQuery).lean();
+  const adjustmentHistory = adjustments.map(entry => {
+    return {
+      _id: entry._id,
+      type: entry.referenceType === 'opening_stock' ? 'OPENING STOCK' : 'ADJUSTMENT',
+      date: entry.date,
+      reference: 'Journal',
+      party: 'System Admin',
+      quantity: null, // Ledger holds value, not qty
+      value: entry.debit > 0 ? entry.debit : -entry.credit,
+      description: entry.description
+    };
+  });
+
+  // MERGE & SORT (Newest first)
+  const fullHistory = [...salesHistory, ...purchaseHistory, ...returnHistory, ...adjustmentHistory]
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  res.status(200).json({ status: 'success', results: fullHistory.length, data: { history: fullHistory } });
+});
+
 /* ======================================================
    🔥 BULK UPDATE PRODUCTS (Fixed Security & Logic)
 ====================================================== */
@@ -664,11 +738,7 @@ exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
 
       bulkOps.push({
         updateOne: {
-          // 🟢 SECURITY FIX: Force ObjectId casting and Org Check
-          filter: { 
-            _id: new mongoose.Types.ObjectId(u._id), 
-            organizationId: new mongoose.Types.ObjectId(req.user.organizationId) 
-          },
+          filter: {  _id: new mongoose.Types.ObjectId(u._id),  organizationId: new mongoose.Types.ObjectId(req.user.organizationId)           },
           update: { $set: cleanUpdate } 
         }
       });
@@ -685,6 +755,60 @@ exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
   } else {
     res.status(200).json({ status: "success", message: "No valid fields to update were found." });
   }
+});
+
+/* ======================================================
+   SCAN PRODUCT (POS / SMART INVOICE)
+====================================================== */
+exports.scanProduct = catchAsync(async (req, res, next) => {
+  // 1. Get the scanned code and branchId from the request body
+  // We call it 'code' because it could be a barcode or an SKU
+  const { code, branchId } = req.body;
+
+  if (!code) {
+    return res.status(400).json({ 
+      status: 'fail', 
+      message: 'Please provide a scan code.' 
+    });
+  }
+
+  // 2. Find the product belonging to this organization
+  // We use $or so the scanner works whether it scans the exact barcode or an SKU label
+  const product = await Product.findOne({
+    organizationId: req.user.organizationId,
+    isActive: true,
+    isDeleted: false,
+    $or: [
+      { barcode: code },
+      { sku: code }
+    ]
+  });
+
+  if (!product) {
+    return res.status(404).json({
+      status: 'fail',
+      message: 'Product not found or is inactive.'
+    });
+  }
+
+  // 3. Find the stock for the specific branch
+  // Fallback to the user's default branch if the frontend doesn't pass one
+  const targetBranchId = branchId || req.user.branchId;
+  
+  const branchInventory = product.inventory.find(
+    (inv) => inv.branchId.toString() === targetBranchId.toString()
+  );
+
+  const availableStock = branchInventory ? branchInventory.quantity : 0;
+
+  // 4. Return the data structured for your Angular frontend
+  res.status(200).json({
+    status: 'success',
+    data: {
+      product: product,
+      availableStock: availableStock
+    }
+  });
 });
 
 /* ======================================================
@@ -898,112 +1022,7 @@ exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
 
 //   res.status(200).json({ status: 'success', results: fullHistory.length, data: { history: fullHistory } });
 // });
-exports.getProductHistory = catchAsync(async (req, res, next) => {
-  const productId = req.params.id;
-  const orgId = req.user.organizationId;
-  const { startDate, endDate } = req.query;
 
-  // 🟢 1. BULLETPROOF DATE FILTER
-  const dateFilter = {};
-  
-  // Check if dates exist and are NOT the literal strings "null" or "undefined"
-  if (startDate && endDate && startDate !== 'null' && startDate !== 'undefined') {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    // Ensure the dates are actually valid numbers before applying the filter
-    if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-      end.setHours(23, 59, 59, 999);
-      dateFilter.$gte = start;
-      dateFilter.$lte = end;
-    }
-  }
-
-  // 2. FETCH SALES (OUT)
-  const invoiceQuery = { organizationId: orgId, "items.productId": productId, status: { $ne: "cancelled" } };
-  if (Object.keys(dateFilter).length > 0) invoiceQuery.invoiceDate = dateFilter; // Only apply if dates exist
-  
-  const invoices = await Invoice.find(invoiceQuery).populate("customerId", "name").lean();
-  const salesHistory = invoices.map(inv => {
-    const item = inv.items.find(i => i.productId.toString() === productId.toString());
-    if (!item) return null;
-    return {
-      _id: inv._id,
-      type: 'SALE',
-      date: inv.invoiceDate,
-      reference: inv.invoiceNumber,
-      party: inv.customerId?.name || 'Walk-in Customer',
-      quantity: -Math.abs(item.quantity), // OUT
-      value: item.price * item.quantity,
-      description: 'Sale Invoice'
-    };
-  }).filter(Boolean);
-
-  // 3. FETCH PURCHASES (IN)
-  const purchaseQuery = { organizationId: orgId, "items.productId": productId, status: { $ne: "cancelled" }, isDeleted: false };
-  if (Object.keys(dateFilter).length > 0) purchaseQuery.purchaseDate = dateFilter;
-
-  const purchases = await Purchase.find(purchaseQuery).populate("supplierId", "companyName").lean();
-  const purchaseHistory = purchases.map(pur => {
-    const item = pur.items.find(i => i.productId.toString() === productId.toString());
-    if (!item) return null;
-    return {
-      _id: pur._id,
-      type: 'PURCHASE',
-      date: pur.purchaseDate,
-      reference: pur.invoiceNumber,
-      party: pur.supplierId?.companyName || 'Unknown Supplier',
-      quantity: Math.abs(item.quantity), // IN
-      value: item.purchasePrice * item.quantity,
-      description: 'Purchase Bill'
-    };
-  }).filter(Boolean);
-
-  // 4. FETCH PURCHASE RETURNS (OUT)
-  const returnQuery = { organizationId: orgId, "items.productId": productId };
-  if (Object.keys(dateFilter).length > 0) returnQuery.returnDate = dateFilter;
-
-  // ⚠️ CRITICAL: Ensure you have required PurchaseReturn at the top of your file!
-  const returns = await PurchaseReturn.find(returnQuery).populate("supplierId", "companyName").lean();
-  const returnHistory = returns.map(ret => {
-    const item = ret.items.find(i => i.productId.toString() === productId.toString());
-    if (!item) return null;
-    return {
-      _id: ret._id,
-      type: 'PURCHASE_RETURN',
-      date: ret.returnDate,
-      reference: `Return to ${ret.supplierId?.companyName}`,
-      party: ret.supplierId?.companyName,
-      quantity: -Math.abs(item.quantity), // OUT
-      value: item.returnPrice * item.quantity,
-      description: ret.reason || 'Debit Note'
-    };
-  }).filter(Boolean);
-
-  // 5. FETCH ADJUSTMENTS
-  const entryQuery = { organizationId: orgId, referenceId: productId, referenceType: { $in: ['journal', 'opening_stock'] } };
-  if (Object.keys(dateFilter).length > 0) entryQuery.date = dateFilter;
-
-  const adjustments = await AccountEntry.find(entryQuery).lean();
-  const adjustmentHistory = adjustments.map(entry => {
-    return {
-      _id: entry._id,
-      type: entry.referenceType === 'opening_stock' ? 'OPENING STOCK' : 'ADJUSTMENT',
-      date: entry.date,
-      reference: 'Journal',
-      party: 'System Admin',
-      quantity: null, // Ledger holds value, not qty
-      value: entry.debit > 0 ? entry.debit : -entry.credit,
-      description: entry.description
-    };
-  });
-
-  // MERGE & SORT (Newest first)
-  const fullHistory = [...salesHistory, ...purchaseHistory, ...returnHistory, ...adjustmentHistory]
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  res.status(200).json({ status: 'success', results: fullHistory.length, data: { history: fullHistory } });
-});
 /* ======================================================
    8. LOW STOCK REPORT
    Finds products where Total Stock <= Reorder Level
@@ -1038,49 +1057,80 @@ exports.getProductHistory = catchAsync(async (req, res, next) => {
 //     data: { products: lowStockItems }
 //   });
 // });
+
 /* ======================================================
-   🔥 8. LOW STOCK REPORT (High Performance Aggregation)
+   BULK UPDATE PRODUCTS (Safe & Secured)
 ====================================================== */
-exports.getLowStockProducts = catchAsync(async (req, res, next) => {
-  const orgId = new mongoose.Types.ObjectId(req.user.organizationId);
+// exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
+//   const updates = req.body;
+//   if (!Array.isArray(updates) || updates.length === 0) {
+//     return next(new AppError("Provide an array of updates", 400));
+//   }
 
-  // 🟢 Use Aggregation to calculate totalStock dynamically and filter AT THE DATABASE LEVEL
-  const lowStockItems = await Product.aggregate([
-    { $match: { organizationId: orgId, isActive: true, isDeleted: false } },
-    
-    // Calculate total stock and max reorder level across branches
-    { $addFields: {
-        totalStockCalculated: { $sum: "$inventory.quantity" },
-        maxReorderLevel: { 
-          $cond: { 
-            if: { $gt: [{ $size: "$inventory" }, 0] }, 
-            then: { $max: "$inventory.reorderLevel" }, 
-            else: 10 // Default fallback
-          }
-        }
-    }},
-    
-    // Filter ONLY items where Stock <= Reorder Level
-    { $match: {
-        $expr: { $lte: ["$totalStockCalculated", "$maxReorderLevel"] }
-    }},
+//   // 1. Define Forbidden Fields (Financial integrity)
+//   const forbiddenFields = [
+//     'quantity', 'inventory', 'purchasePrice', 'costPrice',
+//     'openingStock', 'organizationId', 'createdBy', '_id'
+//   ];
+//   const allowedFields = [
+//     'name', 'description', 'sku', 'barcode', 'category',
+//     'brand', 'unit', 'sellingPrice', 'minSellingPrice',
+//     'taxRate', 'isActive', 'reorderLevel', 'images'
+//   ];
 
-    // Project only the fields needed for the UI
-    { $project: {
-        name: 1,
-        sku: 1,
-        barcode: 1,
-        currentStock: "$totalStockCalculated",
-        reorderLevel: "$maxReorderLevel",
-        image: { $arrayElemAt: ["$images", 0] } // Grab first image
-    }},
-    
-    { $sort: { currentStock: 1 } } // Sort by lowest stock first
-  ]);
+//   const bulkOps = [];
+//   for (const u of updates) {
+//     if (!u._id || !u.update) {
+//       return next(new AppError("Each item must have _id and update object", 400));
+//     }
 
-  res.status(200).json({
-    status: 'success',
-    results: lowStockItems.length,
-    data: { products: lowStockItems }
-  });
-});
+//     // Filter the update object to only contain allowed fields
+//     const cleanUpdate = {};
+//     Object.keys(u.update).forEach(key => {
+//       if (forbiddenFields.includes(key)) {
+//         // Optionally throw error, or just ignore. 
+//         // Throwing error is safer to alert the frontend dev.
+//         throw new AppError(`Field '${key}' cannot be updated in bulk. Use stock adjustment.`, 400);
+//       }
+//       if (allowedFields.includes(key)) {
+//         cleanUpdate[key] = u.update[key];
+//       }
+//     });
+
+//     if (Object.keys(cleanUpdate).length > 0) {
+//       // If name is changing, we should probably update slug too
+//       if (cleanUpdate.name) {
+//         cleanUpdate.slug = `${slugify(cleanUpdate.name)}-${nanoid(6)}`;
+//       }
+
+//       bulkOps.push({
+//         updateOne: {
+//           filter: {
+//             _id: u._id,
+//             organizationId: req.user.organizationId
+//           },
+//           update: { $set: cleanUpdate } // Force $set to prevent operator injection
+//         }
+//       });
+//     }
+//   }
+
+//   // 3. Execute
+//   if (bulkOps.length > 0) {
+//     const result = await Product.bulkWrite(bulkOps);
+
+//     res.status(200).json({
+//       status: "success",
+//       message: "Bulk update completed",
+//       data: {
+//         matched: result.matchedCount,
+//         modified: result.modifiedCount
+//       }
+//     });
+//   } else {
+//     res.status(200).json({
+//       status: "success",
+//       message: "No valid fields to update were found."
+//     });
+//   }
+// });
