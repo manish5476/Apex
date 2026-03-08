@@ -582,13 +582,23 @@ exports.cancelPurchase = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", message: "Purchase cancelled successfully" });
 });
 
-// /* ======================================================
-//    5. PARTIAL RETURN (Debit Note)
-// ====================================================== */
-exports.partialReturn = catchAsync(async (req, res, next) => {
-  const { items, reason } = req.body;
-  if (!items || !items.length || !reason) return next(new AppError("Items and reason required", 400));
 
+/* ======================================================
+    5. PARTIAL RETURN (Debit Note)
+====================================================== */
+exports.partialReturn = catchAsync(async (req, res, next) => {
+const { items, reason } = req.body;
+
+  // 1. Explicitly validate the payload structure
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return next(new AppError("A valid array of items is required to process a return.", 400));
+  }
+
+  // 2. Explicitly validate the reason (checking for undefined/null/empty string, but allowing '0')
+  if (reason === undefined || reason === null || String(reason).trim() === '') {
+    return next(new AppError("A return reason is required for the audit trail.", 400));
+  }
+  
   await runInTransaction(async (session) => {
     const purchase = await Purchase.findById(req.params.id).session(session);
     if (!purchase) throw new AppError("Purchase not found", 404);
@@ -596,14 +606,34 @@ exports.partialReturn = catchAsync(async (req, res, next) => {
     let totalReturnAmount = 0;
     const returnItems = [];
 
-    // 1. Calculate Refund/Return Totals
+    // 1. Calculate Refund/Return Totals & Validate Stock
     for (const retItem of items) {
+      
+      // A. Invoice Validation: Did we originally buy this amount on this specific invoice?
       const originalItem = purchase.items.find(i => String(i.productId) === retItem.productId);
       if (!originalItem || originalItem.quantity < retItem.quantity) {
-        throw new AppError(`Invalid return quantity for product ${retItem.productId}`, 400);
+        throw new AppError(`Invalid return quantity for product ${retItem.productId}. Exceeds purchased amount.`, 400);
       }
 
-      // Calculate proportional value
+      // B. Physical Validation: Do we still have this amount in the branch inventory right now?
+      const product = await Product.findById(retItem.productId).session(session);
+      if (!product) {
+        throw new AppError(`Product ${originalItem.name} not found in database.`, 404);
+      }
+
+      const branchInventory = product.inventory.find(
+        (inv) => inv.branchId.toString() === purchase.branchId.toString()
+      );
+      const currentStock = branchInventory ? branchInventory.quantity : 0;
+
+      if (currentStock < retItem.quantity) {
+        throw new AppError(
+          `Cannot return ${retItem.quantity} units of "${originalItem.name}". Current branch stock is only ${currentStock}. These items may have already been sold.`,
+          400
+        );
+      }
+
+      // C. Calculate proportional financial value
       const itemBasePrice = originalItem.purchasePrice * retItem.quantity;
       const itemTax = (originalItem.taxRate / 100) * itemBasePrice;
       const itemTotal = itemBasePrice + itemTax;
@@ -617,7 +647,7 @@ exports.partialReturn = catchAsync(async (req, res, next) => {
         total: itemTotal
       });
 
-      // Reduce qty in purchase doc
+      // D. Reduce qty in the original purchase document
       originalItem.quantity -= retItem.quantity;
     }
 
@@ -633,7 +663,7 @@ exports.partialReturn = catchAsync(async (req, res, next) => {
       createdBy: req.user._id
     }], { session, ordered: true });
 
-    // 3. Remove Stock
+    // 3. Remove Stock Atomically
     await updateStockAtomically(returnItems, purchase.branchId, req.user.organizationId, 'decrement', session);
 
     // 4. Reduce Supplier Balance
@@ -672,12 +702,12 @@ exports.partialReturn = catchAsync(async (req, res, next) => {
       }
     ], { session, ordered: true });
 
-    // 6. Update Purchase Document
+    // 6. Update Purchase Document Status
     purchase.grandTotal -= totalReturnAmount;
     purchase.balanceAmount -= totalReturnAmount;
     purchase.notes = (purchase.notes || "") + `\nPartial Return: -${totalReturnAmount} (${reason})`;
 
-    // Filter out completely returned items
+    // Filter out completely returned items so the invoice reflects only what we kept
     purchase.items = purchase.items.filter(i => i.quantity > 0);
 
     if (purchase.items.length === 0) {
@@ -690,6 +720,111 @@ exports.partialReturn = catchAsync(async (req, res, next) => {
 
   res.status(200).json({ status: "success", message: "Partial return processed successfully" });
 });
+// exports.partialReturn = catchAsync(async (req, res, next) => {
+//   const { items, reason } = req.body;
+//   if (!items || !items.length || !reason) return next(new AppError("Items and reason required", 400));
+
+//   await runInTransaction(async (session) => {
+//     const purchase = await Purchase.findById(req.params.id).session(session);
+//     if (!purchase) throw new AppError("Purchase not found", 404);
+
+//     let totalReturnAmount = 0;
+//     const returnItems = [];
+
+//     // 1. Calculate Refund/Return Totals
+//     for (const retItem of items) {
+//       const originalItem = purchase.items.find(i => String(i.productId) === retItem.productId);
+//       if (!originalItem || originalItem.quantity < retItem.quantity) {
+//         throw new AppError(`Invalid return quantity for product ${retItem.productId}`, 400);
+//       }
+
+//       // Calculate proportional value
+//       const itemBasePrice = originalItem.purchasePrice * retItem.quantity;
+//       const itemTax = (originalItem.taxRate / 100) * itemBasePrice;
+//       const itemTotal = itemBasePrice + itemTax;
+
+//       totalReturnAmount += itemTotal;
+//       returnItems.push({
+//         productId: retItem.productId,
+//         name: originalItem.name,
+//         quantity: retItem.quantity,
+//         returnPrice: originalItem.purchasePrice,
+//         total: itemTotal
+//       });
+
+//       // Reduce qty in purchase doc
+//       originalItem.quantity -= retItem.quantity;
+//     }
+
+//     // 2. Create Purchase Return Document (Audit Trail)
+//     await PurchaseReturn.create([{
+//       organizationId: req.user.organizationId,
+//       branchId: req.user.branchId,
+//       purchaseId: purchase._id,
+//       supplierId: purchase.supplierId,
+//       items: returnItems,
+//       totalAmount: totalReturnAmount,
+//       reason: reason,
+//       createdBy: req.user._id
+//     }], { session, ordered: true });
+
+//     // 3. Remove Stock
+//     await updateStockAtomically(returnItems, purchase.branchId, req.user.organizationId, 'decrement', session);
+
+//     // 4. Reduce Supplier Balance
+//     await Supplier.findByIdAndUpdate(
+//       purchase.supplierId,
+//       { $inc: { outstandingBalance: -totalReturnAmount } },
+//       { session }
+//     );
+
+//     // 5. Accounting (Dr AP, Cr Inventory)
+//     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
+//     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
+
+//     await AccountEntry.create([
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: apAcc._id, // Dr AP (We owe less)
+//         debit: totalReturnAmount,
+//         credit: 0,
+//         description: `Partial Return: ${reason}`,
+//         referenceType: "purchase_return",
+//         referenceId: purchase._id,
+//         createdBy: req.user._id
+//       },
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: inventoryAcc._id, // Cr Inventory (Stock reduced)
+//         debit: 0,
+//         credit: totalReturnAmount,
+//         description: `Inventory Returned: ${purchase.invoiceNumber}`,
+//         referenceType: "purchase_return",
+//         referenceId: purchase._id,
+//         createdBy: req.user._id
+//       }
+//     ], { session, ordered: true });
+
+//     // 6. Update Purchase Document
+//     purchase.grandTotal -= totalReturnAmount;
+//     purchase.balanceAmount -= totalReturnAmount;
+//     purchase.notes = (purchase.notes || "") + `\nPartial Return: -${totalReturnAmount} (${reason})`;
+
+//     // Filter out completely returned items
+//     purchase.items = purchase.items.filter(i => i.quantity > 0);
+
+//     if (purchase.items.length === 0) {
+//       purchase.status = 'cancelled'; // All items returned
+//     }
+
+//     await purchase.save({ session });
+
+//   }, 3, { action: "PARTIAL_RETURN", userId: req.user._id });
+
+//   res.status(200).json({ status: "success", message: "Partial return processed successfully" });
+// });
 
 /* ======================================================
    5. RECORD PAYMENT

@@ -760,56 +760,97 @@ exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
 /* ======================================================
    SCAN PRODUCT (POS / SMART INVOICE)
 ====================================================== */
+/* ======================================================
+   SCAN PRODUCT (POS / SMART INVOICE)
+====================================================== */
 exports.scanProduct = catchAsync(async (req, res, next) => {
-  // 1. Get the scanned code and branchId from the request body
-  // We call it 'code' because it could be a barcode or an SKU
   const { code, branchId } = req.body;
 
   if (!code) {
-    return res.status(400).json({ 
-      status: 'fail', 
-      message: 'Please provide a scan code.' 
-    });
+    return res.status(400).json({ status: 'fail', message: 'Please provide a scan code.' });
   }
 
-  // 2. Find the product belonging to this organization
-  // We use $or so the scanner works whether it scans the exact barcode or an SKU label
+  // 1. Lean query with selective fields for maximum speed
   const product = await Product.findOne({
     organizationId: req.user.organizationId,
     isActive: true,
     isDeleted: false,
-    $or: [
-      { barcode: code },
-      { sku: code }
-    ]
-  });
+    $or: [{ barcode: code }, { sku: code }]
+  })
+  .select('_id name sku sellingPrice taxRate unit inventory') 
+  .lean(); // Returns plain JS object, bypassing heavy Mongoose hydrations
 
   if (!product) {
-    return res.status(404).json({
-      status: 'fail',
-      message: 'Product not found or is inactive.'
-    });
+    return res.status(404).json({ status: 'fail', message: 'Product not found.' });
   }
 
-  // 3. Find the stock for the specific branch
-  // Fallback to the user's default branch if the frontend doesn't pass one
+  // 2. Resolve Stock
   const targetBranchId = branchId || req.user.branchId;
-  
-  const branchInventory = product.inventory.find(
+  const branchInventory = product.inventory?.find(
     (inv) => inv.branchId.toString() === targetBranchId.toString()
   );
-
+  
   const availableStock = branchInventory ? branchInventory.quantity : 0;
+  
+  // Clean up payload before sending to frontend
+  delete product.inventory; 
 
-  // 4. Return the data structured for your Angular frontend
   res.status(200).json({
     status: 'success',
-    data: {
-      product: product,
-      availableStock: availableStock
-    }
+    data: { product, availableStock }
   });
 });
+// exports.scanProduct = catchAsync(async (req, res, next) => {
+//   // 1. Get the scanned code and branchId from the request body
+//   // We call it 'code' because it could be a barcode or an SKU
+//   const { code, branchId } = req.body;
+
+//   if (!code) {
+//     return res.status(400).json({ 
+//       status: 'fail', 
+//       message: 'Please provide a scan code.' 
+//     });
+//   }
+
+//   // 2. Find the product belonging to this organization
+//   // We use $or so the scanner works whether it scans the exact barcode or an SKU label
+//   const product = await Product.findOne({
+//     organizationId: req.user.organizationId,
+//     isActive: true,
+//     isDeleted: false,
+//     $or: [
+//       { barcode: code },
+//       { sku: code }
+//     ]
+//   });
+
+//   if (!product) {
+//     return res.status(404).json({
+//       status: 'fail',
+//       message: 'Product not found or is inactive.'
+//     });
+//   }
+
+//   // 3. Find the stock for the specific branch
+//   // Fallback to the user's default branch if the frontend doesn't pass one
+//   const targetBranchId = branchId || req.user.branchId;
+  
+//   const branchInventory = product.inventory.find(
+//     (inv) => inv.branchId.toString() === targetBranchId.toString()
+//   );
+
+//   const availableStock = branchInventory ? branchInventory.quantity : 0;
+
+//   // 4. Return the data structured for your Angular frontend
+//   res.status(200).json({
+//     status: 'success',
+//     data: {
+//       product: product,
+//       availableStock: availableStock
+//     }
+//   });
+// });
+
 
 /* ======================================================
    7. PRODUCT HISTORY (Stock Card / Ledger)
