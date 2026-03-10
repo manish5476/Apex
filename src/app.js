@@ -70,7 +70,7 @@ app.use(
   cors({
     origin: process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(",")
-      : ["http://localhost:4200", "https://apex-infinity.vercel.app"],
+      : ["http://localhost:4200", "https://apex-infinity.vercel.app","https://apex-infinity-vert.vercel.app/auth/login"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"], 
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
