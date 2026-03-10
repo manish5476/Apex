@@ -15,7 +15,6 @@ router.use(authController.protect);
 
 router.get("/search", checkPermission(PERMISSIONS.CUSTOMER.READ), customerController.searchCustomers);
 router.get("/check-duplicate", checkPermission(PERMISSIONS.CUSTOMER.READ), customerController.checkDuplicate);
-
 router.post("/bulk-update", checkPermission(PERMISSIONS.CUSTOMER.UPDATE), customerController.bulkUpdateCustomers);
 router.post("/bulk-customer", checkPermission(PERMISSIONS.CUSTOMER.CREATE), customerController.createBulkCustomer);
 

@@ -218,6 +218,7 @@ app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1/feed", feedRoutes);
 app.use("/api/v1/reconciliation", require("./routes/v1/reconciliationRoutes"));
 app.use("/api/v1/automation", require("./routes/v1/automationRoutes"));
+app.use("/api/v1/assets", require("./routes/v1/asset.routes"));
 // app.use("/api/v1/shifts", shiftRoutes);
 // app.use("/api/v1/holidays", holidayRoutes);
 app.use('/api/v1/stock', require('./routes/v1/stockRoutes'));

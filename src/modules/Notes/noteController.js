@@ -31,26 +31,64 @@ const getEventColor = (noteType, priority) => {
 
 /* ==================== MEDIA UPLOAD ==================== */
 exports.uploadMedia = catchAsync(async (req, res, next) => {
-  if (!req.files || !req.files.length) { return next(new AppError('Please upload at least one file.', 400)); }
-  const uploadedFiles = [];
-  const uploadPromises = req.files.map(async (file) => {
-    if (!file.mimetype.startsWith('image/')) { throw new AppError('Only image uploads are supported.', 400); }
-    const uploaded = await uploadImage(file.buffer, 'notes');
-    return {
-      url: uploaded.url || uploaded,
-      publicId: uploaded.publicId || null,
-      fileType: 'image',
-      fileName: file.originalname,
-      size: file.size
-    };
-  });
-  const results = await Promise.all(uploadPromises);
+  if (!req.files || !req.files.length) { 
+    return next(new AppError('Please upload at least one file.', 400)); 
+  }
+
+  // 1. PRE-CHECK: Validate all files are images before uploading anything
+  // This prevents partial uploads if one file in the batch is invalid
+  const invalidFiles = req.files.filter(file => !file.mimetype.startsWith('image/'));
+  if (invalidFiles.length > 0) {
+    return next(new AppError('Only image uploads are supported.', 400));
+  }
+
+  // 2. UPLOAD & RECORD: Concurrent upload and database indexing
+  // 'notes' is passed as the category to keep your Media Gallery organized
+  const uploadedAssets = await imageUploadService.uploadMultipleAndRecord(
+    req.files, 
+    req.user, 
+    'notes'
+  );
+
+  // 3. FORMAT RESPONSE: Map the master Asset records to the format your frontend expects
+  const results = uploadedAssets.map(asset => ({
+    _id: asset._id,            // The Master Asset ID (Save this in your Notes/Posts model!)
+    url: asset.url,
+    publicId: asset.publicId,
+    fileType: asset.mimeType,
+    fileName: asset.fileName,
+    size: asset.size
+  }));
+
   res.status(201).json({
     status: 'success',
-    message: 'Media uploaded successfully',
-    data: results
+    message: 'Media uploaded and recorded successfully',
+    data: results 
   });
 });
+  
+// /* ==================== MEDIA UPLOAD ==================== */
+// exports.uploadMedia = catchAsync(async (req, res, next) => {
+//   if (!req.files || !req.files.length) { return next(new AppError('Please upload at least one file.', 400)); }
+//   const uploadedFiles = [];
+//   const uploadPromises = req.files.map(async (file) => {
+//     if (!file.mimetype.startsWith('image/')) { throw new AppError('Only image uploads are supported.', 400); }
+//     const uploaded = await uploadImage(file.buffer, 'notes');
+//     return {
+//       url: uploaded.url || uploaded,
+//       publicId: uploaded.publicId || null,
+//       fileType: 'image',
+//       fileName: file.originalname,
+//       size: file.size
+//     };
+//   });
+//   const results = await Promise.all(uploadPromises);
+//   res.status(201).json({
+//     status: 'success',
+//     message: 'Media uploaded successfully',
+//     data: results
+//   });
+// });
 
 /* ==================== GET NOTES (Enhanced Filter) ==================== */
 exports.getNotes = catchAsync(async (req, res) => {

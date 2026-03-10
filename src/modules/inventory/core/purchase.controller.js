@@ -14,7 +14,7 @@ const fileUploadService = require("../../uploads/fileUploadService");
 const cloudinary = require("cloudinary").v2;
 const { invalidateOpeningBalance } = require("../../accounting/core/ledgerCache.service");
 const StockValidationService = require('./stockValidationService'); // Ensure correct path
-
+const imageUploadService = require('../../../modules/uploads/imageUploadService');
 /* ======================================================
    HELPER: Get or Init Account
 ====================================================== */
@@ -93,8 +93,312 @@ async function updateStockAtomically(items, branchId, orgId, type = 'increment',
     }
   }));
 }
+// /* ======================================================
+//    1. CREATE PURCHASE (Optimized)
+// ====================================================== */
+// exports.createPurchase = catchAsync(async (req, res, next) => {
+//   const { supplierId, invoiceNumber, purchaseDate, dueDate, notes, status } = req.body;
+
+//   // 1. Parse Items
+//   let items = req.body.items;
+//   if (typeof items === "string") items = JSON.parse(items);
+//   if (!supplierId || !items?.length) return next(new AppError("Supplier and items are required", 400));
+
+//   // 2. Fetch Products efficiently (Batch Query)
+//   const productIds = items.map(i => i.productId);
+//   const products = await Product.find({
+//     _id: { $in: productIds },
+//     organizationId: req.user.organizationId
+//   }).select('name');
+
+//   const productMap = new Map(products.map(p => [p._id.toString(), p]));
+
+//   // 3. Enrich & Calculate
+//   let subTotal = 0, totalTax = 0, totalDiscount = 0;
+
+//   const enrichedItems = items.map((item) => {
+//     const product = productMap.get(item.productId);
+//     if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
+
+//     const qty = Number(item.quantity);
+//     const price = Number(item.purchasePrice);
+//     const discount = Number(item.discount || 0);
+//     const taxRate = Number(item.taxRate || 0);
+
+//     const itemTotal = price * qty;
+//     const taxableAmount = itemTotal - discount;
+//     const taxAmount = (taxableAmount * taxRate) / 100;
+
+//     subTotal += itemTotal;
+//     totalDiscount += discount;
+//     totalTax += taxAmount;
+
+//     return {
+//       ...item,
+//       name: product.name, // Name from DB
+//       productId: item.productId,
+//       quantity: qty,
+//       purchasePrice: price,
+//       taxRate: taxRate,
+//       discount: discount
+//     };
+//   });
+
+//   const grandTotal = subTotal + totalTax - totalDiscount;
+//   const paidAmount = Number(req.body.paidAmount) || 0;
+
+//   // Determine Payment Status
+//   let paymentStatus = 'unpaid';
+//   if (paidAmount > 0) paymentStatus = paidAmount >= grandTotal ? 'paid' : 'partial';
+
+//   await runInTransaction(async (session) => {
+//     // 4. Handle File Uploads
+//     const attachedFiles = [];
+//     if (req.files?.length) {
+//       for (const f of req.files) {
+//         attachedFiles.push(await fileUploadService.uploadFile(f.buffer, "purchases"));
+//       }
+//     }
+
+//     // 5. Create Purchase
+//     const [purchase] = await Purchase.create([{
+//       organizationId: req.user.organizationId,
+//       branchId: req.user.branchId,
+//       supplierId,
+//       invoiceNumber,
+//       purchaseDate: purchaseDate || new Date(),
+//       dueDate,
+//       items: enrichedItems,
+//       subTotal, totalTax, totalDiscount, grandTotal,
+//       paidAmount,
+//       balanceAmount: grandTotal - paidAmount,
+//       paymentStatus,
+//       status: status || "received",
+//       notes,
+//       attachedFiles,
+//       createdBy: req.user._id
+//     }], { session, ordered: true });
+
+//     // 6. Update Inventory
+//     await updateStockAtomically(enrichedItems, req.user.branchId, req.user.organizationId, 'increment', session);
+
+//     // 7. Update Supplier (Increase Liability by FULL amount)
+//     await Supplier.findByIdAndUpdate(
+//       supplierId,
+//       { $inc: { outstandingBalance: purchase.grandTotal } },
+//       { session }
+//     );
+//     // 8. Record Payment (If Initial Pay)
+//     // if (paidAmount > 0) {
+//     //     const payment = (await Payment.create([{
+//     //         organizationId: req.user.organizationId,
+//     //         branchId: req.user.branchId,
+//     //         type: 'outflow',
+//     //         supplierId: supplierId,
+//     //         purchaseId: purchase._id,
+//     //         paymentDate: purchase.purchaseDate,
+//     //         amount: paidAmount,
+//     //         paymentMethod: req.body.paymentMethod || 'cash',
+//     //         transactionMode: 'manual',
+//     //         status: 'completed',
+//     //         remarks: `Initial Payment for ${invoiceNumber}`,
+//     //         createdBy: req.user._id
+//     //     }], { session, ordered: true }))[0];
+//     if (paidAmount > 0) {
+//       const payment = (await Payment.create([{
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         type: 'outflow',
+//         supplierId: supplierId,
+//         purchaseId: purchase._id,
+//         paymentDate: purchase.purchaseDate,
+//         amount: paidAmount,
+//         paymentMethod: req.body.paymentMethod || 'cash',
+//         transactionMode: 'manual',
+//         status: 'completed',
+//         remarks: `Initial Payment for ${invoiceNumber}`,
+//         createdBy: req.user._id
+//       }], { session, ordered: true }))[0];
+
+//       // Decrease Supplier Liability for the payment
+//       await Supplier.findByIdAndUpdate(
+//         supplierId,
+//         { $inc: { outstandingBalance: -paidAmount } },
+//         { session }
+//       );
+//       // Accounting: Dr AP, Cr Asset
+//       const assetAccName = req.body.paymentMethod === 'bank' ? 'Bank' : 'Cash';
+//       const assetAccCode = req.body.paymentMethod === 'bank' ? '1002' : '1001';
+
+//       const assetAcc = await getOrInitAccount(req.user.organizationId, "asset", assetAccName, assetAccCode, session);
+//       const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
+
+//       await AccountEntry.create([
+//         {
+//           organizationId: req.user.organizationId,
+//           branchId: req.user.branchId,
+//           accountId: apAcc._id, // Dr AP
+//           debit: paidAmount, credit: 0,
+//           referenceType: "payment", referenceId: payment._id,
+//           supplierId, createdBy: req.user._id,
+//           description: `Payment for Purchase ${invoiceNumber}`
+//         },
+//         {
+//           organizationId: req.user.organizationId,
+//           branchId: req.user.branchId,
+//           accountId: assetAcc._id, // Cr Asset
+//           debit: 0, credit: paidAmount,
+//           referenceType: "payment", referenceId: payment._id,
+//           supplierId, createdBy: req.user._id,
+//           description: `Payment for Purchase ${invoiceNumber}`
+//         }
+//       ], { session, ordered: true });
+//     }
+
+//     // 9. Purchase Accounting: Dr Inventory, Cr AP
+//     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
+//     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
+
+//     await AccountEntry.create([
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: inventoryAcc._id, // Dr Inventory
+//         debit: purchase.grandTotal, credit: 0,
+//         referenceType: "purchase", referenceId: purchase._id,
+//         supplierId, createdBy: req.user._id, description: `Purchase: ${invoiceNumber}`
+//       },
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: apAcc._id, // Cr AP
+//         debit: 0, credit: purchase.grandTotal,
+//         referenceType: "purchase", referenceId: purchase._id,
+//         supplierId, createdBy: req.user._id, description: `Bill: ${invoiceNumber}`
+//       }
+//     ], { session, ordered: true });
+
+//   }, 3, { action: "CREATE_PURCHASE", userId: req.user._id });
+
+//   res.status(201).json({ status: "success", message: "Purchase recorded successfully" });
+// });
+// /* ======================================================
+//    2. UPDATE PURCHASE (FULL REVERSAL + REBOOK)
+// ====================================================== */
+// exports.updatePurchase = catchAsync(async (req, res, next) => {
+//   const updates = req.body;
+//   let updatedPurchase;
+
+//   // Handle files
+//   const newFiles = [];
+//   if (req.files?.length) {
+//     for (const f of req.files) newFiles.push(await fileUploadService.uploadFile(f.buffer, "purchases"));
+//   }
+
+//   await runInTransaction(async (session) => {
+//     const oldPurchase = await Purchase.findOne({
+//       _id: req.params.id,
+//       organizationId: req.user.organizationId
+//     }).session(session);
+
+//     if (!oldPurchase) throw new AppError("Purchase not found", 404);
+//     if (oldPurchase.status === "cancelled") throw new AppError("Cancelled purchase cannot be edited", 400);
+
+//     if (newFiles.length) updates.attachedFiles = [...oldPurchase.attachedFiles, ...newFiles];
+
+//     // Non-financial updates
+//     const financialChange = updates.items || updates.tax || updates.discount;
+//     if (!financialChange) {
+//       updatedPurchase = await Purchase.findByIdAndUpdate(oldPurchase._id, updates, { new: true, session });
+//       return;
+//     }
+
+//     // A. REVERSE EVERYTHING
+//     // 1. Restore Stock (Take back what we bought)
+//     await updateStockAtomically(oldPurchase.items, oldPurchase.branchId, req.user.organizationId, 'decrement', session);
+
+//     // 2. Reverse Supplier Balance
+//     await Supplier.findByIdAndUpdate(
+//       oldPurchase.supplierId,
+//       { $inc: { outstandingBalance: -(oldPurchase.grandTotal - oldPurchase.paidAmount) } },
+//       { session }
+//     );
+
+//     // 3. Delete old Accounting (Simple approach: delete & recreate)
+//     // Note: Deleting payments related to this purchase might be dangerous if they were reconciled.
+//     // Ideally, block financial updates if payments exist, or handle gracefully.
+//     if (oldPurchase.paidAmount > 0) {
+//       throw new AppError("Cannot edit financial details of a purchase that has payments. Cancel and recreate.", 400);
+//     }
+
+//     await AccountEntry.deleteMany({
+//       referenceId: oldPurchase._id,
+//       referenceType: "purchase"
+//     }).session(session);
+
+//     // B. APPLY NEW CHANGES
+//     let newItems = updates.items;
+//     if (typeof newItems === 'string') newItems = JSON.parse(newItems);
+
+//     // Enrich
+//     const enrichedItems = await Promise.all(newItems.map(async (item) => {
+//       const product = await Product.findById(item.productId).select('name');
+//       return { ...item, name: product.name };
+//     }));
+
+//     // Save Purchase
+//     Object.assign(oldPurchase, updates, { items: enrichedItems });
+//     updatedPurchase = await oldPurchase.save({ session });
+
+//     // C. APPLY NEW STOCK
+//     await updateStockAtomically(enrichedItems, req.user.branchId, req.user.organizationId, 'increment', session);
+
+//     // D. UPDATE SUPPLIER
+//     await Supplier.findByIdAndUpdate(
+//       updatedPurchase.supplierId,
+//       { $inc: { outstandingBalance: updatedPurchase.grandTotal } }, // Assume unpaid for simplicity in edit
+//       { session }
+//     );
+
+//     // E. NEW ACCOUNTING
+//     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
+//     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
+
+//     await AccountEntry.create([
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: inventoryAcc._id,
+//         date: updatedPurchase.purchaseDate,
+//         debit: updatedPurchase.grandTotal,
+//         credit: 0,
+//         description: `Purchase Updated: ${updatedPurchase.invoiceNumber}`,
+//         referenceType: "purchase",
+//         referenceId: updatedPurchase._id,
+//         supplierId: updatedPurchase.supplierId,
+//         createdBy: req.user._id
+//       },
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: apAcc._id,
+//         supplierId: updatedPurchase.supplierId,
+//         date: updatedPurchase.purchaseDate,
+//         debit: 0,
+//         credit: updatedPurchase.grandTotal,
+//         description: `Bill Updated: ${updatedPurchase.invoiceNumber}`,
+//         referenceType: "purchase",
+//         referenceId: updatedPurchase._id,
+//         createdBy: req.user._id
+//       }
+//     ], { session, ordered: true });
+
+//   }, 3, { action: "UPDATE_PURCHASE", userId: req.user._id });
+
+//   res.status(200).json({ status: "success", data: { purchase: updatedPurchase } });
+// });
 /* ======================================================
-   1. CREATE PURCHASE (Optimized)
+   1. CREATE PURCHASE (Optimized & Asset-Tracked)
 ====================================================== */
 exports.createPurchase = catchAsync(async (req, res, next) => {
   const { supplierId, invoiceNumber, purchaseDate, dueDate, notes, status } = req.body;
@@ -152,12 +456,27 @@ exports.createPurchase = catchAsync(async (req, res, next) => {
   if (paidAmount > 0) paymentStatus = paidAmount >= grandTotal ? 'paid' : 'partial';
 
   await runInTransaction(async (session) => {
-    // 4. Handle File Uploads
-    const attachedFiles = [];
+    
+    // ======================================================
+    // 4. Handle File Uploads (MASTER ASSET SYSTEM INTEGRATION)
+    // ======================================================
+    let attachedFiles = [];
     if (req.files?.length) {
-      for (const f of req.files) {
-        attachedFiles.push(await fileUploadService.uploadFile(f.buffer, "purchases"));
-      }
+      // Upload concurrently & index in Asset DB
+      const uploadedAssets = await imageUploadService.uploadMultipleAndRecord(
+        req.files, 
+        req.user, 
+        'invoice'
+      );
+      
+      // Map to Purchase schema array
+      attachedFiles = uploadedAssets.map(asset => ({
+        url: asset.url,
+        public_id: asset.publicId,
+        format: asset.mimeType,
+        bytes: asset.size,
+        assetId: asset._id // The critical link
+      }));
     }
 
     // 5. Create Purchase
@@ -175,7 +494,7 @@ exports.createPurchase = catchAsync(async (req, res, next) => {
       paymentStatus,
       status: status || "received",
       notes,
-      attachedFiles,
+      attachedFiles, // Now uses the formatted assets
       createdBy: req.user._id
     }], { session, ordered: true });
 
@@ -188,22 +507,8 @@ exports.createPurchase = catchAsync(async (req, res, next) => {
       { $inc: { outstandingBalance: purchase.grandTotal } },
       { session }
     );
+
     // 8. Record Payment (If Initial Pay)
-    // if (paidAmount > 0) {
-    //     const payment = (await Payment.create([{
-    //         organizationId: req.user.organizationId,
-    //         branchId: req.user.branchId,
-    //         type: 'outflow',
-    //         supplierId: supplierId,
-    //         purchaseId: purchase._id,
-    //         paymentDate: purchase.purchaseDate,
-    //         amount: paidAmount,
-    //         paymentMethod: req.body.paymentMethod || 'cash',
-    //         transactionMode: 'manual',
-    //         status: 'completed',
-    //         remarks: `Initial Payment for ${invoiceNumber}`,
-    //         createdBy: req.user._id
-    //     }], { session, ordered: true }))[0];
     if (paidAmount > 0) {
       const payment = (await Payment.create([{
         organizationId: req.user.organizationId,
@@ -226,6 +531,7 @@ exports.createPurchase = catchAsync(async (req, res, next) => {
         { $inc: { outstandingBalance: -paidAmount } },
         { session }
       );
+
       // Accounting: Dr AP, Cr Asset
       const assetAccName = req.body.paymentMethod === 'bank' ? 'Bank' : 'Cash';
       const assetAccCode = req.body.paymentMethod === 'bank' ? '1002' : '1001';
@@ -282,6 +588,8 @@ exports.createPurchase = catchAsync(async (req, res, next) => {
 
   res.status(201).json({ status: "success", message: "Purchase recorded successfully" });
 });
+
+
 /* ======================================================
    2. UPDATE PURCHASE (FULL REVERSAL + REBOOK)
 ====================================================== */
@@ -289,10 +597,24 @@ exports.updatePurchase = catchAsync(async (req, res, next) => {
   const updates = req.body;
   let updatedPurchase;
 
-  // Handle files
-  const newFiles = [];
+  // ======================================================
+  // Handle files (MASTER ASSET SYSTEM INTEGRATION)
+  // Processed before transaction to avoid holding locks during Cloudinary network calls
+  // ======================================================
+  let newFiles = [];
   if (req.files?.length) {
-    for (const f of req.files) newFiles.push(await fileUploadService.uploadFile(f.buffer, "purchases"));
+    const uploadedAssets = await imageUploadService.uploadMultipleAndRecord(
+      req.files, 
+      req.user, 
+      'invoice'
+    );
+    newFiles = uploadedAssets.map(asset => ({
+      url: asset.url,
+      public_id: asset.publicId,
+      format: asset.mimeType,
+      bytes: asset.size,
+      assetId: asset._id
+    }));
   }
 
   await runInTransaction(async (session) => {
@@ -304,6 +626,7 @@ exports.updatePurchase = catchAsync(async (req, res, next) => {
     if (!oldPurchase) throw new AppError("Purchase not found", 404);
     if (oldPurchase.status === "cancelled") throw new AppError("Cancelled purchase cannot be edited", 400);
 
+    // Append new tracked files
     if (newFiles.length) updates.attachedFiles = [...oldPurchase.attachedFiles, ...newFiles];
 
     // Non-financial updates
@@ -325,8 +648,6 @@ exports.updatePurchase = catchAsync(async (req, res, next) => {
     );
 
     // 3. Delete old Accounting (Simple approach: delete & recreate)
-    // Note: Deleting payments related to this purchase might be dangerous if they were reconciled.
-    // Ideally, block financial updates if payments exist, or handle gracefully.
     if (oldPurchase.paidAmount > 0) {
       throw new AppError("Cannot edit financial details of a purchase that has payments. Cancel and recreate.", 400);
     }
@@ -398,70 +719,6 @@ exports.updatePurchase = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", data: { purchase: updatedPurchase } });
 });
 
-/* ======================================================
-   3. CANCEL PURCHASE
-====================================================== */
-// exports.cancelPurchase = catchAsync(async (req, res, next) => {
-//   const { reason } = req.body;
-//   if (!reason) return next(new AppError("Cancellation reason is required", 400));
-
-//   await runInTransaction(async (session) => {
-//     const purchase = await Purchase.findOne({ _id: req.params.id, organizationId: req.user.organizationId }).session(session);
-//     if (!purchase) throw new AppError("Purchase not found", 404);
-//     if (purchase.status === "cancelled") throw new AppError("Already cancelled", 400);
-//     if (purchase.paidAmount > 0) throw new AppError("Cannot cancel purchase with payments. Refund first.", 400);
-
-//     // 1. Reverse Stock
-//     await updateStockAtomically(purchase.items, purchase.branchId, req.user.organizationId, 'decrement', session);
-
-//     // 2. Update Supplier
-//     await Supplier.findByIdAndUpdate(
-//       purchase.supplierId,
-//       { $inc: { outstandingBalance: -purchase.grandTotal } },
-//       { session }
-//     );
-
-//     // 3. Accounting (Reversal)
-//     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
-//     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
-
-//     await AccountEntry.create([
-//       {
-//         organizationId: req.user.organizationId,
-//         branchId: req.user.branchId,
-//         accountId: apAcc._id,
-//         supplierId: purchase.supplierId,
-//         date: new Date(),
-//         debit: purchase.grandTotal,
-//         credit: 0,
-//         description: `Purchase Cancelled: ${reason}`,
-//         referenceType: "purchase_return",
-//         referenceId: purchase._id,
-//         createdBy: req.user._id
-//       },
-//       {
-//         organizationId: req.user.organizationId,
-//         branchId: req.user.branchId,
-//         accountId: inventoryAcc._id,
-//         date: new Date(),
-//         debit: 0,
-//         credit: purchase.grandTotal,
-//         description: `Inventory Returned: ${purchase.invoiceNumber}`,
-//         referenceType: "purchase_return",
-//         referenceId: purchase._id,
-//         createdBy: req.user._id
-//       }
-//     ], { session, ordered: true });
-
-//     // 4. Update Status
-//     purchase.status = "cancelled";
-//     purchase.notes = `${purchase.notes || ""}\nCancelled: ${reason}`;
-//     await purchase.save({ session });
-
-//   }, 3, { action: "CANCEL_PURCHASE", userId: req.user._id });
-
-//   res.status(200).json({ status: "success", message: "Purchase cancelled successfully" });
-// });
 /* ======================================================
    3. CANCEL PURCHASE (With Stock Validation)
 ====================================================== */
@@ -1054,56 +1311,6 @@ exports.recordPayment = catchAsync(async (req, res, next) => {
   });
 });
 
-/* ======================================================
-   6. ATTACHMENT DELETE
-====================================================== */
-// exports.deleteAttachment = catchAsync(async (req, res, next) => {
-//   const purchase = await Purchase.findById(req.params.id);
-//   if (!purchase) return next(new AppError("Purchase not found", 404));
-
-//   const url = purchase.attachedFiles[req.params.fileIndex];
-//   if (!url) return next(new AppError("File not found", 404));
-
-//   const publicId = url.split("/").pop().split(".")[0];
-//   try {
-//     await cloudinary.uploader.destroy(`purchases/${publicId}`);
-//   } catch (err) {
-//     console.warn("Failed to delete from Cloudinary:", err.message);
-//   }
-
-//   purchase.attachedFiles.splice(req.params.fileIndex, 1);
-//   await purchase.save();
-
-//   res.status(200).json({ status: "success", message: "Attachment removed" });
-// });
-/* ======================================================
-   6. ATTACHMENT DELETE (Updated for Object Schema)
-====================================================== */
-exports.deleteAttachment = catchAsync(async (req, res, next) => {
-  const purchase = await Purchase.findById(req.params.id);
-  if (!purchase) return next(new AppError("Purchase not found", 404));
-
-  // Access the specific file object
-  const fileObj = purchase.attachedFiles[req.params.fileIndex];
-  if (!fileObj) return next(new AppError("File not found", 404));
-
-  // Use public_id directly if available, else extract from URL
-  const publicId = fileObj.public_id || fileObj.url.split("/").pop().split(".")[0];
-
-  try {
-    if (publicId) {
-      await cloudinary.uploader.destroy(publicId); // Use the stored public_id
-    }
-  } catch (err) {
-    console.warn("Failed to delete from Cloudinary:", err.message);
-  }
-
-  // Remove from array
-  purchase.attachedFiles.splice(req.params.fileIndex, 1);
-  await purchase.save();
-
-  res.status(200).json({ status: "success", message: "Attachment removed" });
-});
 
 /* ======================================================
    7. GET PURCHASE ANALYTICS
@@ -1250,18 +1457,15 @@ exports.bulkUpdatePurchases = catchAsync(async (req, res, next) => {
   });
 });
 
-// Add to your purchase.controller.js
 /* ======================================================
-   10. ADDITIONAL ATTACHMENTS
-====================================================== */
-/* ======================================================
-   10. ADDITIONAL ATTACHMENTS (Updated)
+   10. ADDITIONAL ATTACHMENTS (Optimized & Asset-Tracked)
 ====================================================== */
 exports.addAttachments = catchAsync(async (req, res, next) => {
   if (!req.files?.length) {
     return next(new AppError("No files uploaded", 400));
   }
 
+  // Ensure the purchase exists and belongs to this organization
   const purchase = await Purchase.findOne({
     _id: req.params.id,
     organizationId: req.user.organizationId
@@ -1269,26 +1473,85 @@ exports.addAttachments = catchAsync(async (req, res, next) => {
 
   if (!purchase) return next(new AppError("Purchase not found", 404));
 
-  const newFiles = [];
-  for (const f of req.files) {
-    // 1. Get the full object from Cloudinary/Service
-    const uploadResult = await fileUploadService.uploadFile(f.buffer, "purchases");
+  // 1. Concurrent Upload & Record (Replaces the slow for...of loop)
+  // Categorize as 'invoice' for the Media Gallery
+  const uploadedAssets = await imageUploadService.uploadMultipleAndRecord(
+    req.files, 
+    req.user, 
+    'invoice'
+  );
 
-    // 2. Push the result (Schema now accepts this object)
-    newFiles.push(uploadResult);
-  }
+  // 2. Format to match the updated Purchase Schema
+  const newFiles = uploadedAssets.map(asset => ({
+    url: asset.url,
+    public_id: asset.publicId,
+    format: asset.mimeType,
+    bytes: asset.size,
+    assetId: asset._id // The Master Link
+  }));
 
-  // 3. Push to Mongoose Array
+  // 3. Push to Mongoose Array and Save
   purchase.attachedFiles.push(...newFiles);
-
-  await purchase.save(); // <--- This failed before, now it will pass
+  await purchase.save(); 
 
   res.status(200).json({
     status: "success",
-    message: `${newFiles.length} file(s) added`,
+    message: `${newFiles.length} file(s) added and indexed successfully.`,
     data: { purchase }
   });
 });
+
+/* ======================================================
+   6. ATTACHMENT DELETE (Master Asset Cleanup)
+====================================================== */
+exports.deleteAttachment = catchAsync(async (req, res, next) => {
+  // Ensure the purchase exists and belongs to this organization
+  const purchase = await Purchase.findOne({
+    _id: req.params.id,
+    organizationId: req.user.organizationId
+  });
+
+  if (!purchase) return next(new AppError("Purchase not found", 404));
+
+  // Access the specific file object by index
+  const fileIndex = parseInt(req.params.fileIndex, 10);
+  const fileObj = purchase.attachedFiles[fileIndex];
+
+  if (!fileObj) return next(new AppError("File not found at the specified index", 404));
+
+  // 1. MASTER CLEANUP: Delete from Cloudinary AND Asset DB
+  // We rely on the assetId we saved during upload.
+  if (fileObj.assetId) {
+    try {
+      await imageUploadService.deleteFullAsset(fileObj.assetId, req.user.organizationId);
+    } catch (err) {
+      // We log the warning but don't crash, allowing the local array removal to proceed
+      console.warn(`⚠️ Note: Master Asset deletion failed for ${fileObj.assetId}:`, err.message);
+    }
+  } else if (fileObj.public_id) {
+    // Fallback for older files uploaded before the Master Asset System was implemented
+    try {
+      const { deleteFile } = require('../services/uploads/fileUploadService');
+      await deleteFile(fileObj.public_id);
+    } catch (err) {
+      console.warn("⚠️ Fallback Cloudinary deletion failed:", err.message);
+    }
+  }
+
+  // 2. Remove from the local purchase array
+  purchase.attachedFiles.splice(fileIndex, 1);
+  await purchase.save();
+
+  res.status(200).json({ 
+    status: "success", 
+    message: "Attachment permanently removed from system." 
+  });
+});
+
+
+// /* ======================================================
+//    10. ADDITIONAL ATTACHMENTS (Updated)
+// ====================================================== */
 // exports.addAttachments = catchAsync(async (req, res, next) => {
 //   if (!req.files?.length) {
 //     return next(new AppError("No files uploaded", 400));
@@ -1303,11 +1566,17 @@ exports.addAttachments = catchAsync(async (req, res, next) => {
 
 //   const newFiles = [];
 //   for (const f of req.files) {
-//     newFiles.push(await fileUploadService.uploadFile(f.buffer, "purchases"));
+//     // 1. Get the full object from Cloudinary/Service
+//     const uploadResult = await fileUploadService.uploadFile(f.buffer, "purchases");
+
+//     // 2. Push the result (Schema now accepts this object)
+//     newFiles.push(uploadResult);
 //   }
 
+//   // 3. Push to Mongoose Array
 //   purchase.attachedFiles.push(...newFiles);
-//   await purchase.save();
+
+//   await purchase.save(); // <--- This failed before, now it will pass
 
 //   res.status(200).json({
 //     status: "success",
@@ -1315,22 +1584,31 @@ exports.addAttachments = catchAsync(async (req, res, next) => {
 //     data: { purchase }
 //   });
 // });
-/* ======================================================
-   11. GET PAYMENT HISTORY
-====================================================== */
-// exports.getPaymentHistory = catchAsync(async (req, res, next) => {
-//   const payments = await AccountEntry.find({
-//     referenceId: req.params.id,
-//     referenceType: "payment",
-//     organizationId: req.user.organizationId
-//   }).sort('-date').populate('accountId', 'name code');
 
-//   res.status(200).json({
-//     status: "success",
-//     results: payments.length,
-//     data: { payments }
-//   });
+// /* ======================================================
+//    6. ATTACHMENT DELETE (Updated for Object Schema)
+// ====================================================== */
+// exports.deleteAttachment = catchAsync(async (req, res, next) => {
+//   const purchase = await Purchase.findById(req.params.id);
+//   if (!purchase) return next(new AppError("Purchase not found", 404));
+//   const fileObj = purchase.attachedFiles[req.params.fileIndex];
+//   if (!fileObj) return next(new AppError("File not found", 404));
+//   const publicId = fileObj.public_id || fileObj.url.split("/").pop().split(".")[0];
+//   try {
+//     if (publicId) {
+//       await cloudinary.uploader.destroy(publicId); // Use the stored public_id
+//     }
+//   } catch (err) {
+//     console.warn("Failed to delete from Cloudinary:", err.message);
+//   }
+//   purchase.attachedFiles.splice(req.params.fileIndex, 1);
+//   await purchase.save();
+
+//   res.status(200).json({ status: "success", message: "Attachment removed" });
 // });
+
+
+
 
 /* ======================================================
    11. GET PAYMENT HISTORY (Fixed)

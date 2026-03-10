@@ -10,25 +10,25 @@ const inventorySchema = new mongoose.Schema({
     rackLocation: { type: String, trim: true } // e.g., "A1-Row2"
 }, { _id: false });
 
-const slugify = (value) => { 
+const slugify = (value) => {
     return value.toString().trim().toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, ''); 
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
 };
 
 const productSchema = new mongoose.Schema({
     organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
-    
+
     // --- Basic Info ---
     name: { type: String, required: [true, 'Product name is required'], trim: true },
     slug: { type: String, trim: true, lowercase: true },
     description: { type: String, trim: true },
-    
+
     // --- Identification ---
     sku: { type: String, trim: true, uppercase: true }, // Internal ID (e.g. LEN-YOGA-01)
     barcode: { type: String, trim: true }, // Scan Code (e.g. 890123456789)
     hsnCode: { type: String, trim: true }, // 🟢 CRITICAL FOR GST
-    
+
     // --- Categorization ---
     categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Master', index: true },
     subCategoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Master' },
@@ -41,7 +41,7 @@ const productSchema = new mongoose.Schema({
     sellingPrice: { type: Number, required: [true, 'Selling price is required'] },
     mrp: { type: Number }, // Maximum Retail Price (often different from selling price)
     discountedPrice: { type: Number },
-    
+
     taxRate: { type: Number, default: 0 }, // e.g. 18 for 18% GST
     isTaxInclusive: { type: Boolean, default: false },
 
@@ -55,10 +55,19 @@ const productSchema = new mongoose.Schema({
     },
 
     // --- Media & Meta ---
-    images: [{ type: String, trim: true }],
+    // Inside your Product Schema
+    images: [{
+        type: String // Existing: Stores URLs
+    }],
+
+    // Add this:
+    imageAssets: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Asset' // New: Links to your Master Asset system
+    }],
     defaultSupplierId: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
     tags: [{ type: String, trim: true }],
-    
+
     isActive: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false }, // Soft Delete is better than hard delete
     lastSold: { type: Date }
@@ -77,14 +86,14 @@ productSchema.index({ organizationId: 1, barcode: 1 }, { unique: true, partialFi
 productSchema.index({ organizationId: 1, name: 'text', sku: 'text', barcode: 'text' });
 
 // --- VIRTUALS ---
-productSchema.virtual('totalStock').get(function () { 
-    return this.inventory?.reduce((acc, i) => acc + i.quantity, 0) || 0; 
+productSchema.virtual('totalStock').get(function () {
+    return this.inventory?.reduce((acc, i) => acc + i.quantity, 0) || 0;
 });
 
 // --- MIDDLEWARE ---
 productSchema.pre('save', function (next) {
-    if (this.isModified('name') && !this.slug) { 
-        this.slug = `${slugify(this.name)}-${nanoid(6)}`; 
+    if (this.isModified('name') && !this.slug) {
+        this.slug = `${slugify(this.name)}-${nanoid(6)}`;
     }
     next();
 });

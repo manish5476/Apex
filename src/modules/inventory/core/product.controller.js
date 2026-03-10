@@ -411,19 +411,73 @@ exports.searchProducts = catchAsync(async (req, res) => {
   }).limit(20);
   res.status(200).json({ status: "success", results: products.length, data: { products } });
 });
-
+/**
+ * @desc    Upload multiple product images (Integrated with Asset System)
+ * @route   POST /api/v1/products/:id/images
+ * @access  Private
+ */
 exports.uploadProductImage = catchAsync(async (req, res, next) => {
-  if (!req.files?.length) { return next(new AppError("Upload at least one image", 400)); }
-  const folder = `products/${req.user.organizationId}`;
-  const uploads = await Promise.all(req.files.map(f => imageUploadService.uploadImage(f.buffer, folder)));
+  if (!req.files || !req.files.length) { 
+    return next(new AppError("Upload at least one image", 400)); 
+  }
+
+  // 1. PRE-CHECK: Ensure product exists BEFORE uploading.
+  // This prevents uploading to Cloudinary if the product ID is wrong, saving storage & bandwidth.
+  const productExists = await Product.exists({ 
+    _id: req.params.id, 
+    organizationId: req.user.organizationId 
+  });
+
+  if (!productExists) {
+    return next(new AppError("Product not found", 404));
+  }
+
+  // 2. UPLOAD & RECORD: Uses the new concurrent upload service
+  // This handles Cloudinary uploads and creates all MongoDB Asset records in parallel
+  const uploadedAssets = await imageUploadService.uploadMultipleAndRecord(
+    req.files, 
+    req.user, 
+    'product'
+  );
+
+  // 3. EXTRACT DATA: Get URLs for the fast UI and Asset IDs for the DB references
+  const imageUrls = uploadedAssets.map(asset => asset.url);
+  const assetIds = uploadedAssets.map(asset => asset._id);
+
+  // 4. UPDATE PRODUCT: Push both to the product document
   const product = await Product.findOneAndUpdate(
     { _id: req.params.id, organizationId: req.user.organizationId },
-    { $push: { images: { $each: uploads.map(u => u.url) } } },
+    { 
+      $push: { 
+        images: { $each: imageUrls },           // Quick string array for the frontend
+        imageAssets: { $each: assetIds }        // Master tracking for deletion/auditing
+      } 
+    },
     { new: true }
   );
-  if (!product) return next(new AppError("Product not found", 404));
-  res.status(200).json({ status: "success", data: { product } });
+
+  res.status(200).json({ 
+    status: "success", 
+    message: `${uploadedAssets.length} images uploaded successfully.`,
+    data: { 
+      product,
+      newAssets: uploadedAssets // Send back asset details (like size) if frontend needs it
+    } 
+  });
 });
+
+// exports.uploadProductImage = catchAsync(async (req, res, next) => {
+//   if (!req.files?.length) { return next(new AppError("Upload at least one image", 400)); }
+//   const folder = `products/${req.user.organizationId}`;
+//   const uploads = await Promise.all(req.files.map(f => imageUploadService.uploadImage(f.buffer, folder)));
+//   const product = await Product.findOneAndUpdate(
+//     { _id: req.params.id, organizationId: req.user.organizationId },
+//     { $push: { images: { $each: uploads.map(u => u.url) } } },
+//     { new: true }
+//   );
+//   if (!product) return next(new AppError("Product not found", 404));
+//   res.status(200).json({ status: "success", data: { product } });
+// });
 
 exports.restoreProduct = factory.restoreOne(Product);
 exports.getAllProducts = factory.getAll(Product);
