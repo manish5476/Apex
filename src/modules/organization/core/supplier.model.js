@@ -77,7 +77,8 @@ const supplierSchema = new mongoose.Schema(
       url: { type: String, required: true },
       public_id: { type: String },
       uploadedAt: { type: Date, default: Date.now },
-      verified: { type: Boolean, default: false }
+      verified: { type: Boolean, default: false },
+      assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' }
     }],
 
     // --- 4. SYSTEM FIELDS ---

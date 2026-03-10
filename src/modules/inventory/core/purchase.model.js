@@ -49,11 +49,19 @@ const purchaseSchema = new mongoose.Schema({
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     notes: { type: String, trim: true },
     // NEW: Allow full object
+    // attachedFiles: [{
+    //     url: { type: String, required: true },
+    //     public_id: { type: String },
+    //     format: { type: String },
+    //     fileName: { type: String }
+    // }],
+    // In Purchase Schema
     attachedFiles: [{
-        url: { type: String, required: true },
-        public_id: { type: String },
-        format: { type: String },
-        fileName: { type: String }
+        url: String,
+        public_id: String,
+        format: String,
+        bytes: Number,
+        assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' } // NEW: The master link
     }],
     // attachedFiles: [{ type: String, trim: true }],
     isDeleted: { type: Boolean, default: false },
