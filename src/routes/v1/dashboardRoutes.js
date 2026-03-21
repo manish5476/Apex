@@ -5,11 +5,18 @@ const authController = require("../../modules/auth/core/auth.controller");
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
+// Protect all routes globally
 router.use(authController.protect);
 
+/**
+ * Main Dashboard Overview
+ * Restricted to users with DASHBOARD.VIEW permission.
+ * This route typically aggregates data from multiple modules for a quick summary.
+ */
 router.get(
   "/",
-  checkPermission(PERMISSIONS.DASHBOARD.VIEW), // More specific than ANALYTICS.VIEW_EXECUTIVE
+  checkPermission(PERMISSIONS.DASHBOARD.VIEW),
   dashboardController.getDashboardOverview
 );
+
 module.exports = router;

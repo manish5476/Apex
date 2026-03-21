@@ -1,9 +1,9 @@
 const Sales = require('./sales.model'); // Assuming the model name
 const SalesService = require('./sales.service');
-const factory = require('../../../core/utils/handlerFactory');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
-const { createSalesSchema, updateSalesSchema } = require('../../../shared/validations/salesValidation');
+const factory = require('../../../core/utils/api/handlerFactory');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
+const { createSalesSchema, updateSalesSchema } = require('../../../core/middleware/salesValidation');
 
 /**
  * Common Populate Configuration for Sales

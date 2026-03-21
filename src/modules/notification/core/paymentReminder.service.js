@@ -1,12 +1,10 @@
 // src/services/paymentReminderService.js
 const cron = require("node-cron");
 const Invoice = require("../../accounting/billing/invoice.model");
-const invoicePDFService = require("../../_legacy/services/invoicePDFService");
-const {
-  getInvoiceEmailHTML,
-} = require("../../../core/utils/_legacy/templates/invoiceEmailTemplate");
-const sendEmail = require("../../../core/utils/_legacy/email");
-const AppError = require("../../../core/utils/appError");
+const invoicePDFService = require("../../accounting/billing/invoicePDFService");
+const { getInvoiceEmailHTML} = require("../../accounting/billing/template/invoiceEmailTemplate");
+const sendEmail = require("../../../core/infra/email");
+const AppError = require("../../../core/utils/api/appError");
 
 /**
  * Sends a reminder email for a single invoice.

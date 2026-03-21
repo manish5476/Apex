@@ -6,9 +6,9 @@ const Customer = require("../../organization/core/customer.model");
 const AccountEntry = require("../../accounting/core/accountEntry.model");
 const Account = require("../../accounting/core/account.model");
 
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
-const { runInTransaction } = require("../../../core/utils/runInTransaction");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
+const { runInTransaction } = require("../../../core/utils/db/runInTransaction");
 
 /* ======================================================
    ACCOUNT HELPER (IDEMPOTENT)

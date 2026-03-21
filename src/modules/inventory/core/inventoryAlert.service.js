@@ -1,8 +1,8 @@
 // src/services/inventoryAlertService.js
 const Product = require('./product.model');
 const Organization = require('../../organization/core/organization.model');
-const sendEmail = require('../../../core/utils/_legacy/email');
-const AppError = require('../../../core/utils/appError');
+const sendEmail = require('../../../core/infra/email');
+const AppError = require('../../../core/utils/api/appError');
 
 // Default low-stock threshold (can be overridden by org settings or env)
 const LOW_STOCK_THRESHOLD = process.env.LOW_STOCK_THRESHOLD

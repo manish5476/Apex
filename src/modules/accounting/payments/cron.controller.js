@@ -1,6 +1,6 @@
 // src/modules/accounting/payments/controllers/cron.controller.js
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
 exports.getCronStatus = catchAsync(async (req, res) => {
   if (!global.PaymentCronManager) {
     throw new AppError('Payment Cron Manager not initialized', 500);

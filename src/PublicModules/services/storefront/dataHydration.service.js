@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 const SectionRegistry = require('./sectionRegistry.service');
 
 class DataHydrationService {
@@ -44,6 +45,137 @@ class DataHydrationService {
     // 4. Filter out nulls (inactive sections)
     return results.filter(Boolean);
   }
+=======
+const SmartRuleEngine = require('./smartRuleEngine.service');
+const Master = require('../../../modules/master/core/master.model');
+const StorefrontPage = require('../../models/storefront/storefrontPage.model');
+const Branch = require('../../../modules/organization/core/branch.model');
+const mongoose = require('mongoose');
+
+class DataHydrationService {
+
+  /**
+   * Takes an array of sections (from Page or Layout) and injects live data.
+   * Uses Promise.all for parallel execution.
+   */
+  async hydrateSections(sections, organizationId) {
+    if (!sections || !Array.isArray(sections)) return [];
+
+    const hydrationPromises = sections.map(async (section) => {
+      // Clone to avoid mutating the original Mongoose document which might be immutable
+      const hydrated = { ...section };
+      
+      // SKIP hydration if inactive or marked static
+      if (hydrated.isActive === false) return null;
+
+      try {
+        // --- 1. PRODUCT SECTIONS (Sliders, Grids) ---
+        if (['product_slider', 'product_grid', 'product_listing'].includes(hydrated.type)) {
+          
+          // Priority A: It's a Saved Smart Rule (Linked by ID)
+          if (hydrated.smartRuleId) {
+            hydrated.data = await SmartRuleEngine.executeRule(hydrated.smartRuleId, organizationId);
+            hydrated.dataSource = 'smart_rule';
+          }
+          
+          // Priority B: It's an Inline Config (Includes Manual Selection)
+          // The SmartRuleEngine.executeAdHoc handles 'manual_selection' type logic
+          else if (hydrated.config?.ruleType) {
+            
+            // Pass the entire config object. 
+            // It contains { ruleType, manualProductIds, limit, etc }
+            hydrated.data = await SmartRuleEngine.executeAdHoc(hydrated.config, organizationId);
+            hydrated.dataSource = hydrated.config.ruleType; // 'manual_selection' or 'new_arrivals'
+          }
+        }
+
+        // --- 2. CATEGORY SECTIONS ---
+        else if (hydrated.type === 'category_grid') {
+          hydrated.data = await this._hydrateCategoryGrid(hydrated.config, organizationId);
+          hydrated.dataSource = 'category';
+        }
+
+        // --- 3. DYNAMIC CONTENT (Blogs, Locations) ---
+        else if (hydrated.type === 'map_locations') {
+          hydrated.data = await this._getBranches(organizationId);
+        }
+        
+        else if (hydrated.type === 'blog_feed') {
+          // Placeholder for blog hydration
+          hydrated.data = []; 
+        }
+
+        // --- 4. NAVIGATION (Headers/Footers) ---
+        else if (hydrated.type === 'navbar_simple' || hydrated.type === 'footer_simple') {
+           await this._hydrateNavigation(hydrated, organizationId);
+        }
+
+        return hydrated;
+
+      } catch (error) {
+        console.error(`Hydration failed for section ${section.id}:`, error.message);
+        hydrated.error = true; 
+        hydrated.data = [];
+        return hydrated;
+      }
+    });
+
+    // Filter out inactive sections (returned as null)
+    const results = await Promise.all(hydrationPromises);
+    return results.filter(Boolean);
+  }
+
+  // --- PRIVATE HELPERS ---
+
+  async _hydrateCategoryGrid(config, organizationId) {
+    const limit = config.limit || 12;
+    const query = {
+      organizationId: new mongoose.Types.ObjectId(organizationId),
+      type: 'category',
+      isActive: true
+    };
+
+    // If specific categories selected manually
+    if (config.selectedCategories && Array.isArray(config.selectedCategories) && config.selectedCategories.length > 0) {
+      // Map valid ObjectIds
+      const catIds = config.selectedCategories
+         .map(id => mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null)
+         .filter(Boolean);
+         
+      if(catIds.length) query._id = { $in: catIds };
+    }
+
+    const categories = await Master.find(query)
+      .sort({ 'metadata.sortOrder': 1, createdAt: -1 })
+      .limit(limit)
+      .select('name slug imageUrl description')
+      .lean();
+
+    return categories.map(cat => ({
+      id: cat._id,
+      name: cat.name,
+      slug: cat.slug,
+      image: cat.imageUrl || null,
+      description: cat.description,
+      url: `/category/${cat.slug}`
+    }));
+  }
+
+  async _getBranches(organizationId) {
+    return Branch.find({
+      organizationId,
+      isActive: true,
+      isDeleted: false
+    })
+    .select('name address phoneNumber location')
+    .lean();
+  }
+
+  async _hydrateNavigation(section, organizationId) {
+    if (!section.config.links) section.config.links = [];
+    return section;
+  }
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
 }
 
 module.exports = new DataHydrationService();

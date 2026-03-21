@@ -25,7 +25,17 @@ const customerSchema = new mongoose.Schema({
     required: [true, 'Customer name is required'],
     trim: true,
   },
-  avatar: { type: String, trim: true },
+  // Inside your Customer Schema
+  avatar: {
+    type: String,
+    default: null
+  },
+
+  // Add this line to link it to your Asset system:
+  avatarAsset: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Asset'
+  },
   contactPerson: { type: String, trim: true },
   email: { type: String, trim: true, lowercase: true, default: null },
   phone: {

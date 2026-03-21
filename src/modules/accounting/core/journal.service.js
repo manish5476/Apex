@@ -1,7 +1,7 @@
 const AccountEntry = require('./accountEntry.model');
 const Account = require('./account.model');
 const Product = require('../../inventory/core/product.model');
-const AppError = require('../../../core/utils/appError');
+const AppError = require('../../../core/utils/api/appError');
 
 async function getAccount(orgId, code, fallbackName, type, session) {
   let acc = await Account.findOne({ organizationId: orgId, code }).session(session);

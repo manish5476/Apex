@@ -1,6 +1,6 @@
 // src/middleware/uploadMiddleware.js
 const multer = require("multer");
-const AppError = require("../utils/appError");
+const AppError = require("../utils/api/appError");
 
 const storage = multer.memoryStorage();
 

@@ -1,6 +1,6 @@
 // src/middleware/validation/section.validator.js
 const SectionRegistry = require('../../services/storefront/sectionRegistry.service');
-const AppError = require('../../../core/utils/appError');
+const AppError = require('../../../core/utils/api/appError');
 
 class SectionValidator {
   /**
@@ -12,11 +12,12 @@ class SectionValidator {
       return { valid: false, error: 'Section type is required' };
     }
     
-    if (!section.config) {
+    // Allow empty config (some sections might not need it), but object must exist
+    if (!section.config && typeof section.config !== 'object') {
       return { valid: false, error: 'Section config is required' };
     }
     
-    if (section.position === undefined) {
+    if (section.position === undefined || section.position === null) {
       return { valid: false, error: 'Section position is required' };
     }
     
@@ -27,7 +28,7 @@ class SectionValidator {
     }
     
     // Validate config
-    const configValidation = SectionRegistry.validateConfig(section.type, section.config);
+    const configValidation = SectionRegistry.validateConfig(section.type, section.config || {});
     if (!configValidation.valid) {
       return { 
         valid: false, 
@@ -35,12 +36,20 @@ class SectionValidator {
       };
     }
     
-    // Validate data source
-    if (section.dataSource && !definition.dataSource.includes(section.dataSource)) {
-      return { 
-        valid: false, 
-        error: `Invalid data source for ${section.type}. Allowed: ${definition.dataSource.join(', ')}` 
-      };
+    // ✅ FIX IS HERE: Validate data source safely
+    // We check if definition.dataSource exists before calling .includes
+    if (section.dataSource) {
+        const allowedSources = definition.dataSource || []; // Default to empty array if undefined
+        
+        // If the section definition doesn't specify ANY allowed sources, 
+        // but the section tries to use one, you might want to flag it or ignore it.
+        // For now, only validate if allowedSources are actually defined.
+        if (allowedSources.length > 0 && !allowedSources.includes(section.dataSource)) {
+            return { 
+                valid: false, 
+                error: `Invalid data source for ${section.type}. Allowed: ${allowedSources.join(', ')}` 
+            };
+        }
     }
     
     // Validate manual data if dataSource is manual
@@ -61,17 +70,18 @@ class SectionValidator {
   /**
    * Middleware for validating sections in request
    */
-  static validateSectionsMiddleware(req, res, next) {
-    if (req.body.sections) {
+  static async validateSectionsMiddleware(req, res, next) {
+    if (req.body.sections && Array.isArray(req.body.sections)) {
       const errors = [];
       
-      // Validate each section
-      req.body.sections.forEach((section, index) => {
-        const validation = this.validateSection(section);
+      // Validate each section - Use for...of loop to handle async nicely if needed
+      for (const [index, section] of req.body.sections.entries()) {
+        // Note: validateSection is static async, so we should await it
+        const validation = await SectionValidator.validateSection(section);
         if (!validation.valid) {
-          errors.push(`Section ${index}: ${validation.error}`);
+          errors.push(`Section ${index} (${section.type}): ${validation.error}`);
         }
-      });
+      }
       
       if (errors.length > 0) {
         return next(new AppError(`Invalid sections: ${errors.join('; ')}`, 400));

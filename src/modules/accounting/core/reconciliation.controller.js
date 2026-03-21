@@ -4,11 +4,11 @@ const Payment = require('../payments/payment.model');
 const Purchase = require('../../inventory/core/purchase.model');
 const Customer = require('../../organization/core/customer.model');
 const AccountEntry = require('./accountEntry.model');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
 // controllers/reconciliationController.js
-const emiService = require('../../_legacy/services/emiService');
-const PendingReconciliation = require('../../_legacy/models/pendingReconciliationModel');
+const emiService = require('../payments/emiService');
+const PendingReconciliation = require('./pendingReconciliationModel');
 const EMI = require('../payments/emi.model');
 
 /**

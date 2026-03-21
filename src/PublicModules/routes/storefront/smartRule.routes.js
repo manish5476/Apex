@@ -23,9 +23,12 @@ router.route('/:ruleId')
 // ==========================================
 router.get('/:ruleId/execute', smartRuleController.executeRule);
 router.post('/preview', smartRuleController.previewRule);
+<<<<<<< HEAD
 router.get('/:ruleId/analytics', smartRuleController.getRuleAnalytics);
+=======
+// router.get('/:ruleId/analytics', smartRuleController.getRuleAnalytics);
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
 // router.post('/template', smartRuleController.createFromTemplate);
 router.delete('/:ruleId/cache', smartRuleController.clearCache);
 
 module.exports = router;
-

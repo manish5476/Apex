@@ -1,7 +1,7 @@
 const Account = require('./account.model');
 const AccountEntry = require('./accountEntry.model'); // ✅ Needed for delete check
-const catchAsync = require('../../../core/utils/catchAsync'); // Using your project's standard util
-const AppError = require('../../../core/utils/appError');
+const catchAsync = require('../../../core/utils/api/catchAsync'); // Using your project's standard util
+const AppError = require('../../../core/utils/api/appError');
 const { listAccountsWithBalance, getAccountHierarchy } = require('./account.service');
 // Helper
 function validateAccountPayload(body) {

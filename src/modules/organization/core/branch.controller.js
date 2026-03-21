@@ -1,8 +1,8 @@
 // src/controllers/branchController.js
 const Branch = require('./branch.model');
 const Organization = require('./organization.model');
-const catchAsync = require('../../../core/utils/catchAsync');
-const factory = require('../../../core/utils/handlerFactory');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const factory = require('../../../core/utils/api/handlerFactory');
 
 // // GET /branches
 exports.getAllBranches = factory.getAll(Branch, {

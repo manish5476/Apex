@@ -1,6 +1,6 @@
 // src/middleware/sessionActivity.js
 const Session = require("../../modules/auth/core/session.model");
-const catchAsync = require("../utils/catchAsync");
+const catchAsync = require("../utils/api/catchAsync");
 
 exports.updateSessionActivity = catchAsync(async (req, res, next) => {
   const authHeader = req.headers.authorization;

@@ -1,5 +1,6 @@
 // src/models/storefront/storefrontPage.model.js
 const mongoose = require('mongoose');
+<<<<<<< HEAD
 
 // Sub-schema for individual sections (Hero, Product Grid, etc.)
 const sectionSchema = new mongoose.Schema({
@@ -27,6 +28,10 @@ const sectionSchema = new mongoose.Schema({
 
   isActive: { type: Boolean, default: true }
 }, { _id: false });
+=======
+const sectionSchema = require('./schemas/section.schema');
+const { VALID_THEME_IDS } = require('../../utils/constants/storefront/themes.constants');
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
 
 const pageSchema = new mongoose.Schema({
   organizationId: {
@@ -35,21 +40,38 @@ const pageSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+<<<<<<< HEAD
 
   name: { type: String, required: true, trim: true, maxlength: 100 },
   slug: { 
     type: String, 
     required: true, 
+=======
+  name: {
+    type: String,
+    required: [true, 'Page name is required'],
+    trim: true,
+    maxlength: 100
+  },
+  slug: {
+    type: String,
+    required: true,
+    trim: true,
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
     lowercase: true,
     trim: true,
     match: [/^[a-z0-9-/]+$/, 'Invalid slug format']
   },
+<<<<<<< HEAD
 
+=======
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
   pageType: {
     type: String,
     enum: ['home', 'product', 'category', 'blog', 'content', 'policy', 'system'],
     default: 'content'
   },
+<<<<<<< HEAD
 
   sections: [sectionSchema],
 
@@ -66,11 +88,46 @@ const pageSchema = new mongoose.Schema({
   pageThemeId: { type: String }, 
 
   status: { type: String, enum: ['draft', 'published', 'archived'], default: 'draft', index: true },
+=======
+  
+  // The Building Blocks
+  sections: [sectionSchema],
+
+  // SEO Configuration
+  seo: {
+    title: { type: String, maxlength: 70 },
+    description: { type: String, maxlength: 160 },
+    keywords: [{ type: String }],
+    ogImage: { type: String },
+    noIndex: { type: Boolean, default: false }
+  },
+
+  // Page-Specific Theme Overrides (Optional)
+  themeOverride: {
+    mode: { type: String, enum: ['preset', 'custom'], default: 'preset' },
+    presetId: { type: String, enum: VALID_THEME_IDS }, // e.g., 'theme-midnight'
+    customSettings: {
+      primaryColor: String,
+      secondaryColor: String,
+      fontFamily: String,
+      backgroundColor: String
+    }
+  },
+
+  // Publishing State
+  status: {
+    type: String,
+    enum: ['draft', 'published', 'archived'],
+    default: 'draft',
+    index: true
+  },
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
   isPublished: { type: Boolean, default: false },
   publishedAt: { type: Date },
 
   // System Flags
   isHomepage: { type: Boolean, default: false },
+<<<<<<< HEAD
   isSystemPage: { type: Boolean, default: false }, // If true, cannot be deleted
   
   // Soft Delete for safety
@@ -80,9 +137,26 @@ const pageSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+=======
+  
+  // Analytics
+  viewCount: { type: Number, default: 0 },
+  lastViewedAt: { type: Date },
+  version: { type: Number, default: 1 },
+  
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, {
+  timestamps: true
+});
+
+// 1. Compound Index: Slugs must be unique per Organization
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
 pageSchema.index({ organizationId: 1, slug: 1 }, { unique: true });
+
+// 2. Compound Index: Homepage lookup
 pageSchema.index({ organizationId: 1, isHomepage: 1 });
 
+<<<<<<< HEAD
 module.exports = mongoose.model('StorefrontPage', pageSchema);
 
 
@@ -440,3 +514,17 @@ module.exports = mongoose.model('StorefrontPage', pageSchema);
 // // // });
 
 // // // module.exports = mongoose.model('StorefrontPage', pageSchema);
+=======
+// 3. Middleware: Ensure single Homepage per Org
+pageSchema.pre('save', async function(next) {
+  if (this.isHomepage && (this.isNew || this.isModified('isHomepage'))) {
+    await this.constructor.updateMany(
+      { organizationId: this.organizationId, _id: { $ne: this._id } },
+      { $set: { isHomepage: false } }
+    );
+  }
+  next();
+});
+
+module.exports = mongoose.model('StorefrontPage', pageSchema);
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8

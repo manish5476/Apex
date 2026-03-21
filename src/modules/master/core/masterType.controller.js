@@ -1,6 +1,6 @@
 const MasterType = require("./masterType.model");
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
 
 // CREATE a new master type (Admin only)
 exports.createMasterType = catchAsync(async (req, res, next) => {

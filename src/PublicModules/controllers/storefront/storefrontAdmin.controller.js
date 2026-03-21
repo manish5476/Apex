@@ -1,14 +1,25 @@
 const { StorefrontPage, SectionTemplate } = require('../../models/storefront');
+<<<<<<< HEAD
 const StorefrontLayout = require('../../models/storefront/storefrontLayout.model'); 
 const SectionRegistry = require('../../services/storefront/sectionRegistry.service');
 const SectionValidator = require('../../middleware/validation/section.validator');
 const AppError = require('../../../core/utils/appError');
 const LayoutService = require('../../services/storefront/layout.service'); 
+=======
+const SectionRegistry = require('../../services/storefront/sectionRegistry.service');
+const LayoutService = require('../../services/storefront/layout.service');
+const { THEME_LIST } = require('../../utils/constants/storefront/themes.constants');
+const AppError = require('../../../core/utils/api/appError');
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
 
 class StorefrontAdminController {
 
   // ============================================================
+<<<<<<< HEAD
   // 1. LAYOUT MANAGEMENT (Header/Footer/Theme)
+=======
+  // 1. LAYOUT MANAGEMENT (Header, Footer, Global Settings)
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
   // ============================================================
 
   /**
@@ -18,12 +29,12 @@ class StorefrontAdminController {
   async getLayout(req, res, next) {
     try {
       const { organizationId } = req.user;
-      // Uses the service which handles caching automatically
+      // Use Service Layer (Handles Cache & Default Creation)
       const layout = await LayoutService.getLayout(organizationId);
-      
-      res.status(200).json({ 
+
+      res.status(200).json({
         status: 'success',
-        layout 
+        data: layout
       });
     } catch (error) {
       next(error);
@@ -44,16 +55,34 @@ class StorefrontAdminController {
         return next(new AppError('activeThemeId is required when updating theme configuration', 400));
       }
 
-      // Validate Header Sections (Optional but good practice)
+      // 1. Validate Header Sections
       if (header && Array.isArray(header)) {
         for (const section of header) {
+<<<<<<< HEAD
           // Validation Logic via Registry (Unified)
           // Note: Ideally, SectionRegistry.validateConfig should be used here if exposed
           // For now, relying on basic structure check
           if (!section.type) return next(new AppError('Header section missing type', 400));
+=======
+          const validation = SectionRegistry.validateConfig(section.type, section.config);
+          if (!validation.valid) {
+            return next(new AppError(`Header Section Error (${section.type}): ${validation.error}`, 400));
+          }
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
         }
       }
 
+      // 2. Validate Footer Sections
+      if (footer && Array.isArray(footer)) {
+        for (const section of footer) {
+          const validation = SectionRegistry.validateConfig(section.type, section.config);
+          if (!validation.valid) {
+            return next(new AppError(`Footer Section Error (${section.type}): ${validation.error}`, 400));
+          }
+        }
+      }
+
+      // 3. Update via Service (Handles Cache Invalidation)
       const updatedLayout = await LayoutService.updateLayout(organizationId, {
         header,
         footer,
@@ -64,7 +93,7 @@ class StorefrontAdminController {
       res.status(200).json({
         status: 'success',
         message: 'Layout updated successfully',
-        layout: updatedLayout
+        data: updatedLayout
       });
 
     } catch (error) {
@@ -73,7 +102,29 @@ class StorefrontAdminController {
   }
 
   // ============================================================
-  // 2. PAGE MANAGEMENT (CRUD)
+  // 2. THEME REGISTRY
+  // ============================================================
+
+  /**
+   * Get Available Themes
+   * Route: GET /admin/storefront/themes
+   */
+  async getAvailableThemes(req, res, next) {
+    try {
+      res.status(200).json({
+        status: 'success',
+        results: THEME_LIST.length,
+        data: {
+          themes: THEME_LIST
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================================
+  // 3. PAGE MANAGEMENT (CRUD)
   // ============================================================
 
   /**
@@ -100,14 +151,26 @@ class StorefrontAdminController {
       }
 
       const pages = await StorefrontPage.find(query)
+<<<<<<< HEAD
         .select('name slug pageType status isPublished isHomepage isSystemPage viewCount updatedAt sectionsCount')
         .sort({ isHomepage: -1, updatedAt: -1 }) 
+=======
+        .select('name slug pageType status isPublished isHomepage viewCount updatedAt sections')
+        .sort({ isHomepage: -1, updatedAt: -1 })
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
         .lean();
+
+      // Enriched response with section count
+      const result = pages.map(p => ({
+        ...p,
+        sectionsCount: p.sections?.length || 0,
+        sections: undefined // Don't send heavy payload in list view
+      }));
 
       res.status(200).json({
         status: 'success',
-        pages,
-        total: pages.length
+        results: result.length,
+        data: result
       });
 
     } catch (error) {
@@ -124,11 +187,15 @@ class StorefrontAdminController {
       const { organizationId } = req.user;
       const { pageId } = req.params;
 
+<<<<<<< HEAD
       const page = await StorefrontPage.findOne({
         _id: pageId,
         organizationId,
         isDeleted: false
       });
+=======
+      const page = await StorefrontPage.findOne({ _id: pageId, organizationId });
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
 
       if (!page) {
         return next(new AppError('Page not found', 404));
@@ -136,7 +203,7 @@ class StorefrontAdminController {
 
       res.status(200).json({
         status: 'success',
-        page
+        data: page
       });
 
     } catch (error) {
@@ -157,16 +224,26 @@ class StorefrontAdminController {
         pageType = 'custom',
         sections = [],
         seo = {},
+<<<<<<< HEAD
         pageThemeId, // Optional override
         isHomepage = false
       } = req.body;
 
       // 1. Check uniqueness
       const existingPage = await StorefrontPage.findOne({ organizationId, slug, isDeleted: false });
+=======
+        themeOverride = {},
+        isHomepage = false
+      } = req.body;
+
+      // 1. Slug Uniqueness Check
+      const existingPage = await StorefrontPage.findOne({ organizationId, slug });
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
       if (existingPage) {
-        return next(new AppError('Page with this slug already exists', 400));
+        return next(new AppError(`Page with slug '${slug}' already exists`, 400));
       }
 
+<<<<<<< HEAD
       // 2. Validate sections via Registry
       for (const section of sections) {
         const validation = SectionRegistry.validateConfig(section.type, section.config);
@@ -185,23 +262,32 @@ class StorefrontAdminController {
       }
 
       // 4. Create Page
+=======
+      // 2. Create Page
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
       const page = await StorefrontPage.create({
         organizationId,
         name,
-        slug,
+        slug: slug.toLowerCase(),
         pageType,
-        sections,
+        sections, // Empty array initially usually
         seo,
+<<<<<<< HEAD
         pageThemeId,
         isHomepage,
         isSystemPage: false, // Users cannot create system pages
         status: 'draft' 
+=======
+        themeOverride,
+        isHomepage,
+        status: 'draft'
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
       });
 
       res.status(201).json({
         status: 'success',
         message: 'Page created successfully',
-        page
+        data: page
       });
 
     } catch (error) {
@@ -210,7 +296,7 @@ class StorefrontAdminController {
   }
 
   /**
-   * Update page
+   * Update page content (The Core Builder Save Endpoint)
    * Route: PUT /admin/storefront/pages/:pageId
    */
   async updatePage(req, res, next) {
@@ -219,6 +305,7 @@ class StorefrontAdminController {
       const { pageId } = req.params;
       const updateData = req.body;
 
+<<<<<<< HEAD
       const page = await StorefrontPage.findOne({ _id: pageId, organizationId, isDeleted: false });
       if (!page) return next(new AppError('Page not found', 404));
 
@@ -238,11 +325,34 @@ class StorefrontAdminController {
       }
 
       await page.save();
+=======
+      // 1. Validate Sections if present
+      if (updateData.sections && Array.isArray(updateData.sections)) {
+        for (const section of updateData.sections) {
+          const validation = SectionRegistry.validateConfig(section.type, section.config);
+          if (!validation.valid) {
+            return next(new AppError(`Section Error (${section.type}): ${validation.error}`, 400));
+          }
+        }
+      }
+
+      // 2. Find and Update
+      const page = await StorefrontPage.findOneAndUpdate(
+        { _id: pageId, organizationId },
+        { 
+          $set: updateData,
+          $inc: { version: 1 } // Optimistic Locking / Versioning
+        },
+        { new: true, runValidators: true }
+      );
+
+      if (!page) return next(new AppError('Page not found', 404));
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
 
       res.status(200).json({
         status: 'success',
-        message: 'Page updated successfully',
-        page
+        message: 'Page saved',
+        data: page
       });
 
     } catch (error) {
@@ -267,7 +377,7 @@ class StorefrontAdminController {
         return next(new AppError('Cannot delete a system page (e.g. Checkout, Cart)', 403));
       }
       if (page.isHomepage) {
-        return next(new AppError('Cannot delete the active homepage. Set another page as home first.', 400));
+        return next(new AppError('Cannot delete the active Homepage. Assign a new homepage first.', 400));
       }
 
       // Soft Delete
@@ -287,7 +397,11 @@ class StorefrontAdminController {
   }
 
   // ============================================================
+<<<<<<< HEAD
   // 3. UTILITIES & ASSETS
+=======
+  // 4. UTILITIES (Publish, Duplicate, Registry, Analytics)
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
   // ============================================================
 
   async publishPage(req, res, next) {
@@ -300,7 +414,7 @@ class StorefrontAdminController {
       );
       if (!page) return next(new AppError('Page not found', 404));
 
-      res.status(200).json({ status: 'success', message: 'Page published', page });
+      res.status(200).json({ status: 'success', message: 'Page published live', data: page });
     } catch (error) {
       next(error);
     }
@@ -316,7 +430,7 @@ class StorefrontAdminController {
       );
       if (!page) return next(new AppError('Page not found', 404));
 
-      res.status(200).json({ status: 'success', message: 'Page unpublished', page });
+      res.status(200).json({ status: 'success', message: 'Page unpublished', data: page });
     } catch (error) {
       next(error);
     }
@@ -330,12 +444,16 @@ class StorefrontAdminController {
 
       if (!original) return next(new AppError('Page not found', 404));
 
-      // Clone logic
       delete original._id;
       delete original.createdAt;
       delete original.updatedAt;
+<<<<<<< HEAD
       delete original.isSystemPage; // Clones are never system pages
       
+=======
+      delete original.__v;
+
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
       const newPage = await StorefrontPage.create({
         ...original,
         name: newName || `${original.name} (Copy)`,
@@ -346,7 +464,7 @@ class StorefrontAdminController {
         viewCount: 0
       });
 
-      res.status(201).json({ status: 'success', message: 'Page duplicated', page: newPage });
+      res.status(201).json({ status: 'success', message: 'Page duplicated', data: newPage });
     } catch (error) {
       next(error);
     }
@@ -355,7 +473,11 @@ class StorefrontAdminController {
   async getSectionTypes(req, res, next) {
     try {
       const sectionTypes = SectionRegistry.getSectionTypes();
-      res.status(200).json({ sectionTypes });
+      res.status(200).json({ 
+        status: 'success',
+        results: sectionTypes.length,
+        data: sectionTypes 
+      });
     } catch (error) {
       next(error);
     }
@@ -369,7 +491,7 @@ class StorefrontAdminController {
       const query = {
         $or: [
           { isPublic: true },
-          { organizationId },
+          { organizationId }, // Own templates
           { isSystemTemplate: true }
         ]
       };
@@ -378,10 +500,13 @@ class StorefrontAdminController {
       if (category) query.category = category;
 
       const templates = await SectionTemplate.find(query)
-        .sort({ usageCount: -1, createdAt: -1 })
+        .sort({ isSystemTemplate: -1, usageCount: -1 })
         .lean();
 
-      res.status(200).json({ templates });
+      res.status(200).json({ 
+        status: 'success',
+        data: templates 
+      });
     } catch (error) {
       next(error);
     }
@@ -391,7 +516,7 @@ class StorefrontAdminController {
     try {
       const { organizationId } = req.user;
       const { pageId } = req.params;
-      const { period = '7d' } = req.query; 
+      const { period = '7d' } = req.query;
 
       const page = await StorefrontPage.findOne({ _id: pageId, organizationId })
         .select('viewCount name');
@@ -402,21 +527,33 @@ class StorefrontAdminController {
       const analytics = {
         views: {
           total: page.viewCount,
-          last24h: 0,
+          last24h: 0, // Placeholder: Would integrate with real analytics service in future
           last7d: 0,
           change: '+0%'
         },
         engagement: {
+<<<<<<< HEAD
           avgTimeOnPage: '0m 0s',
           bounceRate: '0%'
+=======
+          avgTimeOnPage: '0s', // Placeholder
+          bounceRate: '0%'
+        },
+        sections: {
+          mostEngaged: [],
+          leastEngaged: []
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
         }
       };
 
       res.status(200).json({
-        pageId,
-        pageName: page.name,
-        analytics,
-        period
+        status: 'success',
+        data: {
+          pageId,
+          pageName: page.name,
+          analytics,
+          period
+        }
       });
 
     } catch (error) {

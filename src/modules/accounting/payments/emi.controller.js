@@ -1,7 +1,7 @@
-const emiService = require('../../_legacy/services/emiService');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
-const factory = require('../../../core/utils/handlerFactory');
+const emiService = require('./emiService');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
+const factory = require('../../../core/utils/api/handlerFactory');
 const EMI = require('./emi.model');
 
 /* ======================================================

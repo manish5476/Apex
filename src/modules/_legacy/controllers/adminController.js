@@ -1,8 +1,8 @@
 // src/controllers/adminController.js
 const Invoice = require("../../accounting/billing/invoice.model");
 const { getSummary, getMonthlyTrends, getOutstandingList } = require("../services/adminService");
-const { logAudit } = require("../../../core/utils/auditLogger");
-const catchAsync = require("../../../core/utils/catchAsync"); // ✅ Standard Import
+const { logAudit } = require("../../../core/utils/db/auditLogger");
+const catchAsync = require("../../../core/utils/api/catchAsync"); // ✅ Standard Import
 
 // ------------------------------------------------------------
 // 1. ADMIN SUMMARY

@@ -1,5 +1,5 @@
 const Organization = require('../../modules/organization/core/organization.model');
-const AppError = require('../utils/appError');
+const AppError = require('../utils/api/appError');
 
 exports.checkPeriodLock = async (req, res, next) => {
   // 1. Get Transaction Date from Body (invoiceDate, paymentDate, etc.)

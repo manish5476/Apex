@@ -14,18 +14,18 @@ const Organization = require("../../../organization/core/organization.model");
 const InvoiceAudit = require('../invoiceAudit.model');
 
 const SalesService = require("../../../inventory/core/sales.service");
-const invoicePDFService = require("../../../_legacy/services/invoicePDFService");
-const StockValidationService = require("../../../_legacy/services/stockValidationService");
+const invoicePDFService = require("../invoicePDFService");
+const StockValidationService = require("../../../inventory/core/stockValidationService");
 const { createNotification } = require("../../../notification/core/notification.service");
 // CHANGED: Import the whole service to access reverseInvoiceJournal
 const salesJournalService = require('../../../inventory/core/salesJournal.service');
 
-const catchAsync = require("../../../../core/utils/catchAsync");
-const AppError = require("../../../../core/utils/appError");
-const factory = require("../../../../core/utils/handlerFactory");
-const { runInTransaction } = require("../../../../core/utils/runInTransaction");
-const { emitToOrg } = require("../../../../core/utils/_legacy/socket");
-const automationService = require('../../../_legacy/services/automationService');
+const catchAsync = require("../../../../core/utils/api/catchAsync");
+const AppError = require("../../../../core/utils/api/appError");
+const factory = require("../../../../core/utils/api/handlerFactory");
+const { runInTransaction } = require("../../../../core/utils/db/runInTransaction");
+const { emitToOrg } = require("../../../../socketHandlers/socket");
+const automationService = require('../../../webhook/automationService');
 
 
 

@@ -6,15 +6,15 @@ const Payment = require("../../accounting/payments/payment.model"); // Fixed pat
 const Product = require("../../inventory/core/product.model"); // Fixed path
 const AccountEntry = require("../../accounting/core/accountEntry.model");
 const Account = require("../../accounting/core/account.model");
-const catchAsync = require("../../../core/utils/catchAsync");
-const AppError = require("../../../core/utils/appError");
-const factory = require("../../../core/utils/handlerFactory");
-const { runInTransaction } = require("../../../core/utils/runInTransaction");
-const fileUploadService = require("../../_legacy/services/uploads/fileUploadService");
+const catchAsync = require("../../../core/utils/api/catchAsync");
+const AppError = require("../../../core/utils/api/appError");
+const factory = require("../../../core/utils/api/handlerFactory");
+const { runInTransaction } = require("../../../core/utils/db/runInTransaction");
+const fileUploadService = require("../../uploads/fileUploadService");
 const cloudinary = require("cloudinary").v2;
 const { invalidateOpeningBalance } = require("../../accounting/core/ledgerCache.service");
-const StockValidationService = require('../../_legacy/services/stockValidationService'); // Ensure correct path
-
+const StockValidationService = require('./stockValidationService'); // Ensure correct path
+const imageUploadService = require('../../../modules/uploads/imageUploadService');
 /* ======================================================
    HELPER: Get or Init Account
 ====================================================== */
@@ -22,132 +22,464 @@ async function getOrInitAccount(orgId, type, name, code, session) {
   let account = await Account.findOne({ organizationId: orgId, code }).session(session);
   if (!account) {
     try {
-        account = (await Account.create([{
-            organizationId: orgId, name, code, type, isGroup: false, cachedBalance: 0
-        }], { session, ordered: true }))[0];
+      account = (await Account.create([{
+        organizationId: orgId, name, code, type, isGroup: false, cachedBalance: 0
+      }], { session, ordered: true }))[0];
     } catch (err) {
-        // Handle race condition
-        if (err.code === 11000) account = await Account.findOne({ organizationId: orgId, code }).session(session);
-        else throw err;
+      // Handle race condition
+      if (err.code === 11000) account = await Account.findOne({ organizationId: orgId, code }).session(session);
+      else throw err;
     }
   }
   return account;
 }
 
-/* ======================================================
-   HELPER: Atomic Stock Update (Prevents WriteConflict)
-====================================================== */
 async function updateStockAtomically(items, branchId, orgId, type = 'increment', session) {
-    for (const item of items) {
-        const adjustment = type === 'increment' ? item.quantity : -item.quantity;
-        
-        const update = { $inc: { "inventory.$.quantity": adjustment } };
-        
-        // If purchasing, update the purchase price
-        if (type === 'increment' && item.purchasePrice > 0) {
-            update.$set = { purchasePrice: item.purchasePrice };
-        }
+  // Use Promise.all to run all updates in parallel (Performance Fix)
+  await Promise.all(items.map(async (item) => {
+    const adjustment = type === 'increment' ? item.quantity : -item.quantity;
 
-        const result = await Product.findOneAndUpdate(
-            { 
-                _id: item.productId, 
-                organizationId: orgId,
-                "inventory.branchId": branchId 
-            },
-            update,
-            { session, new: true }
-        );
+    // 1. Prepare the Update (Increment logic)
+    const updateOp = {
+      $inc: { "inventory.$.quantity": adjustment }
+    };
 
-        // If product exists but inventory doc doesn't, we need to push it
-        if (!result) {
-            const product = await Product.findById(item.productId).session(session);
-            if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
-            
-            // Add branch inventory if missing
-            await Product.updateOne(
-                { _id: item.productId },
-                { 
-                    $push: { 
-                        inventory: { 
-                            branchId: branchId, 
-                            quantity: type === 'increment' ? item.quantity : 0 
-                        } 
-                    } 
-                },
-                { session }
-            );
-        }
+    // Update purchase price ONLY on increment (receiving goods)
+    if (type === 'increment' && item.purchasePrice > 0) {
+      updateOp.$set = { purchasePrice: item.purchasePrice };
     }
-}
 
+    // 2. Try to Update Existing Branch Inventory
+    const result = await Product.findOneAndUpdate(
+      {
+        _id: item.productId,
+        organizationId: orgId, // Tenancy Check
+        "inventory.branchId": branchId
+      },
+      updateOp,
+      {
+        session,
+        new: true,
+        runValidators: true // CRITICAL: Prevents negative stock
+      }
+    );
+
+    // 3. Fallback: If Product exists but Branch Inventory does not
+    if (!result) {
+      // Check if product actually exists (to avoid phantom updates)
+      const productExists = await Product.exists({ _id: item.productId, organizationId: orgId }).session(session);
+      if (!productExists) throw new AppError(`Product ${item.productId} not found`, 404);
+
+      // Prepare the Push Operation
+      const pushOp = {
+        $push: {
+          inventory: {
+            branchId: branchId,
+            quantity: type === 'increment' ? item.quantity : 0
+          }
+        }
+      };
+
+      // BUG FIX: Update price even if it's a new inventory entry
+      if (type === 'increment' && item.purchasePrice > 0) {
+        pushOp.$set = { purchasePrice: item.purchasePrice };
+      }
+
+      await Product.updateOne(
+        { _id: item.productId, organizationId: orgId },
+        pushOp,
+        { session, runValidators: true }
+      );
+    }
+  }));
+}
+// /* ======================================================
+//    1. CREATE PURCHASE (Optimized)
+// ====================================================== */
+// exports.createPurchase = catchAsync(async (req, res, next) => {
+//   const { supplierId, invoiceNumber, purchaseDate, dueDate, notes, status } = req.body;
+
+//   // 1. Parse Items
+//   let items = req.body.items;
+//   if (typeof items === "string") items = JSON.parse(items);
+//   if (!supplierId || !items?.length) return next(new AppError("Supplier and items are required", 400));
+
+//   // 2. Fetch Products efficiently (Batch Query)
+//   const productIds = items.map(i => i.productId);
+//   const products = await Product.find({
+//     _id: { $in: productIds },
+//     organizationId: req.user.organizationId
+//   }).select('name');
+
+//   const productMap = new Map(products.map(p => [p._id.toString(), p]));
+
+//   // 3. Enrich & Calculate
+//   let subTotal = 0, totalTax = 0, totalDiscount = 0;
+
+//   const enrichedItems = items.map((item) => {
+//     const product = productMap.get(item.productId);
+//     if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
+
+//     const qty = Number(item.quantity);
+//     const price = Number(item.purchasePrice);
+//     const discount = Number(item.discount || 0);
+//     const taxRate = Number(item.taxRate || 0);
+
+//     const itemTotal = price * qty;
+//     const taxableAmount = itemTotal - discount;
+//     const taxAmount = (taxableAmount * taxRate) / 100;
+
+//     subTotal += itemTotal;
+//     totalDiscount += discount;
+//     totalTax += taxAmount;
+
+//     return {
+//       ...item,
+//       name: product.name, // Name from DB
+//       productId: item.productId,
+//       quantity: qty,
+//       purchasePrice: price,
+//       taxRate: taxRate,
+//       discount: discount
+//     };
+//   });
+
+//   const grandTotal = subTotal + totalTax - totalDiscount;
+//   const paidAmount = Number(req.body.paidAmount) || 0;
+
+//   // Determine Payment Status
+//   let paymentStatus = 'unpaid';
+//   if (paidAmount > 0) paymentStatus = paidAmount >= grandTotal ? 'paid' : 'partial';
+
+//   await runInTransaction(async (session) => {
+//     // 4. Handle File Uploads
+//     const attachedFiles = [];
+//     if (req.files?.length) {
+//       for (const f of req.files) {
+//         attachedFiles.push(await fileUploadService.uploadFile(f.buffer, "purchases"));
+//       }
+//     }
+
+//     // 5. Create Purchase
+//     const [purchase] = await Purchase.create([{
+//       organizationId: req.user.organizationId,
+//       branchId: req.user.branchId,
+//       supplierId,
+//       invoiceNumber,
+//       purchaseDate: purchaseDate || new Date(),
+//       dueDate,
+//       items: enrichedItems,
+//       subTotal, totalTax, totalDiscount, grandTotal,
+//       paidAmount,
+//       balanceAmount: grandTotal - paidAmount,
+//       paymentStatus,
+//       status: status || "received",
+//       notes,
+//       attachedFiles,
+//       createdBy: req.user._id
+//     }], { session, ordered: true });
+
+//     // 6. Update Inventory
+//     await updateStockAtomically(enrichedItems, req.user.branchId, req.user.organizationId, 'increment', session);
+
+//     // 7. Update Supplier (Increase Liability by FULL amount)
+//     await Supplier.findByIdAndUpdate(
+//       supplierId,
+//       { $inc: { outstandingBalance: purchase.grandTotal } },
+//       { session }
+//     );
+//     // 8. Record Payment (If Initial Pay)
+//     // if (paidAmount > 0) {
+//     //     const payment = (await Payment.create([{
+//     //         organizationId: req.user.organizationId,
+//     //         branchId: req.user.branchId,
+//     //         type: 'outflow',
+//     //         supplierId: supplierId,
+//     //         purchaseId: purchase._id,
+//     //         paymentDate: purchase.purchaseDate,
+//     //         amount: paidAmount,
+//     //         paymentMethod: req.body.paymentMethod || 'cash',
+//     //         transactionMode: 'manual',
+//     //         status: 'completed',
+//     //         remarks: `Initial Payment for ${invoiceNumber}`,
+//     //         createdBy: req.user._id
+//     //     }], { session, ordered: true }))[0];
+//     if (paidAmount > 0) {
+//       const payment = (await Payment.create([{
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         type: 'outflow',
+//         supplierId: supplierId,
+//         purchaseId: purchase._id,
+//         paymentDate: purchase.purchaseDate,
+//         amount: paidAmount,
+//         paymentMethod: req.body.paymentMethod || 'cash',
+//         transactionMode: 'manual',
+//         status: 'completed',
+//         remarks: `Initial Payment for ${invoiceNumber}`,
+//         createdBy: req.user._id
+//       }], { session, ordered: true }))[0];
+
+//       // Decrease Supplier Liability for the payment
+//       await Supplier.findByIdAndUpdate(
+//         supplierId,
+//         { $inc: { outstandingBalance: -paidAmount } },
+//         { session }
+//       );
+//       // Accounting: Dr AP, Cr Asset
+//       const assetAccName = req.body.paymentMethod === 'bank' ? 'Bank' : 'Cash';
+//       const assetAccCode = req.body.paymentMethod === 'bank' ? '1002' : '1001';
+
+//       const assetAcc = await getOrInitAccount(req.user.organizationId, "asset", assetAccName, assetAccCode, session);
+//       const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
+
+//       await AccountEntry.create([
+//         {
+//           organizationId: req.user.organizationId,
+//           branchId: req.user.branchId,
+//           accountId: apAcc._id, // Dr AP
+//           debit: paidAmount, credit: 0,
+//           referenceType: "payment", referenceId: payment._id,
+//           supplierId, createdBy: req.user._id,
+//           description: `Payment for Purchase ${invoiceNumber}`
+//         },
+//         {
+//           organizationId: req.user.organizationId,
+//           branchId: req.user.branchId,
+//           accountId: assetAcc._id, // Cr Asset
+//           debit: 0, credit: paidAmount,
+//           referenceType: "payment", referenceId: payment._id,
+//           supplierId, createdBy: req.user._id,
+//           description: `Payment for Purchase ${invoiceNumber}`
+//         }
+//       ], { session, ordered: true });
+//     }
+
+//     // 9. Purchase Accounting: Dr Inventory, Cr AP
+//     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
+//     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
+
+//     await AccountEntry.create([
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: inventoryAcc._id, // Dr Inventory
+//         debit: purchase.grandTotal, credit: 0,
+//         referenceType: "purchase", referenceId: purchase._id,
+//         supplierId, createdBy: req.user._id, description: `Purchase: ${invoiceNumber}`
+//       },
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: apAcc._id, // Cr AP
+//         debit: 0, credit: purchase.grandTotal,
+//         referenceType: "purchase", referenceId: purchase._id,
+//         supplierId, createdBy: req.user._id, description: `Bill: ${invoiceNumber}`
+//       }
+//     ], { session, ordered: true });
+
+//   }, 3, { action: "CREATE_PURCHASE", userId: req.user._id });
+
+//   res.status(201).json({ status: "success", message: "Purchase recorded successfully" });
+// });
+// /* ======================================================
+//    2. UPDATE PURCHASE (FULL REVERSAL + REBOOK)
+// ====================================================== */
+// exports.updatePurchase = catchAsync(async (req, res, next) => {
+//   const updates = req.body;
+//   let updatedPurchase;
+
+//   // Handle files
+//   const newFiles = [];
+//   if (req.files?.length) {
+//     for (const f of req.files) newFiles.push(await fileUploadService.uploadFile(f.buffer, "purchases"));
+//   }
+
+//   await runInTransaction(async (session) => {
+//     const oldPurchase = await Purchase.findOne({
+//       _id: req.params.id,
+//       organizationId: req.user.organizationId
+//     }).session(session);
+
+//     if (!oldPurchase) throw new AppError("Purchase not found", 404);
+//     if (oldPurchase.status === "cancelled") throw new AppError("Cancelled purchase cannot be edited", 400);
+
+//     if (newFiles.length) updates.attachedFiles = [...oldPurchase.attachedFiles, ...newFiles];
+
+//     // Non-financial updates
+//     const financialChange = updates.items || updates.tax || updates.discount;
+//     if (!financialChange) {
+//       updatedPurchase = await Purchase.findByIdAndUpdate(oldPurchase._id, updates, { new: true, session });
+//       return;
+//     }
+
+//     // A. REVERSE EVERYTHING
+//     // 1. Restore Stock (Take back what we bought)
+//     await updateStockAtomically(oldPurchase.items, oldPurchase.branchId, req.user.organizationId, 'decrement', session);
+
+//     // 2. Reverse Supplier Balance
+//     await Supplier.findByIdAndUpdate(
+//       oldPurchase.supplierId,
+//       { $inc: { outstandingBalance: -(oldPurchase.grandTotal - oldPurchase.paidAmount) } },
+//       { session }
+//     );
+
+//     // 3. Delete old Accounting (Simple approach: delete & recreate)
+//     // Note: Deleting payments related to this purchase might be dangerous if they were reconciled.
+//     // Ideally, block financial updates if payments exist, or handle gracefully.
+//     if (oldPurchase.paidAmount > 0) {
+//       throw new AppError("Cannot edit financial details of a purchase that has payments. Cancel and recreate.", 400);
+//     }
+
+//     await AccountEntry.deleteMany({
+//       referenceId: oldPurchase._id,
+//       referenceType: "purchase"
+//     }).session(session);
+
+//     // B. APPLY NEW CHANGES
+//     let newItems = updates.items;
+//     if (typeof newItems === 'string') newItems = JSON.parse(newItems);
+
+//     // Enrich
+//     const enrichedItems = await Promise.all(newItems.map(async (item) => {
+//       const product = await Product.findById(item.productId).select('name');
+//       return { ...item, name: product.name };
+//     }));
+
+//     // Save Purchase
+//     Object.assign(oldPurchase, updates, { items: enrichedItems });
+//     updatedPurchase = await oldPurchase.save({ session });
+
+//     // C. APPLY NEW STOCK
+//     await updateStockAtomically(enrichedItems, req.user.branchId, req.user.organizationId, 'increment', session);
+
+//     // D. UPDATE SUPPLIER
+//     await Supplier.findByIdAndUpdate(
+//       updatedPurchase.supplierId,
+//       { $inc: { outstandingBalance: updatedPurchase.grandTotal } }, // Assume unpaid for simplicity in edit
+//       { session }
+//     );
+
+//     // E. NEW ACCOUNTING
+//     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
+//     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
+
+//     await AccountEntry.create([
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: inventoryAcc._id,
+//         date: updatedPurchase.purchaseDate,
+//         debit: updatedPurchase.grandTotal,
+//         credit: 0,
+//         description: `Purchase Updated: ${updatedPurchase.invoiceNumber}`,
+//         referenceType: "purchase",
+//         referenceId: updatedPurchase._id,
+//         supplierId: updatedPurchase.supplierId,
+//         createdBy: req.user._id
+//       },
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: apAcc._id,
+//         supplierId: updatedPurchase.supplierId,
+//         date: updatedPurchase.purchaseDate,
+//         debit: 0,
+//         credit: updatedPurchase.grandTotal,
+//         description: `Bill Updated: ${updatedPurchase.invoiceNumber}`,
+//         referenceType: "purchase",
+//         referenceId: updatedPurchase._id,
+//         createdBy: req.user._id
+//       }
+//     ], { session, ordered: true });
+
+//   }, 3, { action: "UPDATE_PURCHASE", userId: req.user._id });
+
+//   res.status(200).json({ status: "success", data: { purchase: updatedPurchase } });
+// });
 /* ======================================================
-   1. CREATE PURCHASE
+   1. CREATE PURCHASE (Optimized & Asset-Tracked)
 ====================================================== */
 exports.createPurchase = catchAsync(async (req, res, next) => {
   const { supplierId, invoiceNumber, purchaseDate, dueDate, notes, status } = req.body;
-  
-  // 1. Parse & Validate Items (Outside Transaction)
+
+  // 1. Parse Items
   let items = req.body.items;
   if (typeof items === "string") items = JSON.parse(items);
   if (!supplierId || !items?.length) return next(new AppError("Supplier and items are required", 400));
 
-  // Enrich items & Calculate Totals logic
-  let subTotal = 0;
-  let totalTax = 0;
-  let totalDiscount = 0;
+  // 2. Fetch Products efficiently (Batch Query)
+  const productIds = items.map(i => i.productId);
+  const products = await Product.find({
+    _id: { $in: productIds },
+    organizationId: req.user.organizationId
+  }).select('name');
 
-  const enrichedItems = await Promise.all(items.map(async (item) => {
-      const product = await Product.findById(item.productId).select('name');
-      if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
-      
-      const qty = Number(item.quantity);
-      const price = Number(item.purchasePrice);
-      const discount = Number(item.discount || 0);
-      const taxRate = Number(item.taxRate || 0);
+  const productMap = new Map(products.map(p => [p._id.toString(), p]));
 
-      // Calculate totals for this item
-      const itemTotal = price * qty;
-      const taxableAmount = itemTotal - discount;
-      const taxAmount = (taxableAmount * taxRate) / 100;
+  // 3. Enrich & Calculate
+  let subTotal = 0, totalTax = 0, totalDiscount = 0;
 
-      subTotal += itemTotal;
-      totalDiscount += discount;
-      totalTax += taxAmount;
+  const enrichedItems = items.map((item) => {
+    const product = productMap.get(item.productId);
+    if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
 
-      return { 
-          ...item, 
-          name: product.name,
-          productId: item.productId,
-          quantity: qty,
-          purchasePrice: price,
-          taxRate: taxRate,
-          discount: discount
-      };
-  }));
+    const qty = Number(item.quantity);
+    const price = Number(item.purchasePrice);
+    const discount = Number(item.discount || 0);
+    const taxRate = Number(item.taxRate || 0);
+
+    const itemTotal = price * qty;
+    const taxableAmount = itemTotal - discount;
+    const taxAmount = (taxableAmount * taxRate) / 100;
+
+    subTotal += itemTotal;
+    totalDiscount += discount;
+    totalTax += taxAmount;
+
+    return {
+      ...item,
+      name: product.name, // Name from DB
+      productId: item.productId,
+      quantity: qty,
+      purchasePrice: price,
+      taxRate: taxRate,
+      discount: discount
+    };
+  });
 
   const grandTotal = subTotal + totalTax - totalDiscount;
   const paidAmount = Number(req.body.paidAmount) || 0;
 
-  // Determine correct Payment Status
+  // Determine Payment Status
   let paymentStatus = 'unpaid';
-  if (paidAmount > 0) {
-      if (paidAmount >= grandTotal) {
-          paymentStatus = 'paid';
-      } else {
-          paymentStatus = 'partial';
-      }
-  }
+  if (paidAmount > 0) paymentStatus = paidAmount >= grandTotal ? 'paid' : 'partial';
 
   await runInTransaction(async (session) => {
-    // 2. Handle File Uploads
-    const attachedFiles = [];
+    
+    // ======================================================
+    // 4. Handle File Uploads (MASTER ASSET SYSTEM INTEGRATION)
+    // ======================================================
+    let attachedFiles = [];
     if (req.files?.length) {
-      for (const f of req.files) {
-        attachedFiles.push(await fileUploadService.uploadFile(f.buffer, "purchases"));
-      }
+      // Upload concurrently & index in Asset DB
+      const uploadedAssets = await imageUploadService.uploadMultipleAndRecord(
+        req.files, 
+        req.user, 
+        'invoice'
+      );
+      
+      // Map to Purchase schema array
+      attachedFiles = uploadedAssets.map(asset => ({
+        url: asset.url,
+        public_id: asset.publicId,
+        format: asset.mimeType,
+        bytes: asset.size,
+        assetId: asset._id // The critical link
+      }));
     }
 
-    // 3. Create Purchase Document
+    // 5. Create Purchase
     const [purchase] = await Purchase.create([{
       organizationId: req.user.organizationId,
       branchId: req.user.branchId,
@@ -156,88 +488,80 @@ exports.createPurchase = catchAsync(async (req, res, next) => {
       purchaseDate: purchaseDate || new Date(),
       dueDate,
       items: enrichedItems,
-      
-      // Totals
-      subTotal,
-      totalTax,
-      totalDiscount,
-      grandTotal,
-
-      // Payment Info
+      subTotal, totalTax, totalDiscount, grandTotal,
       paidAmount,
       balanceAmount: grandTotal - paidAmount,
-      paymentStatus: paymentStatus,
-      
+      paymentStatus,
       status: status || "received",
       notes,
-      attachedFiles,
+      attachedFiles, // Now uses the formatted assets
       createdBy: req.user._id
     }], { session, ordered: true });
 
-    // 4. Update Inventory (Atomic)
+    // 6. Update Inventory
     await updateStockAtomically(enrichedItems, req.user.branchId, req.user.organizationId, 'increment', session);
 
-    // 5. Update Supplier Balance
-    // Increase balance by (Grand Total - Paid Amount)
+    // 7. Update Supplier (Increase Liability by FULL amount)
     await Supplier.findByIdAndUpdate(
       supplierId,
-      { $inc: { outstandingBalance: purchase.grandTotal - paidAmount } },
+      { $inc: { outstandingBalance: purchase.grandTotal } },
       { session }
     );
 
-    // 6. Record Payment (If any paid initially)
+    // 8. Record Payment (If Initial Pay)
     if (paidAmount > 0) {
-        const payment = (await Payment.create([{
-            organizationId: req.user.organizationId,
-            branchId: req.user.branchId,
-            type: 'outflow', // Money leaving
-            supplierId: supplierId,
-            purchaseId: purchase._id,
-            paymentDate: purchase.purchaseDate,
-            amount: paidAmount,
-            paymentMethod: req.body.paymentMethod || 'cash',
-            transactionMode: 'manual',
-            status: 'completed',
-            remarks: `Payment for Purchase ${invoiceNumber}`,
-            createdBy: req.user._id
-        }], { session, ordered: true }))[0];
+      const payment = (await Payment.create([{
+        organizationId: req.user.organizationId,
+        branchId: req.user.branchId,
+        type: 'outflow',
+        supplierId: supplierId,
+        purchaseId: purchase._id,
+        paymentDate: purchase.purchaseDate,
+        amount: paidAmount,
+        paymentMethod: req.body.paymentMethod || 'cash',
+        transactionMode: 'manual',
+        status: 'completed',
+        remarks: `Initial Payment for ${invoiceNumber}`,
+        createdBy: req.user._id
+      }], { session, ordered: true }))[0];
 
-        // 7a. Payment Accounting (Dr AP, Cr Cash/Bank)
-        const assetAccName = req.body.paymentMethod === 'bank' ? 'Bank' : 'Cash';
-        const assetAccCode = req.body.paymentMethod === 'bank' ? '1002' : '1001';
-        
-        const assetAcc = await getOrInitAccount(req.user.organizationId, "asset", assetAccName, assetAccCode, session);
-        const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
+      // Decrease Supplier Liability for the payment
+      await Supplier.findByIdAndUpdate(
+        supplierId,
+        { $inc: { outstandingBalance: -paidAmount } },
+        { session }
+      );
 
-        await AccountEntry.create([
-            {
-                organizationId: req.user.organizationId,
-                branchId: req.user.branchId,
-                accountId: apAcc._id, // Dr AP (Liability decreases)
-                debit: paidAmount,
-                credit: 0,
-                description: `Payment for Purchase ${invoiceNumber}`,
-                referenceType: "payment",
-                referenceId: payment._id,
-                supplierId,
-                createdBy: req.user._id
-            },
-            {
-                organizationId: req.user.organizationId,
-                branchId: req.user.branchId,
-                accountId: assetAcc._id, // Cr Asset (Cash decreases)
-                debit: 0,
-                credit: paidAmount,
-                description: `Payment for Purchase ${invoiceNumber}`,
-                referenceType: "payment",
-                referenceId: payment._id,
-                supplierId,
-                createdBy: req.user._id
-            }
-        ], { session, ordered: true });
+      // Accounting: Dr AP, Cr Asset
+      const assetAccName = req.body.paymentMethod === 'bank' ? 'Bank' : 'Cash';
+      const assetAccCode = req.body.paymentMethod === 'bank' ? '1002' : '1001';
+
+      const assetAcc = await getOrInitAccount(req.user.organizationId, "asset", assetAccName, assetAccCode, session);
+      const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
+
+      await AccountEntry.create([
+        {
+          organizationId: req.user.organizationId,
+          branchId: req.user.branchId,
+          accountId: apAcc._id, // Dr AP
+          debit: paidAmount, credit: 0,
+          referenceType: "payment", referenceId: payment._id,
+          supplierId, createdBy: req.user._id,
+          description: `Payment for Purchase ${invoiceNumber}`
+        },
+        {
+          organizationId: req.user.organizationId,
+          branchId: req.user.branchId,
+          accountId: assetAcc._id, // Cr Asset
+          debit: 0, credit: paidAmount,
+          referenceType: "payment", referenceId: payment._id,
+          supplierId, createdBy: req.user._id,
+          description: `Payment for Purchase ${invoiceNumber}`
+        }
+      ], { session, ordered: true });
     }
 
-    // 7b. Purchase Accounting (Dr Inventory, Cr AP - Full Amount)
+    // 9. Purchase Accounting: Dr Inventory, Cr AP
     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
 
@@ -246,35 +570,25 @@ exports.createPurchase = catchAsync(async (req, res, next) => {
         organizationId: req.user.organizationId,
         branchId: req.user.branchId,
         accountId: inventoryAcc._id, // Dr Inventory
-        debit: purchase.grandTotal,
-        credit: 0,
-        description: `Purchase: ${invoiceNumber}`,
-        referenceType: "purchase",
-        referenceId: purchase._id,
-        supplierId,
-        createdBy: req.user._id
+        debit: purchase.grandTotal, credit: 0,
+        referenceType: "purchase", referenceId: purchase._id,
+        supplierId, createdBy: req.user._id, description: `Purchase: ${invoiceNumber}`
       },
       {
         organizationId: req.user.organizationId,
         branchId: req.user.branchId,
         accountId: apAcc._id, // Cr AP
-        debit: 0,
-        credit: purchase.grandTotal,
-        description: `Bill: ${invoiceNumber}`,
-        referenceType: "purchase",
-        referenceId: purchase._id,
-        supplierId,
-        createdBy: req.user._id
+        debit: 0, credit: purchase.grandTotal,
+        referenceType: "purchase", referenceId: purchase._id,
+        supplierId, createdBy: req.user._id, description: `Bill: ${invoiceNumber}`
       }
     ], { session, ordered: true });
 
   }, 3, { action: "CREATE_PURCHASE", userId: req.user._id });
 
-  res.status(201).json({ 
-    status: "success", 
-    message: "Purchase recorded successfully"
-  });
+  res.status(201).json({ status: "success", message: "Purchase recorded successfully" });
 });
+
 
 /* ======================================================
    2. UPDATE PURCHASE (FULL REVERSAL + REBOOK)
@@ -283,10 +597,24 @@ exports.updatePurchase = catchAsync(async (req, res, next) => {
   const updates = req.body;
   let updatedPurchase;
 
-  // Handle files
-  const newFiles = [];
+  // ======================================================
+  // Handle files (MASTER ASSET SYSTEM INTEGRATION)
+  // Processed before transaction to avoid holding locks during Cloudinary network calls
+  // ======================================================
+  let newFiles = [];
   if (req.files?.length) {
-    for (const f of req.files) newFiles.push(await fileUploadService.uploadFile(f.buffer, "purchases"));
+    const uploadedAssets = await imageUploadService.uploadMultipleAndRecord(
+      req.files, 
+      req.user, 
+      'invoice'
+    );
+    newFiles = uploadedAssets.map(asset => ({
+      url: asset.url,
+      public_id: asset.publicId,
+      format: asset.mimeType,
+      bytes: asset.size,
+      assetId: asset._id
+    }));
   }
 
   await runInTransaction(async (session) => {
@@ -298,6 +626,7 @@ exports.updatePurchase = catchAsync(async (req, res, next) => {
     if (!oldPurchase) throw new AppError("Purchase not found", 404);
     if (oldPurchase.status === "cancelled") throw new AppError("Cancelled purchase cannot be edited", 400);
 
+    // Append new tracked files
     if (newFiles.length) updates.attachedFiles = [...oldPurchase.attachedFiles, ...newFiles];
 
     // Non-financial updates
@@ -319,10 +648,8 @@ exports.updatePurchase = catchAsync(async (req, res, next) => {
     );
 
     // 3. Delete old Accounting (Simple approach: delete & recreate)
-    // Note: Deleting payments related to this purchase might be dangerous if they were reconciled.
-    // Ideally, block financial updates if payments exist, or handle gracefully.
     if (oldPurchase.paidAmount > 0) {
-        throw new AppError("Cannot edit financial details of a purchase that has payments. Cancel and recreate.", 400);
+      throw new AppError("Cannot edit financial details of a purchase that has payments. Cancel and recreate.", 400);
     }
 
     await AccountEntry.deleteMany({
@@ -333,11 +660,11 @@ exports.updatePurchase = catchAsync(async (req, res, next) => {
     // B. APPLY NEW CHANGES
     let newItems = updates.items;
     if (typeof newItems === 'string') newItems = JSON.parse(newItems);
-    
+
     // Enrich
     const enrichedItems = await Promise.all(newItems.map(async (item) => {
-        const product = await Product.findById(item.productId).select('name');
-        return { ...item, name: product.name };
+      const product = await Product.findById(item.productId).select('name');
+      return { ...item, name: product.name };
     }));
 
     // Save Purchase
@@ -393,63 +720,118 @@ exports.updatePurchase = catchAsync(async (req, res, next) => {
 });
 
 /* ======================================================
-   3. CANCEL PURCHASE
+   3. CANCEL PURCHASE (With Stock Validation)
 ====================================================== */
 exports.cancelPurchase = catchAsync(async (req, res, next) => {
   const { reason } = req.body;
   if (!reason) return next(new AppError("Cancellation reason is required", 400));
 
   await runInTransaction(async (session) => {
-    const purchase = await Purchase.findOne({ _id: req.params.id, organizationId: req.user.organizationId }).session(session);
+    // 1. Fetch Purchase
+    const purchase = await Purchase.findOne({
+      _id: req.params.id,
+      organizationId: req.user.organizationId
+    }).session(session);
+
     if (!purchase) throw new AppError("Purchase not found", 404);
     if (purchase.status === "cancelled") throw new AppError("Already cancelled", 400);
-    if (purchase.paidAmount > 0) throw new AppError("Cannot cancel purchase with payments. Refund first.", 400);
 
-    // 1. Reverse Stock
-    await updateStockAtomically(purchase.items, purchase.branchId, req.user.organizationId, 'decrement', session);
+    // Check for payments
+    if (purchase.paidAmount > 0) {
+      throw new AppError("Cannot cancel purchase with payments. Please delete payments first.", 400);
+    }
 
-    // 2. Update Supplier
-    await Supplier.findByIdAndUpdate(
-      purchase.supplierId,
-      { $inc: { outstandingBalance: -purchase.grandTotal } },
-      { session }
-    );
+    // ============================================================
+    // 2. CRITICAL SAFETY CHECK: Validate Stock Availability
+    // ============================================================
+    // If the status is 'received', it means we added stock previously.
+    // We must ensure that stock still exists before removing it.
+    if (purchase.status === 'received') {
+      const productIds = purchase.items.map(i => i.productId);
 
-    // 3. Accounting (Reversal)
-    const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
-    const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
+      // Fetch current stock levels for these products
+      const products = await Product.find({
+        _id: { $in: productIds },
+        organizationId: req.user.organizationId
+      }).session(session);
 
-    await AccountEntry.create([
-      {
-        organizationId: req.user.organizationId,
-        branchId: req.user.branchId,
-        accountId: apAcc._id,
-        supplierId: purchase.supplierId,
-        date: new Date(),
-        debit: purchase.grandTotal,
-        credit: 0,
-        description: `Purchase Cancelled: ${reason}`,
-        referenceType: "purchase_return",
-        referenceId: purchase._id,
-        createdBy: req.user._id
-      },
-      {
-        organizationId: req.user.organizationId,
-        branchId: req.user.branchId,
-        accountId: inventoryAcc._id,
-        date: new Date(),
-        debit: 0,
-        credit: purchase.grandTotal,
-        description: `Inventory Returned: ${purchase.invoiceNumber}`,
-        referenceType: "purchase_return",
-        referenceId: purchase._id,
-        createdBy: req.user._id
+      const productMap = new Map(products.map(p => [p._id.toString(), p]));
+
+      for (const item of purchase.items) {
+        const product = productMap.get(item.productId.toString());
+
+        if (!product) {
+          throw new AppError(`Cannot cancel: Product '${item.name}' no longer exists in system`, 400);
+        }
+
+        // Find stock for this specific branch
+        const branchInventory = product.inventory?.find(
+          inv => inv.branchId.toString() === purchase.branchId.toString()
+        );
+
+        const currentQty = branchInventory ? branchInventory.quantity : 0;
+
+        // CHECK: Do we have enough to return?
+        if (currentQty < item.quantity) {
+          throw new AppError(
+            `Cannot cancel purchase. Product '${item.name}' has insufficient stock. 
+             Required to return: ${item.quantity}, Available: ${currentQty}. 
+             (Items may have been sold or transferred)`,
+            400
+          );
+        }
       }
-    ], { session, ordered: true });
+    }
+    // ============================================================
 
-    // 4. Update Status
+    // 3. Reverse Stock (Safe to proceed now)
+    // Only decrement if status was 'received'. If 'draft', no stock was ever added.
+    if (purchase.status === 'received') {
+      await updateStockAtomically(purchase.items, purchase.branchId, req.user.organizationId, 'decrement', session);
+
+      // 4. Reverse Supplier Balance
+      await Supplier.findByIdAndUpdate(
+        purchase.supplierId,
+        { $inc: { outstandingBalance: -purchase.grandTotal } },
+        { session }
+      );
+
+      // 5. Accounting (Reversal)
+      const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
+      const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
+
+      await AccountEntry.create([
+        {
+          organizationId: req.user.organizationId,
+          branchId: req.user.branchId,
+          accountId: apAcc._id, // Debit Liability (Reduce Debt)
+          supplierId: purchase.supplierId,
+          date: new Date(),
+          debit: purchase.grandTotal,
+          credit: 0,
+          description: `Purchase Cancelled: ${reason}`,
+          referenceType: "purchase_return",
+          referenceId: purchase._id,
+          createdBy: req.user._id
+        },
+        {
+          organizationId: req.user.organizationId,
+          branchId: req.user.branchId,
+          accountId: inventoryAcc._id, // Credit Asset (Reduce Inventory Value)
+          date: new Date(),
+          debit: 0,
+          credit: purchase.grandTotal,
+          description: `Inventory Returned: ${purchase.invoiceNumber}`,
+          referenceType: "purchase_return",
+          referenceId: purchase._id,
+          createdBy: req.user._id
+        }
+      ], { session, ordered: true });
+    }
+
+    // 6. Update Status
     purchase.status = "cancelled";
-    purchase.notes = `${purchase.notes || ""}\nCancelled: ${reason}`;
+    purchase.notes = `${purchase.notes || ""}\nCancelled on ${new Date().toLocaleDateString()}: ${reason}`;
     await purchase.save({ session });
 
   }, 3, { action: "CANCEL_PURCHASE", userId: req.user._id });
@@ -457,104 +839,23 @@ exports.cancelPurchase = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", message: "Purchase cancelled successfully" });
 });
 
+
 /* ======================================================
-   4. RECORD PAYMENT (After Purchase)
+    5. PARTIAL RETURN (Debit Note)
 ====================================================== */
-exports.recordPayment = catchAsync(async (req, res, next) => {
-  const { amount, paymentMethod, date, reference, notes } = req.body;
-  if (!amount || amount <= 0) return next(new AppError("Valid payment amount is required", 400));
-
-  await runInTransaction(async (session) => {
-    const purchase = await Purchase.findOne({
-      _id: req.params.id,
-      organizationId: req.user.organizationId
-    }).session(session);
-
-    if (!purchase) throw new AppError("Purchase not found", 404);
-    if (purchase.status === "cancelled") throw new AppError("Cannot record payment for cancelled purchase", 400);
-
-    const totalPaid = purchase.paidAmount + amount;
-    if (totalPaid > purchase.grandTotal) throw new AppError("Payment exceeds purchase total", 400);
-
-    // 1. Update Purchase
-    purchase.paidAmount = totalPaid;
-    purchase.balanceAmount = purchase.grandTotal - totalPaid;
-    purchase.paymentStatus = totalPaid === purchase.grandTotal ? "paid" : "partial";
-    if (paymentMethod) purchase.paymentMethod = paymentMethod;
-    await purchase.save({ session });
-
-    // 2. Create Payment Document (Outflow)
-    const payment = (await Payment.create([{
-        organizationId: req.user.organizationId,
-        branchId: req.user.branchId,
-        type: 'outflow',
-        supplierId: purchase.supplierId,
-        purchaseId: purchase._id,
-        paymentDate: date || new Date(),
-        amount: amount,
-        paymentMethod: paymentMethod || 'cash',
-        transactionMode: 'manual',
-        referenceNumber: reference,
-        remarks: notes || `Payment for Purchase ${purchase.invoiceNumber}`,
-        status: 'completed',
-        createdBy: req.user._id
-    }], { session, ordered: true }))[0];
-
-    // 3. Update Supplier Balance
-    await Supplier.findByIdAndUpdate(
-        purchase.supplierId,
-        { $inc: { outstandingBalance: -amount } },
-        { session }
-    );
-
-    // 4. Accounting (Dr AP, Cr Cash/Bank)
-    const accountName = paymentMethod === 'bank' ? "Bank" : "Cash";
-    const accountCode = paymentMethod === 'bank' ? "1002" : "1001";
-    
-    const paymentAccount = await getOrInitAccount(req.user.organizationId, "asset", accountName, accountCode, session);
-    const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
-
-    await AccountEntry.create([
-      {
-        organizationId: req.user.organizationId,
-        branchId: req.user.branchId,
-        accountId: apAcc._id, // Dr AP
-        date: date || new Date(),
-        debit: amount,
-        credit: 0,
-        description: `Payment to Supplier for ${purchase.invoiceNumber}`,
-        referenceType: "payment",
-        referenceId: payment._id,
-        supplierId: purchase.supplierId,
-        createdBy: req.user._id
-      },
-      {
-        organizationId: req.user.organizationId,
-        branchId: req.user.branchId,
-        accountId: paymentAccount._id, // Cr Cash
-        date: date || new Date(),
-        debit: 0,
-        credit: amount,
-        description: `Payment Out: ${reference || ''}`,
-        referenceType: "payment",
-        referenceId: payment._id,
-        supplierId: purchase.supplierId,
-        createdBy: req.user._id
-      }
-    ], { session, ordered: true });
-
-  }, 3, { action: "RECORD_PURCHASE_PAYMENT", userId: req.user._id });
-
-  res.status(200).json({ status: "success", message: "Payment recorded successfully" });
-});
-
-// /* ======================================================
-//    5. PARTIAL RETURN (Debit Note)
-// ====================================================== */
 exports.partialReturn = catchAsync(async (req, res, next) => {
-  const { items, reason } = req.body;
-  if (!items || !items.length || !reason) return next(new AppError("Items and reason required", 400));
+const { items, reason } = req.body;
 
+  // 1. Explicitly validate the payload structure
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return next(new AppError("A valid array of items is required to process a return.", 400));
+  }
+
+  // 2. Explicitly validate the reason (checking for undefined/null/empty string, but allowing '0')
+  if (reason === undefined || reason === null || String(reason).trim() === '') {
+    return next(new AppError("A return reason is required for the audit trail.", 400));
+  }
+  
   await runInTransaction(async (session) => {
     const purchase = await Purchase.findById(req.params.id).session(session);
     if (!purchase) throw new AppError("Purchase not found", 404);
@@ -562,51 +863,71 @@ exports.partialReturn = catchAsync(async (req, res, next) => {
     let totalReturnAmount = 0;
     const returnItems = [];
 
-    // 1. Calculate Refund/Return Totals
+    // 1. Calculate Refund/Return Totals & Validate Stock
     for (const retItem of items) {
-        const originalItem = purchase.items.find(i => String(i.productId) === retItem.productId);
-        if (!originalItem || originalItem.quantity < retItem.quantity) {
-            throw new AppError(`Invalid return quantity for product ${retItem.productId}`, 400);
-        }
-        
-        // Calculate proportional value
-        const itemBasePrice = originalItem.purchasePrice * retItem.quantity;
-        const itemTax = (originalItem.taxRate / 100) * itemBasePrice;
-        const itemTotal = itemBasePrice + itemTax;
-        
-        totalReturnAmount += itemTotal;
-        returnItems.push({
-            productId: retItem.productId,
-            name: originalItem.name,
-            quantity: retItem.quantity,
-            returnPrice: originalItem.purchasePrice,
-            total: itemTotal
-        });
+      
+      // A. Invoice Validation: Did we originally buy this amount on this specific invoice?
+      const originalItem = purchase.items.find(i => String(i.productId) === retItem.productId);
+      if (!originalItem || originalItem.quantity < retItem.quantity) {
+        throw new AppError(`Invalid return quantity for product ${retItem.productId}. Exceeds purchased amount.`, 400);
+      }
 
-        // Reduce qty in purchase doc
-        originalItem.quantity -= retItem.quantity;
+      // B. Physical Validation: Do we still have this amount in the branch inventory right now?
+      const product = await Product.findById(retItem.productId).session(session);
+      if (!product) {
+        throw new AppError(`Product ${originalItem.name} not found in database.`, 404);
+      }
+
+      const branchInventory = product.inventory.find(
+        (inv) => inv.branchId.toString() === purchase.branchId.toString()
+      );
+      const currentStock = branchInventory ? branchInventory.quantity : 0;
+
+      if (currentStock < retItem.quantity) {
+        throw new AppError(
+          `Cannot return ${retItem.quantity} units of "${originalItem.name}". Current branch stock is only ${currentStock}. These items may have already been sold.`,
+          400
+        );
+      }
+
+      // C. Calculate proportional financial value
+      const itemBasePrice = originalItem.purchasePrice * retItem.quantity;
+      const itemTax = (originalItem.taxRate / 100) * itemBasePrice;
+      const itemTotal = itemBasePrice + itemTax;
+
+      totalReturnAmount += itemTotal;
+      returnItems.push({
+        productId: retItem.productId,
+        name: originalItem.name,
+        quantity: retItem.quantity,
+        returnPrice: originalItem.purchasePrice,
+        total: itemTotal
+      });
+
+      // D. Reduce qty in the original purchase document
+      originalItem.quantity -= retItem.quantity;
     }
 
     // 2. Create Purchase Return Document (Audit Trail)
     await PurchaseReturn.create([{
-        organizationId: req.user.organizationId,
-        branchId: req.user.branchId,
-        purchaseId: purchase._id,
-        supplierId: purchase.supplierId,
-        items: returnItems,
-        totalAmount: totalReturnAmount,
-        reason: reason,
-        createdBy: req.user._id
+      organizationId: req.user.organizationId,
+      branchId: req.user.branchId,
+      purchaseId: purchase._id,
+      supplierId: purchase.supplierId,
+      items: returnItems,
+      totalAmount: totalReturnAmount,
+      reason: reason,
+      createdBy: req.user._id
     }], { session, ordered: true });
 
-    // 3. Remove Stock
+    // 3. Remove Stock Atomically
     await updateStockAtomically(returnItems, purchase.branchId, req.user.organizationId, 'decrement', session);
 
     // 4. Reduce Supplier Balance
     await Supplier.findByIdAndUpdate(
-        purchase.supplierId,
-        { $inc: { outstandingBalance: -totalReturnAmount } },
-        { session }
+      purchase.supplierId,
+      { $inc: { outstandingBalance: -totalReturnAmount } },
+      { session }
     );
 
     // 5. Accounting (Dr AP, Cr Inventory)
@@ -614,40 +935,40 @@ exports.partialReturn = catchAsync(async (req, res, next) => {
     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
 
     await AccountEntry.create([
-        {
-            organizationId: req.user.organizationId,
-            branchId: req.user.branchId,
-            accountId: apAcc._id, // Dr AP (We owe less)
-            debit: totalReturnAmount,
-            credit: 0,
-            description: `Partial Return: ${reason}`,
-            referenceType: "purchase_return",
-            referenceId: purchase._id,
-            createdBy: req.user._id
-        },
-        {
-            organizationId: req.user.organizationId,
-            branchId: req.user.branchId,
-            accountId: inventoryAcc._id, // Cr Inventory (Stock reduced)
-            debit: 0,
-            credit: totalReturnAmount,
-            description: `Inventory Returned: ${purchase.invoiceNumber}`,
-            referenceType: "purchase_return",
-            referenceId: purchase._id,
-            createdBy: req.user._id
-        }
+      {
+        organizationId: req.user.organizationId,
+        branchId: req.user.branchId,
+        accountId: apAcc._id, // Dr AP (We owe less)
+        debit: totalReturnAmount,
+        credit: 0,
+        description: `Partial Return: ${reason}`,
+        referenceType: "purchase_return",
+        referenceId: purchase._id,
+        createdBy: req.user._id
+      },
+      {
+        organizationId: req.user.organizationId,
+        branchId: req.user.branchId,
+        accountId: inventoryAcc._id, // Cr Inventory (Stock reduced)
+        debit: 0,
+        credit: totalReturnAmount,
+        description: `Inventory Returned: ${purchase.invoiceNumber}`,
+        referenceType: "purchase_return",
+        referenceId: purchase._id,
+        createdBy: req.user._id
+      }
     ], { session, ordered: true });
 
-    // 6. Update Purchase Document
+    // 6. Update Purchase Document Status
     purchase.grandTotal -= totalReturnAmount;
     purchase.balanceAmount -= totalReturnAmount;
     purchase.notes = (purchase.notes || "") + `\nPartial Return: -${totalReturnAmount} (${reason})`;
-    
-    // Filter out completely returned items
+
+    // Filter out completely returned items so the invoice reflects only what we kept
     purchase.items = purchase.items.filter(i => i.quantity > 0);
-    
+
     if (purchase.items.length === 0) {
-        purchase.status = 'cancelled'; // All items returned
+      purchase.status = 'cancelled'; // All items returned
     }
 
     await purchase.save({ session });
@@ -656,10 +977,216 @@ exports.partialReturn = catchAsync(async (req, res, next) => {
 
   res.status(200).json({ status: "success", message: "Partial return processed successfully" });
 });
+// exports.partialReturn = catchAsync(async (req, res, next) => {
+//   const { items, reason } = req.body;
+//   if (!items || !items.length || !reason) return next(new AppError("Items and reason required", 400));
 
+//   await runInTransaction(async (session) => {
+//     const purchase = await Purchase.findById(req.params.id).session(session);
+//     if (!purchase) throw new AppError("Purchase not found", 404);
+
+//     let totalReturnAmount = 0;
+//     const returnItems = [];
+
+//     // 1. Calculate Refund/Return Totals
+//     for (const retItem of items) {
+//       const originalItem = purchase.items.find(i => String(i.productId) === retItem.productId);
+//       if (!originalItem || originalItem.quantity < retItem.quantity) {
+//         throw new AppError(`Invalid return quantity for product ${retItem.productId}`, 400);
+//       }
+
+//       // Calculate proportional value
+//       const itemBasePrice = originalItem.purchasePrice * retItem.quantity;
+//       const itemTax = (originalItem.taxRate / 100) * itemBasePrice;
+//       const itemTotal = itemBasePrice + itemTax;
+
+//       totalReturnAmount += itemTotal;
+//       returnItems.push({
+//         productId: retItem.productId,
+//         name: originalItem.name,
+//         quantity: retItem.quantity,
+//         returnPrice: originalItem.purchasePrice,
+//         total: itemTotal
+//       });
+
+//       // Reduce qty in purchase doc
+//       originalItem.quantity -= retItem.quantity;
+//     }
+
+//     // 2. Create Purchase Return Document (Audit Trail)
+//     await PurchaseReturn.create([{
+//       organizationId: req.user.organizationId,
+//       branchId: req.user.branchId,
+//       purchaseId: purchase._id,
+//       supplierId: purchase.supplierId,
+//       items: returnItems,
+//       totalAmount: totalReturnAmount,
+//       reason: reason,
+//       createdBy: req.user._id
+//     }], { session, ordered: true });
+
+//     // 3. Remove Stock
+//     await updateStockAtomically(returnItems, purchase.branchId, req.user.organizationId, 'decrement', session);
+
+//     // 4. Reduce Supplier Balance
+//     await Supplier.findByIdAndUpdate(
+//       purchase.supplierId,
+//       { $inc: { outstandingBalance: -totalReturnAmount } },
+//       { session }
+//     );
+
+//     // 5. Accounting (Dr AP, Cr Inventory)
+//     const inventoryAcc = await getOrInitAccount(req.user.organizationId, "asset", "Inventory Asset", "1500", session);
+//     const apAcc = await getOrInitAccount(req.user.organizationId, "liability", "Accounts Payable", "2000", session);
+
+//     await AccountEntry.create([
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: apAcc._id, // Dr AP (We owe less)
+//         debit: totalReturnAmount,
+//         credit: 0,
+//         description: `Partial Return: ${reason}`,
+//         referenceType: "purchase_return",
+//         referenceId: purchase._id,
+//         createdBy: req.user._id
+//       },
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: inventoryAcc._id, // Cr Inventory (Stock reduced)
+//         debit: 0,
+//         credit: totalReturnAmount,
+//         description: `Inventory Returned: ${purchase.invoiceNumber}`,
+//         referenceType: "purchase_return",
+//         referenceId: purchase._id,
+//         createdBy: req.user._id
+//       }
+//     ], { session, ordered: true });
+
+//     // 6. Update Purchase Document
+//     purchase.grandTotal -= totalReturnAmount;
+//     purchase.balanceAmount -= totalReturnAmount;
+//     purchase.notes = (purchase.notes || "") + `\nPartial Return: -${totalReturnAmount} (${reason})`;
+
+//     // Filter out completely returned items
+//     purchase.items = purchase.items.filter(i => i.quantity > 0);
+
+//     if (purchase.items.length === 0) {
+//       purchase.status = 'cancelled'; // All items returned
+//     }
+
+//     await purchase.save({ session });
+
+//   }, 3, { action: "PARTIAL_RETURN", userId: req.user._id });
+
+//   res.status(200).json({ status: "success", message: "Partial return processed successfully" });
+// });
 
 /* ======================================================
    5. RECORD PAYMENT
+====================================================== */
+// exports.recordPayment = catchAsync(async (req, res, next) => {
+//   const { amount, paymentMethod, date, reference, notes } = req.body;
+
+//   if (!amount || amount <= 0) {
+//     return next(new AppError("Valid payment amount is required", 400));
+//   }
+
+//   await runInTransaction(async (session) => {
+//     const purchase = await Purchase.findOne({
+//       _id: req.params.id,
+//       organizationId: req.user.organizationId
+//     }).session(session);
+
+//     if (!purchase) throw new AppError("Purchase not found", 404);
+//     if (purchase.status === "cancelled") {
+//       throw new AppError("Cannot record payment for cancelled purchase", 400);
+//     }
+
+//     const totalPaid = purchase.paidAmount + amount;
+
+//     if (totalPaid > purchase.grandTotal) {
+//       throw new AppError("Payment amount exceeds purchase total", 400);
+//     }
+
+//     // Update payment status
+//     purchase.paidAmount = totalPaid;
+//     purchase.balanceAmount = purchase.grandTotal - totalPaid;
+
+//     if (totalPaid === purchase.grandTotal) {
+//       purchase.paymentStatus = "paid";
+//     } else if (totalPaid > 0) {
+//       purchase.paymentStatus = "partial";
+//     } else {
+//       purchase.paymentStatus = "unpaid";
+//     }
+
+//     if (paymentMethod) purchase.paymentMethod = paymentMethod;
+//     purchase.notes = `${purchase.notes || ""}\nPayment recorded: ${amount} on ${new Date().toLocaleString()} ${reference ? `(Ref: ${reference})` : ''}${notes ? ` - ${notes}` : ''}`;
+
+//     await purchase.save({ session });
+
+//     // Accounting entry for payment
+//     let paymentAccount;
+//     switch (paymentMethod) {
+//       case 'cash':
+//         paymentAccount = await getOrInitAccount(
+//           req.user.organizationId, "asset", "Cash Account", "1000", session
+//         );
+//         break;
+//       case 'bank':
+//         paymentAccount = await getOrInitAccount(
+//           req.user.organizationId, "asset", "Bank Account", "1001", session
+//         );
+//         break;
+//       default:
+//         paymentAccount = await getOrInitAccount(
+//           req.user.organizationId, "asset", "Other Payment Account", "1009", session
+//         );
+//     }
+
+//     const apAcc = await getOrInitAccount(
+//       req.user.organizationId, "liability", "Accounts Payable", "2000", session
+//     );
+
+//     await AccountEntry.create([
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: paymentAccount._id,
+//         date: date || new Date(),
+//         debit: amount,
+//         credit: 0,
+//         description: `Payment to Supplier for ${purchase.invoiceNumber || 'Purchase'}`,
+//         referenceType: "payment",
+//         referenceId: purchase._id,
+//         createdBy: req.user._id,
+//         supplierId: purchase.supplierId
+//       },
+//       {
+//         organizationId: req.user.organizationId,
+//         branchId: req.user.branchId,
+//         accountId: apAcc._id,
+//         supplierId: purchase.supplierId,
+//         date: date || new Date(),
+//         debit: 0,
+//         credit: amount,
+//         description: `Payment Received ${reference ? `(Ref: ${reference})` : ''}`,
+//         referenceType: "payment",
+//         referenceId: purchase._id,
+//         createdBy: req.user._id
+//       }
+//     ], { session });
+//   });
+
+//   res.status(200).json({
+//     status: "success",
+//     message: "Payment recorded successfully"
+//   });
+// });
+/* ======================================================
+   5. RECORD PAYMENT (Fixed for Transaction Error)
 ====================================================== */
 exports.recordPayment = catchAsync(async (req, res, next) => {
   const { amount, paymentMethod, date, reference, notes } = req.body;
@@ -669,6 +1196,7 @@ exports.recordPayment = catchAsync(async (req, res, next) => {
   }
 
   await runInTransaction(async (session) => {
+    // 1. Fetch Purchase
     const purchase = await Purchase.findOne({
       _id: req.params.id,
       organizationId: req.user.organizationId
@@ -679,80 +1207,102 @@ exports.recordPayment = catchAsync(async (req, res, next) => {
       throw new AppError("Cannot record payment for cancelled purchase", 400);
     }
 
-    const totalPaid = purchase.paidAmount + amount;
+    const totalPaid = (purchase.paidAmount || 0) + amount;
 
-    if (totalPaid > purchase.grandTotal) {
-      throw new AppError("Payment amount exceeds purchase total", 400);
+    // Small floating point tolerance check
+    if (totalPaid > (purchase.grandTotal + 0.1)) {
+      throw new AppError(`Payment exceeds balance. Remaining: ${purchase.grandTotal - purchase.paidAmount}`, 400);
     }
 
-    // Update payment status
+    // 2. Create Payment Document
+    // FIX: Added 'ordered: true' which is required when passing an array [] with a session
+    const [payment] = await Payment.create([{
+      organizationId: req.user.organizationId,
+      branchId: req.user.branchId,
+      type: 'outflow',
+      supplierId: purchase.supplierId,
+      purchaseId: purchase._id,
+      paymentDate: date || new Date(),
+      amount: amount,
+      paymentMethod: paymentMethod || 'cash',
+      referenceNumber: reference,
+      transactionMode: 'manual',
+      status: 'completed',
+      remarks: notes,
+      createdBy: req.user._id
+    }], { session, ordered: true }); // <--- THIS WAS MISSING
+
+    // 3. Update Purchase Document
     purchase.paidAmount = totalPaid;
     purchase.balanceAmount = purchase.grandTotal - totalPaid;
 
-    if (totalPaid === purchase.grandTotal) {
+    if (purchase.balanceAmount <= 0) {
+      purchase.balanceAmount = 0;
       purchase.paymentStatus = "paid";
-    } else if (totalPaid > 0) {
-      purchase.paymentStatus = "partial";
     } else {
-      purchase.paymentStatus = "unpaid";
+      purchase.paymentStatus = "partial";
     }
 
-    if (paymentMethod) purchase.paymentMethod = paymentMethod;
-    purchase.notes = `${purchase.notes || ""}\nPayment recorded: ${amount} on ${new Date().toLocaleString()} ${reference ? `(Ref: ${reference})` : ''}${notes ? ` - ${notes}` : ''}`;
-
+    purchase.notes = `${purchase.notes || ""}\nPayment: ${amount} (Ref: ${reference || 'N/A'})`;
     await purchase.save({ session });
 
-    // Accounting entry for payment
-    let paymentAccount;
-    switch (paymentMethod) {
-      case 'cash':
-        paymentAccount = await getOrInitAccount(
-          req.user.organizationId, "asset", "Cash Account", "1000", session
-        );
-        break;
-      case 'bank':
-        paymentAccount = await getOrInitAccount(
-          req.user.organizationId, "asset", "Bank Account", "1001", session
-        );
-        break;
-      default:
-        paymentAccount = await getOrInitAccount(
-          req.user.organizationId, "asset", "Other Payment Account", "1009", session
-        );
+    // 4. Update Supplier Balance
+    await Supplier.findByIdAndUpdate(
+      purchase.supplierId,
+      { $inc: { outstandingBalance: -amount } },
+      { session }
+    );
+
+    // 5. Accounting Entries
+    let assetAccountCode = "1009";
+    let assetAccountName = "Other Payment Account";
+
+    if (paymentMethod === 'cash') {
+      assetAccountCode = "1001"; assetAccountName = "Cash Account";
+    } else if (paymentMethod === 'bank') {
+      assetAccountCode = "1002"; assetAccountName = "Bank Account";
     }
+
+    const assetAcc = await getOrInitAccount(
+      req.user.organizationId, "asset", assetAccountName, assetAccountCode, session
+    );
 
     const apAcc = await getOrInitAccount(
       req.user.organizationId, "liability", "Accounts Payable", "2000", session
     );
 
+    // FIX: Added 'ordered: true' here as well
     await AccountEntry.create([
       {
-        organizationId: req.user.organizationId,
-        branchId: req.user.branchId,
-        accountId: paymentAccount._id,
-        date: date || new Date(),
-        debit: amount,
-        credit: 0,
-        description: `Payment to Supplier for ${purchase.invoiceNumber || 'Purchase'}`,
-        referenceType: "payment",
-        referenceId: purchase._id,
-        createdBy: req.user._id,
-        supplierId: purchase.supplierId
-      },
-      {
+        // ENTRY 1: DEBIT AP (Liability Decreases)
         organizationId: req.user.organizationId,
         branchId: req.user.branchId,
         accountId: apAcc._id,
+        date: payment.paymentDate,
+        debit: amount,
+        credit: 0,
+        description: `Payment to Supplier: ${purchase.invoiceNumber}`,
+        referenceType: "payment",
+        referenceId: payment._id,
         supplierId: purchase.supplierId,
-        date: date || new Date(),
+        createdBy: req.user._id
+      },
+      {
+        // ENTRY 2: CREDIT ASSET (Cash Decreases)
+        organizationId: req.user.organizationId,
+        branchId: req.user.branchId,
+        accountId: assetAcc._id,
+        date: payment.paymentDate,
         debit: 0,
         credit: amount,
-        description: `Payment Received ${reference ? `(Ref: ${reference})` : ''}`,
+        description: `Payment Outflow (Ref: ${reference || 'N/A'})`,
         referenceType: "payment",
-        referenceId: purchase._id,
+        referenceId: payment._id,
+        supplierId: purchase.supplierId,
         createdBy: req.user._id
       }
-    ], { session });
+    ], { session, ordered: true }); // <--- THIS WAS MISSING
+
   });
 
   res.status(200).json({
@@ -761,28 +1311,6 @@ exports.recordPayment = catchAsync(async (req, res, next) => {
   });
 });
 
-/* ======================================================
-   6. ATTACHMENT DELETE
-====================================================== */
-exports.deleteAttachment = catchAsync(async (req, res, next) => {
-  const purchase = await Purchase.findById(req.params.id);
-  if (!purchase) return next(new AppError("Purchase not found", 404));
-
-  const url = purchase.attachedFiles[req.params.fileIndex];
-  if (!url) return next(new AppError("File not found", 404));
-
-  const publicId = url.split("/").pop().split(".")[0];
-  try {
-    await cloudinary.uploader.destroy(`purchases/${publicId}`);
-  } catch (err) {
-    console.warn("Failed to delete from Cloudinary:", err.message);
-  }
-
-  purchase.attachedFiles.splice(req.params.fileIndex, 1);
-  await purchase.save();
-
-  res.status(200).json({ status: "success", message: "Attachment removed" });
-});
 
 /* ======================================================
    7. GET PURCHASE ANALYTICS
@@ -872,8 +1400,7 @@ exports.deletePurchase = () => {
   throw new AppError("Delete not allowed. Use cancel.", 403);
 };
 
-exports.getAllPurchases = factory.getAll(Purchase);
-exports.getPurchase = factory.getOne(Purchase, {
+exports.getAllPurchases = factory.getAll(Purchase, {
   populate: [
     { path: 'items.productId', select: 'name sku category sellingPrice' },
     { path: 'supplierId', select: 'name companyName email phone address' },
@@ -883,6 +1410,15 @@ exports.getPurchase = factory.getOne(Purchase, {
   ]
 });
 
+exports.getPurchase = factory.getOne(Purchase, {
+  populate: [
+    { path: 'items.productId', select: 'name sku category sellingPrice' },
+    { path: 'supplierId', select: 'name companyName email phone address' },
+    { path: 'createdBy', select: 'name email' },
+    { path: 'approvedBy', select: 'name email' },
+    { path: 'branchId', select: 'name code' }
+  ]
+});
 /* ======================================================
    9. BULK PURCHASE UPDATE (STATUS, PAYMENT, ETC.)
 ====================================================== */
@@ -920,16 +1456,16 @@ exports.bulkUpdatePurchases = catchAsync(async (req, res, next) => {
     data: { modifiedCount: result.modifiedCount }
   });
 });
-// Add to your purchase.controller.js
 
 /* ======================================================
-   10. ADDITIONAL ATTACHMENTS
+   10. ADDITIONAL ATTACHMENTS (Optimized & Asset-Tracked)
 ====================================================== */
 exports.addAttachments = catchAsync(async (req, res, next) => {
   if (!req.files?.length) {
     return next(new AppError("No files uploaded", 400));
   }
 
+  // Ensure the purchase exists and belongs to this organization
   const purchase = await Purchase.findOne({
     _id: req.params.id,
     organizationId: req.user.organizationId
@@ -937,29 +1473,156 @@ exports.addAttachments = catchAsync(async (req, res, next) => {
 
   if (!purchase) return next(new AppError("Purchase not found", 404));
 
-  const newFiles = [];
-  for (const f of req.files) {
-    newFiles.push(await fileUploadService.uploadFile(f.buffer, "purchases"));
-  }
+  // 1. Concurrent Upload & Record (Replaces the slow for...of loop)
+  // Categorize as 'invoice' for the Media Gallery
+  const uploadedAssets = await imageUploadService.uploadMultipleAndRecord(
+    req.files, 
+    req.user, 
+    'invoice'
+  );
 
+  // 2. Format to match the updated Purchase Schema
+  const newFiles = uploadedAssets.map(asset => ({
+    url: asset.url,
+    public_id: asset.publicId,
+    format: asset.mimeType,
+    bytes: asset.size,
+    assetId: asset._id // The Master Link
+  }));
+
+  // 3. Push to Mongoose Array and Save
   purchase.attachedFiles.push(...newFiles);
-  await purchase.save();
+  await purchase.save(); 
 
   res.status(200).json({
     status: "success",
-    message: `${newFiles.length} file(s) added`,
+    message: `${newFiles.length} file(s) added and indexed successfully.`,
     data: { purchase }
   });
 });
+
 /* ======================================================
-   11. GET PAYMENT HISTORY
+   6. ATTACHMENT DELETE (Master Asset Cleanup)
+====================================================== */
+exports.deleteAttachment = catchAsync(async (req, res, next) => {
+  // Ensure the purchase exists and belongs to this organization
+  const purchase = await Purchase.findOne({
+    _id: req.params.id,
+    organizationId: req.user.organizationId
+  });
+
+  if (!purchase) return next(new AppError("Purchase not found", 404));
+
+  // Access the specific file object by index
+  const fileIndex = parseInt(req.params.fileIndex, 10);
+  const fileObj = purchase.attachedFiles[fileIndex];
+
+  if (!fileObj) return next(new AppError("File not found at the specified index", 404));
+
+  // 1. MASTER CLEANUP: Delete from Cloudinary AND Asset DB
+  // We rely on the assetId we saved during upload.
+  if (fileObj.assetId) {
+    try {
+      await imageUploadService.deleteFullAsset(fileObj.assetId, req.user.organizationId);
+    } catch (err) {
+      // We log the warning but don't crash, allowing the local array removal to proceed
+      console.warn(`⚠️ Note: Master Asset deletion failed for ${fileObj.assetId}:`, err.message);
+    }
+  } else if (fileObj.public_id) {
+    // Fallback for older files uploaded before the Master Asset System was implemented
+    try {
+      const { deleteFile } = require('../services/uploads/fileUploadService');
+      await deleteFile(fileObj.public_id);
+    } catch (err) {
+      console.warn("⚠️ Fallback Cloudinary deletion failed:", err.message);
+    }
+  }
+
+  // 2. Remove from the local purchase array
+  purchase.attachedFiles.splice(fileIndex, 1);
+  await purchase.save();
+
+  res.status(200).json({ 
+    status: "success", 
+    message: "Attachment permanently removed from system." 
+  });
+});
+
+
+// /* ======================================================
+//    10. ADDITIONAL ATTACHMENTS (Updated)
+// ====================================================== */
+// exports.addAttachments = catchAsync(async (req, res, next) => {
+//   if (!req.files?.length) {
+//     return next(new AppError("No files uploaded", 400));
+//   }
+
+//   const purchase = await Purchase.findOne({
+//     _id: req.params.id,
+//     organizationId: req.user.organizationId
+//   });
+
+//   if (!purchase) return next(new AppError("Purchase not found", 404));
+
+//   const newFiles = [];
+//   for (const f of req.files) {
+//     // 1. Get the full object from Cloudinary/Service
+//     const uploadResult = await fileUploadService.uploadFile(f.buffer, "purchases");
+
+//     // 2. Push the result (Schema now accepts this object)
+//     newFiles.push(uploadResult);
+//   }
+
+//   // 3. Push to Mongoose Array
+//   purchase.attachedFiles.push(...newFiles);
+
+//   await purchase.save(); // <--- This failed before, now it will pass
+
+//   res.status(200).json({
+//     status: "success",
+//     message: `${newFiles.length} file(s) added`,
+//     data: { purchase }
+//   });
+// });
+
+// /* ======================================================
+//    6. ATTACHMENT DELETE (Updated for Object Schema)
+// ====================================================== */
+// exports.deleteAttachment = catchAsync(async (req, res, next) => {
+//   const purchase = await Purchase.findById(req.params.id);
+//   if (!purchase) return next(new AppError("Purchase not found", 404));
+//   const fileObj = purchase.attachedFiles[req.params.fileIndex];
+//   if (!fileObj) return next(new AppError("File not found", 404));
+//   const publicId = fileObj.public_id || fileObj.url.split("/").pop().split(".")[0];
+//   try {
+//     if (publicId) {
+//       await cloudinary.uploader.destroy(publicId); // Use the stored public_id
+//     }
+//   } catch (err) {
+//     console.warn("Failed to delete from Cloudinary:", err.message);
+//   }
+//   purchase.attachedFiles.splice(req.params.fileIndex, 1);
+//   await purchase.save();
+
+//   res.status(200).json({ status: "success", message: "Attachment removed" });
+// });
+
+
+
+
+/* ======================================================
+   11. GET PAYMENT HISTORY (Fixed)
 ====================================================== */
 exports.getPaymentHistory = catchAsync(async (req, res, next) => {
-  const payments = await AccountEntry.find({
-    referenceId: req.params.id,
-    referenceType: "payment",
-    organizationId: req.user.organizationId
-  }).sort('-date').populate('accountId', 'name code');
+  // Query the PAYMENT collection, not the Ledger
+  // This is where we stored the clean payment details linked to this purchase
+  const payments = await Payment.find({
+    purchaseId: req.params.id, // Link to the Purchase
+    organizationId: req.user.organizationId,
+    isDeleted: { $ne: true } // Ensure we don't show deleted ones
+  })
+    .sort({ paymentDate: -1 }) // Newest first
+    .select('paymentDate amount paymentMethod referenceNumber status remarks _id');
 
   res.status(200).json({
     status: "success",
@@ -967,38 +1630,106 @@ exports.getPaymentHistory = catchAsync(async (req, res, next) => {
     data: { payments }
   });
 });
-
 /* ======================================================
-   12. DELETE PAYMENT
+   12. DELETE PAYMENT (Corrected)
+====================================================== */
+// exports.deletePayment = catchAsync(async (req, res, next) => {
+//   await runInTransaction(async (session) => {
+//     const payment = await Payment.findOne({
+//       _id: req.params.paymentId, purchaseId: req.params.id, organizationId: req.user.organizationId
+//     }).session(session);
+//     if (!payment) throw new AppError("Payment record not found", 404);
+//     const purchase = await Purchase.findById(req.params.id).session(session);
+//     if (!purchase) throw new AppError("Purchase not found", 404);
+//     // 2. Reverse the payment impact on Purchase
+//     purchase.paidAmount -= payment.amount; // Use payment amount, not ledger credit (safer)
+//     purchase.balanceAmount = purchase.grandTotal - purchase.paidAmount;
+//     // Update payment status
+//     if (purchase.paidAmount <= 0) {
+//       purchase.paidAmount = 0;
+//       purchase.paymentStatus = "unpaid";
+//     } else {
+//       purchase.paymentStatus = "partial";
+//     }
+//     await purchase.save({ session });
+
+//     // 3. Restore Supplier Balance (They are owed money again)
+//     await Supplier.findByIdAndUpdate(
+//       purchase.supplierId,
+//       { $inc: { outstandingBalance: payment.amount } },
+//       { session }
+//     );
+
+//     // 4. Delete Accounting Entries
+//     await AccountEntry.deleteMany({
+//       referenceId: payment._id,
+//       referenceType: "payment"
+//     }).session(session);
+
+//     // 5. Delete the Payment Document itself
+//     await payment.deleteOne({ session });
+
+//   }, 3, { action: "DELETE_PAYMENT", userId: req.user._id });
+
+//   res.status(200).json({
+//     status: "success",
+//     message: "Payment deleted successfully"
+//   });
+// });
+/* ======================================================
+   12. DELETE PAYMENT (Final Polish)
 ====================================================== */
 exports.deletePayment = catchAsync(async (req, res, next) => {
   await runInTransaction(async (session) => {
-    const payment = await AccountEntry.findOne({
+    // 1. Find Payment & Purchase
+    const payment = await Payment.findOne({
       _id: req.params.paymentId,
-      referenceId: req.params.id,
-      referenceType: "payment",
+      purchaseId: req.params.id,
       organizationId: req.user.organizationId
     }).session(session);
 
-    if (!payment) throw new AppError("Payment not found", 404);
+    if (!payment) throw new AppError("Payment record not found", 404);
 
     const purchase = await Purchase.findById(req.params.id).session(session);
     if (!purchase) throw new AppError("Purchase not found", 404);
 
-    // Reverse the payment
-    purchase.paidAmount -= payment.credit;
-    purchase.balanceAmount = purchase.grandTotal - purchase.paidAmount;
+    // 2. Reverse the payment impact on Purchase (WITH ROUNDING SAFETY)
+    // Javascript math can be buggy (e.g., 100 - 33.33 = 66.670000001)
+    const newPaidAmount = (purchase.paidAmount || 0) - payment.amount;
+
+    // Round to 2 decimal places and ensure it doesn't go below zero
+    purchase.paidAmount = Math.max(0, Math.round(newPaidAmount * 100) / 100);
+
+    // Recalculate balance
+    purchase.balanceAmount = Math.round((purchase.grandTotal - purchase.paidAmount) * 100) / 100;
 
     // Update payment status
-    if (purchase.paidAmount === 0) {
+    if (purchase.paidAmount <= 0) {
       purchase.paymentStatus = "unpaid";
-    } else if (purchase.paidAmount < purchase.grandTotal) {
+    } else {
       purchase.paymentStatus = "partial";
     }
 
+    // Save (Middleware will run, but our manual calculation above ensures safety)
     await purchase.save({ session });
+
+    // 3. Restore Supplier Balance (They are owed money again)
+    await Supplier.findByIdAndUpdate(
+      purchase.supplierId,
+      { $inc: { outstandingBalance: payment.amount } },
+      { session }
+    );
+
+    // 4. Delete Accounting Entries
+    await AccountEntry.deleteMany({
+      referenceId: payment._id,
+      referenceType: "payment"
+    }).session(session);
+
+    // 5. Delete the Payment Document itself
     await payment.deleteOne({ session });
-  });
+
+  }, 3, { action: "DELETE_PAYMENT", userId: req.user._id });
 
   res.status(200).json({
     status: "success",
@@ -1009,35 +1740,92 @@ exports.deletePayment = catchAsync(async (req, res, next) => {
 /* ======================================================
    13. UPDATE STATUS
 ====================================================== */
+// exports.updateStatus = catchAsync(async (req, res, next) => {
+//   const { status, notes } = req.body;
+
+//   if (!['draft', 'received', 'cancelled', 'approved', 'pending'].includes(status)) {
+//     return next(new AppError("Invalid status", 400));
+//   }
+
+//   const purchase = await Purchase.findOneAndUpdate(
+//     {
+//       _id: req.params.id,
+//       organizationId: req.user.organizationId
+//     },
+//     {
+//       status,
+//       $push: {
+//         notes: notes ? `Status changed to ${status}: ${notes}` : `Status changed to ${status}`
+//       }
+//     },
+//     { new: true, runValidators: true }
+//   );
+
+//   if (!purchase) return next(new AppError("Purchase not found", 404));
+
+//   res.status(200).json({
+//     status: "success",
+//     data: { purchase }
+//   });
+// });
+/* ======================================================
+   13. UPDATE STATUS (With Stock Logic)
+====================================================== */
 exports.updateStatus = catchAsync(async (req, res, next) => {
   const { status, notes } = req.body;
+  const validStatuses = ['draft', 'received', 'cancelled']; // removed 'approved'/pending if not used
 
-  if (!['draft', 'received', 'cancelled', 'approved', 'pending'].includes(status)) {
+  if (!validStatuses.includes(status)) {
     return next(new AppError("Invalid status", 400));
   }
 
-  const purchase = await Purchase.findOneAndUpdate(
-    {
+  await runInTransaction(async (session) => {
+    const purchase = await Purchase.findOne({
       _id: req.params.id,
       organizationId: req.user.organizationId
-    },
-    {
-      status,
-      $push: {
-        notes: notes ? `Status changed to ${status}: ${notes}` : `Status changed to ${status}`
-      }
-    },
-    { new: true, runValidators: true }
-  );
+    }).session(session);
 
-  if (!purchase) return next(new AppError("Purchase not found", 404));
+    if (!purchase) throw new AppError("Purchase not found", 404);
+    if (purchase.status === status) return; // No change
 
-  res.status(200).json({
-    status: "success",
-    data: { purchase }
-  });
+    // LOGIC: Handle Stock Movements based on transition
+    // 1. DRAFT -> RECEIVED (Add Stock)
+    if (purchase.status === 'draft' && status === 'received') {
+      await updateStockAtomically(purchase.items, purchase.branchId, req.user.organizationId, 'increment', session);
+
+      // Also update Supplier Balance (Liability increases now)
+      await Supplier.findByIdAndUpdate(
+        purchase.supplierId,
+        { $inc: { outstandingBalance: purchase.grandTotal } },
+        { session }
+      );
+    }
+
+    // 2. RECEIVED -> CANCELLED (Remove Stock)
+    else if (purchase.status === 'received' && status === 'cancelled') {
+      // Validate stock exists before removing (Prevent negative stock)
+      // (You should add the validation loop here)
+      await updateStockAtomically(purchase.items, purchase.branchId, req.user.organizationId, 'decrement', session);
+
+      await Supplier.findByIdAndUpdate(
+        purchase.supplierId,
+        { $inc: { outstandingBalance: -purchase.grandTotal } },
+        { session }
+      );
+    }
+
+    // 3. DRAFT -> CANCELLED (No Stock Action needed)
+
+    // Update the doc
+    purchase.status = status;
+    purchase.notes = notes ? `${purchase.notes || ""}\nStatus: ${status} - ${notes}` : purchase.notes;
+
+    await purchase.save({ session });
+
+  }, 3, { action: "UPDATE_STATUS", userId: req.user._id });
+
+  res.status(200).json({ status: "success", message: `Status updated to ${status}` });
 });
-
 /* ======================================================
    14. GET PENDING PAYMENTS
 ====================================================== */
@@ -1095,7 +1883,7 @@ exports.getAllReturns = catchAsync(async (req, res, next) => {
 
   if (supplierId) filter.supplierId = supplierId;
   if (purchaseId) filter.purchaseId = purchaseId;
-  
+
   if (startDate || endDate) {
     filter.returnDate = {};
     if (startDate) filter.returnDate.$gte = new Date(startDate);
@@ -1119,7 +1907,34 @@ exports.getAllReturns = catchAsync(async (req, res, next) => {
 /* ======================================================
    2. GET RETURN DETAILS
 ====================================================== */
-exports.getReturnById = factory.getOne(PurchaseReturn, {
-  path: 'purchaseId supplierId createdBy',
-  select: 'invoiceNumber companyName name email'
+/* ======================================================
+   12. GET RETURN DETAILS (Manual Populate)
+====================================================== */
+exports.getReturnById = catchAsync(async (req, res, next) => {
+  const returnRecord = await PurchaseReturn.findById(req.params.id)
+    .populate({
+      path: 'purchaseId',
+      select: 'invoiceNumber purchaseDate grandTotal' 
+    })
+    .populate({
+      path: 'supplierId',
+      select: 'companyName email phone address city state zipCode'
+    })
+    .populate({
+      path: 'createdBy',
+      select: 'name email'
+    })
+    .populate({
+      path: 'items.productId', // Also populate product details inside items
+      select: 'name sku'
+    });
+
+  if (!returnRecord) {
+    return next(new AppError('No return record found with that ID', 404));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: { data: returnRecord }
+  });
 });

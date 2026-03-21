@@ -1,6 +1,6 @@
 const dashboardService = require('../services/dashboardService');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
 
 // in src/controllers/dashboardController.js
 const SalesService = require('../../inventory/core/sales.service');

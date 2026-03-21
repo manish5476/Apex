@@ -1,6 +1,11 @@
 const { StorefrontPage } = require('../../models/storefront');
 const LayoutService = require('../../services/storefront/layout.service');
+<<<<<<< HEAD
 const AppError = require('../../../core/utils/appError');
+=======
+const SectionValidator = require('../../middleware/validation/section.validator');
+const AppError = require('../../../core/utils/api/appError');
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
 
 class StorefrontAdminController {
 

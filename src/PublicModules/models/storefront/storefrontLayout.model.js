@@ -1,11 +1,13 @@
 // src/models/storefront/storefrontLayout.model.js
 const mongoose = require('mongoose');
+const sectionSchema = require('./schemas/section.schema');
 
 const layoutSchema = new mongoose.Schema({
   organizationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Organization',
     required: true,
+<<<<<<< HEAD
     unique: true, // Critical: One active layout per store
     index: true
   },
@@ -72,6 +74,26 @@ const layoutSchema = new mongoose.Schema({
       url: String,
       altText: String,
       width: Number 
+=======
+    unique: true, // One active layout per store
+    index: true
+  },
+  globalSettings: {
+    favicon: { type: String },
+    logo: {
+      url: { type: String },
+      altText: { type: String },
+      width: { type: Number, default: 150 } // px
+    },
+    typography: {
+      headingFont: { type: String, default: 'Poppins' },
+      bodyFont: { type: String, default: 'Inter' }
+    },
+    colors: {
+      primary: { type: String, default: '#2563eb' }, 
+      secondary: { type: String, default: '#475569' }, 
+      accent: { type: String, default: '#f59e0b' } 
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
     },
     socialLinks: {
       facebook: String,
@@ -80,6 +102,7 @@ const layoutSchema = new mongoose.Schema({
       linkedin: String,
       youtube: String
     },
+<<<<<<< HEAD
     // Enterprise Feature: Global Scripts (Pixels, Analytics)
     customScripts: {
       head: String, 
@@ -90,6 +113,23 @@ const layoutSchema = new mongoose.Schema({
   version: { type: Number, default: 1 }
 
 }, { timestamps: true });
+=======
+    defaultSeo: {
+      siteName: { type: String, required: true },
+      defaultImage: { type: String },
+      titleSuffix: { type: String, default: '| My Store' }
+    }
+  },
+
+  // Dynamic Header & Footer (Array of sections allows TopBar + NavBar + PromoBanner)
+  header: [sectionSchema],
+  footer: [sectionSchema],
+
+  version: { type: Number, default: 1 }
+}, {
+  timestamps: true
+});
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
 
 module.exports = mongoose.model('StorefrontLayout', layoutSchema);
 

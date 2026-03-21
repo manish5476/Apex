@@ -4,8 +4,8 @@ const Payment = require('./payment.model');
 const Invoice = require('../billing/invoice.model');
 const EMI = require('./emi.model');
 const Customer = require('../../organization/core/customer.model');
-const catchAsync = require('../../../core/utils/catchAsync');
-const AppError = require('../../../core/utils/appError');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
 
 class PaymentAllocationService {
   

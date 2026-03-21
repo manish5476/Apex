@@ -3,7 +3,7 @@ require("dotenv").config({ path: `${__dirname}/.env` });
 const mongoose = require("mongoose");
 const http = require("http");
 const app = require("./app");
-const socketUtil = require("./core/utils/_legacy/socket");
+const socketUtil = require("./socketHandlers/socket");
 
 const PORT = process.env.PORT || 5000;
 const DB_URI = process.env.DATABASE;
@@ -67,7 +67,7 @@ async function startServer() {
       console.log(`🚀 Server running on port ${PORT} [${process.env.NODE_ENV}]`);
       try {
         console.log("🕒 Initializing background cron jobs...");
-        require("./core/utils/_legacy/cron");
+        require("./core/jobs/cron");
         console.log("✅ Cron jobs initialized successfully!");
       } catch (cronErr) {
         console.error("⚠️ Cron initialization failed:", cronErr.message);

@@ -14,49 +14,58 @@ const Organization = require("../../../organization/core/organization.model");
 const InvoiceAudit = require('../invoiceAudit.model');
 
 const SalesService = require("../../../inventory/core/sales.service");
-const invoicePDFService = require("../../../_legacy/services/invoicePDFService");
-const StockValidationService = require("../../../_legacy/services/stockValidationService");
+const invoicePDFService = require("../invoicePDFService");
+const StockValidationService = require("../../../inventory/core/stockValidationService");
 const { createNotification } = require("../../../notification/core/notification.service");
 // CHANGED: Import the whole service to access reverseInvoiceJournal
 const salesJournalService = require('../../../inventory/core/salesJournal.service');
 
-const catchAsync = require("../../../../core/utils/catchAsync");
-const AppError = require("../../../../core/utils/appError");
-const factory = require("../../../../core/utils/handlerFactory");
-const { runInTransaction } = require("../../../../core/utils/runInTransaction");
-const { emitToOrg } = require("../../../../core/utils/_legacy/socket");
-const automationService = require('../../../_legacy/services/automationService');
+const catchAsync = require("../../../../core/utils/api/catchAsync");
+const AppError = require("../../../../core/utils/api/appError");
+const factory = require("../../../../core/utils/api/handlerFactory");
+const { runInTransaction } = require("../../../../core/utils/db/runInTransaction");
+const { emitToOrg } = require("../../../../socketHandlers/socket");
+const automationService = require('../../../webhook/automationService');
+const EMI = require('../../payments/emi.model'); // Adjust path to your EMI model
+const emiService = require('../../payments/emiService'); // Adjust path to your Service
 
-/* ======================================================
-   STOCK RESTORATION HELPER FUNCTION
-====================================================== */
 async function restoreStockFromInvoice(items, branchId, organizationId, session) {
   for (const item of items) {
-    await Product.findOneAndUpdate(
-      {
-        _id: item.productId,
-        organizationId,
-        "inventory.branchId": branchId
+    const updateResult = await Product.findOneAndUpdate(
+      { 
+        _id: item.productId, 
+        organizationId: organizationId, 
+        "inventory.branchId": branchId 
       },
-      { $inc: { "inventory.$.quantity": item.quantity } },
-      { session }
+      { 
+        $inc: { "inventory.$.quantity": item.quantity } 
+      },
+      { session, new: true }
     );
+
+    if (!updateResult) {
+      console.error(`[STOCK_SYNC] Failed to restore stock for product ${item.productId} at branch ${branchId}`);
+      // We don't necessarily throw an error here to prevent blocking cancellation, 
+      // but you might want to log this for manual audit.
+    }
   }
 }
-
+// ==============================================================================
+// 1. VALIDATION SCHEMA
+// ==============================================================================
 const createInvoiceSchema = z.object({
   customerId: z.string().min(1, "Customer ID is required"),
   items: z.array(z.object({
     productId: z.string().min(1, "Product ID is required"),
-    quantity: z.number().positive("Quantity must be positive"),
-    price: z.number().nonnegative("Price cannot be negative"), // Selling Price
+    quantity: z.coerce.number().positive("Quantity must be positive"),
+    price: z.coerce.number().nonnegative("Price cannot be negative"), // Selling Price
     
     // 🟢 ADDED: This will be populated by the backend, not the user
-    purchasePriceAtSale: z.number().nonnegative().optional(), 
+    purchasePriceAtSale: z.coerce.number().nonnegative().optional(), 
     
-    tax: z.number().optional().default(0),
-    taxRate: z.number().optional().default(0),
-    discount: z.number().optional().default(0),
+    tax: z.coerce.number().optional().default(0),
+    taxRate: z.coerce.number().optional().default(0),
+    discount: z.coerce.number().optional().default(0),
     unit: z.string().optional().default('pcs'),
     hsnCode: z.string().optional()
   })).min(1, "Invoice must have at least one item"),
@@ -74,19 +83,25 @@ const createInvoiceSchema = z.object({
   status: z.enum(['draft', 'issued', 'paid', 'cancelled']).optional().default('issued'),
   shippingCharges: z.coerce.number().min(0).optional().default(0),
   notes: z.string().optional(),
-  roundOff: z.number().optional(),
+  roundOff: z.coerce.number().optional(),
   gstType: z.string().optional(),
   attachedFiles: z.array(z.string()).optional()
 });
 
-// --- HELPER: Get or Init Account ---
+// ==============================================================================
+// 2. HELPER FUNCTIONS
+// ==============================================================================
+
+// --- Get or Init Ledger Account ---
 async function getOrInitAccount(orgId, type, name, code, session) {
   const query = Account.findOne({ organizationId: orgId, code });
   if (session) query.session(session);
   let account = await query;
   if (!account) {
     try {
-        const newAccounts = await Account.create([{ organizationId: orgId,  name,  code,  type,  isGroup: false,  cachedBalance: 0        }], { session }); 
+        const newAccounts = await Account.create([{ 
+            organizationId: orgId, name, code, type, isGroup: false, cachedBalance: 0 
+        }], { session }); 
         account = newAccounts[0];
     } catch (err) {
         if (err.code === 11000) {
@@ -101,27 +116,29 @@ async function getOrInitAccount(orgId, type, name, code, session) {
   return account;
 }
 
+// --- Create Payment Accounting Entries (Double Entry) ---
 async function createPaymentAccountingEntries({ invoice, payment, userId, session }) {
   if (!payment || !payment.amount || payment.amount <= 0) {
     console.warn('[ACCOUNTING] Skipping payment entries: Invalid amount');
     return;
   }
+  
   let accountName = 'Cash';
   let accountCode = '1001';
+  
   switch (payment.paymentMethod) {
     case 'bank':
-    case 'cheque':accountName = 'Bank';accountCode = '1002';      break;
-    case 'upi':accountName = 'UPI Receivables';accountCode = '1003'; break;
-    case 'card':accountName = 'Card Receivables';accountCode = '1004';
-      break;
+    case 'cheque': accountName = 'Bank'; accountCode = '1002'; break;
+    case 'upi': accountName = 'UPI Receivables'; accountCode = '1003'; break;
+    case 'card': accountName = 'Card Receivables'; accountCode = '1004'; break;
   }
+
   const [assetAccount, arAccount] = await Promise.all([
     getOrInitAccount(invoice.organizationId, 'asset', accountName, accountCode, session),
     getOrInitAccount(invoice.organizationId, 'asset', 'Accounts Receivable', '1200', session)
   ]);
 
-  // 3. Create Ledger Entries
-  // Dr Asset (Cash/Bank) -> Money coming in
+  // 1. Dr Asset (Cash/Bank) -> Money coming in
   await AccountEntry.create([{
     organizationId: invoice.organizationId,
     branchId: invoice.branchId,
@@ -136,7 +153,7 @@ async function createPaymentAccountingEntries({ invoice, payment, userId, sessio
     createdBy: userId
   }], { session });
 
-  // Cr Accounts Receivable -> Reducing what customer owes
+  // 2. Cr Accounts Receivable -> Reducing what customer owes
   await AccountEntry.create([{
     organizationId: invoice.organizationId,
     branchId: invoice.branchId,
@@ -153,12 +170,13 @@ async function createPaymentAccountingEntries({ invoice, payment, userId, sessio
   }], { session });
 }
 
-// --- HELPER: Reduce Stock ---
+// --- Reduce Stock (Legacy/Standalone Helper) ---
+// NOTE: Not used in createInvoice anymore to avoid race conditions with SalesService
 async function reduceStockForInvoice(items, branchId, organizationId, session) {
   for (const item of items) {
     const updateResult = await Product.findOneAndUpdate(
-      {  _id: item.productId,  organizationId: organizationId, "inventory.branchId": branchId, "inventory.quantity": { $gte: item.quantity }       },
-      { $inc: { "inventory.$.quantity": -item.quantity },$set: { lastSold: new Date() }      },
+      {  _id: item.productId,  organizationId: organizationId, "inventory.branchId": branchId, "inventory.quantity": { $gte: item.quantity }        },
+      { $inc: { "inventory.$.quantity": -item.quantity }, $set: { lastSold: new Date() }       },
       { session, new: true }
     );
     if (!updateResult) {
@@ -170,168 +188,10 @@ async function reduceStockForInvoice(items, branchId, organizationId, session) {
   }
 }
 
-// // --- CONTROLLER: CREATE INVOICE ---
-// exports.createInvoice = catchAsync(async (req, res, next) => {
-//   const validatedData = createInvoiceSchema.safeParse(req.body);
-//   if (!validatedData.success) {
-//     const errorMessage = validatedData.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-//     return next(new AppError(errorMessage, 400));
-//   }
+// ==============================================================================
+// 3. CONTROLLER: CREATE INVOICE
+// ==============================================================================
 
-// const enrichedItems = await Promise.all(req.body.items.map(async (item) => {
-//   // 🟢 CORRECTION: Add 'purchasePrice' to the select string
-//   const product = await Product.findOne({ 
-//     _id: item.productId, 
-//     organizationId: req.user.organizationId 
-//   }).select('name sku inventory hsnCode category purchasePrice'); // Added purchasePrice
-  
-//   if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
-  
-//   const inv = product.inventory?.find(i => String(i.branchId) === String(req.user.branchId));
-//   if (!inv || inv.quantity < item.quantity) throw new AppError(`Insufficient stock for ${product.name}`, 400);
-
-//   return { 
-//       ...item, 
-//       name: product.name, 
-//       hsnCode: product.hsnCode || product.sku || item.hsnCode || "",
-//       unit: item.unit || 'pcs',
-//       discount: item.discount || 0,
-//       taxRate: item.taxRate || item.tax || 0,
-//       // 🟢 THE KEY SNAPSHOT: Save the current cost price forever
-//       purchasePriceAtSale: product.purchasePrice || 0, 
-//       reminderSent: false,
-//       overdueNoticeSent: false,
-//       overdueCount: 0
-//   };
-// }));
-
-//   const subtotal = enrichedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-//   const shippingCharges = req.body.shippingCharges || 0;
-//   const discount = req.body.discount || 0;
-//   // Calc tax based on taxRate
-//   const tax = enrichedItems.reduce((sum, item) => {
-//       const lineTotal = item.price * item.quantity - (item.discount || 0);
-//       return sum + ((item.taxRate || 0) / 100 * lineTotal);
-//   }, 0);
-//   const roundOff = req.body.roundOff || 0;
-//   const grandTotal = Math.round(subtotal + shippingCharges + tax - discount + roundOff);
-//   const paidAmount = req.body.paidAmount || 0;
-//   if (paidAmount > grandTotal) return next(new AppError('Paid amount exceeds total', 400));
-//   // 3. Pre-fetch AR Account (Optimization)
-//   // Ensures account exists before transaction starts to avoid conflicts
-//   await getOrInitAccount(req.user.organizationId, 'asset', 'Accounts Receivable', '1200');
-//   const invoiceNumber = req.body.invoiceNumber || `INV-${Date.now()}`; 
-//   // 4. Transaction
-//   await runInTransaction(async (session) => {
-//     // Status Logic
-//     let paymentStatus = 'unpaid';
-//     let status = req.body.status || 'issued';
-//     if (paidAmount > 0) {
-//         if (paidAmount >= grandTotal) { paymentStatus = 'paid'; status = 'paid'; }
-//         else { paymentStatus = 'partial'; }
-//     }
-//     // A. Create Invoice
-//     const invoice = (await Invoice.create([{
-//       ...req.body,
-//       invoiceNumber,
-//       items: enrichedItems,
-//       subTotal: subtotal,
-//       grandTotal,
-//       balanceAmount: grandTotal - paidAmount,
-//       paidAmount,
-//       paymentStatus,
-//       status,
-//       organizationId: req.user.organizationId,
-//       branchId: req.user.branchId,
-//       customerId: req.body.customerId,
-//       createdBy: req.user._id,
-//       paymentReference: req.body.paymentReference || req.body.referenceNumber,
-//       transactionId: req.body.transactionId
-//     }], { session }))[0];
-
-//     // B. Reduce Stock
-//     await reduceStockForInvoice(req.body.items, req.user.branchId, req.user.organizationId, session);
-
-//     // C. Process Payment (If Paid)
-//     if (paidAmount > 0) {
-//         // ⚠️ CRITICAL FIX: Extract [0] from create result
-//         const payment = (await Payment.create([{
-//             organizationId: req.user.organizationId,
-//             branchId: req.user.branchId,
-//             type: 'inflow',
-//             customerId: invoice.customerId,
-//             invoiceId: invoice._id,
-//             paymentDate: req.body.invoiceDate || new Date(),
-//             amount: paidAmount,
-//             paymentMethod: req.body.paymentMethod || 'cash',
-//             transactionMode: 'auto',
-//             // Fix: Use the correct reference field
-//             referenceNumber: req.body.paymentReference || req.body.referenceNumber,
-//             transactionId: req.body.transactionId,
-//             remarks: `Payment for ${invoice.invoiceNumber}`,
-//             status: 'completed',
-//             allocationStatus: 'fully_allocated',
-//             remainingAmount: 0, 
-//             allocatedTo: [{
-//                 type: 'invoice',
-//                 documentId: invoice._id,
-//                 amount: paidAmount,
-//                 allocatedAt: new Date()
-//             }],
-//             createdBy: req.user._id
-//         }], { session }))[0]; // <--- THIS [0] IS KEY
-
-//         // D. Create Payment Accounting Entries
-//         await createPaymentAccountingEntries({
-//             invoice,
-//             payment, // Now passing a valid document, not an array
-//             userId: req.user._id,
-//             session
-//         });
-//     }
-
-//     // E. Update Customer
-//     if (invoice.customerId) {
-//       await Customer.findByIdAndUpdate(
-//         invoice.customerId,
-//         {
-//           $inc: {
-//             totalPurchases: grandTotal,
-//             outstandingBalance: grandTotal - paidAmount
-//           },
-//           lastPurchaseDate: new Date()
-//         },
-//         { session }
-//       );
-//     }
-
-//     // F. Post Invoice Journal (Revenue Recognition)
-//     // Dr AR, Cr Sales
-//     if (invoice.status !== 'draft') {
-//       await salesJournalService.postInvoiceJournal({
-//         orgId: req.user.organizationId,
-//         branchId: req.user.branchId,
-//         invoice,
-//         customerId: invoice.customerId,
-//         items: invoice.items,
-//         userId: req.user._id,
-//         session
-//       });
-//       await SalesService.createFromInvoiceTransactional(invoice, session);
-//     }
-
-//     // Store for response
-//     req.invoice = invoice;
-
-//   }, 3, { action: "CREATE_INVOICE", userId: req.user._id });
-
-//   // 5. Post-Response
-//   const finalInvoice = req.invoice;
-//   automationService.triggerEvent('invoice.created', finalInvoice.toObject(), req.user.organizationId);
-//   emitToOrg(req.user.organizationId, 'invoice:created', finalInvoice);
-
-//   res.status(201).json({ status: 'success', data: finalInvoice });
-// });
 /**
  * @description Creates a new invoice, manages stock atomically, and handles initial payments/accounting.
  * @architect_notes Resolved N+1 Problem, Atomic Stock Deduction, and Mathematical Integrity.
@@ -340,21 +200,28 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
   // 1. Schema Validation
   const validatedData = createInvoiceSchema.safeParse(req.body);
   if (!validatedData.success) {
-    const errorMessage = validatedData.error.errors
-      .map(e => `${e.path.join('.')}: ${e.message}`)
-      .join(', ');
+    // Log error for debugging
+    console.error("Zod Validation Error:", JSON.stringify(validatedData.error, null, 2));
+    
+    // Check if error exists to prevent crash
+    const errors = validatedData.error?.errors || [];
+    const errorMessage = errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ') || "Invalid input data";
     return next(new AppError(errorMessage, 400));
   }
 
+  // Use the validated/coerced data instead of raw req.body
+  // This guarantees 'items' is an array and defaults are applied
+  const { items, ...invoiceData } = validatedData.data;
+
   // 2. Resolve N+1 Problem: Bulk fetch all products once
-  const productIds = req.body.items.map(item => item.productId);
+  const productIds = items.map(item => item.productId);
   const products = await Product.find({
     _id: { $in: productIds },
     organizationId: req.user.organizationId
   }).select('name sku inventory hsnCode category purchasePrice');
 
   // 3. Enrich items and prepare snapshots
-  const enrichedItems = req.body.items.map(item => {
+  const enrichedItems = items.map(item => {
     const product = products.find(p => p._id.toString() === item.productId);
     if (!product) throw new AppError(`Product ${item.productId} not found`, 404);
 
@@ -382,29 +249,29 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
 
   // 4. Mathematical Calculations (Pure Functions)
   const subtotal = enrichedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const shippingCharges = req.body.shippingCharges || 0;
-  const inputDiscount = req.body.discount || 0;
+  const shippingCharges = invoiceData.shippingCharges || 0;
+  const inputDiscount = invoiceData.discount || 0;
   
   const taxAmount = enrichedItems.reduce((sum, item) => {
     const lineTotal = (item.price * item.quantity) - (item.discount || 0);
     return sum + ((item.taxRate || 0) / 100 * lineTotal);
   }, 0);
 
-  const roundOff = req.body.roundOff || 0;
+  const roundOff = invoiceData.roundOff || 0;
   const grandTotal = Math.round(subtotal + shippingCharges + taxAmount - inputDiscount + roundOff);
-  const paidAmount = req.body.paidAmount || 0;
+  const paidAmount = invoiceData.paidAmount || 0;
 
   if (paidAmount > grandTotal) {
     return next(new AppError(`Paid amount (${paidAmount}) cannot exceed Grand Total (${grandTotal})`, 400));
   }
 
-  const invoiceNumber = req.body.invoiceNumber || `INV-${Date.now()}`;
+  const invoiceNumber = invoiceData.invoiceNumber || `INV-${Date.now()}`;
 
   // 5. Atomic Transaction Execution
   await runInTransaction(async (session) => {
     // A. Status & Payment Logic
     let paymentStatus = 'unpaid';
-    let status = req.body.status || 'issued';
+    let status = invoiceData.status || 'issued';
 
     if (paidAmount > 0) {
       paymentStatus = paidAmount >= grandTotal ? 'paid' : 'partial';
@@ -413,7 +280,7 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
 
     // B. Create Invoice Document
     const [invoice] = await Invoice.create([{
-      ...req.body,
+      ...invoiceData,
       invoiceNumber,
       items: enrichedItems,
       subTotal: subtotal,
@@ -424,15 +291,14 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
       status,
       organizationId: req.user.organizationId,
       branchId: req.user.branchId,
-      customerId: req.body.customerId,
+      customerId: invoiceData.customerId,
       createdBy: req.user._id,
-      paymentReference: req.body.paymentReference || req.body.referenceNumber,
-      transactionId: req.body.transactionId
+      paymentReference: invoiceData.paymentReference || invoiceData.referenceNumber,
+      transactionId: invoiceData.transactionId
     }], { session });
 
-    // C. Atomic Stock Reduction (Prevents race conditions)
-    // This utilizes findOneAndUpdate with a quantity filter inside the transaction
-    await reduceStockForInvoice(req.body.items, req.user.branchId, req.user.organizationId, session);
+    // ❌ REMOVED: Stock reduction here caused Double Deduction logic error.
+    // Stock is now reduced inside SalesService.createFromInvoiceTransactional below.
 
     // D. Process Payment & Accounting (If applicable)
     if (paidAmount > 0) {
@@ -442,12 +308,12 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
         type: 'inflow',
         customerId: invoice.customerId,
         invoiceId: invoice._id,
-        paymentDate: req.body.invoiceDate || new Date(),
+        paymentDate: invoiceData.invoiceDate || new Date(),
         amount: paidAmount,
-        paymentMethod: req.body.paymentMethod || 'cash',
+        paymentMethod: invoiceData.paymentMethod || 'cash',
         transactionMode: 'auto',
-        referenceNumber: req.body.paymentReference || req.body.referenceNumber,
-        transactionId: req.body.transactionId,
+        referenceNumber: invoiceData.paymentReference || invoiceData.referenceNumber,
+        transactionId: invoiceData.transactionId,
         remarks: `Auto-payment for ${invoice.invoiceNumber}`,
         status: 'completed',
         allocationStatus: 'fully_allocated',
@@ -487,6 +353,7 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
 
     // F. Post Revenue Recognition Journal (Sales Journal)
     if (invoice.status !== 'draft') {
+      // 1. Post Accounting Entries
       await salesJournalService.postInvoiceJournal({
         orgId: req.user.organizationId,
         branchId: req.user.branchId,
@@ -497,7 +364,8 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
         session
       });
 
-      // Synchronize with Analytics/Sales reporting service
+      // 2. Synchronize with Sales Service (Inventory Deduction + COGS + Stats)
+      // ✅ This service handles the stock reduction safely
       await SalesService.createFromInvoiceTransactional(invoice, session);
     }
 
@@ -521,6 +389,7 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
     data: finalInvoice
   });
 });
+
 /* ======================================================
    2. UPDATE INVOICE WITH STOCK MANAGEMENT (REFACTORED)
 ====================================================== */
@@ -604,11 +473,12 @@ exports.updateInvoice = catchAsync(async (req, res, next) => {
       updates.items = enrichedItems;
 
       // E. DELETE OLD ACCOUNTING ENTRIES
-      await AccountEntry.deleteMany({
-        invoiceId: oldInvoice._id,
-        referenceType: 'invoice'
-      }, { session });
-
+// Only delete Revenue recognition, NOT payment entries
+await AccountEntry.deleteMany({
+  referenceId: oldInvoice._id, // Using referenceId for specific invoice
+  referenceType: 'invoice',
+  organizationId: req.user.organizationId
+}, { session });
       // F. UPDATE CUSTOMER BALANCE (Remove old amount)
       await Customer.findByIdAndUpdate(
         oldInvoice.customerId,
@@ -983,8 +853,24 @@ exports.getInvoice = factory.getOne(Invoice, {
     { path: 'createdBy', select: 'name email' }
   ]
 });
+exports.deleteInvoice = catchAsync(async (req, res, next) => {
+  const invoice = await Invoice.findOne({ 
+      _id: req.params.id, 
+      organizationId: req.user.organizationId 
+  });
 
-exports.deleteInvoice = factory.deleteOne(Invoice);
+  if (!invoice) return next(new AppError("Invoice not found", 404));
+
+  // Guardrail: Don't allow deleting 'issued' or 'paid' invoices 
+  // without cancelling them first!
+  if (invoice.status !== 'draft' && invoice.status !== 'cancelled') {
+      return next(new AppError("Please cancel the invoice before deleting it to ensure stock and accounts are reversed.", 400));
+  }
+
+  // If it passes the check, use your existing factory logic
+  return factory.deleteOne(Invoice)(req, res, next);
+});
+// exports.deleteInvoice = factory.deleteOne(Invoice);
 
 exports.bulkUpdateStatus = catchAsync(async (req, res, next) => {
   const { ids, status } = req.body;
@@ -994,15 +880,22 @@ exports.bulkUpdateStatus = catchAsync(async (req, res, next) => {
 });
 
 exports.validateNumber = catchAsync(async (req, res, next) => {
-  const exists = await Invoice.exists({ invoiceNumber: req.params.number, organizationId: req.user.organizationId });
-  res.status(200).json({ status: "success", valid: !exists });
+  const { number } = req.params;
+  const exists = await Invoice.exists({ 
+    invoiceNumber: number, 
+    organizationId: req.user.organizationId 
+  });
+
+  res.status(200).json({ 
+    status: "success", 
+    data: { isAvailable: !exists } 
+  });
 });
 
 exports.exportInvoices = catchAsync(async (req, res, next) => {
   const docs = await Invoice.find({ organizationId: req.user.organizationId }).populate('customerId').lean();
   res.status(200).json({ status: "success", data: docs });
 });
-
 
 exports.getInvoicesByCustomer = catchAsync(async (req, res, next) => {
   const invoices = await Invoice.find({ organizationId: req.user.organizationId, customerId: req.params.customerId, isDeleted: { $ne: true } }).populate('items.productId', 'name sku').sort({ invoiceDate: -1 });
@@ -1015,6 +908,237 @@ exports.downloadInvoice = catchAsync(async (req, res, next) => {
   const buffer = await invoicePDFService.generateInvoicePDF(invoice);
   res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename=invoice_${invoice.invoiceNumber}.pdf` });
   res.send(buffer);
+});
+
+// --- Bulk Cancel Invoices ---
+exports.bulkCancelInvoices = catchAsync(async (req, res, next) => {
+  const { ids, reason } = req.body;
+  if (!ids || !Array.isArray(ids)) return next(new AppError("Invoice IDs are required", 400));
+
+  await runInTransaction(async (session) => {
+      for (const id of ids) {
+          const invoice = await Invoice.findOne({ _id: id, organizationId: req.user.organizationId }).session(session);
+          if (!invoice || invoice.status === 'cancelled') continue;
+
+          // 1. Restore Stock
+          await restoreStockFromInvoice(invoice.items, invoice.branchId, req.user.organizationId, session);
+
+          // 2. Reverse Accounting & Customer Balance
+          await salesJournalService.reverseInvoiceJournal({
+              orgId: req.user.organizationId,
+              branchId: invoice.branchId,
+              invoice,
+              userId: req.user._id,
+              session
+          });
+
+          // 3. Update Status
+          invoice.status = 'cancelled';
+          invoice.notes += `\nBulk Cancelled: ${reason}`;
+          await invoice.save({ session });
+      }
+  }, 3, { action: "BULK_CANCEL_INVOICE", userId: req.user._id });
+
+  res.status(200).json({ status: "success", message: `${ids.length} invoices cancelled.` });
+});
+
+// --- Restore Soft-Deleted Invoice ---
+exports.restoreInvoice = catchAsync(async (req, res, next) => {
+  const invoice = await Invoice.findOneAndUpdate(
+      { _id: req.params.id, organizationId: req.user.organizationId, isDeleted: true },
+      { isDeleted: false },
+      { new: true }
+  );
+
+  if (!invoice) return next(new AppError('Deleted invoice not found', 404));
+
+  res.status(200).json({ status: 'success', data: { invoice } });
+});
+
+exports.getAllDrafts = catchAsync(async (req, res, next) => {
+  const drafts = await Invoice.find({
+      organizationId: req.user.organizationId,
+      status: 'draft',
+      isDeleted: { $ne: true }
+  }).populate('customerId', 'name');
+  
+  res.status(200).json({ status: 'success', data: { invoices: drafts } });
+});
+
+exports.getDeletedInvoices = catchAsync(async (req, res, next) => {
+  const trash = await Invoice.find({
+      organizationId: req.user.organizationId,
+      isDeleted: true
+  }).populate('customerId', 'name');
+
+  res.status(200).json({ status: 'success', data: { invoices: trash } });
+});
+
+// /* ======================================================
+//    5. GET INVOICE PAYMENTS
+// ====================================================== */
+exports.getInvoicePayments = catchAsync(async (req, res, next) => {
+  const payments = await Payment.find({
+    invoiceId: req.params.id,
+    organizationId: req.user.organizationId,
+    isDeleted: { $ne: true }
+  })
+  .sort({ paymentDate: -1 })
+  .populate('createdBy', 'name email');
+
+  res.status(200).json({ 
+    status: 'success', 
+    results: payments.length, 
+    data: { payments } 
+  });
+});
+/* ======================================================
+   4. ADD PAYMENT TO INVOICE (MUTUALLY EXCLUSIVE LOGIC)
+====================================================== */
+exports.addPayment = catchAsync(async (req, res, next) => {
+  // const { id } = req.params;
+  // const { amount, paymentMethod, referenceNumber, transactionId, notes } = req.body;
+
+  // if (!amount || amount <= 0) {
+  //   return next(new AppError('Payment amount must be positive', 400));
+  // }
+const { id } = req.params;
+  let { amount, paymentMethod, referenceNumber, transactionId, notes } = req.body; // Change const to let
+
+  // 🛡️ SAFETY: Force amount to be a number
+  amount = Number(amount); 
+
+  if (!amount || amount <= 0 || isNaN(amount)) {
+    return next(new AppError('Payment amount must be a positive number', 400));
+  }
+  // 1. CHECK FOR EMI (Outside Transaction)
+  const existingEmi = await EMI.findOne({ 
+      invoiceId: id, 
+      status: { $ne: 'cancelled' } 
+  });
+
+  // ============================================================
+  // PATH A: EMI EXISTS (Run THIS or PATH B, never both)
+  // ============================================================
+  if (existingEmi) {
+    // This service handles EVERYTHING (Payment, Ledger, Invoice Update)
+    await emiService.reconcileExternalPayment({
+      organizationId: req.user.organizationId,
+      branchId: req.user.branchId, 
+      invoiceId: id,
+      amount: Number(amount),
+      paymentMethod: paymentMethod || 'cash',
+      referenceNumber: referenceNumber,
+      transactionId: transactionId,
+      remarks: notes || 'Payment added via Invoice Screen',
+      createdBy: req.user._id
+    });
+
+    // 🛑 RETURN IMMEDIATELY so Path B doesn't run
+    return res.status(200).json({
+      status: 'success',
+      message: 'Payment recorded and synced with EMI Plan'
+    });
+  } 
+  
+  // ============================================================
+  // PATH B: NO EMI (Standard Invoice Logic)
+  // ============================================================
+  else {
+    await runInTransaction(async (session) => {
+      const invoice = await Invoice.findOne({
+        _id: id,
+        organizationId: req.user.organizationId
+      }).session(session);
+
+      if (!invoice) throw new AppError('Invoice not found', 404);
+      if (invoice.status === 'cancelled') throw new AppError('Cannot add payment to cancelled invoice', 400);
+      if (invoice.status === 'paid') throw new AppError('Invoice already fully paid', 400);
+
+      const newPaidAmount = invoice.paidAmount + amount;
+      
+      // Validation to prevent overpayment
+      if (newPaidAmount > invoice.grandTotal) {
+        throw new AppError(
+          `Payment exceeds invoice total. Maximum allowed: ${invoice.grandTotal - invoice.paidAmount}`,
+          400
+        );
+      }
+
+      // 1. Create Payment Record
+      const [payment] = await Payment.create([{
+          organizationId: req.user.organizationId,
+          branchId: invoice.branchId,
+          type: 'inflow',
+          customerId: invoice.customerId,
+          invoiceId: invoice._id,
+          paymentDate: new Date(),
+          amount: amount,
+          paymentMethod: paymentMethod || invoice.paymentMethod || 'cash',
+          transactionMode: 'manual',
+          referenceNumber: referenceNumber,
+          transactionId: transactionId,
+          remarks: notes || `Payment for Invoice #${invoice.invoiceNumber}`,
+          status: 'completed',
+          allocationStatus: 'fully_allocated',
+          remainingAmount: 0,
+          allocatedTo: [{
+              type: 'invoice',
+              documentId: invoice._id,
+              amount: amount,
+              allocatedAt: new Date()
+          }],
+          createdBy: req.user._id
+      }], { session });
+
+      // 2. Create Accounting Entries (Ledger)
+      await createPaymentAccountingEntries({ 
+          invoice, 
+          payment, 
+          userId: req.user._id, 
+          session 
+      });
+
+      // 3. Update Customer Balance
+      await Customer.findByIdAndUpdate(
+          invoice.customerId,
+          { $inc: { outstandingBalance: -amount } },
+          { session }
+      );
+
+      // 4. Update Invoice Status
+      invoice.paidAmount = newPaidAmount;
+      invoice.balanceAmount = invoice.grandTotal - newPaidAmount;
+      
+      if (invoice.balanceAmount <= 0) {
+        invoice.paymentStatus = 'paid';
+        invoice.status = 'paid';
+      } else {
+        invoice.paymentStatus = 'partial';
+      }
+
+      if (paymentMethod) invoice.paymentMethod = paymentMethod;
+      if (notes) invoice.notes = (invoice.notes || '') + `\nPayment: ${notes}`;
+
+      await invoice.save({ session });
+
+      // 5. Audit Log
+      await InvoiceAudit.create([{
+        invoiceId: invoice._id,
+        action: 'PAYMENT_ADDED',
+        performedBy: req.user._id,
+        details: `Payment of ${amount} added. New paid: ${newPaidAmount}`,
+        ipAddress: req.ip
+      }], { session });
+
+    }, 3, { action: "ADD_PAYMENT", userId: req.user._id });
+
+    // Success Response for Path B
+    return res.status(200).json({
+      status: 'success',
+      message: 'Payment added successfully'
+    });
+  }
 });
 
 
@@ -1526,11 +1650,11 @@ module.exports = exports;
 // // CHANGED: Import the whole service to access reverseInvoiceJournal
 // const salesJournalService = require('../../../inventory/core/salesJournal.service');
 
-// const catchAsync = require("../../../../core/utils/catchAsync");
-// const AppError = require("../../../../core/utils/appError");
-// const factory = require("../../../../core/utils/handlerFactory");
-// const { runInTransaction } = require("../../../../core/utils/runInTransaction");
-// const { emitToOrg } = require("../../../../core/utils/_legacy/socket");
+// const catchAsync = require("../../../../core/utils/api/catchAsync");
+// const AppError = require("../../../../core/utils/api/appError");
+// const factory = require("../../../../core/utils/api/handlerFactory");
+// const { runInTransaction } = require("../../../../core/utils/db/runInTransaction");
+// const { emitToOrg } = require("../../../../socketHandlers/socket");
 // const automationService = require('../../../_legacy/services/automationService');
 
 // /* ======================================================

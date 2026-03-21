@@ -5,15 +5,24 @@ const filterSchema = new mongoose.Schema({
   field: { 
     type: String, 
     required: true, 
+<<<<<<< HEAD
     enum: ['category', 'brand', 'price', 'tags', 'stock', 'createdAt', 'sellingPrice', 'discount'] 
+=======
+    enum: ['category', 'brand', 'price', 'tags', 'stock', 'createdAt', 'lastSold', 'discount'] 
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
   },
   operator: { 
     type: String, 
     required: true, 
     enum: ['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'between', 'in'] 
   },
+<<<<<<< HEAD
   value: mongoose.Schema.Types.Mixed,
   value2: mongoose.Schema.Types.Mixed // For 'between'
+=======
+  value: { type: mongoose.Schema.Types.Mixed, required: true },
+  value2: { type: mongoose.Schema.Types.Mixed } // For 'between' operator
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
 }, { _id: false });
 
 const smartRuleSchema = new mongoose.Schema({
@@ -27,10 +36,41 @@ const smartRuleSchema = new mongoose.Schema({
     required: true,
     enum: ['new_arrivals', 'best_sellers', 'clearance', 'trending', 'custom_query', 'stock_clearing']
   },
+<<<<<<< HEAD
 
   // The Query Logic
-  filters: [filterSchema],
+=======
+  name: { type: String, required: true, trim: true, maxlength: 100 },
+  description: { type: String, trim: true },
   
+  ruleType: {
+    type: String,
+    required: true,
+    enum: [
+      'new_arrivals', 
+      'best_sellers', 
+      'clearance_sale', 
+      'trending', 
+      'seasonal', 
+      'price_range', 
+      'category_based', 
+      'low_stock', 
+      'custom_query'
+    ]
+  },
+  
+  // Query Construction
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
+  filters: [filterSchema],
+  sortBy: { 
+    type: String, 
+    enum: ['createdAt', 'sellingPrice', 'name', 'lastSold', 'views'], 
+    default: 'createdAt' 
+  },
+  sortOrder: { type: String, enum: ['asc', 'desc'], default: 'desc' },
+  limit: { type: Number, min: 1, max: 100, default: 12 },
+  
+<<<<<<< HEAD
   // Sorting
   sortBy: { type: String, default: 'createdAt' },
   sortOrder: { type: String, enum: ['asc', 'desc'], default: 'desc' },
@@ -54,6 +94,20 @@ const smartRuleSchema = new mongoose.Schema({
   },
 
   isActive: { type: Boolean, default: true }
+=======
+  // Caching Strategy (Redis)
+  cacheDuration: { type: Number, default: 15 }, // Minutes
+  isActive: { type: Boolean, default: true, index: true },
+  
+  // Analytics
+  lastExecutedAt: Date,
+  executionCount: { type: Number, default: 0 }
+}, {
+  timestamps: true
+});
+
+smartRuleSchema.index({ organizationId: 1, ruleType: 1 });
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
 
 }, { timestamps: true });
 

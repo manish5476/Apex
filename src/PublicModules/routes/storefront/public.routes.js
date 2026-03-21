@@ -11,7 +11,9 @@ router.use(rateLimit);
 // Validates store existence and returns settings + layout
 router.get('/:organizationSlug/info', storefrontPublicController.getOrganizationInfo); // Optional: if you need just info
 router.get('/:organizationSlug/sitemap', storefrontPublicController.getSitemap);
+router.get('/:organizationSlug/meta', productPublicController.getStoreMetadata);
 
+<<<<<<< HEAD
 // --- 2. PRODUCT DISCOVERY (High Performance) ---
 // The "Amazon" listing endpoint
 router.get('/:organizationSlug/products', productPublicController.getProducts);
@@ -23,10 +25,24 @@ router.get('/:organizationSlug/products/:productSlug', productPublicController.g
 // --- 3. DYNAMIC PAGES (The Catch-All) ---
 // Critical: This must be LAST because ':pageSlug' is a wildcard.
 // It handles /home, /about-us, /landing-page
+=======
+// 2. Product Routes (SPECIFIC FIRST)
+// Make sure productPublicController methods exist before mounting
+if (productPublicController) {
+    router.get('/:organizationSlug/products', productPublicController.getProducts);
+    router.get('/:organizationSlug/products/:productSlug', productPublicController.getProductBySlug);
+    router.get('/:organizationSlug/categories', productPublicController.getCategories);
+    router.get('/:organizationSlug/tags', productPublicController.getTags);
+    router.get('/:organizationSlug/search', productPublicController.searchProducts);
+}
+
+// 3. Page Routes (Catch-all for pages)
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
 router.get('/:organizationSlug/:pageSlug', storefrontPublicController.getPublicPage);
 
-module.exports = router;
+router.get('/', (req, res) => res.status(200).json({ message: 'Storefront API Public' }));
 
+<<<<<<< HEAD
 // const express = require('express');
 // const router = express.Router();
 // const storefrontPublicController = require('../../controllers/storefront/storefrontPublic.controller');
@@ -101,3 +117,6 @@ module.exports = router;
 // // // router.get('/:organizationSlug/search', productPublicController.searchProducts);
 
 // // // module.exports = router;
+=======
+module.exports = router;
+>>>>>>> f866ea5f98b08ee23003c9b4ccea5ff507d78be8
