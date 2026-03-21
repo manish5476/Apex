@@ -1,12 +1,9 @@
-// src/models/storefront/index.js
-const StorefrontPage = require('./storefrontPage.model');
-const StorefrontLayout = require('./storefrontLayout.model');
-const SmartRule = require('./smartRule.model');
-const SectionTemplate = require('./sectionTemplate.model');
-
+// src/storefront/models/index.js
 module.exports = {
-  StorefrontPage,
-  StorefrontLayout,
-  SmartRule,
-  SectionTemplate
+  StorefrontPage:     require('./storefrontPage.model'),
+  StorefrontLayout:   require('./storefrontLayout.model'),
+  StorefrontCart:     require('./storefrontCart.model'),
+  StorefrontOrder:    require('./storefrontOrder.model'),
+  SmartRule:          require('./smartRule.model'),
+  SectionTemplate:    require('./sectionTemplate.model')
 };
