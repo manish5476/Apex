@@ -51,6 +51,7 @@ const pageSchema = new mongoose.Schema({
   isPublished: { type: Boolean, default: false },
   publishedAt: { type: Date },
   isHomepage:  { type: Boolean, default: false },
+  isDeletable: { type: Boolean, default: true },
   // Analytics
   viewCount:    { type: Number, default: 0 },
   lastViewedAt: { type: Date },

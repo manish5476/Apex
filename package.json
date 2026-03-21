@@ -6,6 +6,7 @@
   "scripts": {
     "start": "nodemon src/server.js",
     "seed-coa": "node scripts/seedDefaultCoa.js",
+    "seed-home": "node src/PublicModules/scripts/create-home-page.js",
     "create-indexes": "node scripts/createIndexes.js",
     "test": "jest --runInBand"
   },

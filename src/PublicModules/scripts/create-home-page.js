@@ -29,7 +29,7 @@ async function seedHomePage() {
     console.log('✅ Connected to MongoDB');
 
     // 4. Find or Create Organization
-    const shopId = 'SHIVAM';
+    const shopId = 'Apex INfinity';
     let org = await Organization.findOne({ uniqueShopId: shopId });
     
     if (!org) {
@@ -56,6 +56,7 @@ async function seedHomePage() {
       pageType: 'home',
       isPublished: true,
       isHomepage: true,
+      isDeletable: false,
       status: 'published',
       publishedAt: new Date(),
       sections: [
@@ -95,7 +96,7 @@ async function seedHomePage() {
     );
 
     console.log('✅ Home Page Created/Updated Successfully in the CORRECT DB');
-    console.log('👉 Try: http://localhost:4200/store/shivam/home');
+    console.log(`👉 Try: http://localhost:5000/api/v1/store/${shopId}/home`);
     process.exit(0);
 
   } catch (error) {

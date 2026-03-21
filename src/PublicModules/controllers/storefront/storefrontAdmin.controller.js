@@ -230,6 +230,10 @@ class StorefrontAdminController {
       const page = await StorefrontPage.findOne({ _id: pageId, organizationId });
       if (!page) return next(new AppError('Page not found', 404));
 
+      if (page.isDeletable === false) {
+        return next(new AppError('This is a core system page and cannot be deleted.', 400));
+      }
+
       if (page.isHomepage) {
         return next(new AppError(
           'Cannot delete the active homepage. Assign a different page as homepage first.',
