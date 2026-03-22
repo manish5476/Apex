@@ -170,7 +170,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // === NEW STOREFRONT ROUTE MOUNTING ===
 
 // 1. Public Storefront Routes (matches Angular Public Service)
-app.use('/public', storefrontPublicRoutes);
+app.use('/api/v1/store', storefrontPublicRoutes);
 app.use('/api/v1/admin/storefront/smart-rules', smartRuleRoutes);
 app.use('/api/v1/admin/storefront', storefrontAdminRoutes);
 // === EXISTING API ROUTES ===
