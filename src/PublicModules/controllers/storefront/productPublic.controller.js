@@ -1,110 +1,125 @@
-const mongoose = require('mongoose');
-const Product = require('../../../modules/inventory/core/product.model');
-const Organization = require('../../../modules/organization/core/organization.model');
-const Master = require('../../../modules/master/core/master.model'); 
-const AppError = require('../../../core/utils/api/appError');
+/**
+ * ProductPublicController
+ *
+ * Public product endpoints — no authentication required.
+ * All queries are scoped to organizationId for multi-tenancy safety.
+ *
+ * Routes:
+ *   GET /:organizationSlug/products              → listing + filters
+ *   GET /:organizationSlug/products/:productSlug → single product
+ *   GET /:organizationSlug/search                → smart search
+ *   GET /:organizationSlug/categories            → category list with counts
+ *   GET /:organizationSlug/brands                → brand list with counts
+ *   GET /:organizationSlug/tags                  → popular tags
+ *   GET /:organizationSlug/filters               → all filter facets combined
+ *   GET /:organizationSlug/meta                  → full store metadata
+ */
 
-// Services
+'use strict';
+
+const mongoose      = require('mongoose');
+const Product       = require('../../../modules/inventory/core/product.model');
+const Organization  = require('../../../modules/organization/core/organization.model');
+const Master        = require('../../../modules/master/core/master.model');
 const LayoutService = require('../../services/storefront/layout.service');
 const DataHydrationService = require('../../services/storefront/dataHydration.service');
+const AppError      = require('../../../core/utils/api/appError');
 
-// SEO Utils
-const { buildProductSchema } = require('../../utils/constants/seo/productSchema.util');
-const { buildProductListSchema } = require('../../utils/constants/seo/productListSchema.util');
-const { buildCanonicalUrl, buildRobotsMeta } = require('../../utils/constants/seo/seo.util');
+// Consistent sort field whitelist — matches Product schema and SmartRule model
+const ALLOWED_SORT_FIELDS = new Set([
+  'createdAt', 'sellingPrice', 'name', 'views', 'salesCount', 'discountedPrice'
+]);
 
 const MAX_LIMIT = 50;
-const ALLOWED_SORT_FIELDS = ['createdAt', 'sellingPrice', 'name', 'views', 'discountedPrice', 'salesCount']; // ✅ Added salesCount
+
 class ProductPublicController {
 
-  // =====================================================
-  // 1. GET PRODUCTS (Listing + Smart Filters)
-  // Route: GET /:organizationSlug/products
-  // =====================================================
+  // ---------------------------------------------------------------------------
+  // GET /:organizationSlug/products
+  // ---------------------------------------------------------------------------
+
   getProducts = async (req, res, next) => {
     try {
       const { organizationSlug } = req.params;
       const org = await this._resolveOrg(organizationSlug);
       if (!org) return next(new AppError('Store not found', 404));
 
-      // 1. Destructure ALL possible inputs
-      let { 
-        page = 1, limit = 20, 
-        sort, sortBy, sortOrder, // ✅ Capture 'sort' (frontend default) AND 'sortBy' (manual)
-        category, brand, subCategory, 
-        minPrice, maxPrice, minDiscount,
-        search, tags, inStock 
+      // ---- Parse query params ------------------------------------------------
+      let {
+        page = 1, limit = 20,
+        sort,           // shorthand: '-sellingPrice' or 'name'
+        sortBy, sortOrder,
+        category, brand, subCategory,
+        minPrice, maxPrice,
+        search, tags, inStock
       } = req.query;
 
-      // -------------------------------------------------------
-      // 🔧 FIX: Intelligent Sort Parsing
-      // -------------------------------------------------------
-      // If frontend sends ?sort=-sellingPrice, we parse it here.
+      // Parse shorthand sort: '-sellingPrice' → { sortBy: 'sellingPrice', sortOrder: 'desc' }
       if (sort) {
         if (sort.startsWith('-')) {
-          sortBy = sort.substring(1); // Remove '-'
+          sortBy    = sort.slice(1);
           sortOrder = 'desc';
         } else {
-          sortBy = sort;
+          sortBy    = sort;
           sortOrder = 'asc';
         }
       }
 
-      // Default Fallbacks
-      sortBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? sortBy : 'createdAt';
-      sortOrder = (sortOrder === 'asc' || sortOrder === '1') ? 'asc' : 'desc';
+      // Sanitise sort
+      sortBy    = ALLOWED_SORT_FIELDS.has(sortBy) ? sortBy : 'createdAt';
+      sortOrder = (sortOrder === 'asc' || sortOrder === '1') ? 1 : -1;
 
-      // Pagination
-      page = Math.max(parseInt(page, 10) || 1, 1);
-      limit = Math.min(parseInt(limit, 10) || 20, 50);
+      // Sanitise pagination
+      page  = Math.max(parseInt(page)  || 1, 1);
+      limit = Math.min(parseInt(limit) || 20, MAX_LIMIT);
       const skip = (page - 1) * limit;
 
-      // -------------------------------------------------------
-      // 🔍 BUILD QUERY
-      // -------------------------------------------------------
-      const query = { organizationId: org._id, isActive: true };
+      // ---- Build query -------------------------------------------------------
+      const query = { organizationId: org._id, isActive: true, isDeleted: { $ne: true } };
 
-      // Category & Brand (Resolves Names OR IDs)
-      if (category) query.categoryId = await this._resolveMasterId(org._id, 'category', category);
-      if (brand) query.brandId = await this._resolveMasterId(org._id, 'brand', brand);
-      if (subCategory) query.subCategoryId = await this._resolveMasterId(org._id, 'category', subCategory);
+      // Resolve name-or-id references for category/brand
+      const [resolvedCategory, resolvedBrand, resolvedSub] = await Promise.all([
+        category    ? this._resolveMasterId(org._id, 'category', category)    : null,
+        brand       ? this._resolveMasterId(org._id, 'brand',    brand)       : null,
+        subCategory ? this._resolveMasterId(org._id, 'category', subCategory) : null
+      ]);
 
-      // Price Range (Handle String Inputs Safeley)
+      if (resolvedCategory) query.categoryId    = resolvedCategory;
+      if (resolvedBrand)    query.brandId       = resolvedBrand;
+      if (resolvedSub)      query.subCategoryId = resolvedSub;
+
+      // Price range
       if (minPrice || maxPrice) {
         query.sellingPrice = {};
         if (minPrice) query.sellingPrice.$gte = Number(minPrice);
         if (maxPrice) query.sellingPrice.$lte = Number(maxPrice);
       }
 
-      // In Stock Logic
-      if (String(inStock) === 'true') { // ✅ Robust string check
+      // In-stock filter
+      if (String(inStock) === 'true') {
         query.inventory = { $elemMatch: { quantity: { $gt: 0 } } };
       }
 
-      // Tags
+      // Tags — accept comma-separated or array
       if (tags) {
-        // Handle "tag1,tag2" or array
-        const tagList = Array.isArray(tags) ? tags : tags.split(',');
-        const cleanTags = tagList.map(t => t.trim()).filter(Boolean);
-        if (cleanTags.length > 0) query.tags = { $in: cleanTags };
+        const tagList = Array.isArray(tags)
+          ? tags
+          : tags.split(',').map(t => t.trim()).filter(Boolean);
+        if (tagList.length) query.tags = { $in: tagList };
       }
 
-      // Search
-      if (search) {
-        const searchRegex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-        query.$or = [
-          { name: { $regex: searchRegex } },
-          { sku: { $regex: searchRegex } }
-        ];
+      // Full-text search (escape special regex chars)
+      if (search && search.trim().length >= 2) {
+        const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const rx      = new RegExp(escaped, 'i');
+        query.$or     = [{ name: rx }, { sku: rx }];
       }
 
-      // -------------------------------------------------------
-      // 🚀 EXECUTE
-      // -------------------------------------------------------
+      // ---- Execute in parallel -----------------------------------------------
       const [products, total, layoutData] = await Promise.all([
         Product.find(query)
-          .select('name slug description images sellingPrice discountedPrice categoryId brandId tags sku inventory createdAt')
-          .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 }) // ✅ Applies cleaned sort
+          .select('name slug description images sellingPrice discountedPrice categoryId brandId tags sku inventory createdAt salesCount')
+          .sort({ [sortBy]: sortOrder })
           .skip(skip)
           .limit(limit)
           .populate('categoryId brandId', 'name slug')
@@ -112,125 +127,131 @@ class ProductPublicController {
         Product.countDocuments(query),
         LayoutService.getLayout(org._id)
       ]);
-      
+
       const [hydratedHeader, hydratedFooter] = await Promise.all([
         DataHydrationService.hydrateSections(layoutData.header, org._id),
         DataHydrationService.hydrateSections(layoutData.footer, org._id)
       ]);
 
-      const transformed = this._transformProducts(products, organizationSlug);
-      const listSchema = buildProductListSchema(transformed);
-
       res.status(200).json({
-        organization: this._formatOrg(org, organizationSlug),
-        layout: { header: hydratedHeader, footer: hydratedFooter },
-        products: transformed,
-        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-        seo: { canonical: buildCanonicalUrl(req), jsonLd: listSchema }
+        status:       'success',
+        organization: this._formatOrg(org),
+        layout:       { header: hydratedHeader, footer: hydratedFooter },
+        products:     this._transformProducts(products),
+        pagination:   { page, limit, total, pages: Math.ceil(total / limit) }
       });
-
-    } catch (err) { next(err); }
+    } catch (err) {
+      next(err);
+    }
   }
-  
- getProductBySlug = async (req, res, next) => {
+
+  // ---------------------------------------------------------------------------
+  // GET /:organizationSlug/products/:productSlug
+  // ---------------------------------------------------------------------------
+
+  getProductBySlug = async (req, res, next) => {
     try {
       const { organizationSlug, productSlug } = req.params;
       const org = await this._resolveOrg(organizationSlug);
       if (!org) return next(new AppError('Store not found', 404));
 
       const [product, layoutData] = await Promise.all([
-        Product.findOne({ organizationId: org._id, slug: productSlug, isActive: true }).lean(),
+        Product.findOne({ organizationId: org._id, slug: productSlug, isActive: true, isDeleted: { $ne: true } })
+          .populate('categoryId brandId unitId', 'name slug imageUrl')
+          .lean(),
         LayoutService.getLayout(org._id)
       ]);
 
       if (!product) return next(new AppError('Product not found', 404));
 
-      // Async View Increment
-      this.incrementProductViews(product._id);
+      // Fire-and-forget view increment
+      this._incrementViews(product._id);
 
       const [hydratedHeader, hydratedFooter] = await Promise.all([
         DataHydrationService.hydrateSections(layoutData.header, org._id),
         DataHydrationService.hydrateSections(layoutData.footer, org._id)
       ]);
 
-      // Detailed Transform
-      const totalStock = product.inventory?.reduce((sum, inv) => sum + (inv.quantity || 0), 0) || 0;
+      const currency    = layoutData.globalSettings?.commerce?.currency ?? 'INR';
+      const totalStock  = product.inventory?.reduce((s, i) => s + (i.quantity || 0), 0) ?? 0;
       const hasDiscount = !!(product.discountedPrice && product.discountedPrice < product.sellingPrice);
-      const discountPercent = hasDiscount 
-        ? Math.round(((product.sellingPrice - product.discountedPrice) / product.sellingPrice) * 100) 
+      const discountPct = hasDiscount
+        ? Math.round(((product.sellingPrice - product.discountedPrice) / product.sellingPrice) * 100)
         : 0;
 
       const publicProduct = {
-        id: product._id,
-        name: product.name,
-        slug: product.slug,
-        description: product.description,
-        images: product.images || [],
-        
+        id:          product._id,
+        name:        product.name,
+        slug:        product.slug,
+        description: product.description ?? null,
+        images:      product.images ?? [],
+        sku:         product.sku    ?? null,
         price: {
-          original: product.sellingPrice,
-          discounted: product.discountedPrice,
-          currency: 'USD',
-          taxRate: product.taxRate,
-          isTaxInclusive: product.isTaxInclusive,
+          original:           product.sellingPrice,
+          current:            hasDiscount ? product.discountedPrice : product.sellingPrice,
+          discounted:         product.discountedPrice ?? null,
           hasDiscount,
-          discountLabel: hasDiscount ? `${discountPercent}% OFF` : null
+          discountPercentage: discountPct,
+          currency,
+          taxRate:        product.taxRate        ?? 0,
+          isTaxInclusive: product.isTaxInclusive ?? false
         },
-
-        category: {
-            id: product.categoryId?._id,
-            name: product.categoryId?.name,
-            image: product.categoryId?.imageUrl,
-            slug: product.categoryId?.slug
-        },
-        brand: {
-            id: product.brandId?._id,
-            name: product.brandId?.name,
-            slug: product.brandId?.slug
-        },
-        unit: product.unitId?.name,
-        tags: product.tags || [],
-        sku: product.sku,
+        category: product.categoryId ? {
+          id:    product.categoryId._id,
+          name:  product.categoryId.name,
+          slug:  product.categoryId.slug,
+          image: product.categoryId.imageUrl ?? null
+        } : null,
+        brand: product.brandId ? {
+          id:   product.brandId._id,
+          name: product.brandId.name,
+          slug: product.brandId.slug
+        } : null,
+        unit: product.unitId?.name ?? null,
+        tags: product.tags ?? [],
         stock: {
           available: totalStock > 0,
-          quantity: totalStock,
-          status: totalStock === 0 ? 'Out of Stock' : (totalStock < 5 ? 'Low Stock' : 'In Stock')
-        }
+          quantity:  totalStock,
+          status:    totalStock === 0 ? 'out_of_stock' : (totalStock < 5 ? 'low_stock' : 'in_stock')
+        },
+        dimensions: product.dimensions ?? null
       };
 
-      const schema = buildProductSchema(publicProduct, organizationSlug);
-
       res.status(200).json({
-        organization: this._formatOrg(org, organizationSlug),
-        layout: { header: hydratedHeader, footer: hydratedFooter },
-        settings: layoutData.globalSettings || {},
-        product: publicProduct,
-        seo: { canonical: buildCanonicalUrl(req), jsonLd: schema },
+        status:       'success',
+        organization: this._formatOrg(org),
+        layout:       { header: hydratedHeader, footer: hydratedFooter },
+        settings:     layoutData.globalSettings ?? {},
+        product:      publicProduct,
         breadcrumbs: [
-          { name: 'Home', url: `/store/${organizationSlug}` },
+          { name: 'Home',     url: `/store/${organizationSlug}` },
           { name: 'Products', url: `/store/${organizationSlug}/products` },
-          { name: publicProduct.category?.name || 'Category', url: `/store/${organizationSlug}/products?category=${publicProduct.category?.slug || publicProduct.category?.id}` },
-          { name: product.name, url: `#` }
-        ]
+          publicProduct.category
+            ? { name: publicProduct.category.name, url: `/store/${organizationSlug}/products?category=${publicProduct.category.slug}` }
+            : null,
+          { name: product.name, url: '#' }
+        ].filter(Boolean)
       });
-
-    } catch (err) { next(err); }
+    } catch (err) {
+      next(err);
+    }
   }
 
-  // =====================================================
-  // 3. SMART SEARCH (Master + Product)
-  // Route: GET /:organizationSlug/search
-  // =====================================================
+  // ---------------------------------------------------------------------------
+  // GET /:organizationSlug/search
+  // ---------------------------------------------------------------------------
+
   searchProducts = async (req, res, next) => {
     try {
       const { organizationSlug } = req.params;
-      const q = (req.query.q || '').trim();
-      if (q.length < 2) return res.status(200).json({ results: [] });
+      const q = (req.query.q ?? '').trim();
+
+      if (q.length < 2) return res.status(200).json({ status: 'success', query: q, results: [] });
 
       const org = await this._resolveOrg(organizationSlug);
-      if (!org) return res.status(200).json({ results: [] });
+      if (!org) return res.status(200).json({ status: 'success', query: q, results: [] });
 
-      // Step 1: Find Master IDs matching the search term
+      // Find master entries (categories/brands) matching the query in parallel
       const masterMatches = await Master.find({
         organizationId: org._id,
         isActive: true,
@@ -238,230 +259,201 @@ class ProductPublicController {
       }).select('_id type');
 
       const categoryIds = masterMatches.filter(m => m.type === 'category').map(m => m._id);
-      const brandIds = masterMatches.filter(m => m.type === 'brand').map(m => m._id);
+      const brandIds    = masterMatches.filter(m => m.type === 'brand').map(m => m._id);
 
-      // Step 2: Search Products
-      const results = await Product.find({
+      const products = await Product.find({
         organizationId: org._id,
-        isActive: true,
+        isActive:       true,
+        isDeleted:      { $ne: true },
         $or: [
-          { name: { $regex: q, $options: 'i' } },
-          { sku: { $regex: q, $options: 'i' } },
-          { tags: { $regex: q, $options: 'i' } },
-          { categoryId: { $in: categoryIds } }, 
-          { brandId: { $in: brandIds } }
+          { name:       { $regex: q, $options: 'i' } },
+          { sku:        { $regex: q, $options: 'i' } },
+          { tags:       { $regex: q, $options: 'i' } },
+          ...(categoryIds.length ? [{ categoryId: { $in: categoryIds } }] : []),
+          ...(brandIds.length    ? [{ brandId:    { $in: brandIds    } }] : [])
         ]
       })
-      .select('name slug images sellingPrice discountedPrice categoryId brandId')
+      .select('name slug images sellingPrice discountedPrice categoryId')
       .populate('categoryId', 'name')
       .limit(12)
       .lean();
 
-      // Transform
-      const transformed = results.map(p => ({
-        id: p._id,
-        name: p.name,
-        slug: p.slug,
-        image: p.images?.[0],
-        price: p.discountedPrice || p.sellingPrice,
-        originalPrice: p.sellingPrice,
-        category: p.categoryId?.name,
-        url: `/store/${organizationSlug}/products/${p.slug}`
-      }));
-
-      res.status(200).json({ query: q, results: transformed });
-
-    } catch (err) { next(err); }
+      res.status(200).json({
+        status: 'success',
+        query:  q,
+        results: products.map(p => ({
+          id:            p._id,
+          name:          p.name,
+          slug:          p.slug,
+          image:         p.images?.[0] ?? null,
+          price:         p.discountedPrice ?? p.sellingPrice,
+          originalPrice: p.sellingPrice,
+          hasDiscount:   !!(p.discountedPrice && p.discountedPrice < p.sellingPrice),
+          category:      p.categoryId?.name ?? null,
+          url:           `/store/${organizationSlug}/products/${p.slug}`
+        }))
+      });
+    } catch (err) {
+      next(err);
+    }
   }
 
-  // =====================================================
-  // 4. RESTORED & UPGRADED: TAGS
-  // Route: GET /:organizationSlug/tags
-  // =====================================================
+  // ---------------------------------------------------------------------------
+  // GET /:organizationSlug/categories
+  // ---------------------------------------------------------------------------
+
+  getCategories = async (req, res, next) => {
+    try {
+      const org = await this._resolveOrg(req.params.organizationSlug);
+      if (!org) return next(new AppError('Store not found', 404));
+
+      const results = await Product.aggregate([
+        { $match: { organizationId: org._id, isActive: true, isDeleted: { $ne: true }, categoryId: { $exists: true } } },
+        { $group: { _id: '$categoryId', count: { $sum: 1 } } },
+        { $lookup: { from: 'masters', localField: '_id', foreignField: '_id', as: 'm' } },
+        { $unwind: '$m' },
+        { $project: { _id: 1, name: '$m.name', slug: '$m.slug', image: '$m.imageUrl', count: 1 } },
+        { $sort: { count: -1 } }
+      ]);
+
+      res.status(200).json({ status: 'success', results: results.length, data: results });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // GET /:organizationSlug/brands
+  // ---------------------------------------------------------------------------
+
+  getBrands = async (req, res, next) => {
+    try {
+      const org = await this._resolveOrg(req.params.organizationSlug);
+      if (!org) return next(new AppError('Store not found', 404));
+
+      const results = await Product.aggregate([
+        { $match: { organizationId: org._id, isActive: true, isDeleted: { $ne: true }, brandId: { $exists: true } } },
+        { $group: { _id: '$brandId', count: { $sum: 1 } } },
+        { $lookup: { from: 'masters', localField: '_id', foreignField: '_id', as: 'm' } },
+        { $unwind: '$m' },
+        { $project: { _id: 1, name: '$m.name', slug: '$m.slug', count: 1 } },
+        { $sort: { name: 1 } }
+      ]);
+
+      res.status(200).json({ status: 'success', results: results.length, data: results });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // GET /:organizationSlug/tags
+  // ---------------------------------------------------------------------------
+
   getTags = async (req, res, next) => {
     try {
-      const { organizationSlug } = req.params;
-      const org = await this._resolveOrg(organizationSlug);
+      const org = await this._resolveOrg(req.params.organizationSlug);
       if (!org) return next(new AppError('Store not found', 404));
 
       const tags = await Product.aggregate([
         { $match: { organizationId: org._id, isActive: true, tags: { $exists: true, $ne: [] } } },
         { $unwind: '$tags' },
-        { $group: { _id: '$tags', count: { $sum: 1 } } }, // Added count for tag cloud sizing
-        { $sort: { count: -1 } }, // Popular tags first
+        { $group: { _id: '$tags', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
         { $limit: 50 }
       ]);
 
-      res.set({ 'X-Robots-Tag': buildRobotsMeta(true) });
-      res.status(200).json({ 
-        count: tags.length, 
-        tags: tags.map(t => ({ name: t._id, count: t.count })) // Return object for richer UI
+      res.status(200).json({
+        status: 'success',
+        count:  tags.length,
+        tags:   tags.map(t => ({ name: t._id, count: t.count }))
       });
-    } catch (err) { next(err); }
+    } catch (err) {
+      next(err);
+    }
   }
 
-  // =====================================================
-  // 5. RESTORED & UPGRADED: CATEGORIES (Aggregated)
-  // Route: GET /:organizationSlug/categories
-  // =====================================================
-  getCategories = async (req, res, next) => {
-    try {
-      const { organizationSlug } = req.params;
-      const org = await this._resolveOrg(organizationSlug);
-      if (!org) return next(new AppError('Store not found', 404));
+  // ---------------------------------------------------------------------------
+  // GET /:organizationSlug/filters
+  // Combined filter facets for the shop sidebar
+  // ---------------------------------------------------------------------------
 
-      const categories = await Product.aggregate([
-        { $match: { organizationId: org._id, isActive: true, categoryId: { $exists: true } } },
-        { $group: { _id: '$categoryId', productCount: { $sum: 1 } } },
-        {
-            $lookup: {
-                from: 'masters', // Ensure this matches your collection name in DB (usually 'masters')
-                localField: '_id',
-                foreignField: '_id',
-                as: 'masterInfo'
-            }
-        },
-        { $unwind: '$masterInfo' },
-        { 
-            $project: { 
-                _id: 1, 
-                name: '$masterInfo.name', 
-                slug: '$masterInfo.slug', 
-                image: '$masterInfo.imageUrl',
-                count: '$productCount' 
-            } 
-        },
-        { $sort: { count: -1 } }
-      ]);
-
-      res.status(200).json({ results: categories });
-    } catch (err) { next(err); }
-  }
-
-  // =====================================================
-  // 6. EXTRA: BRANDS (Aggregated)
-  // Route: GET /:organizationSlug/brands (If you add it later)
-  // =====================================================
-  getBrands = async (req, res, next) => {
-    try {
-      const { organizationSlug } = req.params;
-      const org = await this._resolveOrg(organizationSlug);
-      if (!org) return next(new AppError('Store not found', 404));
-
-      const brands = await Product.aggregate([
-        { $match: { organizationId: org._id, isActive: true, brandId: { $exists: true } } },
-        { $group: { _id: '$brandId', productCount: { $sum: 1 } } },
-        {
-            $lookup: {
-                from: 'masters',
-                localField: '_id',
-                foreignField: '_id',
-                as: 'brandInfo'
-            }
-        },
-        { $unwind: '$brandInfo' },
-        { 
-            $project: { 
-                _id: 1, 
-                name: '$brandInfo.name', 
-                slug: '$brandInfo.slug',
-                count: '$productCount' 
-            } 
-        },
-        { $sort: { name: 1 } }
-      ]);
-
-      res.status(200).json({ results: brands });
-    } catch (err) { next(err); }
-  }
-
-  // =====================================================
-  // 7. FACETS (Combined Filters)
-  // Route: GET /:organizationSlug/filters (Optional/New)
-  // =====================================================
   getShopFilters = async (req, res, next) => {
     try {
-      const { organizationSlug } = req.params;
-      const org = await this._resolveOrg(organizationSlug);
+      const org = await this._resolveOrg(req.params.organizationSlug);
       if (!org) return next(new AppError('Store not found', 404));
-      
+
+      const baseMatch = { organizationId: org._id, isActive: true, isDeleted: { $ne: true } };
+
       const [categories, brands, priceRange] = await Promise.all([
-        // Categories
         Product.aggregate([
-            { $match: { organizationId: org._id, isActive: true } },
-            { $group: { _id: '$categoryId', count: { $sum: 1 } } },
-            { $lookup: { from: 'masters', localField: '_id', foreignField: '_id', as: 'm' } },
-            { $unwind: '$m' },
-            { $project: { id: '$_id', name: '$m.name', slug: '$m.slug', count: 1, _id: 0 } },
-            { $sort: { count: -1 } }
+          { $match: { ...baseMatch, categoryId: { $exists: true } } },
+          { $group: { _id: '$categoryId', count: { $sum: 1 } } },
+          { $lookup: { from: 'masters', localField: '_id', foreignField: '_id', as: 'm' } },
+          { $unwind: '$m' },
+          { $project: { id: '$_id', name: '$m.name', slug: '$m.slug', count: 1, _id: 0 } },
+          { $sort: { count: -1 } }
         ]),
-        // Brands
         Product.aggregate([
-            { $match: { organizationId: org._id, isActive: true } },
-            { $group: { _id: '$brandId', count: { $sum: 1 } } },
-            { $lookup: { from: 'masters', localField: '_id', foreignField: '_id', as: 'm' } },
-            { $unwind: '$m' },
-            { $project: { id: '$_id', name: '$m.name', slug: '$m.slug', count: 1, _id: 0 } },
-            { $sort: { name: 1 } }
+          { $match: { ...baseMatch, brandId: { $exists: true } } },
+          { $group: { _id: '$brandId', count: { $sum: 1 } } },
+          { $lookup: { from: 'masters', localField: '_id', foreignField: '_id', as: 'm' } },
+          { $unwind: '$m' },
+          { $project: { id: '$_id', name: '$m.name', slug: '$m.slug', count: 1, _id: 0 } },
+          { $sort: { name: 1 } }
         ]),
-        // Price Range
         Product.aggregate([
-            { $match: { organizationId: org._id, isActive: true } },
-            { $group: { _id: null, min: { $min: '$sellingPrice' }, max: { $max: '$sellingPrice' } } }
+          { $match: baseMatch },
+          { $group: { _id: null, min: { $min: '$sellingPrice' }, max: { $max: '$sellingPrice' } } }
         ])
       ]);
 
       res.status(200).json({
-        categories,
-        brands,
-        price: priceRange[0] || { min: 0, max: 0 }
+        status: 'success',
+        data: {
+          categories,
+          brands,
+          price: priceRange[0] ? { min: priceRange[0].min, max: priceRange[0].max } : { min: 0, max: 0 }
+        }
       });
-    } catch (err) { next(err); }
+    } catch (err) {
+      next(err);
+    }
   }
 
-  // =====================================================
-  // ✅ FINAL: GET STORE METADATA (Hybrid Master + Counts)
-  // Route: GET /:organizationSlug/meta
-  // Fixes "No Data" issue and adds 'type' for UI grouping
-  // =====================================================
+  // ---------------------------------------------------------------------------
+  // GET /:organizationSlug/meta
+  // Full store metadata for initial storefront load (enums + filters in one call)
+  // ---------------------------------------------------------------------------
+
   getStoreMetadata = async (req, res, next) => {
     try {
-      const { organizationSlug } = req.params;
-      const org = await this._resolveOrg(organizationSlug);
+      const org = await this._resolveOrg(req.params.organizationSlug);
       if (!org) return next(new AppError('Store not found', 404));
 
-      // ⚡ PARALLEL EXECUTION: Fetch Masters AND Product Counts simultaneously
+      const baseMatch = { organizationId: org._id, isActive: true, isDeleted: { $ne: true } };
+
       const [allMasters, productStats, tagStats] = await Promise.all([
-        
-        // 1. Fetch ALL Masters (The Source of Truth)
-        // We fetch everything active so the UI knows about "Furniture", "Electronics", etc.
-        Master.find({ 
-          organizationId: org._id, 
+        Master.find({
+          organizationId: org._id,
           isActive: true,
-          type: { $in: ['category', 'brand', 'unit', 'department'] } // Added 'department'
+          type: { $in: ['category', 'brand', 'unit', 'department'] }
         })
         .select('name slug type imageUrl parentId metadata')
         .sort({ 'metadata.sortOrder': 1, name: 1 })
         .lean(),
 
-        // 2. Aggregate Real-Time Counts from Products (The Facets)
         Product.aggregate([
-          { $match: { organizationId: org._id, isActive: true } },
-          { 
-            $facet: {
-              // Count per Category ID
+          { $match: baseMatch },
+          { $facet: {
               byCategory: [{ $group: { _id: '$categoryId', count: { $sum: 1 } } }],
-              // Count per Brand ID
-              byBrand: [{ $group: { _id: '$brandId', count: { $sum: 1 } } }],
-              // Price Min/Max
+              byBrand:    [{ $group: { _id: '$brandId',    count: { $sum: 1 } } }],
               priceRange: [{ $group: { _id: null, min: { $min: '$sellingPrice' }, max: { $max: '$sellingPrice' } } }]
-            }
-          }
+          }}
         ]),
 
-        // 3. Aggregate Tags separately (Cleaner)
         Product.aggregate([
-          { $match: { organizationId: org._id, isActive: true, tags: { $exists: true, $ne: [] } } },
+          { $match: { ...baseMatch, tags: { $exists: true, $ne: [] } } },
           { $unwind: '$tags' },
           { $group: { _id: '$tags', count: { $sum: 1 } } },
           { $sort: { count: -1 } },
@@ -469,121 +461,122 @@ class ProductPublicController {
         ])
       ]);
 
-      // --- DATA MERGING ---
-      // Convert arrays to Maps for O(1) instant lookup
-      const catCounts = productStats[0].byCategory.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {});
-      const brandCounts = productStats[0].byBrand.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {});
-      const priceInfo = productStats[0].priceRange[0] || { min: 0, max: 0 };
+      const catCounts   = new Map(productStats[0].byCategory.map(x => [x._id?.toString(), x.count]));
+      const brandCounts = new Map(productStats[0].byBrand.map(x    => [x._id?.toString(), x.count]));
+      const priceInfo   = productStats[0].priceRange[0] ?? { min: 0, max: 0 };
 
-      // Helper to Format Master for UI
-      const formatMaster = (m) => ({
-        id: m._id,
-        name: m.name,
-        slug: m.slug,
-        type: m.type, // ✅ THE FIELD YOU REQUESTED
-        image: m.imageUrl,
-        parentId: m.parentId,
-        // If type is category, use catCounts; if brand, use brandCounts. Default to 0.
-        count: (m.type === 'category' ? catCounts[m._id] : brandCounts[m._id]) || 0
+      const format = m => ({
+        id:       m._id,
+        name:     m.name,
+        slug:     m.slug,
+        type:     m.type,
+        image:    m.imageUrl  ?? null,
+        parentId: m.parentId  ?? null,
+        count:    (m.type === 'category' ? catCounts : brandCounts).get(m._id?.toString()) ?? 0
       });
-
-      // Group by Type
-      const enums = {
-        categories: allMasters.filter(m => m.type === 'category').map(formatMaster),
-        brands: allMasters.filter(m => m.type === 'brand').map(formatMaster),
-        departments: allMasters.filter(m => m.type === 'department').map(formatMaster),
-        units: allMasters.filter(m => m.type === 'unit').map(m => ({ id: m._id, name: m.name })),
-        tags: tagStats.map(t => t._id)
-      };
 
       res.status(200).json({
-        organization: { id: org._id, slug: organizationSlug },
-        enums,
-        filters: {
-          price: { min: priceInfo.min, max: priceInfo.max }
+        status: 'success',
+        data: {
+          organization: { id: org._id, name: org.name },
+          enums: {
+            categories:  allMasters.filter(m => m.type === 'category').map(format),
+            brands:      allMasters.filter(m => m.type === 'brand').map(format),
+            departments: allMasters.filter(m => m.type === 'department').map(format),
+            units:       allMasters.filter(m => m.type === 'unit').map(m => ({ id: m._id, name: m.name })),
+            tags:        tagStats.map(t => t._id)
+          },
+          filters: {
+            price: { min: priceInfo.min, max: priceInfo.max }
+          }
         }
       });
-
-    } catch (err) { next(err); }
+    } catch (err) {
+      next(err);
+    }
   }
 
-// =====================================================
-  // 🔒 PRIVATE HELPERS (Keep these)
-  // =====================================================
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+
   async _resolveOrg(slug) {
-    return await Organization.findOne({
+    return Organization.findOne({
       uniqueShopId: slug.toUpperCase(),
-      isActive: true
-    }).select('_id name uniqueShopId primaryEmail primaryPhone logo');
+      isActive:     true
+    })
+    .select('_id name uniqueShopId primaryEmail primaryPhone logo description')
+    .lean();
   }
 
   async _resolveMasterId(organizationId, type, value) {
     if (!value) return null;
-    if (mongoose.Types.ObjectId.isValid(value)) return value;
+    if (mongoose.isValidObjectId(value)) return value;
+
     const master = await Master.findOne({
       organizationId,
       type,
-      $or: [{ slug: value.toLowerCase() }, { name: { $regex: new RegExp(`^${value}$`, 'i') } }]
+      $or: [
+        { slug: value.toLowerCase() },
+        { name: { $regex: new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }
+      ]
     }).select('_id');
-    return master ? master._id : null;
-  }
-  
-  _transformProducts(products, orgSlug) {
-    return products.map(p => {
-      const totalStock = p.inventory?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
-      
-      let hasDiscount = false;
-      let discountLabel = null;
-      if (p.discountedPrice && p.discountedPrice < p.sellingPrice) {
-        hasDiscount = true;
-        const pct = Math.round(((p.sellingPrice - p.discountedPrice) / p.sellingPrice) * 100);
-        discountLabel = `${pct}% OFF`;
-      }
 
-      const isNew = p.createdAt && (new Date() - new Date(p.createdAt) < 14 * 24 * 60 * 60 * 1000);
+    return master?._id ?? null;
+  }
+
+  _transformProducts(products) {
+    return products.map(p => {
+      const totalStock  = p.inventory?.reduce((s, i) => s + (i.quantity || 0), 0) ?? 0;
+      const hasDiscount = !!(p.discountedPrice && p.discountedPrice < p.sellingPrice);
+      const discountPct = hasDiscount
+        ? Math.round(((p.sellingPrice - p.discountedPrice) / p.sellingPrice) * 100)
+        : 0;
+      const isNew = p.createdAt && (Date.now() - new Date(p.createdAt) < 14 * 24 * 60 * 60 * 1000);
 
       return {
-        id: p._id,
-        name: p.name,
-        slug: p.slug,
-        image: p.images?.[0] || null,
-        images: p.images || [],
-        brand: p.brandId?.name || null,
-        category: p.categoryId?.name || null,
+        id:       p._id,
+        name:     p.name,
+        slug:     p.slug,
+        image:    p.images?.[0]  ?? null,
+        images:   p.images       ?? [],
+        brand:    p.brandId?.name    ?? null,
+        category: p.categoryId?.name ?? null,
+        tags:     p.tags ?? [],
         price: {
-          original: p.sellingPrice,
-          discounted: p.discountedPrice,
-          currency: 'USD',
+          original:           p.sellingPrice,
+          current:            hasDiscount ? p.discountedPrice : p.sellingPrice,
           hasDiscount,
-          discountLabel
+          discountPercentage: discountPct
         },
         stock: {
           available: totalStock > 0,
-          qty: totalStock,
-          status: totalStock === 0 ? 'Out of Stock' : (totalStock < 5 ? 'Low Stock' : 'In Stock')
+          quantity:  totalStock,
+          status:    totalStock === 0 ? 'out_of_stock' : (totalStock < 5 ? 'low_stock' : 'in_stock')
         },
-        isNew,
-        url: `/store/${orgSlug}/products/${p.slug}`
+        isNew
       };
     });
   }
 
-  _formatOrg(org, slug) {
+  _formatOrg(org) {
     return {
-      id: org._id,
+      id:   org._id,
       name: org.name,
-      slug: slug,
-      logo: org.logo,
-      contact: { email: org.primaryEmail, phone: org.primaryPhone }
+      slug: org.uniqueShopId?.toLowerCase(),
+      logo: org.logo ?? null
     };
   }
 
-  async incrementProductViews(productId) {
-    try { await Product.findByIdAndUpdate(productId, { $inc: { views: 1 } }); } catch (_) {}
+  async _incrementViews(productId) {
+    try {
+      await Product.findByIdAndUpdate(productId, { $inc: { views: 1 } });
+    } catch (_) { /* non-critical */ }
   }
 }
 
 module.exports = new ProductPublicController();
+
 
 // const mongoose = require('mongoose');
 // const Product = require('../../../modules/inventory/core/product.model');
@@ -601,12 +594,12 @@ module.exports = new ProductPublicController();
 // const { buildCanonicalUrl, buildRobotsMeta } = require('../../utils/constants/seo/seo.util');
 
 // const MAX_LIMIT = 50;
-// const ALLOWED_SORT_FIELDS = ['createdAt', 'sellingPrice', 'name', 'views', 'discountedPrice'];
-
+// const ALLOWED_SORT_FIELDS = ['createdAt', 'sellingPrice', 'name', 'views', 'discountedPrice', 'salesCount']; // ✅ Added salesCount
 // class ProductPublicController {
 
 //   // =====================================================
 //   // 1. GET PRODUCTS (Listing + Smart Filters)
+//   // Route: GET /:organizationSlug/products
 //   // =====================================================
 //   getProducts = async (req, res, next) => {
 //     try {
@@ -614,114 +607,112 @@ module.exports = new ProductPublicController();
 //       const org = await this._resolveOrg(organizationSlug);
 //       if (!org) return next(new AppError('Store not found', 404));
 
+//       // 1. Destructure ALL possible inputs
 //       let { 
-//         page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'desc', 
+//         page = 1, limit = 20, 
+//         sort, sortBy, sortOrder, // ✅ Capture 'sort' (frontend default) AND 'sortBy' (manual)
 //         category, brand, subCategory, 
 //         minPrice, maxPrice, minDiscount,
 //         search, tags, inStock 
 //       } = req.query;
 
-//       // --- A. Normalize Inputs ---
-//       page = Math.max(parseInt(page, 10) || 1, 1);
-//       limit = Math.min(parseInt(limit, 10) || 20, MAX_LIMIT);
+//       // -------------------------------------------------------
+//       // 🔧 FIX: Intelligent Sort Parsing
+//       // -------------------------------------------------------
+//       // If frontend sends ?sort=-sellingPrice, we parse it here.
+//       if (sort) {
+//         if (sort.startsWith('-')) {
+//           sortBy = sort.substring(1); // Remove '-'
+//           sortOrder = 'desc';
+//         } else {
+//           sortBy = sort;
+//           sortOrder = 'asc';
+//         }
+//       }
+
+//       // Default Fallbacks
 //       sortBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? sortBy : 'createdAt';
+//       sortOrder = (sortOrder === 'asc' || sortOrder === '1') ? 'asc' : 'desc';
+
+//       // Pagination
+//       page = Math.max(parseInt(page, 10) || 1, 1);
+//       limit = Math.min(parseInt(limit, 10) || 20, 50);
 //       const skip = (page - 1) * limit;
 
+//       // -------------------------------------------------------
+//       // 🔍 BUILD QUERY
+//       // -------------------------------------------------------
 //       const query = { organizationId: org._id, isActive: true };
 
-//       // --- B. Smart Filter Resolution (Name -> ID) ---
-//       // This fixes the issue where "Electronics" wouldn't match because DB stores ObjectId
+//       // Category & Brand (Resolves Names OR IDs)
 //       if (category) query.categoryId = await this._resolveMasterId(org._id, 'category', category);
 //       if (brand) query.brandId = await this._resolveMasterId(org._id, 'brand', brand);
 //       if (subCategory) query.subCategoryId = await this._resolveMasterId(org._id, 'category', subCategory);
 
-//       // --- C. Standard Filters ---
-//       if (tags) {
-//         const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
-//         if (tagList.length > 0) query.tags = { $in: tagList };
-//       }
-
+//       // Price Range (Handle String Inputs Safeley)
 //       if (minPrice || maxPrice) {
 //         query.sellingPrice = {};
 //         if (minPrice) query.sellingPrice.$gte = Number(minPrice);
 //         if (maxPrice) query.sellingPrice.$lte = Number(maxPrice);
 //       }
 
-//       if (inStock === 'true') {
+//       // In Stock Logic
+//       if (String(inStock) === 'true') { // ✅ Robust string check
 //         query.inventory = { $elemMatch: { quantity: { $gt: 0 } } };
 //       }
 
-//       // --- D. Discount Filter (New) ---
-//       if (minDiscount) {
-//         const discountVal = parseInt(minDiscount);
-//         if (discountVal > 0) {
-//           query.discountedPrice = { $exists: true, $ne: null };
-//           // Logic: discounted <= selling * (1 - 0.minDiscount)
-//           const factor = 1 - (discountVal / 100);
-//           query.$expr = {
-//             $lte: ["$discountedPrice", { $multiply: ["$sellingPrice", factor] }]
-//           };
-//         }
+//       // Tags
+//       if (tags) {
+//         // Handle "tag1,tag2" or array
+//         const tagList = Array.isArray(tags) ? tags : tags.split(',');
+//         const cleanTags = tagList.map(t => t.trim()).filter(Boolean);
+//         if (cleanTags.length > 0) query.tags = { $in: cleanTags };
 //       }
 
-//       // --- E. Search Logic ---
+//       // Search
 //       if (search) {
 //         const searchRegex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 //         query.$or = [
 //           { name: { $regex: searchRegex } },
-//           { description: { $regex: searchRegex } },
 //           { sku: { $regex: searchRegex } }
 //         ];
 //       }
 
-//       // --- F. Execution (Parallel) ---
+//       // -------------------------------------------------------
+//       // 🚀 EXECUTE
+//       // -------------------------------------------------------
 //       const [products, total, layoutData] = await Promise.all([
 //         Product.find(query)
 //           .select('name slug description images sellingPrice discountedPrice categoryId brandId tags sku inventory createdAt')
-//           .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
+//           .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 }) // ✅ Applies cleaned sort
 //           .skip(skip)
 //           .limit(limit)
-//           .populate('categoryId brandId', 'name slug') // Populate for display
+//           .populate('categoryId brandId', 'name slug')
 //           .lean(),
 //         Product.countDocuments(query),
 //         LayoutService.getLayout(org._id)
 //       ]);
-
-//       // --- G. Hydration & Transform ---
+      
 //       const [hydratedHeader, hydratedFooter] = await Promise.all([
 //         DataHydrationService.hydrateSections(layoutData.header, org._id),
 //         DataHydrationService.hydrateSections(layoutData.footer, org._id)
 //       ]);
 
 //       const transformed = this._transformProducts(products, organizationSlug);
-
-//       // --- H. Response ---
 //       const listSchema = buildProductListSchema(transformed);
-      
-//       res.set({
-//         'Link': `<${buildCanonicalUrl(req)}>; rel="canonical"`,
-//         'X-Robots-Tag': buildRobotsMeta(false)
-//       });
 
 //       res.status(200).json({
 //         organization: this._formatOrg(org, organizationSlug),
 //         layout: { header: hydratedHeader, footer: hydratedFooter },
-//         settings: layoutData.globalSettings || {},
 //         products: transformed,
-//         pagination: {
-//           page, limit, total,
-//           pages: Math.ceil(total / limit)
-//         },
+//         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
 //         seo: { canonical: buildCanonicalUrl(req), jsonLd: listSchema }
 //       });
 
 //     } catch (err) { next(err); }
 //   }
-
-//   // =====================================================
-//   // 2. GET SINGLE PRODUCT (Detailed)
-//   // =====================================================
-//   getProductBySlug = async (req, res, next) => {
+  
+//  getProductBySlug = async (req, res, next) => {
 //     try {
 //       const { organizationSlug, productSlug } = req.params;
 //       const org = await this._resolveOrg(organizationSlug);
@@ -734,7 +725,7 @@ module.exports = new ProductPublicController();
 
 //       if (!product) return next(new AppError('Product not found', 404));
 
-//       // Async View Increment (Fire & Forget)
+//       // Async View Increment
 //       this.incrementProductViews(product._id);
 
 //       const [hydratedHeader, hydratedFooter] = await Promise.all([
@@ -808,6 +799,7 @@ module.exports = new ProductPublicController();
 
 //   // =====================================================
 //   // 3. SMART SEARCH (Master + Product)
+//   // Route: GET /:organizationSlug/search
 //   // =====================================================
 //   searchProducts = async (req, res, next) => {
 //     try {
@@ -818,7 +810,7 @@ module.exports = new ProductPublicController();
 //       const org = await this._resolveOrg(organizationSlug);
 //       if (!org) return res.status(200).json({ results: [] });
 
-//       // Step 1: Find Master IDs matching the search term (e.g., Search "Nike" finds the Brand ID)
+//       // Step 1: Find Master IDs matching the search term
 //       const masterMatches = await Master.find({
 //         organizationId: org._id,
 //         isActive: true,
@@ -828,7 +820,7 @@ module.exports = new ProductPublicController();
 //       const categoryIds = masterMatches.filter(m => m.type === 'category').map(m => m._id);
 //       const brandIds = masterMatches.filter(m => m.type === 'brand').map(m => m._id);
 
-//       // Step 2: Search Products (Name OR SKU OR Matched Category OR Matched Brand)
+//       // Step 2: Search Products
 //       const results = await Product.find({
 //         organizationId: org._id,
 //         isActive: true,
@@ -836,8 +828,8 @@ module.exports = new ProductPublicController();
 //           { name: { $regex: q, $options: 'i' } },
 //           { sku: { $regex: q, $options: 'i' } },
 //           { tags: { $regex: q, $options: 'i' } },
-//           { categoryId: { $in: categoryIds } }, // ✅ Finds products in matching category
-//           { brandId: { $in: brandIds } }        // ✅ Finds products in matching brand
+//           { categoryId: { $in: categoryIds } }, 
+//           { brandId: { $in: brandIds } }
 //         ]
 //       })
 //       .select('name slug images sellingPrice discountedPrice categoryId brandId')
@@ -845,7 +837,7 @@ module.exports = new ProductPublicController();
 //       .limit(12)
 //       .lean();
 
-//       // Transform for quick view
+//       // Transform
 //       const transformed = results.map(p => ({
 //         id: p._id,
 //         name: p.name,
@@ -863,10 +855,110 @@ module.exports = new ProductPublicController();
 //   }
 
 //   // =====================================================
-//   // 4. AGGREGATION HELPERS (Facets)
+//   // 4. RESTORED & UPGRADED: TAGS
+//   // Route: GET /:organizationSlug/tags
 //   // =====================================================
-  
-//   // Get all facets in one go
+//   getTags = async (req, res, next) => {
+//     try {
+//       const { organizationSlug } = req.params;
+//       const org = await this._resolveOrg(organizationSlug);
+//       if (!org) return next(new AppError('Store not found', 404));
+
+//       const tags = await Product.aggregate([
+//         { $match: { organizationId: org._id, isActive: true, tags: { $exists: true, $ne: [] } } },
+//         { $unwind: '$tags' },
+//         { $group: { _id: '$tags', count: { $sum: 1 } } }, // Added count for tag cloud sizing
+//         { $sort: { count: -1 } }, // Popular tags first
+//         { $limit: 50 }
+//       ]);
+
+//       res.set({ 'X-Robots-Tag': buildRobotsMeta(true) });
+//       res.status(200).json({ 
+//         count: tags.length, 
+//         tags: tags.map(t => ({ name: t._id, count: t.count })) // Return object for richer UI
+//       });
+//     } catch (err) { next(err); }
+//   }
+
+//   // =====================================================
+//   // 5. RESTORED & UPGRADED: CATEGORIES (Aggregated)
+//   // Route: GET /:organizationSlug/categories
+//   // =====================================================
+//   getCategories = async (req, res, next) => {
+//     try {
+//       const { organizationSlug } = req.params;
+//       const org = await this._resolveOrg(organizationSlug);
+//       if (!org) return next(new AppError('Store not found', 404));
+
+//       const categories = await Product.aggregate([
+//         { $match: { organizationId: org._id, isActive: true, categoryId: { $exists: true } } },
+//         { $group: { _id: '$categoryId', productCount: { $sum: 1 } } },
+//         {
+//             $lookup: {
+//                 from: 'masters', // Ensure this matches your collection name in DB (usually 'masters')
+//                 localField: '_id',
+//                 foreignField: '_id',
+//                 as: 'masterInfo'
+//             }
+//         },
+//         { $unwind: '$masterInfo' },
+//         { 
+//             $project: { 
+//                 _id: 1, 
+//                 name: '$masterInfo.name', 
+//                 slug: '$masterInfo.slug', 
+//                 image: '$masterInfo.imageUrl',
+//                 count: '$productCount' 
+//             } 
+//         },
+//         { $sort: { count: -1 } }
+//       ]);
+
+//       res.status(200).json({ results: categories });
+//     } catch (err) { next(err); }
+//   }
+
+//   // =====================================================
+//   // 6. EXTRA: BRANDS (Aggregated)
+//   // Route: GET /:organizationSlug/brands (If you add it later)
+//   // =====================================================
+//   getBrands = async (req, res, next) => {
+//     try {
+//       const { organizationSlug } = req.params;
+//       const org = await this._resolveOrg(organizationSlug);
+//       if (!org) return next(new AppError('Store not found', 404));
+
+//       const brands = await Product.aggregate([
+//         { $match: { organizationId: org._id, isActive: true, brandId: { $exists: true } } },
+//         { $group: { _id: '$brandId', productCount: { $sum: 1 } } },
+//         {
+//             $lookup: {
+//                 from: 'masters',
+//                 localField: '_id',
+//                 foreignField: '_id',
+//                 as: 'brandInfo'
+//             }
+//         },
+//         { $unwind: '$brandInfo' },
+//         { 
+//             $project: { 
+//                 _id: 1, 
+//                 name: '$brandInfo.name', 
+//                 slug: '$brandInfo.slug',
+//                 count: '$productCount' 
+//             } 
+//         },
+//         { $sort: { name: 1 } }
+//       ]);
+
+//       res.status(200).json({ results: brands });
+//     } catch (err) { next(err); }
+//   }
+
+//   // =====================================================
+//   // 7. FACETS (Combined Filters)
+//   // Route: GET /:organizationSlug/filters (Optional/New)
+//   // =====================================================
 //   getShopFilters = async (req, res, next) => {
 //     try {
 //       const { organizationSlug } = req.params;
@@ -874,7 +966,7 @@ module.exports = new ProductPublicController();
 //       if (!org) return next(new AppError('Store not found', 404));
       
 //       const [categories, brands, priceRange] = await Promise.all([
-//         // Categories with counts
+//         // Categories
 //         Product.aggregate([
 //             { $match: { organizationId: org._id, isActive: true } },
 //             { $group: { _id: '$categoryId', count: { $sum: 1 } } },
@@ -883,7 +975,7 @@ module.exports = new ProductPublicController();
 //             { $project: { id: '$_id', name: '$m.name', slug: '$m.slug', count: 1, _id: 0 } },
 //             { $sort: { count: -1 } }
 //         ]),
-//         // Brands with counts
+//         // Brands
 //         Product.aggregate([
 //             { $match: { organizationId: org._id, isActive: true } },
 //             { $group: { _id: '$brandId', count: { $sum: 1 } } },
@@ -892,7 +984,7 @@ module.exports = new ProductPublicController();
 //             { $project: { id: '$_id', name: '$m.name', slug: '$m.slug', count: 1, _id: 0 } },
 //             { $sort: { name: 1 } }
 //         ]),
-//         // Price Min/Max
+//         // Price Range
 //         Product.aggregate([
 //             { $match: { organizationId: org._id, isActive: true } },
 //             { $group: { _id: null, min: { $min: '$sellingPrice' }, max: { $max: '$sellingPrice' } } }
@@ -908,12 +1000,96 @@ module.exports = new ProductPublicController();
 //   }
 
 //   // =====================================================
-//   // 🔒 PRIVATE HELPERS
+//   // ✅ FINAL: GET STORE METADATA (Hybrid Master + Counts)
+//   // Route: GET /:organizationSlug/meta
+//   // Fixes "No Data" issue and adds 'type' for UI grouping
 //   // =====================================================
+//   getStoreMetadata = async (req, res, next) => {
+//     try {
+//       const { organizationSlug } = req.params;
+//       const org = await this._resolveOrg(organizationSlug);
+//       if (!org) return next(new AppError('Store not found', 404));
 
-//   /**
-//    * Helper: Resolves Org Slug to Doc (Cached mostly by DB index)
-//    */
+//       // ⚡ PARALLEL EXECUTION: Fetch Masters AND Product Counts simultaneously
+//       const [allMasters, productStats, tagStats] = await Promise.all([
+        
+//         // 1. Fetch ALL Masters (The Source of Truth)
+//         // We fetch everything active so the UI knows about "Furniture", "Electronics", etc.
+//         Master.find({ 
+//           organizationId: org._id, 
+//           isActive: true,
+//           type: { $in: ['category', 'brand', 'unit', 'department'] } // Added 'department'
+//         })
+//         .select('name slug type imageUrl parentId metadata')
+//         .sort({ 'metadata.sortOrder': 1, name: 1 })
+//         .lean(),
+
+//         // 2. Aggregate Real-Time Counts from Products (The Facets)
+//         Product.aggregate([
+//           { $match: { organizationId: org._id, isActive: true } },
+//           { 
+//             $facet: {
+//               // Count per Category ID
+//               byCategory: [{ $group: { _id: '$categoryId', count: { $sum: 1 } } }],
+//               // Count per Brand ID
+//               byBrand: [{ $group: { _id: '$brandId', count: { $sum: 1 } } }],
+//               // Price Min/Max
+//               priceRange: [{ $group: { _id: null, min: { $min: '$sellingPrice' }, max: { $max: '$sellingPrice' } } }]
+//             }
+//           }
+//         ]),
+
+//         // 3. Aggregate Tags separately (Cleaner)
+//         Product.aggregate([
+//           { $match: { organizationId: org._id, isActive: true, tags: { $exists: true, $ne: [] } } },
+//           { $unwind: '$tags' },
+//           { $group: { _id: '$tags', count: { $sum: 1 } } },
+//           { $sort: { count: -1 } },
+//           { $limit: 30 }
+//         ])
+//       ]);
+
+//       // --- DATA MERGING ---
+//       // Convert arrays to Maps for O(1) instant lookup
+//       const catCounts = productStats[0].byCategory.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {});
+//       const brandCounts = productStats[0].byBrand.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {});
+//       const priceInfo = productStats[0].priceRange[0] || { min: 0, max: 0 };
+
+//       // Helper to Format Master for UI
+//       const formatMaster = (m) => ({
+//         id: m._id,
+//         name: m.name,
+//         slug: m.slug,
+//         type: m.type, // ✅ THE FIELD YOU REQUESTED
+//         image: m.imageUrl,
+//         parentId: m.parentId,
+//         // If type is category, use catCounts; if brand, use brandCounts. Default to 0.
+//         count: (m.type === 'category' ? catCounts[m._id] : brandCounts[m._id]) || 0
+//       });
+
+//       // Group by Type
+//       const enums = {
+//         categories: allMasters.filter(m => m.type === 'category').map(formatMaster),
+//         brands: allMasters.filter(m => m.type === 'brand').map(formatMaster),
+//         departments: allMasters.filter(m => m.type === 'department').map(formatMaster),
+//         units: allMasters.filter(m => m.type === 'unit').map(m => ({ id: m._id, name: m.name })),
+//         tags: tagStats.map(t => t._id)
+//       };
+
+//       res.status(200).json({
+//         organization: { id: org._id, slug: organizationSlug },
+//         enums,
+//         filters: {
+//           price: { min: priceInfo.min, max: priceInfo.max }
+//         }
+//       });
+
+//     } catch (err) { next(err); }
+//   }
+
+// // =====================================================
+//   // 🔒 PRIVATE HELPERS (Keep these)
+//   // =====================================================
 //   async _resolveOrg(slug) {
 //     return await Organization.findOne({
 //       uniqueShopId: slug.toUpperCase(),
@@ -921,29 +1097,17 @@ module.exports = new ProductPublicController();
 //     }).select('_id name uniqueShopId primaryEmail primaryPhone logo');
 //   }
 
-//   /**
-//    * Helper: Resolves a query param (Name or ID) to a Master ObjectId
-//    */
 //   async _resolveMasterId(organizationId, type, value) {
 //     if (!value) return null;
 //     if (mongoose.Types.ObjectId.isValid(value)) return value;
-
-//     // Fuzzy match name or slug
 //     const master = await Master.findOne({
 //       organizationId,
 //       type,
-//       $or: [
-//         { slug: value.toLowerCase() },
-//         { name: { $regex: new RegExp(`^${value}$`, 'i') } }
-//       ]
+//       $or: [{ slug: value.toLowerCase() }, { name: { $regex: new RegExp(`^${value}$`, 'i') } }]
 //     }).select('_id');
-    
 //     return master ? master._id : null;
 //   }
-
-//   /**
-//    * Helper: Standard Product Transform
-//    */
+  
 //   _transformProducts(products, orgSlug) {
 //     return products.map(p => {
 //       const totalStock = p.inventory?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
@@ -956,7 +1120,6 @@ module.exports = new ProductPublicController();
 //         discountLabel = `${pct}% OFF`;
 //       }
 
-//       // Detect New Arrival (14 days)
 //       const isNew = p.createdAt && (new Date() - new Date(p.createdAt) < 14 * 24 * 60 * 60 * 1000);
 
 //       return {
@@ -1001,504 +1164,3 @@ module.exports = new ProductPublicController();
 // }
 
 // module.exports = new ProductPublicController();
-// // const Product = require('../../../modules/inventory/core/product.model');
-// // const Organization = require('../../../modules/organization/core/organization.model');
-// // const Master = require('../../../modules/master/core/master.model'); // ✅ Import Master for lookups
-// // const AppError = require('../../../core/utils/api/appError');
-
-// // // ✅ IMPORTS FOR LAYOUT
-// // const LayoutService = require('../../services/storefront/layout.service');
-// // const DataHydrationService = require('../../services/storefront/dataHydration.service');
-
-// // const { buildProductSchema } = require('../../utils/constants/seo/productSchema.util');
-// // const { buildProductListSchema } = require('../../utils/constants/seo/productListSchema.util');
-// // const { buildCanonicalUrl, buildRobotsMeta } = require('../../utils/constants/seo/seo.util');
-
-// // const MAX_LIMIT = 50;
-// // const ALLOWED_SORT_FIELDS = ['createdAt', 'sellingPrice', 'name', 'views'];
-
-// // class ProductPublicController {
-
-// //   // =====================================================
-// //   // 1. GET PRODUCTS (LISTING + FILTERS + LAYOUT)
-// //   // =====================================================
-// //   getProducts = async (req, res, next) => {
-// //     try {
-// //       const { organizationSlug } = req.params;
-// //       let {page = 1,limit = 20,sortBy = 'createdAt',sortOrder = 'desc',category,brand,subCategory,minPrice,maxPrice,search,tags,inStock
-// //       } = req.query;
-
-// //       // 1. Normalize Inputs
-// //       page = Math.max(parseInt(page, 10) || 1, 1);
-// //       limit = Math.min(parseInt(limit, 10) || 20, MAX_LIMIT);
-// //       sortBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? sortBy : 'createdAt';
-// //       sortOrder = sortOrder === 'asc' ? 'asc' : 'desc';
-// //       const skip = (page - 1) * limit;
-
-// //       // 2. Resolve Organization
-// //       const organization = await Organization.findOne({
-// //         uniqueShopId: organizationSlug.toUpperCase(),
-// //         isActive: true
-// //       }).select('_id name uniqueShopId primaryEmail primaryPhone logo');
-
-// //       if (!organization) return next(new AppError('Store not found', 404));
-
-// //       // 3. Build Query
-// //       const query = {
-// //         organizationId: organization._id,
-// //         isActive: true
-// //       };
-
-// //       // ---------------------------------------------------------
-// //       // 🔍 SMART FILTERING (Name -> ID Lookup)
-// //       // ---------------------------------------------------------
-// //       // If user sends ?category=Electronics, we need to find the ID for "Electronics"
-      
-// //       if (category) {
-// //         // Check if it's a valid ObjectId, otherwise treat as Name
-// //         if (category.match(/^[0-9a-fA-F]{24}$/)) {
-// //            query.categoryId = category;
-// //         } else {
-// //            // Lookup Master ID by Name
-// //            const catMaster = await Master.findOne({ 
-// //              organizationId: organization._id, 
-// //              type: 'category', 
-// //              name: { $regex: new RegExp(`^${category}$`, 'i') } 
-// //            }).select('_id');
-// //            if (catMaster) query.categoryId = catMaster._id;
-// //         }
-// //       }
-
-// //       if (brand) {
-// //         if (brand.match(/^[0-9a-fA-F]{24}$/)) {
-// //            query.brandId = brand;
-// //         } else {
-// //            const brandMaster = await Master.findOne({ 
-// //              organizationId: organization._id, 
-// //              type: 'brand', 
-// //              name: { $regex: new RegExp(`^${brand}$`, 'i') } 
-// //            }).select('_id');
-// //            if (brandMaster) query.brandId = brandMaster._id;
-// //         }
-// //       }
-
-// //       if (subCategory) {
-// //          if (subCategory.match(/^[0-9a-fA-F]{24}$/)) {
-// //            query.subCategoryId = subCategory;
-// //         }
-// //       }
-
-// //       if (tags) {
-// //         const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
-// //         if (tagList.length > 0) query.tags = { $in: tagList };
-// //       }
-
-// //       if (minPrice || maxPrice) {
-// //         query.sellingPrice = {};
-// //         if (minPrice) query.sellingPrice.$gte = Number(minPrice);
-// //         if (maxPrice) query.sellingPrice.$lte = Number(maxPrice);
-// //       }
-
-// //       if (search) {
-// //         const searchRegex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-// //         query.$or = [
-// //           { name: { $regex: searchRegex } },
-// //           { description: { $regex: searchRegex } },
-// //           { sku: { $regex: searchRegex } }
-// //         ];
-// //       }
-
-// //       if (inStock === 'true') {
-// //         // Query inside inventory array
-// //         query.inventory = { $elemMatch: { quantity: { $gt: 0 } } };
-// //       }
-
-// //       // 4. Execute Queries (Parallel)
-// //       // Note: Product.find() will auto-populate via your Model's 'pre' hook
-// //       const [products, total, layoutData] = await Promise.all([
-// //         Product.find(query)
-// //           // .select() is optional if you want everything, but good for performance
-// //           .select('name slug description images sellingPrice discountedPrice categoryId brandId tags sku inventory')
-// //           .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
-// //           .skip(skip)
-// //           .limit(limit)
-// //           .lean(),
-// //         Product.countDocuments(query),
-// //         LayoutService.getLayout(organization._id)
-// //       ]);
-
-// //       // 5. Hydrate Layout
-// //       const [hydratedHeader, hydratedFooter] = await Promise.all([
-// //         DataHydrationService.hydrateSections(layoutData.header, organization._id),
-// //         DataHydrationService.hydrateSections(layoutData.footer, organization._id)
-// //       ]);
-
-// //       // 6. Transform Data (Handle Populated References)
-// //       const transformed = products.map(p => {
-// //         const totalStock = p.inventory?.reduce((sum, inv) => sum + (inv.quantity || 0), 0) || 0;
-        
-// //         return {
-// //           id: p._id,
-// //           name: p.name,
-// //           slug: p.slug,
-// //           description: p.description, 
-// //           image: p.images?.[0] || null, // Main image
-// //           images: p.images || [],
-          
-// //           // ✅ Correctly map Populated Object to String Name
-// //           brand: p.brandId?.name || null,
-// //           category: p.categoryId?.name || null,
-          
-// //           price: {
-// //             original: p.sellingPrice,
-// //             discounted: p.discountedPrice,
-// //             currency: 'USD',
-// //             hasDiscount: !!(p.discountedPrice && p.discountedPrice < p.sellingPrice)
-// //           },
-          
-// //           tags: p.tags || [],
-// //           sku: p.sku,
-// //           stock: {
-// //             available: totalStock > 0,
-// //             qty: totalStock 
-// //           },
-// //           url: `/store/${organizationSlug}/products/${p.slug}`
-// //         };
-// //       });
-
-// //       // 7. SEO
-// //       const listSchema = buildProductListSchema(transformed);
-// //       res.set({
-// //         'Link': `<${buildCanonicalUrl(req)}>; rel="canonical"`,
-// //         'X-Robots-Tag': buildRobotsMeta(false)
-// //       });
-
-// //       // 8. Response
-// //       res.status(200).json({
-// //         organization: {
-// //           id: organization._id,
-// //           name: organization.name,
-// //           slug: organizationSlug,
-// //           logo: organization.logo,
-// //           contact: {
-// //              email: organization.primaryEmail,
-// //              phone: organization.primaryPhone
-// //           }
-// //         },
-// //         layout: {
-// //           header: hydratedHeader,
-// //           footer: hydratedFooter
-// //         },
-// //         settings: layoutData.globalSettings || {},
-        
-// //         products: transformed,
-// //         pagination: {
-// //           page,
-// //           limit,
-// //           total,
-// //           pages: Math.ceil(total / limit)
-// //         },
-// //         seo: {
-// //           canonical: buildCanonicalUrl(req),
-// //           jsonLd: listSchema
-// //         }
-// //       });
-
-// //     } catch (err) {
-// //       next(err);
-// //     }
-// //   }
-
-// //   // =====================================================
-// //   // 2. GET SINGLE PRODUCT
-// //   // =====================================================
-// //   getProductBySlug = async (req, res, next) => {
-// //     try {
-// //       const { organizationSlug, productSlug } = req.params;
-
-// //       const organization = await Organization.findOne({
-// //         uniqueShopId: organizationSlug.toUpperCase(),
-// //         isActive: true
-// //       }).select('_id name uniqueShopId primaryEmail primaryPhone logo');
-
-// //       if (!organization) return next(new AppError('Store not found', 404));
-
-// //       const [product, layoutData] = await Promise.all([
-// //         Product.findOne({
-// //           organizationId: organization._id,
-// //           slug: productSlug,
-// //           isActive: true
-// //         }).lean(), // Auto-populates via model hook
-// //         LayoutService.getLayout(organization._id)
-// //       ]);
-
-// //       if (!product) return next(new AppError('Product not found', 404));
-
-// //       const [hydratedHeader, hydratedFooter] = await Promise.all([
-// //         DataHydrationService.hydrateSections(layoutData.header, organization._id),
-// //         DataHydrationService.hydrateSections(layoutData.footer, organization._id)
-// //       ]);
-
-// //       this.incrementProductViews(product._id);
-
-// //       const totalStock = product.inventory?.reduce((sum, inv) => sum + (inv.quantity || 0), 0) || 0;
-
-// //       const publicProduct = {
-// //         id: product._id,
-// //         name: product.name,
-// //         slug: product.slug,
-// //         description: product.description,
-// //         images: product.images || [],
-        
-// //         price: {
-// //           original: product.sellingPrice,
-// //           discounted: product.discountedPrice,
-// //           currency: 'USD',
-// //           taxRate: product.taxRate,
-// //           isTaxInclusive: product.isTaxInclusive,
-// //           hasDiscount: !!(product.discountedPrice && product.discountedPrice < product.sellingPrice)
-// //         },
-
-// //         // ✅ Map References to Full Objects or Names
-// //         category: {
-// //             id: product.categoryId?._id,
-// //             name: product.categoryId?.name,
-// //             image: product.categoryId?.imageUrl
-// //         },
-// //         brand: {
-// //             id: product.brandId?._id,
-// //             name: product.brandId?.name
-// //         },
-// //         unit: product.unitId?.name,
-        
-// //         tags: product.tags || [],
-// //         sku: product.sku,
-// //         stock: {
-// //           available: totalStock > 0,
-// //           quantity: totalStock,
-// //           lowStock: totalStock > 0 && totalStock < 5
-// //         },
-// //         organization: {
-// //           id: organization._id,
-// //           name: organization.name
-// //         }
-// //       };
-
-// //       const schema = buildProductSchema(publicProduct, organizationSlug);
-
-// //       res.status(200).json({
-// //         organization: { /*... simple org details ...*/ }, // (Simplified for brevity, same as list)
-// //         layout: { header: hydratedHeader, footer: hydratedFooter },
-// //         settings: layoutData.globalSettings || {},
-// //         product: publicProduct,
-// //         seo: { canonical: buildCanonicalUrl(req), jsonLd: schema },
-// //         breadcrumbs: [
-// //           { name: 'Home', url: `/store/${organizationSlug}` },
-// //           { name: 'Products', url: `/store/${organizationSlug}/products` },
-// //           { name: publicProduct.category?.name || 'Category', url: `/store/${organizationSlug}/products?category=${publicProduct.category?.id}` },
-// //           { name: product.name, url: `#` }
-// //         ]
-// //       });
-
-// //     } catch (err) { next(err); }
-// //   }
-
-// //     getTags = async (req, res, next) => {
-// //     try {
-// //       const { organizationSlug } = req.params;
-// //       const organization = await Organization.findOne({
-// //         uniqueShopId: organizationSlug.toUpperCase(),
-// //         isActive: true
-// //       }).select('_id');
-
-// //       if (!organization) return next(new AppError('Store not found', 404));
-
-// //       const tags = await Product.aggregate([
-// //         { $match: { organizationId: organization._id, isActive: true, tags: { $exists: true, $ne: [] } } },
-// //         { $unwind: '$tags' },
-// //         { $group: { _id: '$tags' } },
-// //         { $limit: 50 },
-// //         { $sort: { _id: 1 } }
-// //       ]);
-
-// //       res.set({ 'X-Robots-Tag': buildRobotsMeta(true) });
-// //       res.status(200).json({ count: tags.length, tags: tags.map(t => t._id) });
-// //     } catch (err) { next(err); }
-// //   }
-// //   // =====================================================
-// //   // 3. GET CATEGORIES (Aggregated from Products)
-// //   // =====================================================
-// //   getCategories = async (req, res, next) => {
-// //     try {
-// //       const { organizationSlug } = req.params;
-// //       const organization = await Organization.findOne({ uniqueShopId: organizationSlug.toUpperCase() }).select('_id');
-// //       if (!organization) return next(new AppError('Store not found', 404));
-
-// //       // ✅ Aggregate by categoryId reference
-// //       const categories = await Product.aggregate([
-// //         { $match: { organizationId: organization._id, isActive: true, categoryId: { $exists: true } } },
-// //         { 
-// //             $group: { 
-// //                 _id: '$categoryId', // Group by Reference ID
-// //                 productCount: { $sum: 1 } 
-// //             } 
-// //         },
-// //         // ✅ Lookup to get Name from Masters
-// //         {
-// //             $lookup: {
-// //                 from: 'masters',
-// //                 localField: '_id',
-// //                 foreignField: '_id',
-// //                 as: 'masterInfo'
-// //             }
-// //         },
-// //         { $unwind: '$masterInfo' },
-// //         { 
-// //             $project: { 
-// //                 _id: 1, 
-// //                 name: '$masterInfo.name', 
-// //                 image: '$masterInfo.imageUrl',
-// //                 count: '$productCount' 
-// //             } 
-// //         },
-// //         { $sort: { count: -1 } }
-// //       ]);
-
-// //       res.status(200).json({ results: categories });
-// //     } catch (err) { next(err); }
-// //   }
-
-// //   // =====================================================
-// //   // 4. NEW: GET BRANDS (Aggregated from Products)
-// //   // =====================================================
-// //   getBrands = async (req, res, next) => {
-// //     try {
-// //       const { organizationSlug } = req.params;
-// //       const organization = await Organization.findOne({ uniqueShopId: organizationSlug.toUpperCase() }).select('_id');
-// //       if (!organization) return next(new AppError('Store not found', 404));
-
-// //       const brands = await Product.aggregate([
-// //         { $match: { organizationId: organization._id, isActive: true, brandId: { $exists: true } } },
-// //         { 
-// //             $group: { 
-// //                 _id: '$brandId', 
-// //                 productCount: { $sum: 1 } 
-// //             } 
-// //         },
-// //         {
-// //             $lookup: {
-// //                 from: 'masters',
-// //                 localField: '_id',
-// //                 foreignField: '_id',
-// //                 as: 'brandInfo'
-// //             }
-// //         },
-// //         { $unwind: '$brandInfo' },
-// //         { 
-// //             $project: { 
-// //                 _id: 1, 
-// //                 name: '$brandInfo.name', 
-// //                 count: '$productCount' 
-// //             } 
-// //         },
-// //         { $sort: { name: 1 } }
-// //       ]);
-
-// //       res.status(200).json({ results: brands });
-// //     } catch (err) { next(err); }
-// //   }
-
-// //   // =====================================================
-// //   // 5. NEW: GET SHOP FILTERS (Combined Facets)
-// //   // =====================================================
-// //   // Returns Categories, Brands, and Price Range in one call
-// //   getShopFilters = async (req, res, next) => {
-// //       try {
-// //         const { organizationSlug } = req.params;
-// //         const organization = await Organization.findOne({ uniqueShopId: organizationSlug.toUpperCase() }).select('_id');
-        
-// //         // Parallel aggregation
-// //         const [categories, brands, priceRange] = await Promise.all([
-// //             // 1. Categories
-// //             Product.aggregate([
-// //                 { $match: { organizationId: organization._id, isActive: true } },
-// //                 { $group: { _id: '$categoryId', count: { $sum: 1 } } },
-// //                 { $lookup: { from: 'masters', localField: '_id', foreignField: '_id', as: 'm' } },
-// //                 { $unwind: '$m' },
-// //                 { $project: { id: '$_id', name: '$m.name', count: 1, _id: 0 } },
-// //                 { $sort: { count: -1 } }
-// //             ]),
-// //             // 2. Brands
-// //             Product.aggregate([
-// //                 { $match: { organizationId: organization._id, isActive: true } },
-// //                 { $group: { _id: '$brandId', count: { $sum: 1 } } },
-// //                 { $lookup: { from: 'masters', localField: '_id', foreignField: '_id', as: 'm' } },
-// //                 { $unwind: '$m' },
-// //                 { $project: { id: '$_id', name: '$m.name', count: 1, _id: 0 } },
-// //                 { $sort: { name: 1 } }
-// //             ]),
-// //             // 3. Price Stats
-// //             Product.aggregate([
-// //                 { $match: { organizationId: organization._id, isActive: true } },
-// //                 { $group: { _id: null, min: { $min: '$sellingPrice' }, max: { $max: '$sellingPrice' } } }
-// //             ])
-// //         ]);
-
-// //         res.status(200).json({
-// //             categories,
-// //             brands,
-// //             price: priceRange[0] || { min: 0, max: 0 }
-// //         });
-// //       } catch(err) { next(err); }
-// //   }
-
-// //   // =====================================================
-// //   // 6. SEARCH (Simple Text)
-// //   // =====================================================
-// //   searchProducts = async (req, res, next) => {
-// //     try {
-// //       const { organizationSlug } = req.params;
-// //       const q = (req.query.q || '').trim();
-      
-// //       if (q.length < 2) return res.status(200).json({ results: [] });
-
-// //       const organization = await Organization.findOne({
-// //         uniqueShopId: organizationSlug.toUpperCase(),
-// //         isActive: true
-// //       }).select('_id');
-
-// //       // Note: For searching by Category NAME in a text search, you usually need 
-// //       // a generic text index on the Product collection that includes the populated string, 
-// //       // OR perform a Master search first. 
-// //       // Here we search Product Name/SKU/Tags
-// //       const results = await Product.find({
-// //         organizationId: organization._id,
-// //         isActive: true,
-// //         $or: [
-// //           { name: { $regex: q, $options: 'i' } },
-// //           { sku: { $regex: q, $options: 'i' } },
-// //           { tags: { $regex: q, $options: 'i' } }
-// //         ]
-// //       })
-// //       .select('name slug images sellingPrice categoryId')
-// //       .limit(10)
-// //       .lean();
-// //       res.status(200).json({
-// //         query: q,
-// //         results: results.map(p => ({
-// //           id: p._id,
-// //           name: p.name,
-// //           slug: p.slug,
-// //           image: p.images?.[0],
-// //           price: p.sellingPrice,
-// //           category: p.categoryId?.name, // Auto-populated
-// //           url: `/store/${organizationSlug}/products/${p.slug}`
-// //         }))
-// //       });
-// //     } catch (err) { next(err); }
-// //   }
-// //   incrementProductViews = async (productId) => {
-// //     try { await Product.findByIdAndUpdate(productId, { $inc: { views: 1 } }); } catch (_) {}
-// //   }
-// // }
-// // module.exports = new ProductPublicController();
