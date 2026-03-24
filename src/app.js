@@ -62,7 +62,8 @@ const smartRuleRoutes = require('./PublicModules/routes/storefront/smartRule.rou
 const dropdownRoutes = require('./modules/master/core/dropdownlist');
 
 const app = express();
-
+// import registerRoutes from './routes/routeRegistry.js';
+// registerRoutes(app);
 app.set("trust proxy", 1);
 app.set("query parser", (str) => qs.parse(str, { defaultCharset: "utf-8" }));
 app.use(assignRequestId);
