@@ -187,7 +187,7 @@ const getInventoryRunRate = async (orgId, branchId) => {
         const salesVelocity = await Sales.aggregate([
             { $match: { ...match, createdAt: { $gte: thirtyDaysAgo } } },
             { $unwind: '$items' },
-            { $group: { _id: '$items.productId', totalSold: { $sum: '$items.quantity' } } }
+            { $group: { _id: '$items.productId', totalSold: { $sum: '$items.qty' } } }
         ]);
 
         const velocityMap = new Map();
@@ -250,7 +250,7 @@ const calculateInventoryTurnover = async (orgId, branchId) => {
         const salesData = await Sales.aggregate([
             { $match: match },
             { $unwind: '$items' },
-            { $group: { _id: '$items.productId', totalSold: { $sum: '$items.quantity' } } }
+            { $group: { _id: '$items.productId', totalSold: { $sum: '$items.qty' } } }
         ]);
 
         const productIds = salesData.map(item => item._id);

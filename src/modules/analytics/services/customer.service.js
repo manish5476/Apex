@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Customer = require('../../organization/core/customer.model');
 const Sales = require('../../inventory/core/sales.model');
-const SalesReturn = require('../../../modules/inventory/core/salesReturn.model');
+const SalesReturn = require('../../inventory/core/salesReturn.model');
 const AccountEntry = require('../../accounting/core/accountEntry.model');
 const Product = require('../../inventory/core/product.model');
 const { toObjectId } = require('../utils/analytics.utils');
@@ -121,9 +121,9 @@ const getEnhancedPaymentBehavior = async (orgId, branchId) => {
 
     return await AccountEntry.aggregate([
         { $match: match },
-        { $lookup: { from: 'invoices', localField: 'invoiceId', foreignField: '_id', as: 'inv' } },
-        { $unwind: '$inv' },
-        { $project: { customerId: 1, delay: { $divide: [{ $subtract: ['$date', '$inv.invoiceDate'] }, 86400000] } } },
+        { $lookup: { from: 'sales', localField: 'invoiceId', foreignField: 'invoiceId', as: 'sale' } },
+        { $unwind: '$sale' },
+        { $project: { customerId: 1, delay: { $divide: [{ $subtract: ['$date', '$sale.createdAt'] }, 86400000] } } },
         { $group: { _id: '$customerId', avgDelay: { $avg: '$delay' }, totalPayments: { $sum: 1 } } },
         { $lookup: { from: 'customers', localField: '_id', foreignField: '_id', as: 'c' } },
         { $unwind: '$c' },

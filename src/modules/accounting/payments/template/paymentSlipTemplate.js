@@ -2,143 +2,195 @@ const PDFDocument = require("pdfkit");
 const { toWords } = require("number-to-words");
 const AppError = require("../../../../core/utils/api/appError");
 
-// --- CONFIGURATION ---
-const PAGE = { width: 595.28, height: 841.89, margin: 50 };
-const COLORS = {
-  primary: "#005b96",     // Brand Blue
-  secondary: "#1e293b",   // Dark Slate
-  textGray: "#64748b",    // Light Slate
-  white: "#ffffff",
-  bgLight: "#f1f5f9",
-  border: "#e2e8f0",
-  success: "#22c55e"      // Green for "Success"
+// ─── DESIGN SYSTEM ────────────────────────────────────────────────────────────
+const W = 595.28;
+const H = 841.89;
+const MARGIN = 48;
+
+// Palette — obsidian & gold, matches Invoice
+const C = {
+  pageBg:      "#F7F8FA",
+  cardBg:      "#FFFFFF",
+  headerBg:    "#0A0F1E",   // deep navy-black
+  accentStrip: "#0D1526",
+  inkPrimary:  "#0A0F1E",
+  inkSecondary:"#6B7280",
+  inkMuted:    "#9CA3AF",
+  gold:        "#C9A84C",   // true 22k gold
+  goldLight:   "#F0D98B",
+  success:     "#059669",
+  border:      "#E5E7EB",
+  rowAlt:      "#F9FAFB",
+  white:       "#FFFFFF",
 };
 
-const FONTS = {
-  bold: "Helvetica-Bold",
-  regular: "Helvetica",
+const F = {
+  bold:        "Helvetica-Bold",
+  reg:         "Helvetica",
+  oblique:     "Helvetica-Oblique",
 };
 
-// --- HELPERS ---
-const formatCurrency = (amount) => {
-  return parseFloat(amount || 0).toLocaleString("en-IN", {
+// ─── UTILITIES ────────────────────────────────────────────────────────────────
+const money = (n) =>
+  parseFloat(n || 0).toLocaleString("en-IN", {
     style: "currency",
     currency: "INR",
-    minimumFractionDigits: 2
+    minimumFractionDigits: 2,
   });
+
+const fmtDate = (d) =>
+  d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+const hRule = (doc, x, y, w, color = C.border, thickness = 0.5) =>
+  doc.moveTo(x, y).lineTo(x + w, y).strokeColor(color).lineWidth(thickness).stroke();
+
+const goldRule = (doc, x, y, w) =>
+  doc.moveTo(x, y).lineTo(x + w, y).strokeColor(C.gold).lineWidth(1.5).stroke();
+
+const badge = (doc, x, y, w, h, fillColor, label, textColor = C.white, fontSize = 7.5) => {
+  doc.roundedRect(x, y, w, h, h / 2).fill(fillColor);
+  doc.font(F.bold).fontSize(fontSize).fillColor(textColor)
+     .text(label, x, y + (h / 2) - (fontSize * 0.42), { width: w, align: "center" });
 };
 
-const formatDate = (date) => {
-  if (!date) return "";
-  return new Date(date).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
+// ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 exports.generatePaymentSlipBuffer = async (payment, organization) => {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: "A4", margin: 0, bufferPages: true });
-    const chunks = [];
+  if (!payment || !organization) throw new AppError("Missing data", 400);
 
-    doc.on("data", (chunk) => chunks.push(chunk));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: 0,
+      bufferPages: true,
+      compress: true,
+      info: {
+        Title: `Payment Receipt - ${payment._id.toString().slice(-6).toUpperCase()}`,
+        Author: organization.name,
+      },
+    });
+
+    const chunks = [];
+    doc.on("data", (c) => chunks.push(c));
+    doc.on("end",  () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    // 1. BLUE HEADER
-    doc.rect(0, 0, PAGE.width, 160).fill(COLORS.primary);
-    
-    // Title
-    doc.fillColor(COLORS.white).font(FONTS.bold).fontSize(30)
-       .text("PAYMENT RECEIPT", PAGE.margin, 50);
-    
-    doc.fontSize(10).font(FONTS.regular).fillOpacity(0.9)
-       .text(`Receipt No: ${payment._id.toString().slice(-6).toUpperCase()}`, PAGE.margin, 90); // Using last 6 chars of ID as receipt #
-    doc.text(`Date: ${formatDate(payment.paymentDate)}`, PAGE.margin, 105);
+    // Data Preparation
+    const branch   = payment.branchId || {};
+    const org      = organization;
+    const receiptNo = payment._id.toString().slice(-6).toUpperCase();
+    const status    = "SUCCESSFUL";
 
-    // Organization Info (Right Side)
-    doc.fillColor(COLORS.white).fillOpacity(1).font(FONTS.bold).fontSize(16);
-    doc.text(organization.name.toUpperCase(), 0, 50, { align: "right", width: PAGE.width - PAGE.margin });
+    // ── Page background ───────────────────────────────────────────
+    doc.rect(0, 0, W, H).fill(C.pageBg);
+
+    // ── White card shadow ─────────────────────────────────────────
+    doc.rect(MARGIN + 2, 42, W - MARGIN * 2, H - 180).fill("#E8EBF0");
+    // White card
+    doc.rect(MARGIN, 40, W - MARGIN * 2, H - 178).fill(C.white);
+
+    const CX = MARGIN;
+    const CW = W - MARGIN * 2;
+
+    // ── HEADER BAND ───────────────────────────────────────────────
+    const HEADER_H = 110;
+    doc.rect(CX, 40, CW, HEADER_H).fill(C.headerBg);
+
+    // Subtle grid texture
+    doc.save();
+    doc.rect(CX, 40, CW, HEADER_H).clip();
+    doc.strokeColor("#FFFFFF").lineWidth(0.12).opacity(0.04);
+    for (let gx = CX; gx < CX + CW; gx += 18) doc.moveTo(gx, 40).lineTo(gx, 40 + HEADER_H).stroke();
+    for (let gy = 40; gy < 40 + HEADER_H; gy += 18) doc.moveTo(CX, gy).lineTo(CX + CW, gy).stroke();
+    doc.restore();
+
+    // Gold accent bar
+    doc.rect(CX, 40, CW, 3).fill(C.gold);
+
+    // Org name
+    doc.font(F.bold).fontSize(18).fillColor(C.white)
+       .text(org.name.toUpperCase(), CX + 28, 62, { characterSpacing: 1.5 });
+
+    // "PAYMENT RECEIPT" label — ghosted
+    doc.font(F.bold).fontSize(30).fillColor(C.white).opacity(0.06)
+       .text("RECEIPT", CX + CW - 210, 56, { width: 190, align: "right", characterSpacing: 4 });
+    doc.opacity(1);
+
+    // Receipt number + date
+    doc.font(F.bold).fontSize(10).fillColor(C.gold)
+       .text(`RECEIPT #${receiptNo}`, CX + CW - 210, 58, { width: 190, align: "right" });
+    doc.font(F.reg).fontSize(7.5).fillColor("rgba(255,255,255,0.5)")
+       .text(fmtDate(payment.paymentDate), CX + CW - 210, 74, { width: 190, align: "right" });
+
+    // Status badge
+    badge(doc, CX + CW - 100, 40 + HEADER_H - 32, 76, 20, "#1A4A38", status, C.success, 8);
+
+    // ── META STRIP ────────────────────────────────────────────────
+    const STRIP_Y = 40 + HEADER_H;
+    doc.rect(CX, STRIP_Y, CW, 28).fill("#F0F4F8");
+    hRule(doc, CX, STRIP_Y, CW, C.border, 0.5);
+    hRule(doc, CX, STRIP_Y + 28, CW, C.border, 0.5);
+
+    const metaItems = [
+      { label: "METHOD", value: (payment.paymentMethod || "Cash").toUpperCase() },
+      { label: "REF ID", value: payment.transactionId || payment.referenceNumber || "N/A" },
+      { label: "TYPE",   value: (payment.type || "Inflow").toUpperCase() },
+      { label: "STATUS", value: status, color: C.success },
+    ];
+
+    const metaColW = CW / metaItems.length;
+    metaItems.forEach((m, i) => {
+      const mx = CX + i * metaColW;
+      doc.font(F.reg).fontSize(6.5).fillColor(C.inkMuted).text(m.label, mx + 14, STRIP_Y + 6);
+      doc.font(F.bold).fontSize(8).fillColor(m.color || C.inkPrimary).text(m.value, mx + 14, STRIP_Y + 15);
+      if (i > 0) doc.moveTo(mx, STRIP_Y + 6).lineTo(mx, STRIP_Y + 22).strokeColor(C.border).lineWidth(0.5).stroke();
+    });
+
+    // ── RECEIVED FROM ─────────────────────────────────────────────
+    let y = STRIP_Y + 28 + 30;
+    const billX = CX + 18;
     
-    // Address from Branch
-    const branch = payment.branchId || {};
-    const addressObj = branch.address || {};
-    const fullAddress = [addressObj.city, addressObj.state, "India"].filter(Boolean).join(", ");
-    
-    doc.fontSize(9).font(FONTS.regular).fillOpacity(0.9)
-       .text(fullAddress, 0, 75, { align: "right", width: PAGE.width - PAGE.margin });
-    if(organization.primaryEmail) {
-        doc.text(organization.primaryEmail, 0, 90, { align: "right", width: PAGE.width - PAGE.margin });
+    doc.font(F.bold).fontSize(6.5).fillColor(C.gold).text("RECEIVED FROM", billX, y, { characterSpacing: 1.2 });
+    goldRule(doc, billX, y + 11, 28);
+    y += 22;
+
+    doc.font(F.bold).fontSize(11).fillColor(C.inkPrimary).text(payment.customerId?.name || "Customer", billX, y);
+    y += 15;
+    if (payment.customerId?.phone || payment.customerId?.email) {
+        doc.font(F.reg).fontSize(9).fillColor(C.inkSecondary);
+        const contact = [payment.customerId?.phone, payment.customerId?.email].filter(Boolean).join("   ·   ");
+        doc.text(contact, billX, y);
+        y += 20;
     }
 
-    let y = 200;
-
-    // 2. AMOUNT RECEIVED BOX
-    // A central, prominent box showing the amount
-    const boxHeight = 100;
-    doc.roundedRect(PAGE.margin, y, PAGE.width - (PAGE.margin * 2), boxHeight, 8)
-       .fill(COLORS.bgLight);
-    
-    const boxCenterY = y + 35;
-    doc.fillColor(COLORS.textGray).font(FONTS.bold).fontSize(10)
-       .text("AMOUNT RECEIVED", 0, y + 20, { align: "center", width: PAGE.width });
-    
-    doc.fillColor(COLORS.primary).fontSize(28)
-       .text(formatCurrency(payment.amount), 0, boxCenterY, { align: "center", width: PAGE.width });
-
-    doc.fillColor(COLORS.success).fontSize(10)
-       .text("Payment Successful", 0, boxCenterY + 35, { align: "center", width: PAGE.width });
-
-    y += 140;
-
-    // 3. PAYMENT DETAILS GRID
-    doc.font(FONTS.bold).fontSize(12).fillColor(COLORS.secondary).text("Transaction Details", PAGE.margin, y);
+    // ── PAYMENT BOX ───────────────────────────────────────────────
     y += 20;
-
-    const drawRow = (label, value) => {
-        doc.rect(PAGE.margin, y, PAGE.width - (PAGE.margin * 2), 35).fill(COLORS.white); // Row bg
-        // Bottom border
-        doc.moveTo(PAGE.margin, y + 35).lineTo(PAGE.width - PAGE.margin, y + 35).strokeColor(COLORS.border).lineWidth(1).stroke();
-        
-        doc.font(FONTS.regular).fontSize(10).fillColor(COLORS.textGray)
-           .text(label, PAGE.margin + 10, y + 12);
-        
-        doc.font(FONTS.bold).fillColor(COLORS.secondary)
-           .text(value, PAGE.margin, y + 12, { align: "right", width: PAGE.width - (PAGE.margin * 2) - 10 });
-        
-        y += 35;
-    };
-
-    // Customer Name
-    drawRow("Received From", payment.customerId?.name || "Customer");
+    const boxW = CW - 36;
+    doc.rect(CX + 18, y, boxW, 80).fill("#F9FAFB");
+    doc.rect(CX + 18, y, boxW, 2).fill(C.gold);
     
-    // Payment Mode
-    drawRow("Payment Method", (payment.paymentMethod || "Cash").toUpperCase());
+    doc.font(F.bold).fontSize(8).fillColor(C.inkMuted).text("AMOUNT RECEIVED", CX + 18, y + 20, { width: boxW, align: "center" });
+    doc.font(F.bold).fontSize(28).fillColor(C.inkPrimary).text(money(payment.amount), CX + 18, y + 35, { width: boxW, align: "center" });
     
-    // Reference/Transaction ID
-    const refNo = payment.transactionId || payment.referenceNumber || "N/A";
-    drawRow("Transaction / Ref ID", refNo);
+    y += 100;
 
-    // Transaction Type
-    drawRow("Transaction Type", (payment.type || "Inflow").toUpperCase());
+    // Amount in words
+    const words = toWords(parseInt(payment.amount)).toUpperCase();
+    doc.font(F.oblique).fontSize(7.5).fillColor(C.inkMuted)
+       .text(`${words} RUPEES ONLY`, CX + 18, y, { width: CW - 36, align: "center" });
 
-    // Amount in Words
-    y += 20;
-    const words = toWords(parseInt(payment.amount));
-    doc.font(FONTS.bold).fontSize(9).fillColor(COLORS.textGray).text("AMOUNT IN WORDS:", PAGE.margin, y);
-    doc.font(FONTS.regular).fillColor(COLORS.secondary).text(`${words} Rupees Only`.toUpperCase(), PAGE.margin + 100, y);
+    // ── FOOTER ────────────────────────────────────────────────────
+    const FOOTER_Y = H - 110;
+    doc.rect(CX, FOOTER_Y - 8, CW, 50).fill(C.headerBg);
+    doc.rect(CX, FOOTER_Y - 8, CW, 2).fill(C.gold);
 
+    doc.font(F.reg).fontSize(7.5).fillColor("rgba(255,255,255,0.4)")
+       .text("Thank you for your payment.", CX + 18, FOOTER_Y + 4);
 
-    // 4. FOOTER
-    const footerY = PAGE.height - 100;
-    
-    doc.moveTo(PAGE.width - PAGE.margin - 150, footerY).lineTo(PAGE.width - PAGE.margin, footerY).strokeColor(COLORS.secondary).lineWidth(1).stroke();
-    doc.fontSize(9).font(FONTS.bold).text(organization.name, PAGE.width - PAGE.margin - 150, footerY + 10, { align: "center", width: 150 });
-    doc.fontSize(8).font(FONTS.regular).fillColor(COLORS.textGray).text("Authorized Signatory", PAGE.width - PAGE.margin - 150, footerY + 22, { align: "center", width: 150 });
-
-    doc.text("Thank you for your payment.", PAGE.margin, footerY + 10);
+    const sigX = CX + CW - 160;
+    doc.moveTo(sigX, FOOTER_Y + 4).lineTo(sigX + 120, FOOTER_Y + 4).strokeColor(C.gold).lineWidth(0.5).stroke();
+    doc.font(F.bold).fontSize(8).fillColor(C.white).text(org.name, sigX, FOOTER_Y + 9, { width: 120, align: "center" });
+    doc.font(F.reg).fontSize(6.5).fillColor("rgba(255,255,255,0.4)").text("Authorised Signatory", sigX, FOOTER_Y + 21, { width: 120, align: "center" });
 
     doc.end();
   });
-};
+};

@@ -1,9 +1,8 @@
 const mongoose = require('mongoose');
-const Invoice = require('../../inventory/core/sales.model');
+const Sales = require('../../inventory/core/sales.model');
 const Purchase = require('../../inventory/core/purchase.model');
 const Customer = require('../../organization/core/customer.model');
 const { toObjectId, calculateGrowth, calculatePercentage } = require('../utils/analytics.utils');
-const Sales = require('../../inventory/core/sales.model');
 
 const getExecutiveStats = async (orgId, branchId, startDate, endDate) => {
     try {
@@ -214,17 +213,18 @@ const getChartData = async (orgId, branchId, startDate, endDate, interval = 'aut
             }
         }
 
-        const timeline = await Invoice.aggregate([
-            { $match: { ...match, invoiceDate: { $gte: start, $lte: end } } },
+        const timeline = await Sales.aggregate([
+            { $match: { ...match, createdAt: { $gte: start, $lte: end } } },
             {
                 $project: {
-                    date: '$invoiceDate',
-                    amount: '$grandTotal',
+                    date: '$createdAt',
+                    amount: '$totalAmount',
                     type: 'income',
                     profit: {
                         $subtract: [
-                            '$grandTotal',
-                            { $ifNull: ['$totalCost', 0] }
+                            '$totalAmount',
+                            // Realized Profit logic in chart: subtract COGS if available
+                            { $sum: { $map: { input: '$items', as: 'i', in: { $multiply: ['$$i.qty', '$$i.purchasePriceAtSale'] } } } }
                         ]
                     }
                 }

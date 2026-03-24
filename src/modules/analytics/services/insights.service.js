@@ -3,7 +3,7 @@ const { toObjectId } = require('../utils/analytics.utils');
 
 const Product = require('../../inventory/core/product.model');
 const Customer = require('../../organization/core/customer.model');
-const Invoice = require('../../accounting/billing/invoice.model');
+const Sales = require('../../inventory/core/sales.model');
 
 /* ==========================================================================
    💡 INSIGHTS & RECOMMENDATIONS SERVICE
@@ -75,7 +75,7 @@ const getCustomerRiskStats = async (orgId, branchId) => {
 
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-        const activeIds = await Invoice.distinct('customerId', { ...match, invoiceDate: { $gte: sixMonthsAgo } });
+        const activeIds = await Sales.distinct('customerId', { ...match, createdAt: { $gte: sixMonthsAgo } });
         const atRiskCustomers = await Customer.countDocuments({ ...match, _id: { $nin: activeIds }, type: 'business' });
 
         return { creditRisk, churnCount: atRiskCustomers };
