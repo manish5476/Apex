@@ -1,6 +1,7 @@
 const express = require('express');
 const authController = require('../../modules/auth/core/auth.controller');
 const router = express.Router();
+const catchAsync = require('../../core/utils/api/catchAsync');
 const forgotPasswordLimiter = require("../../core/middleware/rateLimit.middleware");
 
 // ======================================================
@@ -39,7 +40,7 @@ router.post('/logout-all', authController.logoutAll);
  * Get all active devices/sessions
  * In production, it's cleaner to move the logic below into authController.getSessions
  */
-router.get('/sessions', async (req, res, next) => {
+router.get('/sessions', catchAsync(async (req, res, next) => {
   const Session = require('../../modules/auth/core/session.model');
   const sessions = await Session.find({ 
     userId: req.user.id, 
@@ -51,12 +52,12 @@ router.get('/sessions', async (req, res, next) => {
     results: sessions.length,
     data: { sessions }
   });
-});
+}));
 
 /**
  * Terminate a specific session (Remote Logout)
  */
-router.delete('/sessions/:sessionId', async (req, res, next) => {
+router.delete('/sessions/:sessionId', catchAsync(async (req, res, next) => {
   const Session = require('../../modules/auth/core/session.model');
   const session = await Session.findOneAndUpdate(
     { 
@@ -69,7 +70,6 @@ router.delete('/sessions/:sessionId', async (req, res, next) => {
   );
   
   if (!session) {
-    // Ensuring we handle the error gracefully if AppError isn't global
     return res.status(404).json({ status: 'fail', message: 'Session not found' });
   }
 
@@ -77,6 +77,6 @@ router.delete('/sessions/:sessionId', async (req, res, next) => {
     status: 'success',
     message: 'Session terminated successfully'
   });
-});
+}));
 
 module.exports = router;
