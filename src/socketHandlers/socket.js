@@ -222,7 +222,6 @@ function init(server, options = {}) {
           .lean();
 
         if (updatedUser) {
-          // 3. Sync to ALL of this user's open sockets (Multi-device sync)
           const userSockets = getSocketIdsForUser(socket.user._id);
           userSockets.forEach((sId) => {
             io.to(sId).emit("themeChanged", {
