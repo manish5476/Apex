@@ -45,7 +45,7 @@ shiftGroupSchema.index({ organizationId: 1, code: 1 }, { unique: true });
 
 const ShiftGroup = mongoose.model('ShiftGroup', shiftGroupSchema);
 
-module.exports = { ShiftGroup };
+module.exports = ShiftGroup;
 
 
 

@@ -13,6 +13,7 @@ router.use(authController.protect);
 // ==============================================================================
 // 🟢 CRITICAL FIX: Moved this to the top so "reports" doesn't get treated as an :id
 router.get("/reports/allocation", checkPermission(PERMISSIONS.PAYMENT.READ), paymentController.getAllocationReport);
+router.get("/export", checkPermission(PERMISSIONS.PAYMENT.READ), paymentController.exportPayments);
 
 // ==============================================================================
 // 2. CUSTOMER & SUPPLIER SPECIFIC ROUTES

@@ -18,8 +18,12 @@ exports.getDropdownList = (Model, options = {}) =>
     // 1. Core Tenant & Status Isolation
     const filter = { organizationId: req.user.organizationId };
 
-    if (Model.schema.path("isDeleted")) filter.isDeleted = { $ne: true };
-    if (Model.schema.path("isActive")) filter.isActive = { $ne: false };
+    if (Model.schema && Model.schema.path("isDeleted")) filter.isDeleted = { $ne: true };
+    if (Model.schema && Model.schema.path("isActive")) filter.isActive = { $ne: false };
+
+    if (!Model.schema) {
+      return next(new AppError(`Invalid Model provided for dropdown: ${Model.modelName || 'Unknown'}`, 500));
+    }
 
     // 2. Extract Frontend Parameters
     const searchTerm = req.query.search || '';

@@ -315,6 +315,28 @@ exports.updatePayment = catchAsync(async (req, res) => {
 /* ======================================================
    READ / EXPORT
 ====================================================== */
+exports.exportPayments = factory.exportExcel(Payment, {
+  fileName: "Payments_Report",
+  sheetName: "Payments",
+  populate: [
+    { path: "customerId", select: "name" },
+    { path: "supplierId", select: "name" },
+    { path: "invoiceId", select: "invoiceNumber" },
+    { path: "branchId", select: "name" }
+  ],
+  exportFields: [
+    { header: "DATE", key: "paymentDate", width: 15 },
+    { header: "TYPE", key: "type", width: 10 },
+    { header: "CUSTOMER", key: "customerId.name", width: 25 },
+    { header: "SUPPLIER", key: "supplierId.name", width: 25 },
+    { header: "AMOUNT", key: "amount", width: 15 },
+    { header: "METHOD", key: "paymentMethod", width: 15 },
+    { header: "REFERENCE", key: "referenceNumber", width: 20 },
+    { header: "STATUS", key: "status", width: 15 },
+    { header: "BRANCH", key: "branchId.name", width: 20 }
+  ]
+});
+
 exports.getAllPayments = factory.getAll(Payment, {
   populate: [
     {

@@ -324,11 +324,52 @@ exports.login = catchAsync(async (req, res, next) => {
     await user.save({ validateBeforeSave: false });
   }
 
-  // Invalidate previous sessions (optional - for security)
-  await Session.updateMany(
-    { userId: user._id, isValid: true }, 
-    { isValid: false }
-  );
+  // ---------------------------------------------------------
+  // 🔴 SECURITY: Dynamic Session Concurrency Control
+  // ---------------------------------------------------------
+  
+  // 1. Check for active sessions
+  const activeSessions = await Session.find({ userId: user._id, isValid: true });
+  const maxSessions = user.maxConcurrentSessions || 1;
+
+  // 2. Determine if we need to block for confirmation
+  if (activeSessions.length >= maxSessions && !req.body.forceLogout) {
+    return res.status(409).json({
+      status: "fail",
+      code: "SESSION_CONCURRENCY_LIMIT",
+      message: `Maximum concurrent sessions (${maxSessions}) reached. Would you like to logout from other devices?`,
+      data: {
+        maxSessions,
+        activeSessionsCount: activeSessions.length,
+        sessions: activeSessions.map(s => ({
+          sessionId: s._id,
+          device: s.deviceType || s.device,
+          browser: s.browser,
+          os: s.os,
+          ip: s.ipAddress,
+          lastActivity: s.lastActivityAt
+        }))
+      }
+    });
+  }
+
+  // 3. Handle session invalidation (only if forceLogout is requested or we're strictly enforcing 1-session default)
+  if (req.body.forceLogout || maxSessions === 1) {
+    // Invalidate All Sessions for this user
+    await Session.updateMany(
+      { userId: user._id, isValid: true }, 
+      { 
+        isValid: false, 
+        terminatedAt: new Date(),
+        // 🔴 SECURITY: Nullify the physical tokens to prevent any accidental reuse
+        token: "revoked",
+        refreshToken: "revoked"
+      }
+    );
+
+    // Also clear the legacy refreshTokens array if it exists
+    user.refreshTokens = [];
+  }
 
   // Determine if user is owner
   const isOwner = organization.owner.toString() === user._id.toString();
@@ -772,8 +813,17 @@ exports.logout = catchAsync(async (req, res, next) => {
     // Invalidate all sessions for this user (optional - security)
     await Session.updateMany(
       { userId: req.user.id, isValid: true },
-      { isValid: false, terminatedAt: new Date() }
+      { 
+        isValid: false, 
+        terminatedAt: new Date(),
+        token: "revoked",
+        refreshToken: "revoked"
+      }
     );
+    
+    // Also clear legacy tokens
+    const User = require("./user.model");
+    await User.findByIdAndUpdate(req.user.id, { $set: { refreshTokens: [] } });
   }
 
   // Clear cookie
@@ -798,8 +848,17 @@ exports.logoutAll = catchAsync(async (req, res, next) => {
   // Invalidate all sessions for this user
   await Session.updateMany(
     { userId: req.user.id, isValid: true },
-    { isValid: false, terminatedAt: new Date() }
+    { 
+      isValid: false, 
+      terminatedAt: new Date(),
+      token: "revoked",
+      refreshToken: "revoked"
+    }
   );
+
+  // Clear legacy tokens
+  const User = require("./user.model");
+  await User.findByIdAndUpdate(req.user.id, { $set: { refreshTokens: [] } });
 
   // Clear cookie
   res.clearCookie("refreshToken", getCookieOptions());
@@ -943,8 +1002,16 @@ const user = await User.findOne({
   // Invalidate all existing sessions for security
   await Session.updateMany(
     { userId: user._id, isValid: true },
-    { isValid: false }
+    { 
+      isValid: false,
+      terminatedAt: new Date(),
+      token: "revoked",
+      refreshToken: "revoked"
+    }
   );
+  
+  // Clear legacy tokens
+  user.refreshTokens = [];
 
   // Generate new tokens
   const isOwner = await Organization.exists({ 
@@ -1045,8 +1112,16 @@ exports.updateMyPassword = catchAsync(async (req, res, next) => {
         isValid: true,
         _id: { $ne: req.session._id }
       },
-      { isValid: false }
+      { 
+        isValid: false,
+        terminatedAt: new Date(),
+        token: "revoked",
+        refreshToken: "revoked"
+      }
     );
+    
+    // Clear legacy tokens (except current one)
+    user.refreshTokens = user.refreshTokens?.filter(t => t === req.session.refreshToken) || [];
   }
 
   // Generate new token

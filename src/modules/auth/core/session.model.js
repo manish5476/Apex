@@ -12,6 +12,7 @@ const sessionSchema = new mongoose.Schema({
   userAgent: { type: String, default: null },
 
   token: { type: String, required: true, index: true }, // stored token (JWT)
+  refreshToken: { type: String, index: true }, // stored refresh token
   isValid: { type: Boolean, default: true }, // admin or system can invalidate
 
   loggedInAt: { type: Date, default: Date.now },

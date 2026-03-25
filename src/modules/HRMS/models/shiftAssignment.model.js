@@ -94,7 +94,7 @@ shiftAssignmentSchema.methods.cancel = async function (userId, reason) {
 
 const ShiftAssignment = mongoose.model('ShiftAssignment', shiftAssignmentSchema);
 
-module.exports = { ShiftAssignment };
+module.exports = ShiftAssignment;
 
 
 
