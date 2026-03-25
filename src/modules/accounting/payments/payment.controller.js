@@ -109,15 +109,15 @@ async function handlePaymentReversal(payment, session) {
 
   // 3. Robust Allocation Reversal
   // We handle both advanced allocatedTo array and simple top-level links
-  const targets = payment.allocatedTo && payment.allocatedTo.length > 0 
-    ? [...payment.allocatedTo] 
+  const targets = payment.allocatedTo && payment.allocatedTo.length > 0
+    ? [...payment.allocatedTo]
     : [];
-  
+
   // Add top-level invoice if not already in targets
   if (payment.invoiceId && !targets.find(t => t.documentId?.toString() === payment.invoiceId.toString())) {
     targets.push({ type: 'invoice', documentId: payment.invoiceId, amount: payment.amount });
   }
-  
+
   // Add top-level purchase if not already in targets
   if (payment.purchaseId && !targets.find(t => t.documentId?.toString() === payment.purchaseId.toString())) {
     targets.push({ type: 'purchase', documentId: payment.purchaseId, amount: payment.amount });
@@ -132,7 +132,7 @@ async function handlePaymentReversal(payment, session) {
         invoice.paymentStatus = invoice.paidAmount === 0 ? 'unpaid' : 'partial';
         await invoice.save({ session });
       }
-    } 
+    }
     else if (target.type === 'purchase') {
       const purchase = await Purchase.findById(target.documentId).session(session);
       if (purchase) {
@@ -141,7 +141,7 @@ async function handlePaymentReversal(payment, session) {
         purchase.paymentStatus = purchase.paidAmount === 0 ? 'unpaid' : 'partial';
         await purchase.save({ session });
       }
-    } 
+    }
     else if (target.type === 'emi' && (target.emiId || target.documentId)) {
       const emiId = target.emiId || target.documentId;
       const emi = await EMI.findById(emiId).session(session);
@@ -158,7 +158,7 @@ async function handlePaymentReversal(payment, session) {
       }
     }
     else if (target.type === 'advance' && payment.customerId) {
-       await Customer.findByIdAndUpdate(payment.customerId, { $inc: { advanceBalance: -target.amount } }, { session });
+      await Customer.findByIdAndUpdate(payment.customerId, { $inc: { advanceBalance: -target.amount } }, { session });
     }
   }
 }
@@ -279,47 +279,6 @@ exports.createPayment = catchAsync(async (req, res) => {
 });
 
 /* ======================================================
-   UPDATE PAYMENT (REVERSAL SAFE)
-====================================================== */
-// exports.updatePayment = catchAsync(async (req, res) => {
-//   const payment = await Payment.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
-//   if (!payment) throw new AppError('Payment not found', 404);
-//   if (payment.status === 'completed' && req.body.status === 'cancelled') {
-//     const session = await mongoose.startSession();
-//     session.startTransaction();
-//     try {
-//       await postPaymentLedger({ payment, session, reverse: true });
-//       if (payment.type === 'inflow' && payment.customerId) {
-//         await Customer.findByIdAndUpdate(
-//           payment.customerId,
-//           { $inc: { outstandingBalance: payment.amount } },
-//           { session }
-//         );
-//       }
-
-//       if (payment.type === 'outflow' && payment.supplierId) {
-//         await Supplier.findByIdAndUpdate(
-//           payment.supplierId,
-//           { $inc: { outstandingBalance: payment.amount } },
-//           { session }
-//         );
-//       }
-
-//       payment.status = 'cancelled';
-//       await payment.save({ session });
-
-//       await session.commitTransaction();
-//     } catch (e) {
-//       await session.abortTransaction();
-//       throw e;
-//     } finally {
-//       session.endSession();
-//     }
-//   }
-
-//   res.json({ status: 'success' });
-// });
-/* ======================================================
    UPDATE PAYMENT (REVERSAL SAFE & SYNCED)
 ====================================================== */
 exports.updatePayment = catchAsync(async (req, res) => {
@@ -356,6 +315,28 @@ exports.updatePayment = catchAsync(async (req, res) => {
 /* ======================================================
    READ / EXPORT
 ====================================================== */
+exports.exportPayments = factory.exportExcel(Payment, {
+  fileName: "Payments_Report",
+  sheetName: "Payments",
+  populate: [
+    { path: "customerId", select: "name" },
+    { path: "supplierId", select: "name" },
+    { path: "invoiceId", select: "invoiceNumber" },
+    { path: "branchId", select: "name" }
+  ],
+  exportFields: [
+    { header: "DATE", key: "paymentDate", width: 15 },
+    { header: "TYPE", key: "type", width: 10 },
+    { header: "CUSTOMER", key: "customerId.name", width: 25 },
+    { header: "SUPPLIER", key: "supplierId.name", width: 25 },
+    { header: "AMOUNT", key: "amount", width: 15 },
+    { header: "METHOD", key: "paymentMethod", width: 15 },
+    { header: "REFERENCE", key: "referenceNumber", width: 20 },
+    { header: "STATUS", key: "status", width: 15 },
+    { header: "BRANCH", key: "branchId.name", width: 20 }
+  ]
+});
+
 exports.getAllPayments = factory.getAll(Payment, {
   populate: [
     {
@@ -363,8 +344,16 @@ exports.getAllPayments = factory.getAll(Payment, {
       select: 'name phone type email gstNumber'
     },
     {
+      path: 'supplierId',
+      select: 'name phone type email'
+    },
+    {
       path: 'invoiceId',
       select: 'invoiceNumber grandTotal invoiceDate balanceAmount'
+    },
+    {
+      path: 'purchaseId',
+      select: 'purchaseNumber grandTotal purchaseDate balanceAmount'
     },
     {
       path: 'branchId',
@@ -373,7 +362,30 @@ exports.getAllPayments = factory.getAll(Payment, {
   ]
 });
 
-exports.getPayment = factory.getOne(Payment);
+exports.getPayment = factory.getOne(Payment, {
+  populate: [
+    {
+      path: 'customerId',
+      select: 'name phone type email gstNumber'
+    },
+    {
+      path: 'supplierId',
+      select: 'name phone type email'
+    },
+    {
+      path: 'invoiceId',
+      select: 'invoiceNumber grandTotal invoiceDate balanceAmount'
+    },
+    {
+      path: 'purchaseId',
+      select: 'purchaseNumber grandTotal purchaseDate balanceAmount'
+    },
+    {
+      path: 'branchId',
+      select: 'name branchCode'
+    }
+  ]
+});
 exports.deletePayment = catchAsync(async (req, res) => {
   const payment = await Payment.findOne({
     _id: req.params.id,
@@ -422,7 +434,12 @@ exports.getPaymentsByCustomer = catchAsync(async (req, res) => {
     organizationId: req.user.organizationId,
     customerId: req.params.customerId,
     isDeleted: { $ne: true }
-  }).sort({ paymentDate: -1 });
+  })
+    .populate([
+      { path: 'invoiceId', select: 'invoiceNumber grandTotal invoiceDate balanceAmount' },
+      { path: 'branchId', select: 'name branchCode' }
+    ])
+    .sort({ paymentDate: -1 });
 
   res.status(200).json({
     status: 'success',
@@ -439,7 +456,12 @@ exports.getPaymentsBySupplier = catchAsync(async (req, res) => {
     organizationId: req.user.organizationId,
     supplierId: req.params.supplierId,
     isDeleted: { $ne: true }
-  }).sort({ paymentDate: -1 });
+  })
+    .populate([
+      { path: 'purchaseId', select: 'purchaseNumber grandTotal purchaseDate balanceAmount' },
+      { path: 'branchId', select: 'name branchCode' }
+    ])
+    .sort({ paymentDate: -1 });
 
   res.status(200).json({
     status: 'success',
@@ -572,132 +594,6 @@ exports.paymentGatewayWebhook = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: 'acknowledged' });
 });
 
-// exports.paymentGatewayWebhook = catchAsync(async (req, res, next) => {
-//   const {
-//     event, // 'payment.success', 'payment.failed', etc.
-//     transaction_id,
-//     invoice_id, // Your invoice number
-//     amount,
-//     currency,
-//     payment_method,
-//     timestamp,
-//     customer_email,
-//     metadata
-//   } = req.body;
-
-//   // Find organization by invoice number
-//   const invoice = await Invoice.findOne({
-//     invoiceNumber: invoice_id
-//   }).populate('organizationId');
-
-//   if (!invoice) {
-//     return res.status(404).json({
-//       status: 'error',
-//       message: 'Invoice not found'
-//     });
-//   }
-
-//   // if (event === 'payment.success') {
-//   //   try {
-//   //     const result = await emiService.autoReconcilePayment({
-//   //       organizationId: invoice.organizationId._id,
-//   //       branchId: invoice.branchId,
-//   //       invoiceId: invoice._id,
-//   //       amount: amount / 100, // Convert from paise to rupees
-//   //       paymentDate: new Date(timestamp * 1000),
-//   //       paymentMethod: mapPaymentMethod(payment_method),
-//   //       transactionId: transaction_id,
-//   //       gateway: 'razorpay', // or 'stripe', 'paypal', etc.
-//   //       createdBy: null // System user
-//   //     });
-
-//   //     return res.status(200).json({
-//   //       status: 'success',
-//   //       message: 'Payment reconciled successfully',
-//   //       data: result
-//   //     });
-
-//   //   } catch (error) {
-//   //     // Store for manual reconciliation
-//   // await PendingReconciliation.create({
-//   //   organizationId: invoice.organizationId._id,
-//   //   invoiceId: invoice._id,
-//   //   customerId: invoice.customerId,
-//   //   externalTransactionId: transaction_id,
-//   //   amount: amount / 100,
-//   //   paymentDate: new Date(timestamp * 1000),
-//   //   paymentMethod: mapPaymentMethod(payment_method),
-//   //   gateway: 'razorpay',
-//   //   rawData: req.body,
-//   //   status: 'pending',
-//   //   error: error.message
-//   // });
-
-//   //     return res.status(200).json({
-//   //       status: 'pending',
-//   //       message: 'Payment queued for manual reconciliation',
-//   //       transaction_id
-//   //     });
-//   //   }
-//   // }
-
-//   if (event === 'payment.success') {
-//     try {
-//       // 1. Create payment record
-//       const payment = await Payment.create({
-//         organizationId: invoice.organizationId._id,
-//         branchId: invoice.branchId,
-//         type: 'inflow',
-//         amount: amount / 100,
-//         customerId: invoice.customerId,
-//         invoiceId: invoice._id,
-//         paymentMethod: mapPaymentMethod(payment_method),
-//         transactionId: transaction_id,
-//         paymentDate: new Date(timestamp * 1000),
-//         referenceNumber: transaction_id,
-//         status: 'completed',
-//         transactionMode: 'auto',
-//         createdBy: null
-//       });
-
-//       // 2. Auto-allocate payment
-//       await paymentAllocationService.autoAllocatePayment(
-//         payment._id,
-//         invoice.organizationId._id
-//       );
-
-//       return res.status(200).json({
-//         status: 'success',
-//         message: 'Payment recorded and allocated',
-//         data: { paymentId: payment._id }
-//       });
-
-//     } catch (error) {
-//       // Store for manual reconciliation
-//       await PendingReconciliation.create({
-//         organizationId: invoice.organizationId._id,
-//         invoiceId: invoice._id,
-//         customerId: invoice.customerId,
-//         externalTransactionId: transaction_id,
-//         amount: amount / 100,
-//         paymentDate: new Date(timestamp * 1000),
-//         paymentMethod: mapPaymentMethod(payment_method),
-//         gateway: 'razorpay',
-//         rawData: req.body,
-//         status: 'pending',
-//         error: error.message
-//       });
-
-//       return res.status(200).json({
-//         status: 'pending',
-//         message: 'Payment queued for manual reconciliation',
-//         transaction_id
-//       });
-//     }
-//   }
-//   res.status(200).json({ status: 'acknowledged' });
-// });
-
 function mapPaymentMethod(gatewayMethod) {
   const mapping = {
     'card': 'credit',
@@ -708,7 +604,6 @@ function mapPaymentMethod(gatewayMethod) {
   };
   return mapping[gatewayMethod] || 'other';
 }
-
 
 /* ======================================================
    GET CUSTOMER PAYMENT SUMMARY

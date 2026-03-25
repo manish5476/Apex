@@ -85,7 +85,7 @@ const Designation = mongoose.model('Designation', designationSchema);
 // ─────────────────────────────────────────────
 //  Exports
 // ─────────────────────────────────────────────
-module.exports = { Designation };
+module.exports = Designation;
 
 
 

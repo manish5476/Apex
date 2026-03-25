@@ -108,6 +108,7 @@ const userSchema = new mongoose.Schema({
   refreshTokens: [{ type: String, select: false }],
 
   // --- Device & Session Management ---
+  maxConcurrentSessions: { type: Number, default: 1 },
   devices: [{
     deviceId: String,
     deviceType: { type: String, enum: ['web', 'mobile', 'tablet'] },

@@ -1,8 +1,16 @@
 'use strict';
 
+const ExcelJS = require("exceljs");
 const AppError = require("./appError");
 const ApiFeatures = require("./ApiFeatures");
 const catchAsync = require("./catchAsync");
+
+/**
+ * Utility to resolve deep object paths (e.g., "customerId.name")
+ */
+const getDeepValue = (obj, path) => {
+  return path.split(".").reduce((acc, part) => acc && acc[part], obj);
+};
 
 /**
  * CRUD HANDLER FACTORY
@@ -232,4 +240,155 @@ exports.getStats = (Model) =>
       status: "success",
       data: { stats: stats[0] || { total: 0, active: 0, inactive: 0 } }
     });
+  });
+
+/**
+ * 📊 MASTER EXCEL EXPORT
+ * Generates highly stylized, professional Excel reports with multi-tenant filtering.
+ */
+exports.exportExcel = (Model, options = {}) =>
+  catchAsync(async (req, res, next) => {
+    // 1. Base Filter (Strict Isolation)
+    const filter = { organizationId: req.user.organizationId };
+    if (Model.schema.path("isDeleted")) filter.isDeleted = { $ne: true };
+
+    // 2. Build Query using ApiFeatures (reuse UI filters/search)
+    // We EXCLUDE standard pagination but apply a safety limit
+    const exportLimit = Math.min(Math.abs(parseInt(req.query.limit, 10)) || 10000, 20000);
+    
+    const features = new ApiFeatures(Model.find(filter), req.query)
+      .filter()
+      .search(options.searchFields || ["name", "description", "referenceNumber"])
+      .sort();
+
+    // Population
+    const populationPaths = options.populate || req.query.populate;
+    if (populationPaths) {
+      features.query = features.query.populate(populationPaths);
+    }
+
+    // Apply safety limit and execute
+    const docs = await features.query.limit(exportLimit).lean();
+
+    if (!docs.length) {
+      return res.status(200).json({ 
+        status: "success", 
+        message: "No matching records found for export" 
+      });
+    }
+
+    // 3. Create Workbook & Worksheet
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "Apex CRM System";
+    workbook.lastModifiedBy = req.user.name || "System Admin";
+    workbook.created = new Date();
+
+    const sheetName = options.sheetName || "Report";
+    const worksheet = workbook.addWorksheet(sheetName, {
+      views: [{ state: "frozen", ySplit: 1 }] // Frozen header
+    });
+
+    // 4. Resolve Columns
+    // Priority: req.query.fields > options.exportFields > Model Schema Keys
+    let columns = [];
+    
+    if (options.exportFields && options.exportFields.length) {
+      columns = options.exportFields;
+    } else if (req.query.fields) {
+      columns = req.query.fields.split(",").map(f => ({
+        header: f.trim().replace(/([A-Z])/g, " $1").toUpperCase(),
+        key: f.trim(),
+        width: 20
+      }));
+    } else {
+      // Derive from the first object
+      columns = Object.keys(docs[0])
+        .filter(k => !["_id", "__v", "organizationId", "isDeleted"].includes(k))
+        .map(k => ({
+          header: k.replace(/([A-Z])/g, " $1").toUpperCase(),
+          key: k,
+          width: 20
+        }));
+    }
+
+    worksheet.columns = columns.map(col => ({
+      header: col.header,
+      key: col.key,
+      width: col.width || 20,
+      style: { alignment: { vertical: "middle" } }
+    }));
+
+    // 5. Apply "Beautiful" Styling to Header
+    const headerRow = worksheet.getRow(1);
+    headerRow.height = 25;
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF2B3E50" } // Dark Professional Blue
+    };
+    headerRow.alignment = { horizontal: "center", vertical: "middle" };
+
+    // 6. Populate Rows & Apply Data-Aware Styling
+    docs.forEach((doc, index) => {
+      const rowData = {};
+      columns.forEach(col => {
+        let value = getDeepValue(doc, col.key);
+
+        // Date Handling
+        if (value instanceof Date) {
+          value = value.toISOString().split("T")[0];
+        }
+
+        // Boolean handling (Beauty touch)
+        if (typeof value === "boolean") {
+          value = value ? "✅ YES" : "❌ NO";
+        }
+
+        // Array Handling
+        if (Array.isArray(value)) {
+          value = value.join(", ");
+        }
+
+        // Object fallback (unpopulated)
+        if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+          value = value.name || value.title || value.code || JSON.stringify(value);
+        }
+
+        rowData[col.key] = value === undefined || value === null ? "" : value;
+      });
+
+      const row = worksheet.addRow(rowData);
+      row.height = 20;
+
+      // 7. Zebra Striping for Readability
+      if (index % 2 === 0) {
+        row.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF9FAFB" } // Very light gray
+        };
+      }
+    });
+
+    // 8. Auto-filter & Finalization
+    worksheet.autoFilter = {
+      from: { row: 1, column: 1 },
+      to: { row: 1, column: columns.length }
+    };
+
+    // 9. Send Buffer
+    const fileName = `${options.fileName || "export"}_${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.xlsx`;
+    
+    res.setHeader(
+      "Content-Type", 
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition", 
+      `attachment; filename="${fileName}"`
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
   });
