@@ -7,7 +7,9 @@ const User              = require('../../../auth/core/user.model');
 const catchAsync        = require('../../../../core/utils/api/catchAsync');
 const AppError          = require('../../../../core/utils/api/appError');
 const factory           = require('../../../../core/utils/api/handlerFactory');
-const { startOfDay, parseQueryDate } = require('../../utils/dateHelpers');
+const {
+  startOfDay, endOfDay, dateRangeQuery, parseQueryDate, isValidDateRange
+} = require('../../../../core/utils/dateHelpers.js');
 
 // ─────────────────────────────────────────────
 //  HELPERS

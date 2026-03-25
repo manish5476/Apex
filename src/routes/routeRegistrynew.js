@@ -1,4 +1,4 @@
-import * as routes from '../routesIndex.js'; // Imports everything exported from routesIndex.js
+const routes = require('../routesIndex.js'); // Imports everything exported from routesIndex.js
 
 /**
  * Registers all application routes to the Express app.
@@ -88,4 +88,4 @@ const registerRoutes = (app) => {
   });
 };
 
-export default registerRoutes;
+module.exports = registerRoutes;

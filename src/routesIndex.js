@@ -1,65 +1,67 @@
-// --- V1 Routes (Main API) ---
-export { default as accountRoutes } from './routes/v1/accountRoutes.js';
-export { default as adminRoutes } from './routes/v1/adminRoutes.js';
-export { default as aiAgentRoutes } from './routes/v1/AiAgentRoutes.js';
-export { default as analyticsRoutes } from './routes/v1/analyticsRoutes.js';
-export { default as announcementRoutes } from './routes/v1/announcementRoutes.js';
-export { default as assetRoutes } from './routes/v1/asset.routes.js';
-export { default as authRoutes } from './routes/v1/authRoutes.js';
-export { default as automationRoutes } from './routes/v1/automationRoutes.js';
-export { default as branchRoutes } from './routes/v1/branchRoutes.js';
-export { default as chartRoutes } from './routes/v1/chartRoutes.js';
-export { default as chatRoutes } from './routes/v1/chatRoutes.js';
-export { default as cronRoutes } from './routes/v1/cron.routes.js';
-export { default as customerAnalyticsRoutes } from './routes/v1/customer.analytics.routes.js';
-export { default as customerRoutes } from './routes/v1/customerRoutes.js';
-export { default as dashboardRoutes } from './routes/v1/dashboardRoutes.js';
-export { default as emiRoutes } from './routes/v1/emiRoutes.js';
-export { default as feedRoutes } from './routes/v1/feedRoutes.js';
-export { default as inventoryRoutes } from './routes/v1/inventoryRoutes.js';
-export { default as invoicePdfRoutes } from './routes/v1/invoicePDFRoutes.js';
-export { default as invoiceRoutes } from './routes/v1/invoiceRoutes.js';
-export { default as ledgerRoutes } from './routes/v1/ledgerRoutes.js';
-export { default as logRoutes } from './routes/v1/logRoutes.js';
-export { default as masterListRoutes } from './routes/v1/masterListRoutes.js';
-export { default as masterRoutes } from './routes/v1/masterRoutes.js';
-export { default as masterTypeRoutes } from './routes/v1/masterTypeRoutes.js';
-export { default as noteRoutes } from './routes/v1/noteRoutes.js';
-export { default as notificationRoutes } from './routes/v1/notificationRoutes.js';
-export { default as organizationExtrasRoutes } from './routes/v1/organizationExtrasRoutes.js';
-export { default as organizationRoutes } from './routes/v1/organizationRoutes.js';
-export { default as ownershipRoutes } from './routes/v1/ownership.routes.js';
-export { default as partyTransactionRoutes } from './routes/v1/partyTransactionRoutes.js';
-export { default as paymentRoutes } from './routes/v1/paymentRoutes.js';
-export { default as productRoutes } from './routes/v1/productRoutes.js';
-export { default as purchaseRoutes } from './routes/v1/purchaseRoutes.js';
-export { default as reconciliationRoutes } from './routes/v1/reconciliationRoutes.js';
-export { default as rolesRoutes } from './routes/v1/rolesRoutes.js';
-export { default as salesReturnRoutes } from './routes/v1/salesReturnRoutes.js';
-export { default as salesRoutes } from './routes/v1/salesRoutes.js';
-export { default as searchRoutes } from './routes/v1/searchRoutes.js';
-export { default as sessionRoutes } from './routes/v1/sessionRoutes.js';
-export { default as shiftRoutes } from './routes/v1/shiftRoutes.js';
-export { default as statementsRoutes } from './routes/v1/statementsRoutes.js';
-export { default as stockRoutes } from './routes/v1/stockRoutes.js';
-export { default as supplierRoutes } from './routes/v1/supplierRoutes.js';
-export { default as transactionRoutes } from './routes/v1/transactionRoutes.js';
-export { default as userRoutes } from './routes/v1/userRoutes.js';
+module.exports = {
+  // --- V1 Routes (Main API) ---
+  accountRoutes: require('./routes/v1/account.routes.js'),
+  adminRoutes: require('./routes/v1/admin.routes.js'),
+  aiAgentRoutes: require('./routes/v1/aiAgent.routes.js'),
+  analyticsRoutes: require('./routes/v1/analytics.routes.js'),
+  announcementRoutes: require('./routes/v1/announcement.routes.js'),
+  assetRoutes: require('./routes/v1/asset.routes.js'),
+  authRoutes: require('./routes/v1/auth.routes.js'),
+  automationRoutes: require('./routes/v1/automation.routes.js'),
+  branchRoutes: require('./routes/v1/branch.routes.js'),
+  chartRoutes: require('./routes/v1/chart.routes.js'),
+  chatRoutes: require('./routes/v1/chat.routes.js'),
+  cronRoutes: require('./routes/v1/cron.routes.js'),
+  customerAnalyticsRoutes: require('./routes/v1/customer.analytics.routes.js'),
+  customerRoutes: require('./routes/v1/customer.routes.js'),
+  dashboardRoutes: require('./routes/v1/dashboard.routes.js'),
+  emiRoutes: require('./routes/v1/emi.routes.js'),
+  feedRoutes: require('./routes/v1/feed.routes.js'),
+  inventoryRoutes: require('./routes/v1/inventory.routes.js'),
+  invoicePdfRoutes: require('./routes/v1/invoicePDF.routes.js'),
+  invoiceRoutes: require('./routes/v1/invoice.routes.js'),
+  ledgerRoutes: require('./routes/v1/ledger.routes.js'),
+  logRoutes: require('./routes/v1/log.routes.js'),
+  masterListRoutes: require('./routes/v1/masterList.routes.js'),
+  masterRoutes: require('./routes/v1/master.routes.js'),
+  masterTypeRoutes: require('./routes/v1/masterType.routes.js'),
+  noteRoutes: require('./routes/v1/note.routes.js'),
+  notificationRoutes: require('./routes/v1/notification.routes.js'),
+  organizationExtrasRoutes: require('./routes/v1/organizationExtras.routes.js'),
+  organizationRoutes: require('./routes/v1/organization.routes.js'),
+  ownershipRoutes: require('./routes/v1/ownership.routes.js'),
+  partyTransactionRoutes: require('./routes/v1/partyTransaction.routes.js'),
+  paymentRoutes: require('./routes/v1/payment.routes.js'),
+  productRoutes: require('./routes/v1/product.routes.js'),
+  purchaseRoutes: require('./routes/v1/purchase.routes.js'),
+  reconciliationRoutes: require('./routes/v1/reconciliation.routes.js'),
+  rolesRoutes: require('./routes/v1/roles.routes.js'),
+  salesReturnRoutes: require('./routes/v1/salesReturn.routes.js'),
+  salesRoutes: require('./routes/v1/sales.routes.js'),
+  searchRoutes: require('./routes/v1/search.routes.js'),
+  sessionRoutes: require('./routes/v1/session.routes.js'),
+  shiftRoutes: require('./routes/v1/shift.routes.js'),
+  statementsRoutes: require('./routes/v1/statements.routes.js'),
+  stockRoutes: require('./routes/v1/stock.routes.js'),
+  supplierRoutes: require('./routes/v1/supplier.routes.js'),
+  transactionRoutes: require('./routes/v1/transaction.routes.js'),
+  userRoutes: require('./routes/v1/user.routes.js'),
 
-// --- HRMS Routes ---
-export { default as attendanceDailyRoutes } from './modules/HRMS/routes/attendance/attendanceDaily.routes.js';
-export { default as attendanceLogRoutes } from './modules/HRMS/routes/attendance/attendanceLog.routes.js';
-export { default as attendanceMachineRoutes } from './modules/HRMS/routes/attendance/attendanceMachine.routes.js';
-export { default as geoFenceRoutes } from './modules/HRMS/routes/attendance/geoFence.routes.js';
-export { default as holidayRoutes } from './modules/HRMS/routes/attendance/holiday.routes.js';
-export { default as departmentRoutes } from './modules/HRMS/routes/core/department.routes.js';
-export { default as designationRoutes } from './modules/HRMS/routes/core/designation.routes.js';
-export { default as hrmsShiftGroupRoutes } from './modules/HRMS/routes/core/shiftGroup.routes.js';
-export { default as hrmsShiftRoutes } from './modules/HRMS/routes/core/shift.routes.js';
-export { default as leaveBalanceRoutes } from './modules/HRMS/routes/leave/leaveBalance.routes.js';
-export { default as leaveRequestRoutes } from './modules/HRMS/routes/leave/leaveRequest.routes.js';
+  // --- HRMS Routes ---
+  attendanceDailyRoutes: require('./modules/HRMS/routes/attendance/attendanceDaily.routes.js'),
+  attendanceLogRoutes: require('./modules/HRMS/routes/attendance/attendanceLog.routes.js'),
+  attendanceMachineRoutes: require('./modules/HRMS/routes/attendance/attendanceMachine.routes.js'),
+  geoFenceRoutes: require('./modules/HRMS/routes/attendance/geoFence.routes.js'),
+  holidayRoutes: require('./modules/HRMS/routes/attendance/holiday.routes.js'),
+  departmentRoutes: require('./modules/HRMS/routes/core/department.routes.js'),
+  designationRoutes: require('./modules/HRMS/routes/core/designation.routes.js'),
+  hrmsShiftGroupRoutes: require('./modules/HRMS/routes/core/shiftGroup.routes.js'),
+  hrmsShiftRoutes: require('./modules/HRMS/routes/core/shift.routes.js'),
+  leaveBalanceRoutes: require('./modules/HRMS/routes/leave/leaveBalance.routes.js'),
+  leaveRequestRoutes: require('./modules/HRMS/routes/leave/leaveRequest.routes.js'),
 
-// --- Public Modules (Storefront) Routes ---
-export { default as storefrontAdminRoutes } from './PublicModules/routes/storefront/admin.routes.js';
-export { default as storefrontPublicRoutes } from './PublicModules/routes/storefront/public.routes.js';
-export { default as smartRuleRoutes } from './PublicModules/routes/storefront/smartRule.routes.js';
+  // --- Public Modules (Storefront) Routes ---
+  storefrontAdminRoutes: require('./PublicModules/routes/storefront/admin.routes.js'),
+  storefrontPublicRoutes: require('./PublicModules/routes/storefront/public.routes.js'),
+  smartRuleRoutes: require('./PublicModules/routes/storefront/smartRule.routes.js'),
+};
