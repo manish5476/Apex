@@ -504,12 +504,11 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   // Parallel Fetch for Speed
-  const [user, session] = await Promise.all([
+  const [user] = await Promise.all([
     User.findById(userId).populate({ 
       path: 'role', 
       select: 'name permissions isSuperAdmin isActive' 
-    }),
-    Session.findOne({ userId, token, isValid: true })
+    })
   ]);
 
   // 1. User Integrity Checks
@@ -536,6 +535,32 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   // 2. Session Integrity Check
+  // We check for the current token OR the previous token (if rotated within last 30 seconds)
+  let session = await Session.findOne({ 
+    userId, 
+    token, 
+    isValid: true 
+  });
+
+  if (!session) {
+    // Check if it's a recently rotated token
+    session = await Session.findOne({
+      userId,
+      previousToken: token,
+      isValid: true
+    });
+
+    if (session) {
+      const gracePeriod = 30 * 1000; // 30 seconds
+      const timeSinceUpdate = Date.now() - (session.lastTokenUpdateAt?.getTime() || 0);
+      
+      if (timeSinceUpdate > gracePeriod) {
+        return next(new AppError("Session expired (token rotation grace period exceeded).", 401));
+      }
+      // Success! Using a valid previous token within the grace period.
+    }
+  }
+
   if (!session) {
     return next(new AppError("Session expired or invalid. Please login again.", 401));
   }
@@ -776,9 +801,13 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
 
   const newAccessToken = signAccessToken(userForToken);
 
-  // Update session with new access token
+  // 🟢 ENHANCED: Token Rotation with Grace Period
+  // Move current token to previousToken and set current to newAccessToken
+  session.previousToken = session.token;
   session.token = newAccessToken;
+  session.lastTokenUpdateAt = new Date();
   session.lastActivityAt = new Date();
+  
   await session.save();
 
   res.status(200).json({ 
