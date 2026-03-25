@@ -16,21 +16,6 @@ export { default as Role } from './modules/auth/core/role.model.js';
 export { default as Session } from './modules/auth/core/session.model.js';
 export { default as User } from './modules/auth/core/user.model.js';
 
-// --- HRMS ---
-export { default as AttendanceDaily } from './modules/HRMS/models/attendanceDaily.model.js';
-export { default as AttendanceLog } from './modules/HRMS/models/attendanceLog.model.js';
-export { default as AttendanceMachine } from './modules/HRMS/models/attendanceMachine.model.js';
-export { default as AttendanceRequest } from './modules/HRMS/models/attendanceRequest.model.js';
-export { default as AttendanceSummary } from './modules/HRMS/models/attendanceSummary.model.js';
-export { default as Department } from './modules/HRMS/models/department.model.js';
-export { default as Designation } from './modules/HRMS/models/designation.model.js';
-export { default as GeoFencing } from './modules/HRMS/models/geoFencing.model.js';
-export { default as Holiday } from './modules/HRMS/models/holiday.model.js';
-export { default as LeaveBalance } from './modules/HRMS/models/leaveBalance.model.js';
-export { default as LeaveRequest } from './modules/HRMS/models/leaveRequest.model.js';
-export { default as ShiftAssignment } from './modules/HRMS/models/shiftAssignment.model.js';
-export { default as ShiftGroup } from './modules/HRMS/models/shiftGroup.model.js';
-export { default as Shift } from './modules/HRMS/models/shift.model.js';
 
 // --- Inventory ---
 export { default as Product } from './modules/inventory/core/product.model.js';
@@ -49,6 +34,7 @@ export { default as Customer } from './modules/organization/core/customer.model.
 export { default as Organization } from './modules/organization/core/organization.model.js';
 export { default as Supplier } from './modules/organization/core/supplier.model.js';
 
+
 // --- Notes, Notifications & Utilities ---
 export { default as Meeting } from './modules/Notes/meetingModel.js';
 export { default as Note } from './modules/Notes/noteModel.js';
@@ -57,6 +43,23 @@ export { default as Message } from './modules/notification/core/message.model.js
 export { default as Notification } from './modules/notification/core/notification.model.js';
 export { default as Asset } from './modules/uploads/asset.model.js';
 export { default as Automation } from './modules/webhook/automationModel.js';
+
+// --- HRMS ---
+export { default as AttendanceDaily } from './modules/HRMS/models/attendanceDaily.model.js';
+export { default as AttendanceLog } from './modules/HRMS/models/attendanceLog.model.js';
+export { default as AttendanceMachine } from './modules/HRMS/models/attendanceMachine.model.js';
+export { default as AttendanceRequest } from './modules/HRMS/models/attendanceRequest.model.js';
+export { default as AttendanceSummary } from './modules/HRMS/models/attendanceSummary.model.js';
+export { default as Department } from './modules/HRMS/models/department.model.js';
+export { default as Designation } from './modules/HRMS/models/designation.model.js';
+export { default as GeoFencing } from './modules/HRMS/models/geoFencing.model.js';
+export { default as Holiday } from './modules/HRMS/models/holiday.model.js';
+export { default as LeaveBalance } from './modules/HRMS/models/leaveBalance.model.js';
+export { default as LeaveRequest } from './modules/HRMS/models/leaveRequest.model.js';
+export { default as ShiftAssignment } from './modules/HRMS/models/shiftAssignment.model.js';
+export { default as ShiftGroup } from './modules/HRMS/models/shiftGroup.model.js';
+export { default as Shift } from './modules/HRMS/models/shift.model.js';
+
 
 // --- Public Modules (Storefront) ---
 export { default as SectionTemplate } from './PublicModules/models/storefront/sectionTemplate.model.js';

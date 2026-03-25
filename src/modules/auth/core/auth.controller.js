@@ -519,8 +519,8 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   req.session = session;
 
-  // Fire-and-forget last activity update
-  Session.findByIdAndUpdate(session._id, { lastActivityAt: new Date() }).exec();
+  // Update last activity (Awaited to prevent unhandled rejections)
+  await Session.findByIdAndUpdate(session._id, { lastActivityAt: new Date() });
 
   next();
 });

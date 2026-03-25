@@ -9,6 +9,8 @@ const { PERMISSIONS } = require("../../config/permissions");
 // 1. PUBLIC ROUTES
 // ==============================================================================
 router.post('/create', organizationController.createOrganization);
+router.post('/lookup', organizationController.lookupOrganizations);
+router.get('/shop/:uniqueShopId', organizationController.getOrganizationByShopId);
 
 // Protect all subsequent routes
 router.use(authController.protect);
