@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const inventoryController = require("../../modules/inventory/core/inventory.controller");
+const inventoryController = require("../../modules/inventory/core/stock.controller");
 const authController = require("../../modules/auth/core/auth.controller");
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");

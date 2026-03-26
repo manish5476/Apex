@@ -6,19 +6,19 @@ const ProfitCalculator = require('../utils/profitCalculator');
 
 const Invoice = require("../invoice.model");
 const Payment = require("../../payments/payment.model");
-const Product = require("../../../inventory/core/product.model");
+const Product = require("../../../inventory/core/model/product.model");
 const Customer = require("../../../organization/core/customer.model");
 const AccountEntry = require('../../core/accountEntry.model');
 const Account = require('../../core/account.model');
 const Organization = require("../../../organization/core/organization.model");
 const InvoiceAudit = require('../invoiceAudit.model');
 
-const SalesService = require("../../../inventory/core/sales.service");
+const SalesService = require("../../../inventory/core/service/sales.service");
 const invoicePDFService = require("../invoicePDFService");
-const StockValidationService = require("../../../inventory/core/stockValidationService");
+const StockValidationService = require("../../../inventory/core/service/stockValidation.service");
 const { createNotification } = require("../../../notification/core/notification.service");
 // CHANGED: Import the whole service to access reverseInvoiceJournal
-const salesJournalService = require('../../../inventory/core/salesJournal.service');
+const salesJournalService = require('../../../inventory/core/service/salesJournal.service');
 
 const catchAsync = require("../../../../core/utils/api/catchAsync");
 const AppError = require("../../../../core/utils/api/appError");
@@ -535,81 +535,238 @@ await AccountEntry.deleteMany({
   });
 });
 
+// /* ======================================================
+//    3. CANCEL INVOICE (MODULAR REVERSAL)
+// ====================================================== */
+// exports.cancelInvoice = catchAsync(async (req, res, next) => {
+//   const { id } = req.params;
+//   // Default both to true to maintain current behavior, but allow overrides
+//   const { 
+//     reason, 
+//     restock = true, 
+//     reverseFinancials = true 
+//   } = req.body;
+
+//   if (!reason?.trim()) {
+//     return next(new AppError('A cancellation reason is required', 400));
+//   }
+
+//   await runInTransaction(async (session) => {
+//     const invoice = await Invoice.findOne({
+//       _id: id,
+//       organizationId: req.user.organizationId
+//     }).populate('items.productId').session(session);
+
+//     if (!invoice) throw new AppError('Invoice not found', 404);
+//     if (invoice.status === 'cancelled') throw new AppError('Already cancelled', 400);
+
+//     // 1. OPTIONAL: RESTOCK ITEMS
+//     // Used if goods are returned to shelf in sellable condition
+//     if (restock) {
+//       await restoreStockFromInvoice(
+//         invoice.items,
+//         invoice.branchId,
+//         req.user.organizationId,
+//         session
+//       );
+//     }
+
+//     // 2. OPTIONAL: REVERSE FINANCIALS
+//     // If false, the customer still "owes" the money or the sale stays in revenue
+//     if (reverseFinancials) {
+//       // Reverse Customer Balance
+//       await Customer.findByIdAndUpdate(
+//         invoice.customerId,
+//         {
+//           $inc: {
+//             totalPurchases: -invoice.grandTotal,
+//             outstandingBalance: -invoice.grandTotal
+//           }
+//         },
+//         { session }
+//       );
+
+//       // Create Credit Note / Accounting Journal Reversal
+//       await salesJournalService.reverseInvoiceJournal({
+//         orgId: req.user.organizationId,
+//         branchId: invoice.branchId,
+//         invoice,
+//         userId: req.user._id,
+//         session
+//       });
+      
+//       // Update Sales Records (Revenue tracking)
+//       await SalesService.updateFromInvoiceTransactional(invoice, session);
+//     }
+
+//     // 3. UPDATE INVOICE STATUS (Always happens)
+//     invoice.status = 'cancelled';
+//     invoice.notes = (invoice.notes || '') + 
+//       `\n[CANCELLED] Reason: ${reason} | Restock: ${restock} | Reverse Financials: ${reverseFinancials} | By: ${req.user.name || req.user.id}`;
+    
+//     await invoice.save({ session });
+
+//     // 4. AUDIT TRAIL
+//     await InvoiceAudit.create([{
+//       invoiceId: invoice._id,
+//       action: 'STATUS_CHANGE',
+//       performedBy: req.user._id,
+//       details: `Cancelled. Restock: ${restock}, Financial Reversal: ${reverseFinancials}. Reason: ${reason}`,
+//       ipAddress: req.ip
+//     }], { session });
+
+//   }, 3, { action: "CANCEL_INVOICE", userId: req.user._id });
+
+//   // 5. NOTIFY
+//   emitToOrg(req.user.organizationId, 'invoice:cancelled', {
+//     invoiceId: id,
+//     restock,
+//     reverseFinancials
+//   });
+
+//   res.status(200).json({
+//     status: "success",
+//     message: `Invoice cancelled successfully. (Restocked: ${restock}, Financials Reversed: ${reverseFinancials})`
+//   });
+// });
 /* ======================================================
-   3. CANCEL INVOICE WITH STOCK RESTORATION (REFACTORED)
+   3. CANCEL INVOICE (WITH AUTOMATIC WRITE-OFF)
 ====================================================== */
 exports.cancelInvoice = catchAsync(async (req, res, next) => {
   const { id } = req.params;
-  const { reason, restock = true } = req.body;
+  const { reason, restock = true, reverseFinancials = true } = req.body;
 
   await runInTransaction(async (session) => {
-    const invoice = await Invoice.findOne({
-      _id: id,
-      organizationId: req.user.organizationId
-    }).populate('items.productId').session(session);
+    const invoice = await Invoice.findOne({ _id: id, organizationId: req.user.organizationId })
+      .populate('items.productId')
+      .session(session);
 
     if (!invoice) throw new AppError('Invoice not found', 404);
-    if (invoice.status === 'cancelled') throw new AppError('Already cancelled', 400);
 
-    // 1. RESTOCK ITEMS (if requested)
+    // 1. IF RESTOCK: Put items back in inventory
     if (restock) {
-      await restoreStockFromInvoice(
-        invoice.items,
-        invoice.branchId,
-        req.user.organizationId,
-        session
-      );
+      await restoreStockFromInvoice(invoice.items, invoice.branchId, req.user.organizationId, session);
+    } 
+    // 2. IF NO RESTOCK: Create a Write-Off/Adjustment record for the Audit Trail
+    else {
+      const adjustmentItems = invoice.items.map(item => ({
+        productId: item.productId._id,
+        quantity: item.quantity,
+        type: 'decrease', // It stays decreased relative to original stock
+        reason: `Invoice Cancelled (No Restock): ${reason}`
+      }));
+
+      // Create an entry in your InventoryAdjustment model
+      await InventoryAdjustment.create([{
+        organizationId: req.user.organizationId,
+        branchId: invoice.branchId,
+        items: adjustmentItems,
+        notes: `Automatic write-off from cancelled invoice ${invoice.invoiceNumber}`,
+        createdBy: req.user._id,
+        status: 'approved'
+      }], { session });
     }
 
-    // 2. REVERSE CUSTOMER BALANCE
-    await Customer.findByIdAndUpdate(
-      invoice.customerId,
-      {
-        $inc: {
-          totalPurchases: -invoice.grandTotal,
-          outstandingBalance: -invoice.grandTotal
-        }
-      },
-      { session }
-    );
+    // 3. REVERSE FINANCIALS (Customer Balance & Sales Journal)
+    if (reverseFinancials) {
+      await Customer.findByIdAndUpdate(invoice.customerId, {
+        $inc: { totalPurchases: -invoice.grandTotal, outstandingBalance: -invoice.grandTotal }
+      }, { session });
 
-    // 3. CREATE CREDIT NOTE ENTRIES (REFACTORED: Uses Service)
-    // This replaces ~30 lines of manual AccountEntry creation
-    await salesJournalService.reverseInvoiceJournal({
-      orgId: req.user.organizationId,
-      branchId: invoice.branchId,
-      invoice,
-      userId: req.user._id,
-      session
-    });
+      await salesJournalService.reverseInvoiceJournal({
+        orgId: req.user.organizationId,
+        branchId: invoice.branchId,
+        invoice,
+        userId: req.user._id,
+        session
+      });
+    }
 
-    // 4. UPDATE INVOICE STATUS
+    // 4. FINAL STATUS UPDATE
     invoice.status = 'cancelled';
-    invoice.notes = (invoice.notes || '') + `\nCancelled: ${reason} (${new Date().toISOString()})`;
+    invoice.notes += `\n[ACTION] Cancelled. Restock: ${restock}. Financials Reversed: ${reverseFinancials}.`;
     await invoice.save({ session });
 
-    // 5. CANCEL RELATED SALES RECORD (REFACTORED: Uses Service)
-    await SalesService.updateFromInvoiceTransactional(invoice, session);
-    await InvoiceAudit.create([{
-      invoiceId: invoice._id,
-      action: 'STATUS_CHANGE',
-      performedBy: req.user._id,
-      details: `Cancelled. Restock: ${restock}. Reason: ${reason}`,
-      ipAddress: req.ip
-    }], { session });
   }, 3, { action: "CANCEL_INVOICE", userId: req.user._id });
 
-  // Emit real-time update
-  emitToOrg(req.user.organizationId, 'invoice:cancelled', {
-    invoiceId: id,
-    invoiceNumber: "Cancelled"
-  });
-
-  res.status(200).json({
-    status: "success",
-    message: "Invoice cancelled & reversed."
-  });
+  res.status(200).json({ status: "success", message: "Invoice processed with audit trail." });
 });
+
+// /* ======================================================
+//    3. CANCEL INVOICE WITH STOCK RESTORATION (REFACTORED)
+// ====================================================== */
+// exports.cancelInvoice = catchAsync(async (req, res, next) => {
+//   const { id } = req.params;
+//   const { reason, restock = true } = req.body;
+
+//   await runInTransaction(async (session) => {
+//     const invoice = await Invoice.findOne({
+//       _id: id,
+//       organizationId: req.user.organizationId
+//     }).populate('items.productId').session(session);
+
+//     if (!invoice) throw new AppError('Invoice not found', 404);
+//     if (invoice.status === 'cancelled') throw new AppError('Already cancelled', 400);
+
+//     // 1. RESTOCK ITEMS (if requested)
+//     if (restock) {
+//       await restoreStockFromInvoice(
+//         invoice.items,
+//         invoice.branchId,
+//         req.user.organizationId,
+//         session
+//       );
+//     }
+
+//     // 2. REVERSE CUSTOMER BALANCE
+//     await Customer.findByIdAndUpdate(
+//       invoice.customerId,
+//       {
+//         $inc: {
+//           totalPurchases: -invoice.grandTotal,
+//           outstandingBalance: -invoice.grandTotal
+//         }
+//       },
+//       { session }
+//     );
+
+//     // 3. CREATE CREDIT NOTE ENTRIES (REFACTORED: Uses Service)
+//     // This replaces ~30 lines of manual AccountEntry creation
+//     await salesJournalService.reverseInvoiceJournal({
+//       orgId: req.user.organizationId,
+//       branchId: invoice.branchId,
+//       invoice,
+//       userId: req.user._id,
+//       session
+//     });
+
+//     // 4. UPDATE INVOICE STATUS
+//     invoice.status = 'cancelled';
+//     invoice.notes = (invoice.notes || '') + `\nCancelled: ${reason} (${new Date().toISOString()})`;
+//     await invoice.save({ session });
+
+//     // 5. CANCEL RELATED SALES RECORD (REFACTORED: Uses Service)
+//     await SalesService.updateFromInvoiceTransactional(invoice, session);
+//     await InvoiceAudit.create([{
+//       invoiceId: invoice._id,
+//       action: 'STATUS_CHANGE',
+//       performedBy: req.user._id,
+//       details: `Cancelled. Restock: ${restock}. Reason: ${reason}`,
+//       ipAddress: req.ip
+//     }], { session });
+//   }, 3, { action: "CANCEL_INVOICE", userId: req.user._id });
+
+//   // Emit real-time update
+//   emitToOrg(req.user.organizationId, 'invoice:cancelled', {
+//     invoiceId: id,
+//     invoiceNumber: "Cancelled"
+//   });
+
+//   res.status(200).json({
+//     status: "success",
+//     message: "Invoice cancelled & reversed."
+//   });
+// });
 
 /* ======================================================
    5. CHECK STOCK (No Changes Needed)

@@ -1,11 +1,11 @@
 // src/services/notificationService.js
 const Invoice = require("../../accounting/billing/invoice.model");
-const Product = require("../../inventory/core/product.model");
+const Product = require("../../inventory/core/model/product.model");
 const Customer = require("../../organization/core/customer.model");
 const Notification = require("./notification.model");
 const EMI = require("../../accounting/payments/emi.model");
 const sendEmail = require("../../../core/infra/email");
-const inventoryAlertService = require("../../inventory/core/inventoryAlert.service");
+const inventoryAlertService = require("../../inventory/core/service/inventoryAlert.service");
 const { emitToUser } = require("../../../socketHandlers/socket");
 
 class NotificationService {

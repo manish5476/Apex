@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const Sales = require('../../inventory/core/sales.model');
+const Sales = require('../../inventory/core/model/sales.model');
 const User = require('../../auth/core/user.model');
 const AttendanceDaily = require('../../HRMS/models/attendanceDaily.model');
 const { toObjectId } = require('../utils/analytics.utils');

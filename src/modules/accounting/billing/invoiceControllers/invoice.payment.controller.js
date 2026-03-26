@@ -6,7 +6,7 @@ const { invalidateOpeningBalance } = require("../../core/ledgerCache.service");
 const ProfitCalculator = require('../utils/profitCalculator');
 
 const Payment = require("../../payments/payment.model");
-const Product = require("../../../inventory/core/product.model");
+const Product = require("../../../inventory/core/model/product.model");
 const Customer = require("../../../organization/core/customer.model");
 const AccountEntry = require('../../core/accountEntry.model');
 const Account = require('../../core/account.model');

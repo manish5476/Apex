@@ -1,5 +1,5 @@
-const AccountEntry = require('../../accounting/core/accountEntry.model');
-const Account = require('../../accounting/core/account.model');
+const AccountEntry = require('../../../accounting/core/accountEntry.model');
+const Account = require('../../../accounting/core/account.model');
 
 async function getAccount(orgId, code, name, type, session) {
   let acc = await Account.findOne({ organizationId: orgId, code }).session(session);

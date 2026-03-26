@@ -9,7 +9,7 @@ module.exports = {
   productRoutes: require('./routes/v1/product.routes.js'),
   customerRoutes: require('./routes/v1/customer.routes.js'),
   supplierRoutes: require('./routes/v1/supplier.routes.js'),
-  dropdownRoutes: require('./modules/master/core/dropdownlist'),
+  dropdownRoutes: require('./modules/master/core/routes/dropdownlist.routes.js'),
 
   // --- Transactions & Finance ---
   invoiceRoutes: require('./routes/v1/invoice.routes.js'),

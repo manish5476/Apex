@@ -1,6 +1,6 @@
 // src/jobs/inventoryAlertCronJob.js
 const cron = require('node-cron');
-const { checkAndSendLowStockAlerts } = require('../../modules/inventory/core/inventoryAlert.service');
+const { checkAndSendLowStockAlerts } = require('../../modules/inventory/core/service/inventoryAlert.service');
 
 const SCHEDULE = process.env.INVENTORY_ALERT_CRON || '0 10 * * *'; // every day 10 AM
 

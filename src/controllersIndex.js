@@ -41,7 +41,7 @@ export { default as leaveBalanceController } from './modules/HRMS/controllers/le
 export { default as leaveRequestController } from './modules/HRMS/controllers/leave/leaveRequest.controller.js';
 
 // --- Inventory ---
-export { default as inventoryController } from './modules/inventory/core/inventory.controller.js';
+export { default as inventoryController } from './modules/inventory/core/stock.controller.js';
 export { default as productController } from './modules/inventory/core/product.controller.js';
 export { default as purchaseController } from './modules/inventory/core/purchase.controller.js';
 export { default as salesController } from './modules/inventory/core/sales.controller.js';

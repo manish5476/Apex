@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Invoice = require('../../accounting/billing/invoice.model');
-const Purchase = require('../../inventory/core/purchase.model');
-const Product = require('../../inventory/core/product.model');
+const Purchase = require('../../inventory/core/model/purchase.model');
+const Product = require('../../inventory/core/model/product.model');
 
 const toObjectId = (id) => new mongoose.Types.ObjectId(id);
 

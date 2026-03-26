@@ -30,8 +30,8 @@ router.get('/export', checkPermission(PERMISSIONS.SALES.VIEW), salesController.e
  * Changed paths to '/returns' to prevent collision with base '/'
  * =============================================================
  */
-router.post('/returns', checkPermission(PERMISSIONS.SALES_RETURN.MANAGE), salesReturnController.createReturn);
-router.get('/returns', checkPermission(PERMISSIONS.SALES_RETURN.READ), salesReturnController.getReturns);
+// router.post('/returns', checkPermission(PERMISSIONS.SALES_RETURN.MANAGE), salesReturnController.createReturn);
+// router.get('/returns', checkPermission(PERMISSIONS.SALES_RETURN.READ), salesReturnController.getReturns);
 
 
 /**
@@ -40,23 +40,23 @@ router.get('/returns', checkPermission(PERMISSIONS.SALES_RETURN.READ), salesRetu
  * =============================================================
  */
 // Specialized action: Create sale record from an existing Invoice
-router.post('/from-invoice/:invoiceId', checkPermission(PERMISSIONS.SALES.MANAGE), salesController.createFromInvoice);
+// router.post('/from-invoice/:invoiceId', checkPermission(PERMISSIONS.SALES.MANAGE), salesController.createFromInvoice);
 
 router.route('/')
   // List all sales (with filtering/search/pagination)
   .get(checkPermission(PERMISSIONS.SALES.VIEW), salesController.getAllSales)
   // Create a new direct sale (Merged stock validation here!)
-  .post(
-    checkPermission(PERMISSIONS.SALES.MANAGE), 
-    checkStockBeforeSale, 
-    // validate(createSalesSchema), 
-    salesController.createSales
-  );
+  // .post(
+  //   checkPermission(PERMISSIONS.SALES.MANAGE), 
+  //   checkStockBeforeSale, 
+  //   // validate(createSalesSchema), 
+  //   salesController.createSales
+  // );
 
 router.route('/:id')
-  .get(checkPermission(PERMISSIONS.SALES.VIEW), salesController.getSales)
-  .put(checkPermission(PERMISSIONS.SALES.MANAGE),     salesController.updateSales
+  // .get(checkPermission(PERMISSIONS.SALES.VIEW), salesController.getSales)
+  // .put(checkPermission(PERMISSIONS.SALES.MANAGE),     salesController.updateSales
   )
-  .delete(checkPermission(PERMISSIONS.SALES.MANAGE), salesController.deleteSales);
+  // .delete(checkPermission(PERMISSIONS.SALES.MANAGE), salesController.deleteSales);
 
 module.exports = router;

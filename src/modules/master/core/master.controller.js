@@ -1,4 +1,4 @@
-const Master = require("./master.model");
+const Master = require("./model/master.model");
 const catchAsync = require("../../../core/utils/api/catchAsync");
 const AppError = require("../../../core/utils/api/appError");
 

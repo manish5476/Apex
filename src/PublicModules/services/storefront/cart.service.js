@@ -16,7 +16,7 @@
 
 const mongoose       = require('mongoose');
 const StorefrontCart = require('../../models/storefront/storefrontCart.model');
-const Product        = require('../../../modules/inventory/core/product.model');
+const Product        = require('../../../modules/inventory/core/model/product.model');
 const AppError       = require('../../../core/utils/api/appError');
 
 // Guest carts expire in 7 days, customer carts in 30

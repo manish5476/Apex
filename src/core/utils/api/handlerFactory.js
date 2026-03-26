@@ -119,38 +119,65 @@ exports.deleteOne = (Model) =>
     res.status(204).json({ status: "success", data: null });
   });
 
+
+  const MAX_BULK = 500;
+
 exports.bulkCreate = (Model) =>
   catchAsync(async (req, res, next) => {
     if (!Array.isArray(req.body)) return next(new AppError("Request body must be an array", 400));
+    
+    // 1. Enforce the limit
+    if (req.body.length > MAX_BULK) {
+      return next(new AppError(`Maximum ${MAX_BULK} items per bulk import`, 400));
+    }
 
     const docs = req.body.map((item) => ({
       ...item,
       organizationId: req.user.organizationId,
-      createdBy: req.user._id || req.user.id,
-      isActive: item.isActive !== undefined ? item.isActive : true,
+      createdBy: req.user.id,
+      // Logic for isActive remains the same
+      isActive: item.isActive ?? true, 
     }));
 
     const result = await Model.insertMany(docs);
-    res.status(201).json({ status: "success", results: result.length, data: { data: result } });
+    
+    res.status(201).json({ 
+      status: "success", 
+      results: result.length, 
+      data: { data: result } 
+    });
   });
 
 exports.bulkUpdate = (Model) =>
   catchAsync(async (req, res, next) => {
     const { ids, updates } = req.body;
+    
+    // Check for bulk limit on IDs
+    if (ids?.length > MAX_BULK) return next(new AppError("Too many IDs provided", 400));
     if (!Array.isArray(ids) || !updates) return next(new AppError("IDs and Updates required", 400));
 
+    // Prevent bypassing multi-tenancy
     delete updates.organizationId;
-    updates.updatedBy = req.user._id || req.user.id;
-    updates.updatedAt = Date.now();
+    delete updates.createdBy;
 
     const result = await Model.updateMany(
       { _id: { $in: ids }, organizationId: req.user.organizationId },
-      updates,
+      { 
+        $set: { 
+          ...updates, 
+          updatedBy: req.user.id,
+          updatedAt: Date.now() 
+        } 
+      },
       { runValidators: true }
     );
 
-    res.status(200).json({ status: "success", data: { matched: result.matchedCount, modified: result.modifiedCount } });
+    res.status(200).json({ 
+      status: "success", 
+      data: { matched: result.matchedCount, modified: result.modifiedCount } 
+    });
   });
+
 
 exports.bulkDelete = (Model) =>
   catchAsync(async (req, res, next) => {
@@ -219,7 +246,7 @@ exports.getStats = (Model) =>
   catchAsync(async (req, res, next) => {
     const features = new ApiFeatures(Model.find(), req.query).filter();
     const filter = features.query.getFilter();
-    
+
     // Enforce isolation
     filter.organizationId = req.user.organizationId;
     if (Model.schema.path("isDeleted")) filter.isDeleted = { $ne: true };
@@ -255,7 +282,7 @@ exports.exportExcel = (Model, options = {}) =>
     // 2. Build Query using ApiFeatures (reuse UI filters/search)
     // We EXCLUDE standard pagination but apply a safety limit
     const exportLimit = Math.min(Math.abs(parseInt(req.query.limit, 10)) || 10000, 20000);
-    
+
     const features = new ApiFeatures(Model.find(filter), req.query)
       .filter()
       .search(options.searchFields || ["name", "description", "referenceNumber"])
@@ -271,9 +298,9 @@ exports.exportExcel = (Model, options = {}) =>
     const docs = await features.query.limit(exportLimit).lean();
 
     if (!docs.length) {
-      return res.status(200).json({ 
-        status: "success", 
-        message: "No matching records found for export" 
+      return res.status(200).json({
+        status: "success",
+        message: "No matching records found for export"
       });
     }
 
@@ -291,7 +318,7 @@ exports.exportExcel = (Model, options = {}) =>
     // 4. Resolve Columns
     // Priority: req.query.fields > options.exportFields > Model Schema Keys
     let columns = [];
-    
+
     if (options.exportFields && options.exportFields.length) {
       columns = options.exportFields;
     } else if (req.query.fields) {
@@ -379,13 +406,13 @@ exports.exportExcel = (Model, options = {}) =>
 
     // 9. Send Buffer
     const fileName = `${options.fileName || "export"}_${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.xlsx`;
-    
+
     res.setHeader(
-      "Content-Type", 
+      "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
     res.setHeader(
-      "Content-Disposition", 
+      "Content-Disposition",
       `attachment; filename="${fileName}"`
     );
 

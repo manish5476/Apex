@@ -58,4 +58,45 @@ const startOfDay = (date) => {
    */
   const isValidDateRange = (from, to) => from <= to;
   
-  module.exports = { startOfDay, endOfDay, dateRangeQuery, parseQueryDate, isValidDateRange };
+  
+  exports.getPeriodDates = (period, startDate, endDate) => {
+    const now = new Date();
+    let start, end;
+  
+    switch (period) {
+      case 'today':
+        start = new Date(now.setHours(0, 0, 0, 0));
+        end = new Date();
+        break;
+      case 'yesterday':
+        start = new Date(now);
+        start.setDate(now.getDate() - 1);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(start);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case 'this_week':
+        const day = now.getDay();
+        start = new Date(now.setDate(now.getDate() - day + (day === 0 ? -6 : 1)));
+        start.setHours(0, 0, 0, 0);
+        end = new Date();
+        break;
+      case 'this_month':
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date();
+        break;
+      case 'last_month':
+        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        break;
+      case 'custom':
+        start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+        end = endDate ? new Date(endDate) : new Date();
+        break;
+      default: // default to this_month
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date();
+    }
+    return { start, end };
+  };
+  module.exports = { startOfDay, endOfDay, dateRangeQuery, parseQueryDate, getPeriodDates,isValidDateRange };

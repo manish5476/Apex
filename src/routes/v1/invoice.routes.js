@@ -11,10 +11,16 @@ const { checkPermission } = require("../../core/middleware/permission.middleware
 const { PERMISSIONS } = require("../../config/permissions");
 const { validateStockForInvoice, checkStockBeforeSale } = require("../../core/middleware/stockValidation.middleware");
 const catchAsync = require("../../core/utils/api/catchAsync");
-const StockValidationService = require('../../modules/inventory/core/stockValidationService')
+const StockValidationService = require('../../modules/inventory/core/service/stockValidation.service')
 // Protect all routes
 router.use(authController.protect);
+const rateLimit = require('express-rate-limit');
 
+const financialLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30,
+  message: 'Too many requests on financial endpoints'
+});
 /* ======================================================
     1. ANALYTICS & REPORTS (Static High-Priority)
 ====================================================== */
@@ -29,9 +35,7 @@ router.get('/invoiceanalytics/product-profit/:productId', checkPermission(PERMIS
 
 // Specific Reports (Using Granular Permissions)
 router.get("/reports/profit", checkPermission(PERMISSIONS.REPORT.PROFIT), invoiceProfitController.profitSummary);
-router.get("/reports/sales", checkPermission(PERMISSIONS.REPORT.SALES), invoiceReport.getSalesReport || ((req, res) => res.status(200).json({ status: 'success', data: [] })));
-router.get("/reports/tax", checkPermission(PERMISSIONS.REPORT.TAX), invoiceReport.getTaxReport || ((req, res) => res.status(200).json({ status: 'success', data: [] })));
-router.get("/reports/outstanding", checkPermission(PERMISSIONS.REPORT.OUTSTANDING), invoiceReport.getOutstandingInvoices || ((req, res) => res.status(200).json({ status: 'success', data: [] })));
+
 
 /* ======================================================
     2. BULK & UTILITY OPERATIONS
@@ -102,7 +106,7 @@ router.get("/trash/all", checkPermission(PERMISSIONS.INVOICE.DELETE), invoiceCon
     4. CUSTOMER SPECIFIC (Before Root)
 ====================================================== */
 
-router.get("/customer/:customerId/summary", checkPermission(PERMISSIONS.INVOICE.READ), invoiceReport.getCustomerInvoiceSummary);
+// router.get("/customer/:customerId/summary", checkPermission(PERMISSIONS.INVOICE.READ), invoiceReport.getCustomerInvoiceSummary);
 router.get("/customer/:customerId", checkPermission(PERMISSIONS.INVOICE.READ), invoiceController.getInvoicesByCustomer);
 
 /* ======================================================
@@ -111,7 +115,7 @@ router.get("/customer/:customerId", checkPermission(PERMISSIONS.INVOICE.READ), i
 
 router.route("/")
   .get(checkPermission(PERMISSIONS.INVOICE.READ), invoiceController.getAllInvoices)
-  .post(checkPermission(PERMISSIONS.INVOICE.CREATE), validateStockForInvoice, invoiceController.createInvoice);
+  .post(checkPermission(PERMISSIONS.INVOICE.CREATE), validateStockForInvoice, financialLimiter, invoiceController.createInvoice);
 
 router.route("/:id")
   .get(checkPermission(PERMISSIONS.INVOICE.READ), invoiceController.getInvoice)

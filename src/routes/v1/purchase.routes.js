@@ -5,7 +5,13 @@ const purchaseController = require("../../modules/inventory/core/purchase.contro
 const authController = require("../../modules/auth/core/auth.controller");
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
+const rateLimit = require('express-rate-limit');
 
+const financialLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30,
+  message: 'Too many requests on financial endpoints'
+});
 // Protect all routes globally
 router.use(authController.protect);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
@@ -32,7 +38,7 @@ router.route("/")
   .get(checkPermission(PERMISSIONS.PURCHASE.READ), purchaseController.getAllPurchases)
   .post(
     checkPermission(PERMISSIONS.PURCHASE.CREATE), 
-    upload.array("attachments", 10), 
+    upload.array("attachments", 10), financialLimiter,
     purchaseController.createPurchase
   );
 

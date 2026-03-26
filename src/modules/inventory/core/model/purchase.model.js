@@ -4,13 +4,13 @@ const mongoose = require('mongoose');
 //  Sub-Schema: Purchase Item
 // ─────────────────────────────────────────────
 const purchaseItemSchema = new mongoose.Schema({
-  productId:     { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-  name:          { type: String, required: true },
-  quantity:      { type: Number, required: true, min: 1 },
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  name: { type: String, required: true },
+  quantity: { type: Number, required: true, min: 1 },
   purchasePrice: { type: Number, required: true, min: 0 },
-  taxRate:       { type: Number, default: 0, min: 0 },
+  taxRate: { type: Number, default: 0, min: 0 },
   // FIX #1 — discount should be min: 0 to prevent negative discounts corrupting totals
-  discount:      { type: Number, default: 0, min: 0 },
+  discount: { type: Number, default: 0, min: 0 },
 }, { _id: false });
 
 // ─────────────────────────────────────────────
@@ -18,22 +18,22 @@ const purchaseItemSchema = new mongoose.Schema({
 // ─────────────────────────────────────────────
 const purchaseSchema = new mongoose.Schema({
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
-  branchId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Branch',       required: true, index: true },
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true, index: true },
 
   supplierId: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier', required: true, index: true },
 
   // Supplier snapshot: preserves supplier details at time of purchase
   // even if supplier record is later modified or deleted
   supplierSnapshot: {
-    name:       String,
-    address:    String,
-    gstNumber:  String,
-    email:      String,
+    name: String,
+    address: String,
+    gstNumber: String,
+    email: String,
   },
 
   invoiceNumber: { type: String, trim: true, uppercase: true, index: true },
-  purchaseDate:  { type: Date, default: Date.now },
-  dueDate:       { type: Date },
+  purchaseDate: { type: Date, default: Date.now },
+  dueDate: { type: Date },
 
   status: {
     type: String,
@@ -44,10 +44,10 @@ const purchaseSchema = new mongoose.Schema({
   items: [purchaseItemSchema],
 
   // Financials (auto-calculated in pre-save)
-  subTotal:      { type: Number, default: 0 },
-  totalTax:      { type: Number, default: 0 },
+  subTotal: { type: Number, default: 0 },
+  totalTax: { type: Number, default: 0 },
   totalDiscount: { type: Number, default: 0 },
-  grandTotal:    { type: Number, required: true, default: 0 },
+  grandTotal: { type: Number, required: true, default: 0 },
 
   // Payment Tracking
   paymentStatus: {
@@ -55,7 +55,7 @@ const purchaseSchema = new mongoose.Schema({
     enum: ['unpaid', 'partial', 'paid', 'overpaid'],
     default: 'unpaid',
   },
-  paidAmount:    { type: Number, default: 0 },
+  paidAmount: { type: Number, default: 0 },
   balanceAmount: { type: Number, default: 0 },
   paymentMethod: {
     type: String,
@@ -64,18 +64,25 @@ const purchaseSchema = new mongoose.Schema({
     default: 'cash',
   },
 
-  createdBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  notes:      { type: String, trim: true },
+  notes: { type: String, trim: true },
 
   attachedFiles: [{
-    url:       String,
+    url: String,
     public_id: String,
-    format:    String,
-    bytes:     Number,
-    assetId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
+    format: String,
+    bytes: Number,
+    assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
   }],
-
+  // 🟢 ADD THIS: Track returns as separate ledger entries
+  returnedQuantities: [{
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    quantity: { type: Number, required: true },
+    returnDate: { type: Date, default: Date.now },
+    reason: String,
+    returnId: String // e.g., a reference to the Return Transaction
+  }],
   isDeleted: { type: Boolean, default: false },
 
 }, { timestamps: true });
@@ -91,6 +98,33 @@ purchaseSchema.index({ organizationId: 1, paymentStatus: 1 });
 // FIX #4 — Added status index for filtering received vs draft purchases
 purchaseSchema.index({ organizationId: 1, status: 1, purchaseDate: -1 });
 
+
+// ─────────────────────────────────────────────
+//  Virtual: itemsWithReturns
+//  Calculates net quantities for each line item
+// ─────────────────────────────────────────────
+purchaseSchema.virtual('itemsWithReturns').get(function () {
+  if (!this.items) return [];
+
+  return this.items.map(item => {
+    // Sum all returns for this specific product in this purchase
+    const totalReturned = this.returnedQuantities
+      .filter(r => r.productId.toString() === item.productId.toString())
+      .reduce((sum, r) => sum + r.quantity, 0);
+
+    return {
+      ...item.toObject(),
+      returnedQuantity: totalReturned,
+      netQuantity: item.quantity - totalReturned,
+      isFullyReturned: (item.quantity - totalReturned) <= 0
+    };
+  });
+});
+
+// Ensure virtuals are included when converting to JSON (for API responses)
+purchaseSchema.set('toJSON', { virtuals: true });
+purchaseSchema.set('toObject', { virtuals: true });
+
 // ─────────────────────────────────────────────
 //  Virtual: totalQuantity
 // ─────────────────────────────────────────────
@@ -104,24 +138,24 @@ purchaseSchema.virtual('totalQuantity').get(function () {
 // ─────────────────────────────────────────────
 purchaseSchema.pre('save', function (next) {
   if (this.isModified('items') || this.isModified('paidAmount')) {
-    let subTotal      = 0;
-    let totalTax      = 0;
+    let subTotal = 0;
+    let totalTax = 0;
     let totalDiscount = 0;
 
     if (this.items && this.items.length > 0) {
       this.items.forEach(item => {
-        const itemTotal    = item.purchasePrice * item.quantity;
+        const itemTotal = item.purchasePrice * item.quantity;
         const itemDiscount = item.discount || 0;
-        const taxableBase  = itemTotal - itemDiscount; // Tax on net amount after discount
+        const taxableBase = itemTotal - itemDiscount; // Tax on net amount after discount
 
-        subTotal      += itemTotal;
+        subTotal += itemTotal;
         totalDiscount += itemDiscount;
-        totalTax      += ((item.taxRate || 0) / 100) * taxableBase;
+        totalTax += ((item.taxRate || 0) / 100) * taxableBase;
       });
     }
 
-    this.subTotal      = parseFloat(subTotal.toFixed(2));
-    this.totalTax      = parseFloat(totalTax.toFixed(2));
+    this.subTotal = parseFloat(subTotal.toFixed(2));
+    this.totalTax = parseFloat(totalTax.toFixed(2));
     this.totalDiscount = parseFloat(totalDiscount.toFixed(2));
 
     // FIX #5 — Consistent formula: grandTotal = subTotal - totalDiscount + totalTax
@@ -137,8 +171,8 @@ purchaseSchema.pre('save', function (next) {
     // FIX #7 — Consistent 2 decimal place rounding across Invoice & Purchase.
     // Original Purchase used toFixed(2) but Invoice used Math.round() (whole number).
     // Both now use toFixed(2) to prevent reconciliation mismatches in AccountEntry.
-    this.grandTotal   = parseFloat(grand.toFixed(2));
-    this.paidAmount   = this.paidAmount || 0;
+    this.grandTotal = parseFloat(grand.toFixed(2));
+    this.paidAmount = this.paidAmount || 0;
     this.balanceAmount = parseFloat((this.grandTotal - this.paidAmount).toFixed(2));
 
     // Derive paymentStatus

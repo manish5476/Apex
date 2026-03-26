@@ -66,6 +66,9 @@ SalesSchema.index({ organizationId: 1, customerId: 1 });
 SalesSchema.index({ organizationId: 1, invoiceNumber: 1 });
 // FIX #2 — Added status index for filtering active/cancelled/returned sales
 SalesSchema.index({ organizationId: 1, status: 1, createdAt: -1 });
+// In Sales schema
+SalesSchema.index({ invoiceId: 1 }, { unique: true, sparse: true });
+
 
 // ─────────────────────────────────────────────
 //  Static: aggregateMonthlyProfit

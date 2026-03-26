@@ -1,6 +1,6 @@
 const catchAsync = require("../../../core/utils/api/catchAsync");
 const Customer = require("../../organization/core/customer.model");
-const Product = require("../../inventory/core/product.model");
+const Product = require("../../inventory/core/model/product.model");
 const Invoice = require("../../accounting/billing/invoice.model");
 
 // src/controllers/searchController.js

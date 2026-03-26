@@ -129,3 +129,10 @@ exports.restrictToSuperAdmin = (req, res, next) => {
   }
   next();
 };
+
+exports.verifyOrgAccess = catchAsync(async (req, res, next) => {
+  if (req.user.organizationId.toString() !== req.params.orgId?.toString()) {
+    return next(new AppError('Access denied', 403));
+  }
+  next();
+});

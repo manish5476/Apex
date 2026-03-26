@@ -1,93 +1,52 @@
-const Sales = require('./sales.model'); // Assuming the model name
-const SalesService = require('./sales.service');
-const factory = require('../../../core/utils/api/handlerFactory');
-const catchAsync = require('../../../core/utils/api/catchAsync');
+'use strict';
+
+const ProductService = require('./service/product.service');
+const Sales = require('./model/sales.model');
+const StockService   = require('./service/stock.service');
+const factory            = require('../../../core/utils/api/handlerFactory');
+const catchAsync     = require('../../../core/utils/api/catchAsync');
 const AppError = require('../../../core/utils/api/appError');
-const { createSalesSchema, updateSalesSchema } = require('../../../core/middleware/salesValidation');
 
-/**
- * Common Populate Configuration for Sales
- */
-const salesPopulate = [
-  { path: 'customerId', select: 'name phone email' },
-  { path: 'invoiceId', select: 'invoiceNumber grandTotal status' },
-  { path: 'branchId', select: 'name code' },
-  { path: 'items.productId', select: 'name sku' }
-];
-
-/**
- * CREATE SALE
- * Uses custom logic to handle validation before passing to Factory-like behavior
- */
-exports.createSales = catchAsync(async (req, res, next) => {
-  // 1. Validate User Input
-  const { error, value } = createSalesSchema.validate(req.body);
-  if (error) return next(new AppError(error.message, 400));
-
-  // 2. Inject System Fields
-  req.body = {
-    ...value,
-    organizationId: req.user.organizationId,
-    branchId: req.user.branchId,
-    createdBy: req.user.id
-  };
-
-  // 3. Use Service for creation (to handle inventory/ledger logic)
-  const doc = await SalesService.create(req.body);
+/* ======================================================
+   1. CREATE SALE
+====================================================== */
+exports.createSale = catchAsync(async (req, res, next) => {
+  const sale = await SalesService.createSale(req.body, req.user);
 
   res.status(201).json({
     status: 'success',
-    data: { data: doc }
+    data:   { sale },
   });
 });
 
-/**
- * CREATE FROM INVOICE
- * Specialized logic that doesn't fit standard CRUD
- */
-exports.createFromInvoice = catchAsync(async (req, res, next) => {
-  const { invoiceId } = req.params;
-  
-  // Pass organizationId to service to ensure isolation
-  const sales = await SalesService.createFromInvoice(invoiceId, req.user.organizationId);
-  
-  if (!sales) return next(new AppError('Could not create sales from this invoice', 400));
+/* ======================================================
+   2. UPDATE SALE
+====================================================== */
+exports.updateSale = catchAsync(async (req, res, next) => {
+  const sale = await SalesService.updateSale(req.params.id, req.body, req.user);
 
-  res.status(201).json({
+  res.status(200).json({
     status: 'success',
-    data: { data: sales }
+    data:   { sale },
   });
 });
 
-/**
- * STANDARD CRUD OPERATIONS
- * Powered by Handler Factory
- */
+/* ======================================================
+   3. DELETE SALE
+====================================================== */
+exports.deleteSale = catchAsync(async (req, res, next) => {
+  await SalesService.deleteSale(req.params.id, req.user);
 
-// GET ALL: Supports search, filter (customer, invoice, branch), and pagination
-exports.getAllSales = factory.getAll(Sales, {
-  populate: salesPopulate,
-  searchFields: ['invoiceNumber', 'notes', 'status']
+  res.status(200).json({
+    status:  'success',
+    message: 'Sale deleted successfully',
+  });
 });
 
-// GET ONE: Includes security check and population
-exports.getSales = factory.getOne(Sales, { populate: salesPopulate });
-
-// UPDATE: Validation is handled in the route or can be wrapped here
-exports.updateSales = catchAsync(async (req, res, next) => {
-  const { error, value } = updateSalesSchema.validate(req.body);
-  if (error) return next(new AppError(error.message, 400));
-  
-  // We use updateOne factory logic but pass the validated value
-  req.body = value;
-  return factory.updateOne(Sales)(req, res, next);
-});
-
-// DELETE: Supports soft-delete automatically if 'isDeleted' exists in Sales model
-exports.deleteSales = factory.deleteOne(Sales);
-
-/**
- * ADDITIONAL TOOLS
- */
+/* ======================================================
+   4. READ-ONLY (factory-powered)
+====================================================== */
+exports.getAllSales = factory.getAll(Sales);
+exports.getSale     = factory.getOne(Sales);
 exports.getSalesStats = factory.getStats(Sales);
-exports.exportSales = factory.exportData(Sales, { populate: salesPopulate });
+exports.exportSales = factory.exportData(Sales);

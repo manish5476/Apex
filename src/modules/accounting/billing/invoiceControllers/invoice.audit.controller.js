@@ -6,19 +6,19 @@ const { invalidateOpeningBalance } = require("../../core/ledgerCache.service");
 const ProfitCalculator = require('../utils/profitCalculator');
 
 const Payment = require("../../payments/payment.model");
-const Product = require("../../../inventory/core/product.model");
+const Product = require("../../../inventory/core/model/product.model");
 const Customer = require("../../../organization/core/customer.model");
 const AccountEntry = require('../../core/accountEntry.model');
 const Account = require('../../core/account.model');
 const Organization = require("../../../organization/core/organization.model");
 const InvoiceAudit = require('../invoiceAudit.model');
 
-const SalesService = require("../../../inventory/core/sales.service");
+const SalesService = require("../../../inventory/core/service/sales.service");
 const invoicePDFService = require("../invoicePDFService");
-const StockValidationService = require("../../../inventory/core/stockValidationService");
+const StockValidationService = require("../../../inventory/core/service/stockValidation.service");
 const { createNotification } = require("../../../notification/core/notification.service");
 // CHANGED: Import the whole service to access reverseInvoiceJournal
-const salesJournalService = require('../../../inventory/core/salesJournal.service');
+const salesJournalService = require('../../../inventory/core/service/salesJournal.service');
 
 const catchAsync = require("../../../../core/utils/api/catchAsync");
 const AppError = require("../../../../core/utils/api/appError");

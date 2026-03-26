@@ -18,16 +18,16 @@ export { default as User } from './modules/auth/core/user.model.js';
 
 
 // --- Inventory ---
-export { default as Product } from './modules/inventory/core/product.model.js';
-export { default as Purchase } from './modules/inventory/core/purchase.model.js';
-export { default as PurchaseReturn } from './modules/inventory/core/purchase.return.model.js';
-export { default as Sales } from './modules/inventory/core/sales.model.js';
-export { default as SalesReturn } from './modules/inventory/core/salesReturn.model.js';
-export { default as StockTransfer } from './modules/inventory/core/stockTransferModel.js';
+export { default as Product } from './modules/inventory/core/model/product.model.js';
+export { default as Purchase } from './modules/inventory/core/model/purchase.model.js';
+export { default as PurchaseReturn } from './modules/inventory/core/model/purchase.return.model.js';
+export { default as Sales } from './modules/inventory/core/model/sales.model.js';
+export { default as SalesReturn } from './modules/inventory/core/model/salesReturn.model.js';
+export { default as StockTransfer } from './modules/inventory/core/model/stockTransferModel.js';
 
 // --- Master & Organization ---
-export { default as Master } from './modules/master/core/master.model.js';
-export { default as MasterType } from './modules/master/core/masterType.model.js';
+export { default as Master } from './modules/master/core/model/master.model.js';
+export { default as MasterType } from './modules/master/core/model/masterType.model.js';
 export { default as Branch } from './modules/organization/core/branch.model.js';
 export { default as Channel } from './modules/organization/core/channel.model.js';
 export { default as Customer } from './modules/organization/core/customer.model.js';

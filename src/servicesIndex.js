@@ -25,11 +25,11 @@ export { default as securityAnalyticsService } from './modules/analytics/service
 export { default as staffAnalyticsService } from './modules/analytics/services/staff.service.js';
 
 // --- Inventory Services ---
-export { default as inventoryAlertService } from './modules/inventory/core/inventoryAlert.service.js';
-export { default as inventoryJournalService } from './modules/inventory/core/inventoryJournal.service.js';
-export { default as salesJournalService } from './modules/inventory/core/salesJournal.service.js';
-export { default as salesService } from './modules/inventory/core/sales.service.js';
-export { default as stockValidationService } from './modules/inventory/core/stockValidationService.js';
+export { default as inventoryAlertService } from './modules/inventory/core/service/inventoryAlert.service.js';
+export { default as inventoryJournalService } from './modules/inventory/core/service/inventoryJournal.service.js';
+export { default as salesJournalService } from './modules/inventory/core/service/salesJournal.service.js';
+export { default as salesService } from './modules/inventory/core/service/sales.service.js';
+export { default as stockValidationService } from './modules/inventory/core/service/stockValidation.service.js';
 
 // --- Legacy Services ---
 export { default as adminService } from './modules/_legacy/services/adminService.js';

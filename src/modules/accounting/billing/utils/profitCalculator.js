@@ -1,6 +1,6 @@
 // utils/profitCalculator.js
 const mongoose = require('mongoose');
-const Product = require("../../../inventory/core/product.model");
+const Product = require("../../../inventory/core/model/product.model");
 const Invoice = require("../invoice.model");
 class ProfitCalculator {
   /**

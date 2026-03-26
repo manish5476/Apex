@@ -2,38 +2,38 @@ const express = require('express');
 const router = express.Router();
 
 // 1. Core Utils & Middleware
-const dropdownFactory = require('../../../core/utils/api/dropdownFactory');
-const { protect } = require('../../auth/core/auth.controller'); // Assuming you have auth middleware
+const dropdownFactory = require('../../../../core/utils/api/dropdownFactory');
+const { protect } = require('../../../auth/core/auth.controller'); // Assuming you have auth middleware
 
 // 2. Organization & Auth Models
-const Branch = require("../../organization/core/branch.model");
-const Role = require("../../auth/core/role.model");
-const Customer = require("../../organization/core/customer.model");
-const Supplier = require("../../organization/core/supplier.model");
-const User = require("../../auth/core/user.model");
-const Master = require("./master.model");
+const Branch = require("../../../organization/core/branch.model");
+const Role = require("../../../auth/core/role.model");
+const Customer = require("../../../organization/core/customer.model");
+const Supplier = require("../../../organization/core/supplier.model");
+const User = require("../../../auth/core/user.model");
+const Master = require("../model/master.model");
 
 // 3. Inventory Models
-const Product = require("../../inventory/core/product.model");
-const Purchase = require("../../inventory/core/purchase.model");
-const Sales = require("../../inventory/core/sales.model");
+const Product = require("../../../inventory/core/model/product.model");
+const Purchase = require("../../../inventory/core/model/purchase.model");
+const Sales = require("../../../inventory/core/model/sales.model");
 
 // 4. Accounting Models
-const Account = require("../../accounting/core/account.model");
-const Invoice = require("../../accounting/billing/invoice.model");
-const Payment = require("../../accounting/payments/payment.model");
-const EMI = require("../../accounting/payments/emi.model");
+const Account = require("../../../accounting/core/account.model");
+const Invoice = require("../../../accounting/billing/invoice.model");
+const Payment = require("../../../accounting/payments/payment.model");
+const EMI = require("../../../accounting/payments/emi.model");
 
 // 5. HRMS Models
-const Shift = require("../../HRMS/models/shift.model");
-const AttendenceDaily = require("../../HRMS/models/attendanceDaily.model");
-const AttendenceLog = require("../../HRMS/models/attendanceLog.model");
-const AttendenceMachine = require("../../HRMS/models/attendanceMachine.model");
-const Department = require("../../HRMS/models/department.model");
-const Designation = require("../../HRMS/models/designation.model");
-const Holiday = require("../../HRMS/models/holiday.model"); // Capitalized model name
-const ShiftAssignment = require("../../HRMS/models/shiftAssignment.model"); // Capitalized model name
-const geoFencing = require("../../HRMS/models/geoFencing.model"); // Capitalized model name
+const Shift = require("../../../HRMS/models/shift.model");
+const AttendenceDaily = require("../../../HRMS/models/attendanceDaily.model");
+const AttendenceLog = require("../../../HRMS/models/attendanceLog.model");
+const AttendenceMachine = require("../../../HRMS/models/attendanceMachine.model");
+const Department = require("../../../HRMS/models/department.model");
+const Designation = require("../../../HRMS/models/designation.model");
+const Holiday = require("../../../HRMS/models/holiday.model"); // Capitalized model name
+const ShiftAssignment = require("../../../HRMS/models/shiftAssignment.model"); // Capitalized model name
+const geoFencing = require("../../../HRMS/models/geoFencing.model"); // Capitalized model name
 
 // ==========================================
 // 🚀 MASTER DROPDOWN ROUTES
