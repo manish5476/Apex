@@ -1,5 +1,6 @@
 'use strict';
 
+const ProductService = require('./service/product.service');
 const StockService = require('./service/stock.service');
 const Product = require('./model/product.model');
 const imageUploadService = require('../../../modules/uploads/imageUploadService');

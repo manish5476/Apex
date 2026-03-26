@@ -1,18 +1,39 @@
+// 'use strict';
+
+// const mongoose = require('mongoose');
+
+// const SalesReturn = require('../model/salesReturn.model');
+// const Invoice = require('../../accounting/billing/invoice.model');
+// const Product = require('../model/product.model');
+// const Customer = require('../../organization/core/customer.model');
+// const AccountEntry = require('../../accounting/core/accountEntry.model');
+
+// const StockService = require('./stock.service');
+// const JournalService = require('./Journal.service');
+// const AppError = require('../../../../core/utils/api/appError');
+// const { runInTransaction } = require('../../../../core/utils/db/runInTransaction');
 'use strict';
 
 const mongoose = require('mongoose');
 
-const SalesReturn  = require('../model/salesReturn.model');
-const Invoice      = require('../../../accounting/billing/invoice.model');
-const Product      = require('../model/product.model');
-const Customer     = require('../../../organization/core/customer.model');
-const AccountEntry = require('../../../accounting/core/accountEntry.model');
-
+// Internal module imports (Inventory)
+const SalesReturn = require('../model/salesReturn.model');
+const Product = require('../model/product.model');
 const StockService = require('./stock.service');
 const JournalService = require('./Journal.service');
-const AppError       = require('../../../../core/utils/api/appError');
+
+// **Correction**: Notice the extra space in the filename in your tree ('Counter.model .js'). 
+// You should probably rename that file in your OS, but to match the current tree exactly:
+const Counter = require('../model/Counter.model ');
+
+// Cross-module imports (Requires going up 3 levels: service -> core -> inventory -> modules)
+const Invoice = require('../../../accounting/billing/invoice.model');
+const AccountEntry = require('../../../accounting/core/accountEntry.model');
+const Customer = require('../../../organization/core/customer.model');
+
+// Core utilities (Requires going up 4 levels: service -> core -> inventory -> modules -> src)
+const AppError = require('../../../../core/utils/api/appError');
 const { runInTransaction } = require('../../../../core/utils/db/runInTransaction');
-const Counter        = require('../model/Counter.model ');
 
 /**
  * SalesReturnService
@@ -78,8 +99,8 @@ class SalesReturnService {
 
       // Build validated return items
       const returnItems = [];
-      let totalRefund   = 0;
-      let totalTax      = 0;
+      let totalRefund = 0;
+      let totalTax = 0;
       let totalSubTotal = 0;
       let totalDiscount = 0;
 
@@ -92,7 +113,7 @@ class SalesReturnService {
         }
 
         const alreadyReturned = returnedQtyMap[String(reqItem.productId)] || 0;
-        const maxReturnable   = invItem.quantity - alreadyReturned;
+        const maxReturnable = invItem.quantity - alreadyReturned;
 
         if (reqItem.quantity <= 0) {
           throw new AppError(`Return quantity must be positive for "${invItem.name}"`, 400);
@@ -105,25 +126,25 @@ class SalesReturnService {
         }
 
         // Pro-rata financial calculation
-        const ratio        = reqItem.quantity / invItem.quantity;
-        const base         = parseFloat((invItem.price * reqItem.quantity).toFixed(2));
-        const discountAmt  = parseFloat(((invItem.discount || 0) * ratio).toFixed(2));
-        const taxAmt       = parseFloat((((invItem.taxRate || 0) / 100) * (base - discountAmt)).toFixed(2));
-        const refund       = parseFloat((base - discountAmt + taxAmt).toFixed(2));
+        const ratio = reqItem.quantity / invItem.quantity;
+        const base = parseFloat((invItem.price * reqItem.quantity).toFixed(2));
+        const discountAmt = parseFloat(((invItem.discount || 0) * ratio).toFixed(2));
+        const taxAmt = parseFloat((((invItem.taxRate || 0) / 100) * (base - discountAmt)).toFixed(2));
+        const refund = parseFloat((base - discountAmt + taxAmt).toFixed(2));
 
         totalSubTotal += base;
         totalDiscount += discountAmt;
-        totalTax      += taxAmt;
-        totalRefund   += refund;
+        totalTax += taxAmt;
+        totalRefund += refund;
 
         returnItems.push({
-          productId:      reqItem.productId,
-          name:           invItem.name,
-          quantity:       reqItem.quantity,
-          unitPrice:      invItem.price,
+          productId: reqItem.productId,
+          name: invItem.name,
+          quantity: reqItem.quantity,
+          unitPrice: invItem.price,
           discountAmount: discountAmt,
-          taxAmount:      taxAmt,
-          refundAmount:   refund,
+          taxAmount: taxAmt,
+          refundAmount: refund,
         });
       }
 
@@ -133,20 +154,20 @@ class SalesReturnService {
       // Create the return in PENDING state
       // Pre-save middleware will recalculate totals from items
       [salesReturn] = await SalesReturn.create([{
-        organizationId:    user.organizationId,
-        branchId:          invoice.branchId,
+        organizationId: user.organizationId,
+        branchId: invoice.branchId,
         invoiceId,
-        customerId:        invoice.customerId,
+        customerId: invoice.customerId,
         returnNumber,
-        items:             returnItems,
-        subTotal:          parseFloat(totalSubTotal.toFixed(2)),
-        taxTotal:          parseFloat(totalTax.toFixed(2)),
-        discountTotal:     parseFloat(totalDiscount.toFixed(2)),
+        items: returnItems,
+        subTotal: parseFloat(totalSubTotal.toFixed(2)),
+        taxTotal: parseFloat(totalTax.toFixed(2)),
+        discountTotal: parseFloat(totalDiscount.toFixed(2)),
         totalRefundAmount: parseFloat(totalRefund.toFixed(2)),
         reason,
         notes,
-        status:            'pending',
-        createdBy:         user._id,
+        status: 'pending',
+        createdBy: user._id,
       }], { session, ordered: true });
 
     }, 3, { action: 'CREATE_SALES_RETURN', userId: user._id });
@@ -206,7 +227,7 @@ class SalesReturnService {
       );
 
       // 6. Mark approved
-      salesReturn.status     = 'approved';
+      salesReturn.status = 'approved';
       salesReturn.approvedBy = user._id;
       salesReturn.approvedAt = new Date();
       await salesReturn.save({ session });
@@ -227,9 +248,9 @@ class SalesReturnService {
     const salesReturn = await SalesReturn.findOneAndUpdate(
       { _id: returnId, organizationId: user.organizationId, status: 'pending' },
       {
-        status:          'rejected',
-        rejectedBy:      user._id,
-        rejectedAt:      new Date(),
+        status: 'rejected',
+        rejectedBy: user._id,
+        rejectedAt: new Date(),
         rejectionReason,
       },
       { new: true }
@@ -251,22 +272,22 @@ class SalesReturnService {
     const skip = (page - 1) * limit;
 
     const query = { organizationId };
-    if (status)     query.status     = status;
+    if (status) query.status = status;
     if (customerId) query.customerId = customerId;
-    if (invoiceId)  query.invoiceId  = invoiceId;
+    if (invoiceId) query.invoiceId = invoiceId;
     if (startDate || endDate) {
       query.returnDate = {};
       if (startDate) query.returnDate.$gte = new Date(startDate);
-      if (endDate)   query.returnDate.$lte = new Date(endDate);
+      if (endDate) query.returnDate.$lte = new Date(endDate);
     }
 
     const [returns, total] = await Promise.all([
       SalesReturn.find(query)
-        .populate('customerId',      'name phone email')
+        .populate('customerId', 'name phone email')
         .populate('items.productId', 'name sku')
-        .populate('invoiceId',       'invoiceNumber grandTotal')
-        .populate('approvedBy',      'name')
-        .populate('rejectedBy',      'name')
+        .populate('invoiceId', 'invoiceNumber grandTotal')
+        .populate('approvedBy', 'name')
+        .populate('rejectedBy', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -282,12 +303,12 @@ class SalesReturnService {
    * ============================================================ */
   static async getReturnById(returnId, organizationId) {
     const record = await SalesReturn.findOne({ _id: returnId, organizationId })
-      .populate('customerId',      'name phone email address')
+      .populate('customerId', 'name phone email address')
       .populate('items.productId', 'name sku purchasePrice')
-      .populate('invoiceId',       'invoiceNumber invoiceDate grandTotal')
-      .populate('createdBy',       'name email')
-      .populate('approvedBy',      'name email')
-      .populate('rejectedBy',      'name email')
+      .populate('invoiceId', 'invoiceNumber invoiceDate grandTotal')
+      .populate('createdBy', 'name email')
+      .populate('approvedBy', 'name email')
+      .populate('rejectedBy', 'name email')
       .lean();
 
     if (!record) throw new AppError('Sales return not found', 404);
@@ -311,36 +332,36 @@ class SalesReturnService {
 
     const [salesAcc, arAcc] = await Promise.all([
       JournalService.getOrInitAccount(user.organizationId, 'income', 'Sales Revenue', '4000', session),
-      JournalService.getOrInitAccount(user.organizationId, 'asset',  'Accounts Receivable', '1200', session),
+      JournalService.getOrInitAccount(user.organizationId, 'asset', 'Accounts Receivable', '1200', session),
     ]);
 
     const entries = [
       // Dr Sales Revenue
       {
         organizationId: user.organizationId,
-        branchId:       salesReturn.branchId,
-        accountId:      salesAcc._id,
-        date:           new Date(),
-        debit:          netRevenue,
-        credit:         0,
-        description:    `Sales Return ${salesReturn.returnNumber}`,
-        referenceType:  'credit_note',
-        referenceId:    salesReturn._id,
-        createdBy:      user._id,
+        branchId: salesReturn.branchId,
+        accountId: salesAcc._id,
+        date: new Date(),
+        debit: netRevenue,
+        credit: 0,
+        description: `Sales Return ${salesReturn.returnNumber}`,
+        referenceType: 'credit_note',
+        referenceId: salesReturn._id,
+        createdBy: user._id,
       },
       // Cr AR
       {
         organizationId: user.organizationId,
-        branchId:       salesReturn.branchId,
-        accountId:      arAcc._id,
-        customerId:     salesReturn.customerId,
-        date:           new Date(),
-        debit:          0,
-        credit:         salesReturn.totalRefundAmount,
-        description:    `Credit Note ${salesReturn.returnNumber}`,
-        referenceType:  'credit_note',
-        referenceId:    salesReturn._id,
-        createdBy:      user._id,
+        branchId: salesReturn.branchId,
+        accountId: arAcc._id,
+        customerId: salesReturn.customerId,
+        date: new Date(),
+        debit: 0,
+        credit: salesReturn.totalRefundAmount,
+        description: `Credit Note ${salesReturn.returnNumber}`,
+        referenceType: 'credit_note',
+        referenceId: salesReturn._id,
+        createdBy: user._id,
       },
     ];
 
@@ -351,15 +372,15 @@ class SalesReturnService {
       );
       entries.splice(1, 0, {
         organizationId: user.organizationId,
-        branchId:       salesReturn.branchId,
-        accountId:      taxAcc._id,
-        date:           new Date(),
-        debit:          salesReturn.taxTotal,
-        credit:         0,
-        description:    `Tax Reversal ${salesReturn.returnNumber}`,
-        referenceType:  'credit_note',
-        referenceId:    salesReturn._id,
-        createdBy:      user._id,
+        branchId: salesReturn.branchId,
+        accountId: taxAcc._id,
+        date: new Date(),
+        debit: salesReturn.taxTotal,
+        credit: 0,
+        description: `Tax Reversal ${salesReturn.returnNumber}`,
+        referenceType: 'credit_note',
+        referenceId: salesReturn._id,
+        createdBy: user._id,
       });
     }
 
@@ -399,34 +420,34 @@ class SalesReturnService {
     if (totalCostRestored <= 0) return;
 
     const [inventoryAcc, cogsAcc] = await Promise.all([
-      JournalService.getOrInitAccount(user.organizationId, 'asset',   'Inventory Asset',       '1500', session),
-      JournalService.getOrInitAccount(user.organizationId, 'expense', 'Cost of Goods Sold',    '5000', session),
+      JournalService.getOrInitAccount(user.organizationId, 'asset', 'Inventory Asset', '1500', session),
+      JournalService.getOrInitAccount(user.organizationId, 'expense', 'Cost of Goods Sold', '5000', session),
     ]);
 
     await AccountEntry.create([
       {
         organizationId: user.organizationId,
-        branchId:       salesReturn.branchId,
-        accountId:      inventoryAcc._id,
-        date:           new Date(),
-        debit:          totalCostRestored,
-        credit:         0,
-        description:    `Inventory restored — Return ${salesReturn.returnNumber}`,
-        referenceType:  'credit_note',
-        referenceId:    salesReturn._id,
-        createdBy:      user._id,
+        branchId: salesReturn.branchId,
+        accountId: inventoryAcc._id,
+        date: new Date(),
+        debit: totalCostRestored,
+        credit: 0,
+        description: `Inventory restored — Return ${salesReturn.returnNumber}`,
+        referenceType: 'credit_note',
+        referenceId: salesReturn._id,
+        createdBy: user._id,
       },
       {
         organizationId: user.organizationId,
-        branchId:       salesReturn.branchId,
-        accountId:      cogsAcc._id,
-        date:           new Date(),
-        debit:          0,
-        credit:         totalCostRestored,
-        description:    `COGS reversed — Return ${salesReturn.returnNumber}`,
-        referenceType:  'credit_note',
-        referenceId:    salesReturn._id,
-        createdBy:      user._id,
+        branchId: salesReturn.branchId,
+        accountId: cogsAcc._id,
+        date: new Date(),
+        debit: 0,
+        credit: totalCostRestored,
+        description: `COGS reversed — Return ${salesReturn.returnNumber}`,
+        referenceType: 'credit_note',
+        referenceId: salesReturn._id,
+        createdBy: user._id,
       },
     ], { session, ordered: true });
   }

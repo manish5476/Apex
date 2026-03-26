@@ -2,6 +2,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../../modules/auth/core/user.model");
 const Organization = require("../../modules/organization/core/organization.model");
+const catchAsync = require("../utils/api/catchAsync");
 
 const JWT_SECRET = process.env.JWT_SECRET || "change_this_secret";
 
