@@ -7,7 +7,7 @@ const AccountEntry = require('./accountEntry.model');
 const catchAsync = require('../../../core/utils/api/catchAsync');
 const AppError = require('../../../core/utils/api/appError');
 // controllers/reconciliationController.js
-const emiService = require('../payments/emiService');
+const emiService = require('../payments/emi.service');
 const PendingReconciliation = require('./pendingReconciliationModel');
 const EMI = require('../payments/emi.model');
 
@@ -17,26 +17,26 @@ const EMI = require('../payments/emi.model');
  * Compares: Document Total vs. Sum of Ledger Entries
  */
 exports.topMismatches = catchAsync(async (req, res, next) => {
-    const orgId = new mongoose.Types.ObjectId(req.user.organizationId);
-    
-    // We will run three parallel checks
-    const [invoiceMismatches, paymentMismatches, customerMismatches] = await Promise.all([
-        checkInvoiceIntegrity(orgId),
-        checkPaymentIntegrity(orgId),
-        checkCustomerBalanceIntegrity(orgId)
-    ]);
+  const orgId = new mongoose.Types.ObjectId(req.user.organizationId);
 
-    const mismatches = [
-        ...invoiceMismatches.map(m => ({ ...m, type: 'Invoice Integrity' })),
-        ...paymentMismatches.map(m => ({ ...m, type: 'Payment Integrity' })),
-        ...customerMismatches.map(m => ({ ...m, type: 'Customer Balance' }))
-    ];
+  // We will run three parallel checks
+  const [invoiceMismatches, paymentMismatches, customerMismatches] = await Promise.all([
+    checkInvoiceIntegrity(orgId),
+    checkPaymentIntegrity(orgId),
+    checkCustomerBalanceIntegrity(orgId)
+  ]);
 
-    res.status(200).json({
-        status: 'success',
-        results: mismatches.length,
-        data: { mismatches }
-    });
+  const mismatches = [
+    ...invoiceMismatches.map(m => ({ ...m, type: 'Invoice Integrity' })),
+    ...paymentMismatches.map(m => ({ ...m, type: 'Payment Integrity' })),
+    ...customerMismatches.map(m => ({ ...m, type: 'Customer Balance' }))
+  ];
+
+  res.status(200).json({
+    status: 'success',
+    results: mismatches.length,
+    data: { mismatches }
+  });
 });
 
 /**
@@ -44,56 +44,56 @@ exports.topMismatches = catchAsync(async (req, res, next) => {
  * Shows exactly why a specific ID is mismatched.
  */
 exports.detail = catchAsync(async (req, res, next) => {
-    const { type, id } = req.query; // type: 'invoice' | 'payment' | 'customer'
-    const orgId = req.user.organizationId;
+  const { type, id } = req.query; // type: 'invoice' | 'payment' | 'customer'
+  const orgId = req.user.organizationId;
 
-    let sourceDoc = null;
-    let ledgerEntries = [];
-    let analysis = {};
+  let sourceDoc = null;
+  let ledgerEntries = [];
+  let analysis = {};
 
-    if (type === 'invoice') {
-        sourceDoc = await Invoice.findOne({ _id: id, organizationId: orgId });
-        ledgerEntries = await AccountEntry.find({ referenceId: id, referenceType: 'invoice' });
-        
-        const ledgerTotal = ledgerEntries.reduce((sum, e) => sum + (e.credit - e.debit), 0); // Revenue is Credit
-        // Note: For AR (Asset), Debit is +, Credit is -. For Sales (Income), Credit is +.
-        // We usually check: Total Debits (AR) should equal Invoice Total.
-        // OR: Total Credits (Income + Tax) should equal Invoice Total.
-        
-        // Let's sum Debits to AR
-        const arDebits = ledgerEntries
-            .filter(e => e.debit > 0) // Usually the AR entry
-            .reduce((sum, e) => sum + e.debit, 0);
+  if (type === 'invoice') {
+    sourceDoc = await Invoice.findOne({ _id: id, organizationId: orgId });
+    ledgerEntries = await AccountEntry.find({ referenceId: id, referenceType: 'invoice' });
 
-        analysis = {
-            docTotal: sourceDoc.grandTotal,
-            ledgerTotal: arDebits,
-            diff: sourceDoc.grandTotal - arDebits,
-            isBalanced: Math.abs(sourceDoc.grandTotal - arDebits) < 0.01
-        };
-    } 
-    else if (type === 'customer') {
-        sourceDoc = await Customer.findOne({ _id: id, organizationId: orgId });
-        // Recalculate balance from scratch
-        const ledgerStats = await AccountEntry.aggregate([
-            { $match: { customerId: new mongoose.Types.ObjectId(id) } },
-            { $group: { _id: null, debit: { $sum: '$debit' }, credit: { $sum: '$credit' } } }
-        ]);
-        
-        const calculatedBal = ledgerStats.length ? (ledgerStats[0].debit - ledgerStats[0].credit) : 0;
-        
-        analysis = {
-            storedBalance: sourceDoc.outstandingBalance,
-            calculatedBalance: calculatedBal,
-            diff: sourceDoc.outstandingBalance - calculatedBal,
-            isBalanced: Math.abs(sourceDoc.outstandingBalance - calculatedBal) < 0.01
-        };
-    }
+    const ledgerTotal = ledgerEntries.reduce((sum, e) => sum + (e.credit - e.debit), 0); // Revenue is Credit
+    // Note: For AR (Asset), Debit is +, Credit is -. For Sales (Income), Credit is +.
+    // We usually check: Total Debits (AR) should equal Invoice Total.
+    // OR: Total Credits (Income + Tax) should equal Invoice Total.
 
-    res.status(200).json({
-        status: 'success',
-        data: { sourceDoc, ledgerEntries, analysis }
-    });
+    // Let's sum Debits to AR
+    const arDebits = ledgerEntries
+      .filter(e => e.debit > 0) // Usually the AR entry
+      .reduce((sum, e) => sum + e.debit, 0);
+
+    analysis = {
+      docTotal: sourceDoc.grandTotal,
+      ledgerTotal: arDebits,
+      diff: sourceDoc.grandTotal - arDebits,
+      isBalanced: Math.abs(sourceDoc.grandTotal - arDebits) < 0.01
+    };
+  }
+  else if (type === 'customer') {
+    sourceDoc = await Customer.findOne({ _id: id, organizationId: orgId });
+    // Recalculate balance from scratch
+    const ledgerStats = await AccountEntry.aggregate([
+      { $match: { customerId: new mongoose.Types.ObjectId(id) } },
+      { $group: { _id: null, debit: { $sum: '$debit' }, credit: { $sum: '$credit' } } }
+    ]);
+
+    const calculatedBal = ledgerStats.length ? (ledgerStats[0].debit - ledgerStats[0].credit) : 0;
+
+    analysis = {
+      storedBalance: sourceDoc.outstandingBalance,
+      calculatedBalance: calculatedBal,
+      diff: sourceDoc.outstandingBalance - calculatedBal,
+      isBalanced: Math.abs(sourceDoc.outstandingBalance - calculatedBal) < 0.01
+    };
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: { sourceDoc, ledgerEntries, analysis }
+  });
 });
 
 /* ==========================================================================
@@ -102,105 +102,105 @@ exports.detail = catchAsync(async (req, res, next) => {
 
 // Check 1: Does (Invoice Grand Total) == (Sum of Ledger Debits/Credits)?
 async function checkInvoiceIntegrity(orgId) {
-    return await Invoice.aggregate([
-        { $match: { organizationId: orgId, status: { $ne: 'cancelled' } } },
-        {
-            $lookup: {
-                from: 'accountentries',
-                localField: '_id',
-                foreignField: 'referenceId',
-                as: 'ledger'
-            }
-        },
-        {
-            $addFields: {
-                // Sum all credits (Sales + Tax). Should match Grand Total.
-                ledgerSum: { $sum: "$ledger.credit" } 
-            }
-        },
-        {
-            $project: {
-                invoiceNumber: 1,
-                grandTotal: 1,
-                ledgerSum: 1,
-                diff: { $abs: { $subtract: ["$grandTotal", "$ledgerSum"] } }
-            }
-        },
-        { $match: { diff: { $gt: 0.05 } } }, // Allow tiny float rounding errors
-        { $sort: { diff: -1 } },
-        { $limit: 20 }
-    ]);
+  return await Invoice.aggregate([
+    { $match: { organizationId: orgId, status: { $ne: 'cancelled' } } },
+    {
+      $lookup: {
+        from: 'accountentries',
+        localField: '_id',
+        foreignField: 'referenceId',
+        as: 'ledger'
+      }
+    },
+    {
+      $addFields: {
+        // Sum all credits (Sales + Tax). Should match Grand Total.
+        ledgerSum: { $sum: "$ledger.credit" }
+      }
+    },
+    {
+      $project: {
+        invoiceNumber: 1,
+        grandTotal: 1,
+        ledgerSum: 1,
+        diff: { $abs: { $subtract: ["$grandTotal", "$ledgerSum"] } }
+      }
+    },
+    { $match: { diff: { $gt: 0.05 } } }, // Allow tiny float rounding errors
+    { $sort: { diff: -1 } },
+    { $limit: 20 }
+  ]);
 }
 
 // Check 2: Does (Payment Amount) == (Sum of Ledger Debits to Bank)?
 async function checkPaymentIntegrity(orgId) {
-    return await Payment.aggregate([
-        { $match: { organizationId: orgId, status: 'completed' } },
-        {
-            $lookup: {
-                from: 'accountentries',
-                localField: '_id',
-                foreignField: 'referenceId',
-                as: 'ledger'
-            }
-        },
-        {
-            $addFields: {
-                // For Inflow: Payment Amount should match Ledger Debit (Cash/Bank)
-                ledgerSum: { $sum: "$ledger.debit" }
-            }
-        },
-        {
-            $project: {
-                referenceNumber: 1,
-                amount: 1,
-                ledgerSum: 1,
-                diff: { $abs: { $subtract: ["$amount", "$ledgerSum"] } }
-            }
-        },
-        { $match: { diff: { $gt: 0.05 } } },
-        { $limit: 20 }
-    ]);
+  return await Payment.aggregate([
+    { $match: { organizationId: orgId, status: 'completed' } },
+    {
+      $lookup: {
+        from: 'accountentries',
+        localField: '_id',
+        foreignField: 'referenceId',
+        as: 'ledger'
+      }
+    },
+    {
+      $addFields: {
+        // For Inflow: Payment Amount should match Ledger Debit (Cash/Bank)
+        ledgerSum: { $sum: "$ledger.debit" }
+      }
+    },
+    {
+      $project: {
+        referenceNumber: 1,
+        amount: 1,
+        ledgerSum: 1,
+        diff: { $abs: { $subtract: ["$amount", "$ledgerSum"] } }
+      }
+    },
+    { $match: { diff: { $gt: 0.05 } } },
+    { $limit: 20 }
+  ]);
 }
 
 // Check 3: Does (Customer Stored Balance) == (Calculated Ledger Balance)?
 // This finds "Drift" where you updated the customer but failed to write a ledger entry.
 async function checkCustomerBalanceIntegrity(orgId) {
-    // 1. Get all customers with balance
-    const customers = await Customer.find({ organizationId: orgId }).select('name outstandingBalance').lean();
-    
-    // 2. Get real balances from Ledger
-    const realBalances = await AccountEntry.aggregate([
-        { $match: { organizationId: orgId, customerId: { $ne: null } } },
-        { 
-            $group: { 
-                _id: "$customerId", 
-                balance: { $sum: { $subtract: ["$debit", "$credit"] } } 
-            } 
-        }
-    ]);
+  // 1. Get all customers with balance
+  const customers = await Customer.find({ organizationId: orgId }).select('name outstandingBalance').lean();
 
-    const balanceMap = {};
-    realBalances.forEach(b => balanceMap[b._id.toString()] = b.balance);
-
-    const mismatches = [];
-    
-    for (const cust of customers) {
-        const real = balanceMap[cust._id.toString()] || 0;
-        const stored = cust.outstandingBalance || 0;
-        
-        if (Math.abs(real - stored) > 1.00) { // Tolerance of $1
-            mismatches.push({
-                id: cust._id,
-                name: cust.name,
-                storedBalance: stored,
-                realLedgerBalance: real,
-                diff: stored - real
-            });
-        }
+  // 2. Get real balances from Ledger
+  const realBalances = await AccountEntry.aggregate([
+    { $match: { organizationId: orgId, customerId: { $ne: null } } },
+    {
+      $group: {
+        _id: "$customerId",
+        balance: { $sum: { $subtract: ["$debit", "$credit"] } }
+      }
     }
+  ]);
 
-    return mismatches;
+  const balanceMap = {};
+  realBalances.forEach(b => balanceMap[b._id.toString()] = b.balance);
+
+  const mismatches = [];
+
+  for (const cust of customers) {
+    const real = balanceMap[cust._id.toString()] || 0;
+    const stored = cust.outstandingBalance || 0;
+
+    if (Math.abs(real - stored) > 1.00) { // Tolerance of $1
+      mismatches.push({
+        id: cust._id,
+        name: cust.name,
+        storedBalance: stored,
+        realLedgerBalance: real,
+        diff: stored - real
+      });
+    }
+  }
+
+  return mismatches;
 }
 
 
@@ -210,9 +210,9 @@ exports.getPendingReconciliations = catchAsync(async (req, res, next) => {
     organizationId: req.user.organizationId,
     status: 'pending'
   })
-  .populate('invoiceId', 'invoiceNumber grandTotal customerId')
-  .populate('customerId', 'name email')
-  .sort({ createdAt: -1 });
+    .populate('invoiceId', 'invoiceNumber grandTotal customerId')
+    .populate('customerId', 'name email')
+    .sort({ createdAt: -1 });
 
   res.status(200).json({
     status: 'success',
@@ -224,16 +224,16 @@ exports.getPendingReconciliations = catchAsync(async (req, res, next) => {
 // Manual reconciliation
 exports.manualReconcilePayment = catchAsync(async (req, res, next) => {
   const { reconciliationId, installments } = req.body;
-  
+
   const pending = await PendingReconciliation.findById(reconciliationId);
   if (!pending || pending.organizationId.toString() !== req.user.organizationId.toString()) {
     return next(new AppError('Reconciliation record not found', 404));
   }
 
   // Find EMI for the invoice
-  const emi = await EMI.findOne({ 
+  const emi = await EMI.findOne({
     invoiceId: pending.invoiceId,
-    organizationId: req.user.organizationId 
+    organizationId: req.user.organizationId
   });
 
   if (!emi) {
@@ -248,18 +248,18 @@ exports.manualReconcilePayment = catchAsync(async (req, res, next) => {
     // Apply to specified installments
     for (const instNum of installments.sort((a, b) => a - b)) {
       if (remainingAmount <= 0) break;
-      
+
       const installment = emi.installments.find(i => i.installmentNumber === instNum);
       if (installment && installment.paymentStatus !== 'paid') {
         const pendingAmount = installment.totalAmount - installment.paidAmount;
         const amountToApply = Math.min(remainingAmount, pendingAmount);
-        
+
         installment.paidAmount += amountToApply;
         remainingAmount -= amountToApply;
-        
-        installment.paymentStatus = 
+
+        installment.paymentStatus =
           installment.paidAmount >= installment.totalAmount ? 'paid' : 'partial';
-        
+
         appliedInstallments.push({
           installmentNumber: instNum,
           appliedAmount: amountToApply,
@@ -271,17 +271,17 @@ exports.manualReconcilePayment = catchAsync(async (req, res, next) => {
     // Auto-apply (oldest first)
     for (const installment of emi.installments.sort((a, b) => a.installmentNumber - b.installmentNumber)) {
       if (remainingAmount <= 0) break;
-      
+
       if (installment.paymentStatus !== 'paid') {
         const pendingAmount = installment.totalAmount - installment.paidAmount;
         const amountToApply = Math.min(remainingAmount, pendingAmount);
-        
+
         installment.paidAmount += amountToApply;
         remainingAmount -= amountToApply;
-        
-        installment.paymentStatus = 
+
+        installment.paymentStatus =
           installment.paidAmount >= installment.totalAmount ? 'paid' : 'partial';
-        
+
         appliedInstallments.push({
           installmentNumber: installment.installmentNumber,
           appliedAmount: amountToApply,
@@ -331,23 +331,27 @@ exports.manualReconcilePayment = catchAsync(async (req, res, next) => {
 exports.getReconciliationSummary = catchAsync(async (req, res, next) => {
   const summary = await PendingReconciliation.aggregate([
     { $match: { organizationId: req.user.organizationId } },
-    { $group: {
-      _id: '$status',
-      count: { $sum: 1 },
-      totalAmount: { $sum: '$amount' }
-    }},
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 },
+        totalAmount: { $sum: '$amount' }
+      }
+    },
     { $sort: { _id: 1 } }
   ]);
 
   const emiSummary = await EMI.aggregate([
     { $match: { organizationId: req.user.organizationId } },
     { $unwind: '$installments' },
-    { $group: {
-      _id: '$installments.paymentStatus',
-      count: { $sum: 1 },
-      totalAmount: { $sum: '$installments.totalAmount' },
-      paidAmount: { $sum: '$installments.paidAmount' }
-    }}
+    {
+      $group: {
+        _id: '$installments.paymentStatus',
+        count: { $sum: 1 },
+        totalAmount: { $sum: '$installments.totalAmount' },
+        paidAmount: { $sum: '$installments.paidAmount' }
+      }
+    }
   ]);
 
   res.status(200).json({

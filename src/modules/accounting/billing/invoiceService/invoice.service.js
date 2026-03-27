@@ -21,68 +21,68 @@
  */
 
 const mongoose = require('mongoose');
-const { z }    = require('zod');
+const { z } = require('zod');
 
 // --- Models ---
-const Invoice      = require('../invoice.model');
-const Payment      = require('../../payments/payment.model');
-const Product      = require('../../../inventory/core/model/product.model');
-const Customer     = require('../../../organization/core/customer.model');
+const Invoice = require('../invoice.model');
+const Payment = require('../../payments/payment.model');
+const Product = require('../../../inventory/core/model/product.model');
+const Customer = require('../../../organization/core/customer.model');
 const AccountEntry = require('../../core/accountEntry.model');
 const InvoiceAudit = require('../invoiceAudit.model');
-const EMI          = require('../../payments/emi.model');
+const EMI = require('../../payments/emi.model');
 
 // FIXED: Path to Counter.model (Note the space before .js from your find output)
-const Counter      = require('../../../inventory/core/model/Counter.model .js'); 
+const Counter = require('../../../inventory/core/model/Counter.model .js');
 
 // --- Services ---
-const SalesService           = require('../../../inventory/core/service/sales.service');
+const SalesService = require('../../../inventory/core/service/sales.service');
 const StockValidationService = require('../../../inventory/core/service/stockValidation.service');
-const salesJournalService    = require('../../../inventory/core/service/salesJournal.service');
-const emiService             = require('../../payments/emiService');
+const salesJournalService = require('../../../inventory/core/service/salesJournal.service');
+const emiService = require('../../payments/emi.service');
 
 // ADDED: Direct path to the actual Stock Service
-const StockService           = require('../../../inventory/core/service/stock.service'); 
+const StockService = require('../../../inventory/core/service/stock.service');
 
 // FIXED: Path to Journal Service (Note the capital 'J' from your find output)
-const JournalService         = require('../../../inventory/core/service/Journal.service');
+const JournalService = require('../../../inventory/core/service/Journal.service');
 
 // --- Core Utilities ---
-const AppError           = require('../../../../core/utils/api/appError');
+const AppError = require('../../../../core/utils/api/appError');
 const { runInTransaction } = require('../../../../core/utils/db/runInTransaction');
-const { emitToOrg }      = require('../../../../socketHandlers/socket');
-const automationService  = require('../../../webhook/legacy/automationService');
+const { emitToOrg } = require('../../../../socketHandlers/socket');
+const automationService = require('../../../webhook/legacy/automationService');
 // ─────────────────────────────────────────────
 //  Zod validation schema
 // ─────────────────────────────────────────────
 const createInvoiceSchema = z.object({
-  customerId:      z.string().min(1, 'Customer ID is required'),
+  customerId: z.string().min(1, 'Customer ID is required'),
   items: z.array(z.object({
-    productId:           z.string().min(1, 'Product ID is required'),
-    quantity:            z.coerce.number().positive('Quantity must be positive'),
-    price:               z.coerce.number().nonnegative('Price cannot be negative'),
+    productId: z.string().min(1, 'Product ID is required'),
+    quantity: z.coerce.number().positive('Quantity must be positive'),
+    price: z.coerce.number().nonnegative('Price cannot be negative'),
     purchasePriceAtSale: z.coerce.number().nonnegative().optional(),
-    tax:                 z.coerce.number().optional().default(0),
-    taxRate:             z.coerce.number().optional().default(0),
-    discount:            z.coerce.number().optional().default(0),
-    unit:                z.string().optional().default('pcs'),
-    hsnCode:             z.string().optional(),
+    tax: z.coerce.number().optional().default(0),
+    taxRate: z.coerce.number().optional().default(0),
+    discount: z.coerce.number().optional().default(0),
+    unit: z.string().optional().default('pcs'),
+    hsnCode: z.string().optional(),
   })).min(1, 'Invoice must have at least one item'),
 
-  invoiceNumber:    z.string().optional(),
-  invoiceDate:      z.union([z.string(), z.date()]).optional(),
-  dueDate:          z.union([z.string(), z.date()]).optional(),
-  paidAmount:       z.coerce.number().min(0).optional().default(0),
-  paymentMethod:    z.enum(['cash', 'bank', 'upi', 'card', 'cheque', 'other']).optional().default('cash'),
-  referenceNumber:  z.string().optional(),
+  invoiceNumber: z.string().optional(),
+  invoiceDate: z.union([z.string(), z.date()]).optional(),
+  dueDate: z.union([z.string(), z.date()]).optional(),
+  paidAmount: z.coerce.number().min(0).optional().default(0),
+  paymentMethod: z.enum(['cash', 'bank', 'upi', 'card', 'cheque', 'other']).optional().default('cash'),
+  referenceNumber: z.string().optional(),
   paymentReference: z.string().optional(),
-  transactionId:    z.string().optional(),
-  status:           z.enum(['draft', 'issued', 'paid', 'cancelled']).optional().default('issued'),
-  shippingCharges:  z.coerce.number().min(0).optional().default(0),
-  notes:            z.string().optional(),
-  roundOff:         z.coerce.number().optional(),
-  gstType:          z.string().optional(),
-  attachedFiles:    z.array(z.string()).optional(),
+  transactionId: z.string().optional(),
+  status: z.enum(['draft', 'issued', 'paid', 'cancelled']).optional().default('issued'),
+  shippingCharges: z.coerce.number().min(0).optional().default(0),
+  notes: z.string().optional(),
+  roundOff: z.coerce.number().optional(),
+  gstType: z.string().optional(),
+  attachedFiles: z.array(z.string()).optional(),
 });
 
 class InvoiceService {
@@ -108,7 +108,7 @@ class InvoiceService {
 
     // Batch fetch products — fixes N+1
     const productIds = items.map(i => i.productId);
-    const products   = await Product.find({
+    const products = await Product.find({
       _id: { $in: productIds },
       organizationId: user.organizationId,
     }).select('name sku inventory hsnCode purchasePrice');
@@ -127,16 +127,16 @@ class InvoiceService {
 
       return {
         ...item,
-        name:     product.name,
-        hsnCode:  product.hsnCode || item.hsnCode || '',
-        unit:     item.unit || 'pcs',
+        name: product.name,
+        hsnCode: product.hsnCode || item.hsnCode || '',
+        unit: item.unit || 'pcs',
         discount: item.discount || 0,
-        taxRate:  item.taxRate  || item.tax || 0,
+        taxRate: item.taxRate || item.tax || 0,
         // FIX: null when cost unknown — not 0 — preserves analytics null-guard
         purchasePriceAtSale: product.purchasePrice ?? null,
-        reminderSent:      false,
+        reminderSent: false,
         overdueNoticeSent: false,
-        overdueCount:      0,
+        overdueCount: 0,
       };
     });
 
@@ -154,9 +154,9 @@ class InvoiceService {
     await runInTransaction(async (session) => {
       // Determine status
       let paymentStatus = 'unpaid';
-      let status        = invoiceData.status || 'issued';
+      let status = invoiceData.status || 'issued';
       if (paidAmount >= grandTotal && paidAmount > 0) { paymentStatus = 'paid'; status = 'paid'; }
-      else if (paidAmount > 0)                        { paymentStatus = 'partial'; }
+      else if (paidAmount > 0) { paymentStatus = 'partial'; }
 
       // Atomic invoice number
       const invoiceNumber = invoiceData.invoiceNumber
@@ -168,9 +168,9 @@ class InvoiceService {
       const [invoice] = await Invoice.create([{
         ...invoiceData,
         invoiceNumber,
-        items:         enrichedItems,
-        subTotal:      parseFloat(subTotal.toFixed(2)),
-        totalTax:      parseFloat(totalTax.toFixed(2)),
+        items: enrichedItems,
+        subTotal: parseFloat(subTotal.toFixed(2)),
+        totalTax: parseFloat(totalTax.toFixed(2)),
         totalDiscount: parseFloat(totalDiscount.toFixed(2)),
         grandTotal,
         paidAmount,
@@ -178,30 +178,30 @@ class InvoiceService {
         paymentStatus,
         status,
         organizationId: user.organizationId,
-        branchId:       user.branchId,
-        createdBy:      user._id,
+        branchId: user.branchId,
+        createdBy: user._id,
       }], { session, ordered: true });
 
       // Initial payment
       if (paidAmount > 0) {
         const [payment] = await Payment.create([{
-          organizationId:  user.organizationId,
-          branchId:        user.branchId,
-          type:            'inflow',
-          customerId:      invoice.customerId,
-          invoiceId:       invoice._id,
-          paymentDate:     invoiceData.invoiceDate || new Date(),
-          amount:          paidAmount,
-          paymentMethod:   invoiceData.paymentMethod || 'cash',
+          organizationId: user.organizationId,
+          branchId: user.branchId,
+          type: 'inflow',
+          customerId: invoice.customerId,
+          invoiceId: invoice._id,
+          paymentDate: invoiceData.invoiceDate || new Date(),
+          amount: paidAmount,
+          paymentMethod: invoiceData.paymentMethod || 'cash',
           transactionMode: 'auto',
           referenceNumber: invoiceData.paymentReference || invoiceData.referenceNumber,
-          transactionId:   invoiceData.transactionId,
-          remarks:         `Auto-payment for ${invoice.invoiceNumber}`,
-          status:          'completed',
+          transactionId: invoiceData.transactionId,
+          remarks: `Auto-payment for ${invoice.invoiceNumber}`,
+          status: 'completed',
           allocationStatus: 'fully_allocated',
           remainingAmount: 0,
           allocatedTo: [{ type: 'invoice', documentId: invoice._id, amount: paidAmount, allocatedAt: new Date() }],
-          createdBy:       user._id,
+          createdBy: user._id,
         }], { session, ordered: true });
 
         await this._postPaymentJournal({ invoice, payment, userId: user._id, session });
@@ -262,7 +262,7 @@ class InvoiceService {
         _id: invoiceId, organizationId: user.organizationId,
       }).session(session);
 
-      if (!old)                       throw new AppError('Invoice not found', 404);
+      if (!old) throw new AppError('Invoice not found', 404);
       if (old.status === 'cancelled') throw new AppError('Cannot update a cancelled invoice', 400);
 
       const isDraftUpdate = old.status === 'draft' && (!updates.status || updates.status === 'draft');
@@ -280,8 +280,8 @@ class InvoiceService {
 
       const hasFinancialChange = updates.items
         || updates.shippingCharges !== undefined
-        || updates.discount       !== undefined
-        || updates.roundOff       !== undefined;
+        || updates.discount !== undefined
+        || updates.roundOff !== undefined;
 
       if (hasFinancialChange) {
         // Restore old stock
@@ -309,9 +309,9 @@ class InvoiceService {
 
         // Batch enrich items — one Product.find not N+1
         if (updates.items) {
-          const pIds   = updates.items.map(i => i.productId);
-          const prods  = await Product.find({ _id: { $in: pIds } }).session(session).select('name sku purchasePrice');
-          const pMap   = new Map(prods.map(p => [p._id.toString(), p]));
+          const pIds = updates.items.map(i => i.productId);
+          const prods = await Product.find({ _id: { $in: pIds } }).session(session).select('name sku purchasePrice');
+          const pMap = new Map(prods.map(p => [p._id.toString(), p]));
           updates.items = updates.items.map(item => {
             const prod = pMap.get(String(item.productId));
             return { ...item, name: prod?.name, sku: prod?.sku, purchasePriceAtSale: prod?.purchasePrice ?? null };
@@ -320,8 +320,8 @@ class InvoiceService {
 
         // Delete old revenue journal entries only — NOT payment entries
         await AccountEntry.deleteMany({
-          referenceId:    old._id,
-          referenceType:  'invoice',
+          referenceId: old._id,
+          referenceType: 'invoice',
           organizationId: user.organizationId,
         }).session(session);
 
@@ -378,7 +378,7 @@ class InvoiceService {
         _id: invoiceId, organizationId: user.organizationId,
       }).populate('items.productId').session(session);
 
-      if (!invoice)                      throw new AppError('Invoice not found', 404);
+      if (!invoice) throw new AppError('Invoice not found', 404);
       if (invoice.status === 'cancelled') throw new AppError('Invoice already cancelled', 400);
 
       // Restore stock — StockService.increment throws on failure (no silent no-ops)
@@ -403,7 +403,7 @@ class InvoiceService {
       }
 
       invoice.status = 'cancelled';
-      invoice.notes  = (invoice.notes || '') + `\nCancelled: ${reason}`;
+      invoice.notes = (invoice.notes || '') + `\nCancelled: ${reason}`;
       await invoice.save({ session });
 
       // Update the linked Sales record status too
@@ -438,14 +438,14 @@ class InvoiceService {
     if (existingEmi) {
       await emiService.reconcileExternalPayment({
         organizationId: user.organizationId,
-        branchId:       user.branchId,
+        branchId: user.branchId,
         invoiceId,
         amount,
-        paymentMethod:  paymentMethod || 'cash',
+        paymentMethod: paymentMethod || 'cash',
         referenceNumber,
         transactionId,
-        remarks:        notes || 'Payment added via Invoice Screen',
-        createdBy:      user._id,
+        remarks: notes || 'Payment added via Invoice Screen',
+        createdBy: user._id,
       });
       return { emi: true };
     }
@@ -456,9 +456,9 @@ class InvoiceService {
         _id: invoiceId, organizationId: user.organizationId,
       }).session(session);
 
-      if (!invoice)                       throw new AppError('Invoice not found', 404);
+      if (!invoice) throw new AppError('Invoice not found', 404);
       if (invoice.status === 'cancelled') throw new AppError('Cannot add payment to a cancelled invoice', 400);
-      if (invoice.status === 'paid')      throw new AppError('Invoice is already fully paid', 400);
+      if (invoice.status === 'paid') throw new AppError('Invoice is already fully paid', 400);
 
       const newPaid = parseFloat((invoice.paidAmount + amount).toFixed(2));
       if (newPaid > invoice.grandTotal + 0.01) {
@@ -469,23 +469,23 @@ class InvoiceService {
       }
 
       const [payment] = await Payment.create([{
-        organizationId:  user.organizationId,
-        branchId:        invoice.branchId,
-        type:            'inflow',
-        customerId:      invoice.customerId,
-        invoiceId:       invoice._id,
-        paymentDate:     new Date(),
+        organizationId: user.organizationId,
+        branchId: invoice.branchId,
+        type: 'inflow',
+        customerId: invoice.customerId,
+        invoiceId: invoice._id,
+        paymentDate: new Date(),
         amount,
-        paymentMethod:   paymentMethod || invoice.paymentMethod || 'cash',
+        paymentMethod: paymentMethod || invoice.paymentMethod || 'cash',
         transactionMode: 'manual',
         referenceNumber,
         transactionId,
-        remarks:         notes || `Payment for Invoice #${invoice.invoiceNumber}`,
-        status:          'completed',
+        remarks: notes || `Payment for Invoice #${invoice.invoiceNumber}`,
+        status: 'completed',
         allocationStatus: 'fully_allocated',
         remainingAmount: 0,
         allocatedTo: [{ type: 'invoice', documentId: invoice._id, amount, allocatedAt: new Date() }],
-        createdBy:       user._id,
+        createdBy: user._id,
       }], { session, ordered: true });
 
       await this._postPaymentJournal({ invoice, payment, userId: user._id, session });
@@ -496,7 +496,7 @@ class InvoiceService {
         { session }
       );
 
-      invoice.paidAmount    = newPaid;
+      invoice.paidAmount = newPaid;
       invoice.balanceAmount = parseFloat((invoice.grandTotal - newPaid).toFixed(2));
       invoice.paymentStatus = invoice.balanceAmount <= 0 ? 'paid' : 'partial';
       if (invoice.balanceAmount <= 0) invoice.status = 'paid';
@@ -539,7 +539,7 @@ class InvoiceService {
         invoice.invoiceNumber = await this._nextInvoiceNumber(user.organizationId, session);
       }
 
-      invoice.status      = 'issued';
+      invoice.status = 'issued';
       invoice.invoiceDate = new Date();
       await invoice.save({ session });
 
@@ -576,7 +576,7 @@ class InvoiceService {
    * 6. BULK CANCEL
    * ============================================================ */
   static async bulkCancelInvoices(ids, reason, user) {
-    if (!ids?.length)   throw new AppError('Invoice IDs array is required', 400);
+    if (!ids?.length) throw new AppError('Invoice IDs array is required', 400);
     if (!reason?.trim()) throw new AppError('Reason is required', 400);
 
     await runInTransaction(async (session) => {
@@ -605,7 +605,7 @@ class InvoiceService {
         });
 
         invoice.status = 'cancelled';
-        invoice.notes  = (invoice.notes || '') + `\nBulk cancelled: ${reason}`;
+        invoice.notes = (invoice.notes || '') + `\nBulk cancelled: ${reason}`;
         await invoice.save({ session });
 
         await this._createAudit({
@@ -628,22 +628,22 @@ class InvoiceService {
 
     // Batch fetch — one query not N+1
     const productIds = items.map(i => i.productId);
-    const products   = await Product.find({
+    const products = await Product.find({
       _id: { $in: productIds }, organizationId: user.organizationId,
     }).select('name sku sellingPrice inventory');
     const productMap = new Map(products.map(p => [p._id.toString(), p]));
 
     const detailedItems = items.map(item => {
       const product = productMap.get(String(item.productId));
-      const inv     = product?.inventory?.find(i => String(i.branchId) === String(user.branchId));
+      const inv = product?.inventory?.find(i => String(i.branchId) === String(user.branchId));
       return {
-        productId:         item.productId,
-        name:              product?.name,
-        sku:               product?.sku,
+        productId: item.productId,
+        name: product?.name,
+        sku: product?.sku,
         requestedQuantity: item.quantity,
-        availableStock:    inv?.quantity || 0,
-        price:             product?.sellingPrice,
-        isAvailable:       (inv?.quantity || 0) >= item.quantity,
+        availableStock: inv?.quantity || 0,
+        price: product?.sellingPrice,
+        isAvailable: (inv?.quantity || 0) >= item.quantity,
       };
     });
 
@@ -657,17 +657,17 @@ class InvoiceService {
   static async searchInvoices(query, limit, user) {
     const Customer = require('../../../organization/core/customer.model');
     const matchingCustomers = await Customer.find({
-      name:           { $regex: query, $options: 'i' },
+      name: { $regex: query, $options: 'i' },
       organizationId: user.organizationId,
     }).select('_id');
 
     return Invoice.find({
       organizationId: user.organizationId,
-      isDeleted:      { $ne: true },
+      isDeleted: { $ne: true },
       $or: [
         { invoiceNumber: { $regex: query, $options: 'i' } },
-        { notes:         { $regex: query, $options: 'i' } },
-        { customerId:    { $in: matchingCustomers.map(c => c._id) } },
+        { notes: { $regex: query, $options: 'i' } },
+        { customerId: { $in: matchingCustomers.map(c => c._id) } },
       ],
     })
       .populate('customerId', 'name phone')
@@ -682,10 +682,10 @@ class InvoiceService {
     const invoice = await Invoice.findOne({
       _id: invoiceId, organizationId: user.organizationId,
     }).populate([
-      { path: 'customerId',      select: 'name phone email address' },
+      { path: 'customerId', select: 'name phone email address' },
       { path: 'items.productId', select: 'name sku sellingPrice inventory' },
-      { path: 'branchId',        select: 'name code address' },
-      { path: 'createdBy',       select: 'name email' },
+      { path: 'branchId', select: 'name code address' },
+      { path: 'createdBy', select: 'name email' },
     ]);
     if (!invoice) throw new AppError('Invoice not found', 404);
 
@@ -697,7 +697,7 @@ class InvoiceService {
         ...item.toObject(),
         currentStock: inv?.quantity || 0,
         reorderLevel: inv?.reorderLevel || 10,
-        willBeLow:    (inv?.quantity || 0) - item.quantity < (inv?.reorderLevel || 10),
+        willBeLow: (inv?.quantity || 0) - item.quantity < (inv?.reorderLevel || 10),
       };
     });
 
@@ -721,11 +721,11 @@ class InvoiceService {
         );
         if (inv?.reorderLevel && inv.quantity < inv.reorderLevel) {
           return [{
-            productId:    item.productId._id,
-            productName:  item.productId.name,
+            productId: item.productId._id,
+            productName: item.productId.name,
             currentStock: inv.quantity,
             reorderLevel: inv.reorderLevel,
-            message:      `${item.productId.name} is below reorder level (${inv.quantity} < ${inv.reorderLevel})`,
+            message: `${item.productId.name} is below reorder level (${inv.quantity} < ${inv.reorderLevel})`,
           }];
         }
         return [];
@@ -746,10 +746,10 @@ class InvoiceService {
 
     await this._createAudit({
       organizationId: user.organizationId,
-      invoiceId:      invoice._id,
-      action:         'EMAIL_SENT',
-      performedBy:    user._id,
-      details:        `Invoice emailed to ${email}`,
+      invoiceId: invoice._id,
+      action: 'EMAIL_SENT',
+      performedBy: user._id,
+      details: `Invoice emailed to ${email}`,
     });
 
     return email;
@@ -761,7 +761,7 @@ class InvoiceService {
    * ============================================================ */
   static async getInvoiceHistory(invoiceId, user) {
     return InvoiceAudit.find({
-      invoiceId:      invoiceId,
+      invoiceId: invoiceId,
       organizationId: user.organizationId,
     })
       .sort({ createdAt: -1 })
@@ -773,9 +773,9 @@ class InvoiceService {
    * ============================================================ */
 
   static _calculateTotals(enrichedItems, invoiceData) {
-    const subTotal      = enrichedItems.reduce((s, i) => s + i.price * i.quantity, 0);
+    const subTotal = enrichedItems.reduce((s, i) => s + i.price * i.quantity, 0);
     const totalDiscount = enrichedItems.reduce((s, i) => s + (i.discount || 0), 0);
-    const totalTax      = enrichedItems.reduce((s, i) => {
+    const totalTax = enrichedItems.reduce((s, i) => {
       const base = i.price * i.quantity - (i.discount || 0);
       return s + ((i.taxRate || 0) / 100) * base;
     }, 0);

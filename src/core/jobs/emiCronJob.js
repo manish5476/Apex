@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const emiService = require('../../modules/accounting/payments/emiService');
+const emiService = require('../../modules/accounting/payments/emi.service');
 
 // Run every day at midnight
 // Cron format: second minute hour day month day-of-week
