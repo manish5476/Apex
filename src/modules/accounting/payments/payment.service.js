@@ -31,7 +31,7 @@ const PendingReconciliation = require('../core/pendingReconciliationModel');
 const JournalService = require('../core/journal.service');
 const AccountEntry = require('../core/accountEntry.model');
 const paymentAllocationService = require('./paymentAllocation.service');
-// const automationService = require('../../../webhook/automationService');
+const webhookService = require('../../../modules/webhook/webhook.service');
 const { invalidateOpeningBalance } = require('../core/ledgerCache.service');
 const AppError = require('../../../core/utils/api/appError');
 const { runInTransaction } = require('../../../core/utils/db/runInTransaction');
@@ -109,7 +109,7 @@ class PaymentService {
     }, 3, { action: 'CREATE_PAYMENT', userId: user._id });
 
     await invalidateOpeningBalance(user.organizationId);
-    automationService.triggerEvent('payment.completed', payment, user.organizationId);
+    webhookService.triggerEvent('payment.completed', payment, user.organizationId);
 
     return payment;
   }

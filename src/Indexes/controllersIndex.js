@@ -61,7 +61,7 @@ export { default as announcementController } from './modules/notification/core/a
 export { default as messageController } from './modules/notification/core/message.controller.js';
 export { default as notificationController } from './modules/notification/core/notification.controller.js';
 export { default as assetController } from './modules/uploads/assetController.js';
-export { default as automationController } from './modules/webhook/automationController.js';
+export { default as webhookController } from './modules/webhook/webhook.controller.js';
 
 // --- Organization ---
 export { default as branchController } from './modules/organization/core/branch.controller.js';

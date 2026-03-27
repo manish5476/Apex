@@ -1,4 +1,4 @@
-const routes = require('../Indexes/routesIndex.js');
+const routes = require('../indexes/routesIndex.js');
 
 /**
  * Registers all application routes to the Express app.
@@ -52,7 +52,7 @@ const registerRoutes = (app) => {
   app.use(`${v1Prefix}/customeranalytics`, routes.customerAnalytics);
   app.use(`${v1Prefix}/dashboard`, routes.dashboard);
   app.use(`${v1Prefix}/ai-agent`, routes.aiAgent);
-  app.use(`${v1Prefix}/automation`, routes.automationRoutes);
+  app.use(`${v1Prefix}/webhooks`, routes.webhookRoutes);
   app.use(`${v1Prefix}/assets`, routes.assetsRoutes);
   app.use(`${v1Prefix}/notifications`, routes.notificationRoutes);
   app.use(`${v1Prefix}/announcements`, routes.announcementRoutes);

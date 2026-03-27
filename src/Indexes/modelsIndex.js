@@ -42,7 +42,7 @@ export { default as Announcement } from './modules/notification/core/announcemen
 export { default as Message } from './modules/notification/core/message.model.js';
 export { default as Notification } from './modules/notification/core/notification.model.js';
 export { default as Asset } from './modules/uploads/asset.model.js';
-export { default as Automation } from './modules/webhook/automationModel.js';
+export { default as Webhook } from './modules/webhook/webhook.model.js';
 
 // --- HRMS ---
 export { default as AttendanceDaily } from './modules/HRMS/models/attendanceDaily.model.js';

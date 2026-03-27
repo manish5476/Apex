@@ -51,7 +51,7 @@ const JournalService = require('../../../inventory/core/service/Journal.service'
 const AppError = require('../../../../core/utils/api/appError');
 const { runInTransaction } = require('../../../../core/utils/db/runInTransaction');
 const { emitToOrg } = require('../../../../socketHandlers/socket');
-const automationService = require('../../../webhook/legacy/automationService');
+const webhookService = require('../../../webhook/webhook.service');
 // ─────────────────────────────────────────────
 //  Zod validation schema
 // ─────────────────────────────────────────────
@@ -245,7 +245,7 @@ class InvoiceService {
     }, 3, { action: 'CREATE_INVOICE', userId: user._id });
 
     // Post-transaction side effects
-    automationService.triggerEvent('invoice.created', finalInvoice.toObject(), user.organizationId);
+    webhookService.triggerEvent('invoice.created', finalInvoice.toObject(), user.organizationId);
     emitToOrg(user.organizationId, 'invoice:created', finalInvoice);
 
     return finalInvoice;
@@ -890,7 +890,7 @@ module.exports = InvoiceService;
 // const AppError           = require('../../../../core/utils/api/appError');
 // const { runInTransaction } = require('../../../../core/utils/db/runInTransaction');
 // const { emitToOrg }      = require('../../../../socketHandlers/socket');
-// const automationService  = require('../../../webhook/automationService');
+// const webhookService  = require('../../../webhook/webhook.service');
 
 // // ─────────────────────────────────────────────
 // //  Zod validation schema
@@ -1085,7 +1085,7 @@ module.exports = InvoiceService;
 //     }, 3, { action: 'CREATE_INVOICE', userId: user._id });
 
 //     // Post-transaction side effects
-//     automationService.triggerEvent('invoice.created', finalInvoice.toObject(), user.organizationId);
+//     webhookService.triggerEvent('invoice.created', finalInvoice.toObject(), user.organizationId);
 //     emitToOrg(user.organizationId, 'invoice:created', finalInvoice);
 
 //     return finalInvoice;

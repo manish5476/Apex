@@ -542,7 +542,7 @@ module.exports = exports;
 // // const factory = require("../../../../core/utils/api/handlerFactory");
 // // const { runInTransaction } = require("../../../../core/utils/db/runInTransaction");
 // // const { emitToOrg } = require("../../../../socketHandlers/socket");
-// // const automationService = require('../../../webhook/automationService');
+
 // // const EMI = require('../../payments/emi.model'); // Adjust path to your EMI model
 // // const emiService = require('../../payments/emiService'); // Adjust path to your Service
 
@@ -895,7 +895,7 @@ module.exports = exports;
 // //   const finalInvoice = req.invoice;
   
 // //   // Trigger Webhooks/Automation
-// //   automationService.triggerEvent('invoice.created', finalInvoice.toObject(), req.user.organizationId);
+
   
 // //   // Real-time Update via Socket.io
 // //   emitToOrg(req.user.organizationId, 'invoice:created', finalInvoice);

@@ -216,7 +216,7 @@ exports.exportPayments = factory.exportExcel(Payment, {
 // const EMI = require('./emi.model');
 // const emiService = require('./emiService');
 // const paymentPDFService = require('./paymentPDF.service');
-// const automationService = require('../../webhook/legacy/automationService');
+
 // const { invalidateOpeningBalance } = require('../core/ledgerCache.service');
 // const PendingReconciliation = require('../core/pendingReconciliationModel');
 // const paymentAllocationService = require('./paymentAllocation.service');
@@ -471,7 +471,7 @@ exports.exportPayments = factory.exportExcel(Payment, {
 //     await session.commitTransaction();
 //     await invalidateOpeningBalance(req.user.organizationId);
 
-//     automationService.triggerEvent('payment.completed', payment, req.user.organizationId);
+
 
 //     res.status(201).json({ status: 'success', data: { payment } });
 //   } catch (e) {
