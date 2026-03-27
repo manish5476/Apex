@@ -51,7 +51,7 @@ const JournalService         = require('../../../inventory/core/service/Journal.
 const AppError           = require('../../../../core/utils/api/appError');
 const { runInTransaction } = require('../../../../core/utils/db/runInTransaction');
 const { emitToOrg }      = require('../../../../socketHandlers/socket');
-const automationService  = require('../../../webhook/automationService');
+const automationService  = require('../../../webhook/legacy/automationService');
 // ─────────────────────────────────────────────
 //  Zod validation schema
 // ─────────────────────────────────────────────

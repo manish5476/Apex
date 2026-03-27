@@ -1,6 +1,6 @@
 const { Webhook, Workflow } = require('./automationModel');
-const factory = require('../../core/utils/api/handlerFactory');
-const catchAsync = require('../../core/utils/api/catchAsync');
+const factory = require('../../../core/utils/api/handlerFactory');
+const catchAsync = require('../../../core/utils/api/catchAsync');
 
 // --- WEBHOOKS ---
 exports.createWebhook = factory.createOne(Webhook);

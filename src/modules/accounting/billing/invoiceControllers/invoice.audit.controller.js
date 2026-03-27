@@ -25,7 +25,7 @@ const AppError = require("../../../../core/utils/api/appError");
 const factory = require("../../../../core/utils/api/handlerFactory");
 const { runInTransaction } = require("../../../../core/utils/db/runInTransaction");
 const { emitToOrg } = require("../../../../socketHandlers/socket");
-const automationService = require('../../../webhook/automationService');
+const automationService = require('../../../webhook/legacy/automationService');
 
 exports.sendInvoiceEmail = catchAsync(async (req, res, next) => {
   const invoice = await Invoice.findOne({ _id: req.params.id, organizationId: req.user.organizationId }).populate('customerId');

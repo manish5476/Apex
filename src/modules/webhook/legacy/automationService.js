@@ -1,8 +1,8 @@
 const axios = require('axios'); // Ensure axios is installed: npm install axios
 const crypto = require('crypto');
 const { Webhook, Workflow } = require('./automationModel');
-const { createNotification } = require('../notification/core/notification.service');
-const sendEmail = require('../../core/infra/email'); // Assuming existing email util
+const { createNotification } = require('../../notification/core/notification.service');
+const sendEmail = require('../../../core/infra/email'); // Assuming existing email util
 
 /* -------------------------------------------------------------
  * TRIGGER: The Main Entry Point
