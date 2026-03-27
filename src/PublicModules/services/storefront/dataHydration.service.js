@@ -17,7 +17,7 @@
 
 const mongoose          = require('mongoose');
 const SmartRuleEngine   = require('./smartRuleEngine.service');
-const Master            = require('../../../modules/master/core/master.model');
+const Master            = require('../../../modules/master/core/model/master.model');
 const Branch            = require('../../../modules/organization/core/branch.model');
 const StorefrontLayout = require('../../models/storefront/storefrontLayout.model');
 

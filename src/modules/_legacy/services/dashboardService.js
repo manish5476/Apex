@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 const Invoice = require('../../accounting/billing/invoice.model');
-const Purchase = require('../../inventory/core/purchase.model');
+const Purchase = require('../../inventory/core/model/purchase.model');
 const Payment = require('../../accounting/payments/payment.model');
 const Customer = require('../../organization/core/customer.model');
 const Supplier = require('../../organization/core/supplier.model');
-const Product = require('../../inventory/core/product.model');
+const Product = require('../../inventory/core/model/product.model');
 const AccountEntry = require('../../accounting/core/accountEntry.model'); // ✅ New Source
 const Account = require('../../accounting/core/account.model'); // ✅ Needed for Profit
 

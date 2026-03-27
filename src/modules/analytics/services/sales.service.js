@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
-const Sales = require('../../inventory/core/sales.model');
-const Product = require('../../inventory/core/product.model');
-const SalesReturn = require('../../inventory/core/salesReturn.model');
+const Sales = require('../../inventory/core/model/sales.model');
+const Product = require('../../inventory/core/model/product.model');
+const SalesReturn = require('../../inventory/core/model/salesReturn.model');
 const { toObjectId } = require('../utils/analytics.utils');
 
 /* ==========================================================================

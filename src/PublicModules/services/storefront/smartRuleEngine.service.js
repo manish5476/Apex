@@ -13,7 +13,7 @@
 
 'use strict';
 
-const Product    = require('../../../modules/inventory/core/product.model');
+const Product    = require('../../../modules/inventory/core/model/product.model');
 // const SmartRule  = require('../models/smartRule.model');
 const SmartRule = require('../../models/storefront/smartRule.model');
 

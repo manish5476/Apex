@@ -1,6 +1,6 @@
 
-const Sales = require("../inventory/core/sales.model");
-const Product = require("../inventory/core/product.model");
+const Sales = require("../inventory/core/model/sales.model");
+const Product = require("../inventory/core/model/product.model");
 const Customer = require("../organization/core/customer.model");
 const EMI = require("../accounting/payments/emi.model");
 const Payment = require("../accounting/payments/payment.model"); // Ensure this path matches your architecture

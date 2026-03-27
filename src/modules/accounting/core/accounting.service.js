@@ -1,4 +1,3 @@
-// src/services/accountService.js
 const mongoose = require('mongoose');
 const Account = require('./account.model');
 const AccountEntry = require('./accountEntry.model');

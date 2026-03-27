@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const automationController = require("../../modules/webhook/automationController");
+const automationController = require("../../modules/webhook/legacy/automationController");
 const authController = require("../../modules/auth/core/auth.controller");
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");

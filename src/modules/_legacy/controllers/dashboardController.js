@@ -3,7 +3,7 @@ const catchAsync = require('../../../core/utils/api/catchAsync');
 const AppError = require('../../../core/utils/api/appError');
 
 // in src/controllers/dashboardController.js
-const SalesService = require('../../inventory/core/sales.service');
+const SalesService = require('../../inventory/core/service/sales.service');
 
 async function dashboardSummary(req, res, next) {
   // existing computations
@@ -11,7 +11,7 @@ async function dashboardSummary(req, res, next) {
   const salesAgg = await SalesService.aggregateTotal({ createdAt: { $gte: lastMonth } });
 
   // include monthly totals
-  const monthly = await require('../../inventory/core/sales.model').aggregateMonthlyTotals(
+  const monthly = await require('../../inventory/core/model/sales.model').aggregateMonthlyTotals(
     new Date(new Date().getFullYear(), 0, 1),
     new Date()
   );

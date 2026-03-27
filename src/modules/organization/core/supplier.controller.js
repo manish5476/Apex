@@ -4,9 +4,9 @@ const cloudinary = require('cloudinary').v2;
 
 // Models
 const Supplier = require('./supplier.model');
-const Purchase = require('../../inventory/core/purchase.model'); 
+const Purchase = require('../../inventory/core/model/purchase.model'); 
 const Payment = require('../../accounting/payments/payment.model');
-const PurchaseReturn = require('../../inventory/core/purchase.return.model'); // 🟢 Added for Defect Rate
+const PurchaseReturn = require('../../inventory/core/model/purchase.return.model'); // 🟢 Added for Defect Rate
 
 // Utils & Services
 const factory = require('../../../core/utils/api/handlerFactory');

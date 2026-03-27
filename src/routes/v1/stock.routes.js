@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // Note: stockController may need to be located or created
-const stockController = require('../../modules/inventory/core/inventory.controller');
+const stockController = require('../../modules/inventory/core/stock.controller');
 const authController = require('../../modules/auth/core/auth.controller');
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require('../../config/permissions');

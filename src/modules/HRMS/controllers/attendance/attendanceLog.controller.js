@@ -9,8 +9,7 @@ const catchAsync     = require('../../../../core/utils/api/catchAsync');
 const AppError       = require('../../../../core/utils/api/appError');
 const factory        = require('../../../../core/utils/api/handlerFactory');
 const {
-  startOfDay, endOfDay, dateRangeQuery, parseQueryDate, isValidDateRange
-} = require('../../../../core/utils/dateHelpers.js');
+  startOfDay, endOfDay,getPeriodDates,  parseQueryDate} = require('../../../../core/utils/dateHelpers.js');
 
 // ─────────────────────────────────────────────
 //  HELPERS
