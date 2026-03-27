@@ -14,7 +14,7 @@ const Organization = require("../../../organization/core/organization.model");
 const InvoiceAudit = require('../invoiceAudit.model');
 
 const SalesService = require("../../../inventory/core/service/sales.service");
-const invoicePDFService = require("../invoicePDFService");
+const invoicePDFService = require("../invoiceService/invoicePDFService");
 const StockValidationService = require("../../../inventory/core/service/stockValidation.service");
 const { createNotification } = require("../../../notification/core/notification.service");
 // CHANGED: Import the whole service to access reverseInvoiceJournal

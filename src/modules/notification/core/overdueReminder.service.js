@@ -1,7 +1,7 @@
 // src/services/overdueReminderService.js
 const cron = require("node-cron");
 const Invoice = require("../../accounting/billing/invoice.model");
-const invoicePDFService = require("../../accounting/billing/invoicePDFService");
+const invoicePDFService = require("../../accounting/billing/invoiceService/invoicePDFService");
 const sendEmail = require("../../../core/infra/email");
 const mongoose = require("mongoose");
 

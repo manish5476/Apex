@@ -1,10 +1,10 @@
-const Invoice = require("./invoice.model");
-const Organization = require("../../organization/core/organization.model");
-const Customer = require("../../organization/core/customer.model");
-const { generateInvoicePDFBuffer } = require("./template/invoiceTemplate");
-const { getInvoiceEmailHTML } = require("./template/invoiceEmailTemplate");
-const sendEmail = require("../../../core/infra/email");
-const AppError = require("../../../core/utils/api/appError");
+const Invoice = require("../invoice.model");
+const Organization = require("../../../organization/core/organization.model");
+const Customer = require("../../../organization/core/customer.model");
+const { generateInvoicePDFBuffer } = require("../template/invoiceTemplate");
+const { getInvoiceEmailHTML } = require("../template/invoiceEmailTemplate");
+const sendEmail = require("../../../../core/infra/email");
+const AppError = require("../../../../core/utils/api/appError");
 
 /**
  * Generate an invoice PDF buffer for download.

@@ -1,5 +1,5 @@
 // src/controllers/invoicePDFController.js
-const invoicePDFService = require("./invoicePDFService");
+const invoicePDFService = require("./invoiceService/invoicePDFService");
 const catchAsync = require("../../../core/utils/api/catchAsync");
 const AppError = require("../../../core/utils/api/appError");
 
