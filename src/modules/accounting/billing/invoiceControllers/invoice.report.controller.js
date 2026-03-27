@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Invoice = require("../invoice.model");
+const catchAsync = require("../../../../core/utils/api/catchAsync");
 
 exports.getSalesReport = catchAsync(async (req, res, next) => {
   const { startDate, endDate, groupBy = 'day' } = req.query;

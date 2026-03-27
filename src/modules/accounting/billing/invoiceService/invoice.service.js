@@ -21,38 +21,37 @@
  */
 
 const mongoose = require('mongoose');
-const { z } = require('zod');
+const { z }    = require('zod');
 
 // --- Models ---
-// Original: ../invoice.model (Assumes service is in accounting/billing)
-const Invoice = require('../invoice.model'); 
-const Payment = require('../../payments/payment.model'); 
-const Product = require('../../../inventory/core/model/product.model');
-const Customer = require('../../../organization/core/customer.model');
+const Invoice      = require('../invoice.model');
+const Payment      = require('../../payments/payment.model');
+const Product      = require('../../../inventory/core/model/product.model');
+const Customer     = require('../../../organization/core/customer.model');
 const AccountEntry = require('../../core/accountEntry.model');
 const InvoiceAudit = require('../invoiceAudit.model');
-const EMI = require('../../payments/emi.model');
-// FIXED: counter.model isn't in a root models folder anymore based on your tree
-const Counter = require('../../../master/core/counter.model'); 
+const EMI          = require('../../payments/emi.model');
+
+// FIXED: Path to Counter.model (Note the space before .js from your find output)
+const Counter      = require('../../../inventory/core/model/Counter.model .js'); 
 
 // --- Services ---
-const SalesService = require('../../../inventory/core/service/sales.service');
+const SalesService           = require('../../../inventory/core/service/sales.service');
 const StockValidationService = require('../../../inventory/core/service/stockValidation.service');
-const salesJournalService = require('../../../inventory/core/service/salesJournal.service');
-const emiService = require('../../payments/emiService');
+const salesJournalService    = require('../../../inventory/core/service/salesJournal.service');
+const emiService             = require('../../payments/emiService');
 
-// FIXED: Using your new Centralized Indexes
-const StockService = require('../../../../Indexes/servicesIndex');
-// FIXED: journalService is likely in accounting/core or accounting/index
-const JournalService = require('../../index').journalService; 
+// ADDED: Direct path to the actual Stock Service
+const StockService           = require('../../../inventory/core/service/stock.service'); 
 
-// --- Core Utilities (Updated to match your ./src/core structure) ---
-const AppError = require('../../../../core/utils/api/appError');
+// FIXED: Path to Journal Service (Note the capital 'J' from your find output)
+const JournalService         = require('../../../inventory/core/service/Journal.service');
+
+// --- Core Utilities ---
+const AppError           = require('../../../../core/utils/api/appError');
 const { runInTransaction } = require('../../../../core/utils/db/runInTransaction');
-const { emitToOrg } = require('../../../../socketHandlers/socketHandlers/socket'); // Matches your tree: ./socketHandlers/socket.js
-const automationService = require('../../../webhook/automationService');
-
-// ... rest of your service logic
+const { emitToOrg }      = require('../../../../socketHandlers/socket');
+const automationService  = require('../../../webhook/automationService');
 // ─────────────────────────────────────────────
 //  Zod validation schema
 // ─────────────────────────────────────────────
