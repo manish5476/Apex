@@ -1,5 +1,7 @@
+// scripts/generateAPI.js
 const fs = require('fs');
 const path = require('path');
+const m2s = require('mongoose-to-swagger');
 
 const srcDir = path.join(__dirname, '../src');
 const routeRegistryPath = path.join(srcDir, 'routes/routeRegistrynew.js');
@@ -10,17 +12,50 @@ const swaggerDoc = {
   openapi: '3.0.0',
   info: {
     title: 'Apex CRM API',
-    description: 'Auto-generated API documentation extracted from backend routing definitions.',
+    description: 'Auto-generated API documentation extracted from backend routing and data models.',
     version: '1.0.0'
   },
-  paths: {}
+  paths: {},
+  components: {
+    schemas: {}
+  }
 };
 
 try {
+  // === PHASE 1: EXTRACT MONGOOSE MODELS ===
+  const walkSync = (dir, filelist = []) => {
+    fs.readdirSync(dir).forEach(file => {
+      const dirFile = path.join(dir, file);
+      try {
+        filelist = fs.statSync(dirFile).isDirectory() ? walkSync(dirFile, filelist) : filelist.concat(dirFile);
+      } catch (err) { }
+    });
+    return filelist;
+  };
+  
+  const allFiles = walkSync(srcDir);
+  const modelFiles = allFiles.filter(f => f.endsWith('.model.js') || f.endsWith('Model.js'));
+
+  console.log(`Scanning ${modelFiles.length} Mongoose models for Schema Generation...`);
+  
+  // Note: we just parse the source files to extract model names/fields if require fails, 
+  // but requiring them locally works well for m2s unless they have severe dependencies.
+  for (const modelPath of modelFiles) {
+    try {
+      const model = require(path.resolve(modelPath));
+      if (model && model.modelName && model.schema) {
+        const swaggerSchema = m2s(model);
+        swaggerDoc.components.schemas[model.modelName] = swaggerSchema;
+      }
+    } catch(err) {
+      // ignore require errors (like missing DB connection constraints)
+    }
+  }
+
+  // === PHASE 2: EXTRACT ROUTES ===
   const registryContent = fs.readFileSync(routeRegistryPath, 'utf8');
   const indexContent = fs.readFileSync(routesIndexPath, 'utf8');
   
-  // 2. Parse routesIndex.js
   const routeVars = {}; 
   const indexRegex = /([a-zA-Z0-9_]+):\s*require\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
   let match;
@@ -29,7 +64,6 @@ try {
     routeVars[match[1]] = path.join(srcDir, cleanPath);
   }
 
-  // 3. Parse routeRegistrynew.js
   const prefixes = []; 
   const registryLines = registryContent.split('\n');
   for (const line of registryLines) {
@@ -44,20 +78,13 @@ try {
     }
   }
 
-  // Helper function to append parsed routes to the Swagger object
   const addRouteToSwagger = (prefix, tag, method, endpoint, handler) => {
     let fullEndpoint = `${prefix}${endpoint === '/' ? '' : endpoint}`;
-    
-    // Convert Express params (/:id) to Swagger params (/{id})
     const swaggerPath = fullEndpoint.replace(/:([a-zA-Z0-9_]+)/g, '{$1}');
     const urlParams = [...fullEndpoint.matchAll(/:([a-zA-Z0-9_]+)/g)].map(m => m[1]);
 
-    // Initialize path if it doesn't exist
-    if (!swaggerDoc.paths[swaggerPath]) {
-      swaggerDoc.paths[swaggerPath] = {};
-    }
+    if (!swaggerDoc.paths[swaggerPath]) swaggerDoc.paths[swaggerPath] = {};
 
-    // Build parameter schema
     const parameters = urlParams.map(param => ({
       name: param,
       in: 'path',
@@ -65,64 +92,93 @@ try {
       schema: { type: 'string' }
     }));
 
-    // Add operation to path
+    // Auto-link to schemas if tag matches Model name roughly
+    let reqBody = undefined;
+    let successResponse = { description: 'Successful operation' };
+    
+    // Attempt schema coupling
+    const manualMap = {
+      'Auth': 'User',
+      'Users': 'User',
+      'Roles': 'Role',
+      'Products': 'Product',
+      'Customers': 'Customer',
+      'Suppliers': 'Supplier',
+      'Purchases': 'Purchase',
+      'Sales': 'Sales',
+      'Invoices': 'Invoice'
+    };
+
+    let possibleSchemaName = Object.keys(swaggerDoc.components.schemas).find(
+       s => s.toLowerCase() === tag.toLowerCase() 
+         || tag.toLowerCase().includes(s.toLowerCase()) 
+         || s.toLowerCase().includes({ 'y': 'ies', 's': '' }[tag.slice(-1)] ? tag.slice(0, -1).toLowerCase() : 'xxx')
+    );
+
+    if (manualMap[tag] && swaggerDoc.components.schemas[manualMap[tag]]) {
+       possibleSchemaName = manualMap[tag];
+    }
+
+    if (['post', 'put', 'patch'].includes(method.toLowerCase())) {
+        reqBody = {
+            content: {
+                'application/json': { 
+                    schema: possibleSchemaName 
+                        ? { $ref: `#/components/schemas/${possibleSchemaName}` }
+                        : { type: 'object', description: 'JSON Payload' }
+                }
+            }
+        };
+    }
+
+    if (possibleSchemaName) {
+       successResponse = {
+         description: `Returns ${possibleSchemaName} data.`,
+         content: { 'application/json': { schema: { $ref: `#/components/schemas/${possibleSchemaName}` } } }
+       };
+    }
+
     swaggerDoc.paths[swaggerPath][method.toLowerCase()] = {
       tags: [tag],
       summary: `Handled by ${handler}`,
       parameters: parameters,
+      requestBody: reqBody,
       responses: {
-        '200': { description: 'Successful operation' }
+        '200': successResponse
       }
     };
   };
 
-  // 4. Iterate through files and extract routes
   for (const routePrefix of prefixes) {
     if (!routePrefix.absPath || !fs.existsSync(routePrefix.absPath)) continue;
     
     const code = fs.readFileSync(routePrefix.absPath, 'utf8');
-    
-    // Create a neat tag name (e.g., 'authRoutes' -> 'Auth')
     const tag = routePrefix.routeVar.replace(/Routes|Router/i, '');
     const cleanTag = tag.charAt(0).toUpperCase() + tag.slice(1);
 
-    // Look for standard `router.method('/path', ...)`
     const routerRegex = /router\.(get|post|put|patch|delete)\s*\(\s*['"]([^'"]+)['"][\s\S]*?(?=router\.(get|post|put|patch|delete|route)|module\.exports|$)/g;
-    
     let rtMatch;
     while ((rtMatch = routerRegex.exec(code)) !== null) {
       const method = rtMatch[1];
       const endpoint = rtMatch[2];
       const controllerMatch = rtMatch[0].match(/([a-zA-Z0-9_]+Controller\.[a-zA-Z0-9_]+)/);
-      const handler = controllerMatch ? controllerMatch[1] : 'Unknown Controller';
-      
-      addRouteToSwagger(routePrefix.prefix, cleanTag, method, endpoint, handler);
+      addRouteToSwagger(routePrefix.prefix, cleanTag, method, endpoint, controllerMatch ? controllerMatch[1] : 'Unknown Controller');
     }
     
-    // Look for chain `.route('/path').get(...).post(...)`
     const chainRegex = /router\.route\s*\(\s*['"]([^'"]+)['"]\s*\)([\s\S]*?(?=router\.route|module\.exports|$))/g;
     let chainMatch;
     while ((chainMatch = chainRegex.exec(code)) !== null) {
       const endpoint = chainMatch[1];
-      const block = chainMatch[2];
-      
       const mRegex = /\.(get|post|put|patch|delete)\s*\([\s\S]*?(?=\.(get|post|put|patch|delete)|$)/g;
       let mMatch;
-      while ((mMatch = mRegex.exec(block)) !== null) {
-        const method = mMatch[1];
+      while ((mMatch = mRegex.exec(chainMatch[2])) !== null) {
         const controllerMatch = mMatch[0].match(/([a-zA-Z0-9_]+Controller\.[a-zA-Z0-9_]+)/);
-        const handler = controllerMatch ? controllerMatch[1] : 'Unknown Controller';
-        
-        addRouteToSwagger(routePrefix.prefix, cleanTag, method, endpoint, handler);
+        addRouteToSwagger(routePrefix.prefix, cleanTag, mMatch[1], endpoint, controllerMatch ? controllerMatch[1] : 'Unknown Controller');
       }
     }
   }
 
-  // 5. Write out the Swagger JSON
   const outPath = path.join(__dirname, '../artifacts/swagger.json');
-  const dir = path.dirname(outPath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, {recursive: true});
-  
   fs.writeFileSync(outPath, JSON.stringify(swaggerDoc, null, 2));
   console.log('Swagger JSON generated at', outPath);
 

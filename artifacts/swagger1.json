@@ -13,25 +13,9 @@
         ],
         "summary": "Handled by authController.signup",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/User"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -43,25 +27,9 @@
         ],
         "summary": "Handled by authController.login",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/User"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -73,25 +41,9 @@
         ],
         "summary": "Handled by authController.refreshToken",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/User"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -103,25 +55,9 @@
         ],
         "summary": "Handled by authController.forgotPassword",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/User"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -142,25 +78,9 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/User"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -174,14 +94,7 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -204,14 +117,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -223,25 +129,9 @@
         ],
         "summary": "Handled by authController.updateMyPassword",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/User"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -253,25 +143,9 @@
         ],
         "summary": "Handled by authController.sendVerificationEmail",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/User"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -283,25 +157,9 @@
         ],
         "summary": "Handled by authController.logout",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/User"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -313,25 +171,9 @@
         ],
         "summary": "Handled by authController.logoutAll",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/User"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -345,14 +187,7 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -375,14 +210,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns User data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "Successful operation"
           }
         }
       }
@@ -4209,16 +4037,6 @@
         ],
         "summary": "Handled by paymentWebhookController.paymentGatewayWebhook",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -4247,16 +4065,6 @@
         ],
         "summary": "Handled by reconciliationController.manualReconcilePayment",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -4387,16 +4195,6 @@
         ],
         "summary": "Handled by inventoryController.transferStock",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -4411,16 +4209,6 @@
         ],
         "summary": "Handled by inventoryController.adjustStock",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -6028,16 +5816,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -6052,16 +5830,6 @@
         ],
         "summary": "Handled by stockController.transferStock",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -7442,16 +7210,6 @@
         ],
         "summary": "Handled by Unknown Controller",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -7466,16 +7224,6 @@
         ],
         "summary": "Handled by Unknown Controller",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -7490,16 +7238,6 @@
         ],
         "summary": "Handled by Unknown Controller",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -7514,16 +7252,6 @@
         ],
         "summary": "Handled by Unknown Controller",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -8746,16 +8474,6 @@
         ],
         "summary": "Handled by analyticsController.customAnalyticsQuery",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -9015,16 +8733,6 @@
         ],
         "summary": "Handled by Unknown Controller",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -9862,16 +9570,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -9886,16 +9584,6 @@
         ],
         "summary": "Handled by cronController.stopCronJobs",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -12319,16 +12007,6 @@
         ],
         "summary": "Handled by Unknown Controller",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -12343,16 +12021,6 @@
         ],
         "summary": "Handled by Unknown Controller",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -12367,16 +12035,6 @@
         ],
         "summary": "Handled by Unknown Controller",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -12423,16 +12081,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -12487,16 +12135,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -12520,16 +12158,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -12553,16 +12181,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -12586,16 +12204,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -12640,16 +12248,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -12978,16 +12576,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13019,16 +12607,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13104,16 +12682,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13252,16 +12820,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13285,16 +12843,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13318,16 +12866,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13351,16 +12889,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13398,16 +12926,6 @@
         ],
         "summary": "Handled by smartRuleController.previewRule",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13431,16 +12949,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13464,16 +12972,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13523,16 +13021,6 @@
         ],
         "summary": "Handled by storefrontAdminController.updateLayout",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13571,16 +13059,6 @@
         ],
         "summary": "Handled by storefrontAdminController.createPage",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13625,16 +13103,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13677,16 +13145,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13713,16 +13171,6 @@
         ],
         "summary": "Handled by smartRuleController.previewRule",
         "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13767,16 +13215,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
@@ -13819,16 +13257,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "JSON Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful operation"
