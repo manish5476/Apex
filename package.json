@@ -24,6 +24,7 @@
     "@socket.io/redis-adapter": "^8.3.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
+    "bullmq": "^5.71.1",
     "cloudinary": "^2.8.0",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
