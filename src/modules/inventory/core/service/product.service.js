@@ -274,7 +274,7 @@ class ProductService {
 
       // Insert all journal entries in one call
       if (journalEntries.length > 0) {
-        const AccountEntry = require('../../accounting/core/accountEntry.model');
+        const AccountEntry = require('../../accounting/core/model/accountEntry.model');
         await AccountEntry.insertMany(journalEntries, { session });
       }
 
@@ -351,7 +351,7 @@ class ProductService {
     const Invoice       = require('../../accounting/billing/invoice.model');
     const Purchase      = require('../model/purchase.model');
     const PurchaseReturn = require('../model/purchase.return.model');
-    const AccountEntry  = require('../../accounting/core/accountEntry.model');
+    const AccountEntry  = require('../../accounting/core/model/accountEntry.model');
 
     // Build a clean date filter — guard against "null" / "undefined" strings
     const dateFilter = {};

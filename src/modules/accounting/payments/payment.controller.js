@@ -208,8 +208,8 @@ exports.exportPayments = factory.exportExcel(Payment, {
 // const Purchase = require('../../inventory/core/model/purchase.model');
 // const Customer = require('../../organization/core/customer.model');
 // const Supplier = require('../../organization/core/supplier.model');
-// const AccountEntry = require('../core/accountEntry.model');
-// const Account = require('../core/account.model');
+// const AccountEntry = require('../core/model/accountEntry.model');
+// const Account = require('../core/model/account.model');
 // const catchAsync = require('../../../core/utils/api/catchAsync');
 // const AppError = require('../../../core/utils/api/appError');
 // const factory = require('../../../core/utils/api/handlerFactory');
@@ -218,7 +218,7 @@ exports.exportPayments = factory.exportExcel(Payment, {
 // const paymentPDFService = require('./paymentPDF.service');
 
 // const { invalidateOpeningBalance } = require('../core/ledgerCache.service');
-// const PendingReconciliation = require('../core/pendingReconciliationModel');
+// const PendingReconciliation = require('../core/model/pendingReconciliation.model');
 // const paymentAllocationService = require('./paymentAllocation.service');
 
 // /* ======================================================

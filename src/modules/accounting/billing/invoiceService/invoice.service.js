@@ -28,7 +28,7 @@ const Invoice = require('../invoice.model');
 const Payment = require('../../payments/payment.model');
 const Product = require('../../../inventory/core/model/product.model');
 const Customer = require('../../../organization/core/customer.model');
-const AccountEntry = require('../../core/accountEntry.model');
+const AccountEntry = require('../../core/model/accountEntry.model');
 const InvoiceAudit = require('../invoiceAudit.model');
 const EMI = require('../../payments/emi.model');
 
@@ -809,7 +809,7 @@ class InvoiceService {
       JournalService.getPaymentAssetAccount(invoice.organizationId, payment.paymentMethod, session),
       JournalService.getOrInitAccount(invoice.organizationId, 'asset', 'Accounts Receivable', '1200', session),
     ]);
-    const AccountEntry = require('../../core/accountEntry.model');
+    const AccountEntry = require('../../core/model/accountEntry.model');
     await AccountEntry.create([
       {
         organizationId: invoice.organizationId, branchId: invoice.branchId,
@@ -875,7 +875,7 @@ module.exports = InvoiceService;
 // const Payment      = require('../../payments/payment.model');
 // const Product      = require('../../../inventory/core/model/product.model');
 // const Customer     = require('../../../organization/core/customer.model');
-// const AccountEntry = require('../../core/accountEntry.model');
+// const AccountEntry = require('../../core/model/accountEntry.model');
 // const InvoiceAudit = require('../invoiceAudit.model');
 // const EMI          = require('../../payments/emi.model');
 // const Counter      = require('../../../../models/counter.model');
@@ -1649,7 +1649,7 @@ module.exports = InvoiceService;
 //       JournalService.getPaymentAssetAccount(invoice.organizationId, payment.paymentMethod, session),
 //       JournalService.getOrInitAccount(invoice.organizationId, 'asset', 'Accounts Receivable', '1200', session),
 //     ]);
-//     const AccountEntry = require('../../core/accountEntry.model');
+//     const AccountEntry = require('../../core/model/accountEntry.model');
 //     await AccountEntry.create([
 //       {
 //         organizationId: invoice.organizationId, branchId: invoice.branchId,

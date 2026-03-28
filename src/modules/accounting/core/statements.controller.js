@@ -1,5 +1,5 @@
 // src/controllers/statementsController.js
-const { getProfitAndLoss, getBalanceSheet, getTrialBalance } = require('./statementsService');
+const { getProfitAndLoss, getBalanceSheet, getTrialBalance } = require('./service/statements.service');
 const { logAudit } = require('../../../core/utils/db/auditLogger');
 const { format } = require('fast-csv'); // Run: npm install fast-csv
 const asyncHandler = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);

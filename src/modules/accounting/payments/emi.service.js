@@ -24,10 +24,10 @@ const EMI       = require('./emi.model');
 const Invoice   = require('../billing/invoice.model');
 const Customer  = require('../../organization/core/customer.model');
 const Payment   = require('./payment.model');
-const AccountEntry = require('../core/accountEntry.model');
-const PendingReconciliation = require('../core/pendingReconciliationModel');
+const AccountEntry = require('../core/model/accountEntry.model');
+const PendingReconciliation = require('../core/model/pendingReconciliation.model');
 
-const JournalService = require('../core/journal.service');
+const JournalService = require('../core/service/journal.service');
 const AppError       = require('../../../core/utils/api/appError');
 const { runInTransaction } = require('../../../core/utils/db/runInTransaction');
 
@@ -460,7 +460,7 @@ class EmiService {
     const match = { organizationId, referenceType: 'emi_payment' };
     if (fromDate && toDate) match.createdAt = { $gte: new Date(fromDate), $lte: new Date(toDate) };
 
-    const AccountEntry = require('../../core/accountEntry.model');
+    const AccountEntry = require('../../core/model/accountEntry.model');
     return AccountEntry.find(match)
       .populate('accountId', 'name code')
       .populate('paymentId', 'amount paymentMethod')
@@ -506,8 +506,8 @@ module.exports = EmiService;
 // const Invoice = require('../billing/invoice.model');
 // const Customer = require('../../organization/core/customer.model');
 // const Payment = require('./payment.model');
-// const Account = require('../core/account.model');
-// const AccountEntry = require('../core/accountEntry.model');
+// const Account = require('../core/model/account.model');
+// const AccountEntry = require('../core/model/accountEntry.model');
 
 // /* ======================================================
 //    INTERNAL: APPLY EMI ACCOUNTING

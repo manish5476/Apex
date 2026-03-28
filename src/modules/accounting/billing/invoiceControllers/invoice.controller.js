@@ -525,8 +525,8 @@ module.exports = exports;
 // // const Payment = require("../../payments/payment.model");
 // // const Product = require("../../../inventory/core/model/product.model");
 // // const Customer = require("../../../organization/core/customer.model");
-// // const AccountEntry = require('../../core/accountEntry.model');
-// // const Account = require('../../core/account.model');
+// // const AccountEntry = require('../../core/model/accountEntry.model');
+// // const Account = require('../../core/model/account.model');
 // // const Organization = require("../../../organization/core/organization.model");
 // // const InvoiceAudit = require('../invoiceAudit.model');
 

@@ -1,6 +1,6 @@
 // src/services/transactionService.js
 const mongoose = require('mongoose');
-const AccountEntry = require('./accountEntry.model'); // ✅ Single Source of Truth
+const AccountEntry = require('../model/accountEntry.model'); // ✅ Single Source of Truth
 
 // --- Helper ---
 function toObjectIdIfNeeded(id) {

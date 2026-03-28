@@ -1,7 +1,7 @@
 'use strict';
 
-const Account     = require('../../../accounting/core/account.model');
-const AccountEntry = require('../../../accounting/core/accountEntry.model');
+const Account     = require('../../../accounting/core/model/account.model');
+const AccountEntry = require('../../../accounting/core/model/accountEntry.model');
 const AppError     = require('../../../../core/utils/api/appError');
 
 /**

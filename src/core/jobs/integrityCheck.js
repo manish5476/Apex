@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const AccountEntry = require('../../modules/accounting/core/accountEntry.model');
+const AccountEntry = require('../../modules/accounting/core/model/accountEntry.model');
 
 async function runIntegrityCheck() {
     console.log("🕵️ Starting Nightly Accounting Integrity Check...");

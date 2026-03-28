@@ -191,7 +191,7 @@ Write-Host "`nMigrating Accounting Module..." -ForegroundColor Cyan
 # Core Accounting
 $accountingFiles = @(
     @("models\accountModel.js", "modules\accounting\core\account.model.js"),
-    @("models\accountEntryModel.js", "modules\accounting\core\accountEntry.model.js"),
+    @("models\accountEntryModel.js", "modules\accounting\core\model\accountEntry.model.js"),
     @("controllers\accountController.js", "modules\accounting\core\account.controller.js"),
     @("controllers\ledgerController.js", "modules\accounting\core\ledger.controller.js"),
     @("controllers\transactionController.js", "modules\accounting\core\transaction.controller.js"),
@@ -746,8 +746,8 @@ Write-Host "`nCreating module index files..." -ForegroundColor Cyan
 // Accounting Module Export
 module.exports = {
     // Core
-    Account: require('./core/account.model'),
-    AccountEntry: require('./core/accountEntry.model'),
+    Account: require('./core/model/account.model'),
+    AccountEntry: require('./core/model/accountEntry.model'),
     
     // Billing
     Invoice: require('./billing/invoice.model'),

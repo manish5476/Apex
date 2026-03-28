@@ -26,13 +26,13 @@ const Purchase = require('../../inventory/core/model/purchase.model');
 const Customer = require('../../organization/core/customer.model');
 const Supplier = require('../../organization/core/supplier.model');
 const EMI = require('./emi.model');
-const PendingReconciliation = require('../core/pendingReconciliationModel');
+const PendingReconciliation = require('../core/model/pendingReconciliation.model');
 
-const JournalService = require('../core/journal.service');
-const AccountEntry = require('../core/accountEntry.model');
+const JournalService = require('../core/service/journal.service');
+const AccountEntry = require('../core/model/accountEntry.model');
 const paymentAllocationService = require('./paymentAllocation.service');
 const webhookService = require('../../../modules/webhook/webhook.service');
-const { invalidateOpeningBalance } = require('../core/ledgerCache.service');
+const { invalidateOpeningBalance } = require('../core/service/ledgerCache.service');
 const AppError = require('../../../core/utils/api/appError');
 const { runInTransaction } = require('../../../core/utils/db/runInTransaction');
 

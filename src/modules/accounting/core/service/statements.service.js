@@ -1,7 +1,7 @@
 // src/services/statementsService.js
 const mongoose = require('mongoose');
-const AccountEntry = require('../../accounting/core/accountEntry.model');
-const Account = require('../../accounting/core/account.model');
+const AccountEntry = require('../model/accountEntry.model');
+const Account = require('../model/account.model');
 
 function toObjectIdIfNeeded(id) {
   if (!id) return null;

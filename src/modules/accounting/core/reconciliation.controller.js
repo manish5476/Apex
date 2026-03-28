@@ -3,12 +3,12 @@ const Invoice = require('../billing/invoice.model');
 const Payment = require('../payments/payment.model');
 const Purchase = require('../../inventory/core/model/purchase.model');
 const Customer = require('../../organization/core/customer.model');
-const AccountEntry = require('./accountEntry.model');
-const catchAsync = require('../../../core/utils/api/catchAsync');
-const AppError = require('../../../core/utils/api/appError');
+const AccountEntry = require('./model/accountEntry.model');
+const catchAsync    = require('../../../core/utils/api/catchAsync');
+const AppError      = require('../../../core/utils/api/appError');
 // controllers/reconciliationController.js
 const emiService = require('../payments/emi.service');
-const PendingReconciliation = require('./pendingReconciliationModel');
+const PendingReconciliation = require('./model/pendingReconciliation.model');
 const EMI = require('../payments/emi.model');
 
 /**

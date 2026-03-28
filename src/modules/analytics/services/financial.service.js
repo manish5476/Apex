@@ -3,7 +3,7 @@ const Sales = require('../../inventory/core/model/sales.model');
 const Purchase = require('../../inventory/core/model/purchase.model');
 const Payment = require('../../accounting/payments/payment.model');
 const EMI = require('../../accounting/payments/emi.model');
-const AccountEntry = require('../../accounting/core/accountEntry.model');
+const AccountEntry = require('../../accounting/core/model/accountEntry.model');
 const Customer = require('../../organization/core/customer.model');
 const { toObjectId } = require('../utils/analytics.utils');
 

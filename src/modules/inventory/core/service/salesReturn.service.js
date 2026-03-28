@@ -6,7 +6,7 @@
 // const Invoice = require('../../accounting/billing/invoice.model');
 // const Product = require('../model/product.model');
 // const Customer = require('../../organization/core/customer.model');
-// const AccountEntry = require('../../accounting/core/accountEntry.model');
+// const AccountEntry = require('../../accounting/core/model/accountEntry.model');
 
 // const StockService = require('./stock.service');
 // const JournalService = require('./Journal.service');
@@ -28,7 +28,7 @@ const Counter = require('../model/Counter.model ');
 
 // Cross-module imports (Requires going up 3 levels: service -> core -> inventory -> modules)
 const Invoice = require('../../../accounting/billing/invoice.model');
-const AccountEntry = require('../../../accounting/core/accountEntry.model');
+const AccountEntry = require('../../../accounting/core/model/accountEntry.model');
 const Customer = require('../../../organization/core/customer.model');
 
 // Core utilities (Requires going up 4 levels: service -> core -> inventory -> modules -> src)

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
-const Account = require('./account.model');
-const AccountEntry = require('./accountEntry.model');
+const Account = require('../model/account.model');
+const AccountEntry = require('../model/accountEntry.model');
 
 async function listAccountsWithBalance(organizationId, { type, search } = {}) {
   const match = { organizationId: mongoose.Types.ObjectId(organizationId) };

@@ -1,7 +1,7 @@
 // src/services/adminService.js
 const mongoose = require('mongoose');
-const AccountEntry = require('../../accounting/core/accountEntry.model'); // ✅ Single Source
-const Account = require('../../accounting/core/account.model'); 
+const AccountEntry = require('../../accounting/core/model/accountEntry.model'); // ✅ Single Source
+const Account = require('../../accounting/core/model/account.model'); 
 const Customer = require('../../organization/core/customer.model');
 const Supplier = require('../../organization/core/supplier.model');
 const { getCache, setCache } = require('../../../config/redis');

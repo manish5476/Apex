@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Customer = require('../../organization/core/customer.model');
 const Sales = require('../../inventory/core/model/sales.model');
 const SalesReturn = require('../../inventory/core/model/salesReturn.model');
-const AccountEntry = require('../../accounting/core/accountEntry.model');
+const AccountEntry = require('../../accounting/core/model/accountEntry.model');
 const Product = require('../../inventory/core/model/product.model');
 const { toObjectId } = require('../utils/analytics.utils');
 

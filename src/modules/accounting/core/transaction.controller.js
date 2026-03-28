@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const AccountEntry = require('./accountEntry.model'); // ✅ Single Source of Truth
+const AccountEntry = require('./model/accountEntry.model'); // ✅ Single Source of Truth
 const { logAudit } = require('../../../core/utils/db/auditLogger');
 const { format } = require('fast-csv');
 const ApiFeatures = require('../../../core/utils/api/ApiFeatures');

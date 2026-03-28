@@ -1,5 +1,5 @@
 // src/controllers/partyTransactionController.js
-const { fetchTransactionsAggregated } = require('../../accounting/core/transaction.service');
+const { fetchTransactionsAggregated } = require('./service/transaction.service');
 const { logAudit } = require('../../../core/utils/db/auditLogger');
 
 const asyncHandler = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
