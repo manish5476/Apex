@@ -1,22 +1,20 @@
-const Sales = require('../../inventory/core/sales.model');
-const Product = require('../../inventory/core/product.model');
+const Sales = require('../../inventory/core/model/sales.model');
+const Product = require('../../inventory/core/model/product.model');
 const Customer = require('../../organization/core/customer.model');
 
+/* ==========================================================================
+   📤 EXPORT ANALYTICS SERVICE
+   ========================================================================== */
 
 const getExportData = async (orgId, type, startDate, endDate) => {
     const query = { organizationId: orgId };
 
-    // Apply Date Filters
     if (startDate || endDate) {
         const dateFilter = {};
         if (startDate) dateFilter.$gte = new Date(startDate);
         if (endDate) dateFilter.$lte = new Date(endDate);
-        
-        // Use 'updatedAt' for inventory (to see stock movement) or remove date filter for current stock
-        // For Sales/Customers we use createdAt
+
         const dateField = type === 'inventory' ? 'updatedAt' : 'createdAt';
-        
-        // Note: Usually inventory export is "Current State", so we might skip date filter for it
         if (type !== 'inventory') {
             query[dateField] = dateFilter;
         }
@@ -25,29 +23,24 @@ const getExportData = async (orgId, type, startDate, endDate) => {
     switch (type) {
         case 'sales':
             return await Sales.find(query)
-                .populate('customerId', 'name email phone') 
+                .populate('customerId', 'name email phone')
                 .sort({ createdAt: -1 })
                 .lean();
-
         case 'inventory':
-            // For inventory, we usually want active products
             query.isActive = true;
             return await Product.find(query)
                 .populate('categoryId', 'name')
                 .populate('brandId', 'name')
                 .sort({ name: 1 })
                 .lean();
-
         case 'customers':
             return await Customer.find(query)
                 .sort({ name: 1 })
                 .lean();
-
         default:
             throw new Error('Invalid export type. Must be sales, inventory, or customers.');
     }
 };
-
 
 const getExportConfig = (type) => {
     const configs = {
@@ -67,7 +60,6 @@ const getExportConfig = (type) => {
             { header: 'Category', key: 'categoryId.name', default: '-' },
             { header: 'Brand', key: 'brandId.name', default: '-' },
             { header: 'Selling Price', key: 'sellingPrice', format: 'currency' },
-            // Manually calculate stock from inventory array since virtuals don't work in lean()
             { header: 'Total Stock', key: 'inventory', transform: (inv) => inv ? inv.reduce((sum, i) => sum + i.quantity, 0) : 0 },
             { header: 'Last Sold', key: 'lastSold', format: 'date' }
         ],
@@ -82,46 +74,37 @@ const getExportConfig = (type) => {
             { header: 'Last Purchase', key: 'lastPurchaseDate', format: 'date' }
         ]
     };
-
     return configs[type] || [];
+};
+
+/**
+ * Helper to get nested object values (e.g. 'customerId.name')
+ */
+const getNestedValue = (obj, key) => {
+    return key.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), obj);
 };
 
 const convertToCSV = (data, config) => {
     if (!data || !data.length) return '';
 
-    // Create Header Row
     const headers = config.map(c => `"${c.header}"`).join(',');
 
-    // Create Data Rows
     const rows = data.map(row => {
         return config.map(col => {
-            // Get raw value (supports nested keys like 'customerId.name')
             let val = getNestedValue(row, col.key);
 
-            // Apply transformations (e.g. counting items array)
-            if (col.transform) {
-                val = col.transform(val);
-            }
+            if (col.transform) val = col.transform(val);
 
-            // Handle null/undefined
             if (val === undefined || val === null) {
                 val = col.default || '';
-            } 
-            // Handle Dates
-            else if (col.format === 'date') {
-                try {
-                    val = new Date(val).toISOString().split('T')[0];
-                } catch (e) { val = ''; }
-            } 
-            // Handle Currency
-            else if (col.format === 'currency') {
+            } else if (col.format === 'date') {
+                try { val = new Date(val).toISOString().split('T')[0]; }
+                catch (e) { val = ''; }
+            } else if (col.format === 'currency') {
                 val = Number(val).toFixed(2);
             }
 
-            // Escape quotes in data to prevent CSV breaking
-            // e.g. 'John "The Rock"' becomes '"John ""The Rock"""'
             const stringVal = String(val).replace(/"/g, '""');
-            
             return `"${stringVal}"`;
         }).join(',');
     });
@@ -129,11 +112,10 @@ const convertToCSV = (data, config) => {
     return [headers, ...rows].join('\n');
 };
 
+// FIX: Use direct function call instead of `this.convertToCSV`
 const convertToExcel = async (data, config) => {
     try {
-        // Stub - implement Excel conversion
-        // For now, return CSV as buffer
-        const csv = this.convertToCSV(data, config);
+        const csv = convertToCSV(data, config);
         return Buffer.from(csv, 'utf-8');
     } catch (error) {
         console.error('Error in convertToExcel:', error);
@@ -141,16 +123,17 @@ const convertToExcel = async (data, config) => {
     }
 };
 
+// FIX: Use direct function call instead of `this.convertToCSV`
 const convertToPDF = async (data, config) => {
     try {
-        // Stub - implement PDF conversion
-        const csv = this.convertToCSV(data, config);
+        const csv = convertToCSV(data, config);
         return Buffer.from(csv, 'utf-8');
     } catch (error) {
         console.error('Error in convertToPDF:', error);
         return Buffer.from('');
     }
 };
+
 module.exports = {
     getExportData,
     getExportConfig,

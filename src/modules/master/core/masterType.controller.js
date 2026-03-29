@@ -1,4 +1,4 @@
-const MasterType = require("./masterType.model");
+const MasterType = require("./model/masterType.model");
 const catchAsync = require("../../../core/utils/api/catchAsync");
 const AppError = require("../../../core/utils/api/appError");
 

@@ -18,9 +18,9 @@
 'use strict';
 
 const mongoose      = require('mongoose');
-const Product       = require('../../../modules/inventory/core/product.model');
+const Product       = require('../../../modules/inventory/core/model/product.model');
 const Organization  = require('../../../modules/organization/core/organization.model');
-const Master        = require('../../../modules/master/core/master.model');
+const Master        = require('../../../modules/master/core/model/master.model');
 const LayoutService = require('../../services/storefront/layout.service');
 const DataHydrationService = require('../../services/storefront/dataHydration.service');
 const AppError      = require('../../../core/utils/api/appError');

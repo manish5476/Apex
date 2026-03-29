@@ -419,7 +419,12 @@ class PaymentAllocationService {
         { allocationStatus: 'unallocated' },
         { allocationStatus: 'partially_allocated' }
       ]
-    }).sort({ paymentDate: 1 });
+    })
+      .populate([
+        { path: 'invoiceId', select: 'invoiceNumber grandTotal invoiceDate balanceAmount' },
+        { path: 'branchId', select: 'name branchCode' }
+      ])
+      .sort({ paymentDate: 1 });
   }
 
   /**

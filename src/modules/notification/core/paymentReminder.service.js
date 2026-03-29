@@ -1,7 +1,7 @@
 // src/services/paymentReminderService.js
 const cron = require("node-cron");
 const Invoice = require("../../accounting/billing/invoice.model");
-const invoicePDFService = require("../../accounting/billing/invoicePDFService");
+const invoicePDFService = require("../../accounting/billing/invoiceService/invoicePDFService");
 const { getInvoiceEmailHTML} = require("../../accounting/billing/template/invoiceEmailTemplate");
 const sendEmail = require("../../../core/infra/email");
 const AppError = require("../../../core/utils/api/appError");

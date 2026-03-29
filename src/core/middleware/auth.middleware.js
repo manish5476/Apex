@@ -2,6 +2,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../../modules/auth/core/user.model");
 const Organization = require("../../modules/organization/core/organization.model");
+const catchAsync = require("../utils/api/catchAsync");
 
 const JWT_SECRET = process.env.JWT_SECRET || "change_this_secret";
 
@@ -129,3 +130,10 @@ exports.restrictToSuperAdmin = (req, res, next) => {
   }
   next();
 };
+
+exports.verifyOrgAccess = catchAsync(async (req, res, next) => {
+  if (req.user.organizationId.toString() !== req.params.orgId?.toString()) {
+    return next(new AppError('Access denied', 403));
+  }
+  next();
+});

@@ -1,6 +1,6 @@
 const AccountEntry = require('./accountEntry.model');
 const Account = require('./account.model');
-const Product = require('../../inventory/core/product.model');
+const Product = require('../../inventory/core/model/product.model');
 const AppError = require('../../../core/utils/api/appError');
 
 async function getAccount(orgId, code, fallbackName, type, session) {

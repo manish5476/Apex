@@ -11,15 +11,15 @@ const sessionSchema = new mongoose.Schema({
   ipAddress: { type: String, default: null },
   userAgent: { type: String, default: null },
 
-  token: { type: String, required: true, index: true }, // stored token (JWT)
+  token: { type: String, required: true, index: true }, // current JWT
+  previousToken: { type: String, default: null, index: true }, // NEW: store previous token for grace period
+  refreshToken: { type: String, index: true }, // stored refresh token
   isValid: { type: Boolean, default: true }, // admin or system can invalidate
 
+  lastTokenUpdateAt: { type: Date, default: Date.now }, // NEW: track when token was rotated
   loggedInAt: { type: Date, default: Date.now },
   lastActivityAt: { type: Date, default: Date.now },
 }, { timestamps: true });
-
-// quick TTL cleanup optional — keep for audit (comment out if not desired)
-// sessionSchema.index({ lastActivityAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 }); // auto-delete after 90 days
 
 module.exports = mongoose.model("Session", sessionSchema);
 

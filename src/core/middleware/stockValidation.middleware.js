@@ -1,5 +1,5 @@
 // src/core/middleware/stockValidation.middleware.js
-const StockValidationService = require("../../modules/inventory/core/stockValidationService");
+const StockValidationService = require("../../modules/inventory/core/service/stockValidation.service");
 const catchAsync = require("../utils/api/catchAsync");
 const AppError = require("../utils/api/appError");
 

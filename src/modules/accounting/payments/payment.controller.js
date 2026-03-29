@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Payment = require('./payment.model');
 const Invoice = require('../billing/invoice.model');
-const Purchase = require('../../inventory/core/purchase.model');
+const Purchase = require('../../inventory/core/model/purchase.model');
 const Customer = require('../../organization/core/customer.model');
 const Supplier = require('../../organization/core/supplier.model');
 const AccountEntry = require('../core/accountEntry.model');
@@ -9,9 +9,10 @@ const Account = require('../core/account.model');
 const catchAsync = require('../../../core/utils/api/catchAsync');
 const AppError = require('../../../core/utils/api/appError');
 const factory = require('../../../core/utils/api/handlerFactory');
+const EMI = require('./emi.model');
 const emiService = require('./emiService');
 const paymentPDFService = require('./paymentPDF.service');
-const automationService = require('../../webhook/automationService');
+const automationService = require('../../webhook/legacy/automationService');
 const { invalidateOpeningBalance } = require('../core/ledgerCache.service');
 const PendingReconciliation = require('../core/pendingReconciliationModel');
 const paymentAllocationService = require('./paymentAllocation.service');
@@ -80,6 +81,85 @@ async function postPaymentLedger({ payment, session, reverse = false }) {
         createdBy
       }
     ], { session });
+  }
+}
+
+/**
+ * 🟡 DATA INTEGRITY HELPER: Reverses all financial impacts of a payment.
+ * Used for both Cancellation AND Deletion.
+ */
+async function handlePaymentReversal(payment, session) {
+  // 1. Ledger reversal
+  await postPaymentLedger({ payment, session, reverse: true });
+
+  // 2. Customer/Supplier Balance reversal
+  if (payment.type === 'inflow' && payment.customerId) {
+    await Customer.findByIdAndUpdate(
+      payment.customerId,
+      { $inc: { outstandingBalance: payment.amount } },
+      { session }
+    );
+  } else if (payment.type === 'outflow' && payment.supplierId) {
+    await Supplier.findByIdAndUpdate(
+      payment.supplierId,
+      { $inc: { outstandingBalance: payment.amount } },
+      { session }
+    );
+  }
+
+  // 3. Robust Allocation Reversal
+  // We handle both advanced allocatedTo array and simple top-level links
+  const targets = payment.allocatedTo && payment.allocatedTo.length > 0
+    ? [...payment.allocatedTo]
+    : [];
+
+  // Add top-level invoice if not already in targets
+  if (payment.invoiceId && !targets.find(t => t.documentId?.toString() === payment.invoiceId.toString())) {
+    targets.push({ type: 'invoice', documentId: payment.invoiceId, amount: payment.amount });
+  }
+
+  // Add top-level purchase if not already in targets
+  if (payment.purchaseId && !targets.find(t => t.documentId?.toString() === payment.purchaseId.toString())) {
+    targets.push({ type: 'purchase', documentId: payment.purchaseId, amount: payment.amount });
+  }
+
+  for (const target of targets) {
+    if (target.type === 'invoice') {
+      const invoice = await Invoice.findById(target.documentId).session(session);
+      if (invoice) {
+        invoice.paidAmount = Math.max((invoice.paidAmount || 0) - target.amount, 0);
+        invoice.balanceAmount = invoice.grandTotal - invoice.paidAmount;
+        invoice.paymentStatus = invoice.paidAmount === 0 ? 'unpaid' : 'partial';
+        await invoice.save({ session });
+      }
+    }
+    else if (target.type === 'purchase') {
+      const purchase = await Purchase.findById(target.documentId).session(session);
+      if (purchase) {
+        purchase.paidAmount = Math.max((purchase.paidAmount || 0) - target.amount, 0);
+        purchase.balanceAmount = purchase.grandTotal - purchase.paidAmount;
+        purchase.paymentStatus = purchase.paidAmount === 0 ? 'unpaid' : 'partial';
+        await purchase.save({ session });
+      }
+    }
+    else if (target.type === 'emi' && (target.emiId || target.documentId)) {
+      const emiId = target.emiId || target.documentId;
+      const emi = await EMI.findById(emiId).session(session);
+      if (emi) {
+        const inst = emi.installments.find(i => i.installmentNumber === target.installmentNumber);
+        if (inst) {
+          inst.paidAmount = Math.max((inst.paidAmount || 0) - target.amount, 0);
+          inst.paymentStatus = inst.dueDate < new Date() ? 'overdue' : 'pending';
+          inst.paymentId = null;
+          inst.paidAt = null;
+          // Note: emi.save() trigger will auto-update emi.status
+          await emi.save({ session });
+        }
+      }
+    }
+    else if (target.type === 'advance' && payment.customerId) {
+      await Customer.findByIdAndUpdate(payment.customerId, { $inc: { advanceBalance: -target.amount } }, { session });
+    }
   }
 }
 
@@ -199,47 +279,6 @@ exports.createPayment = catchAsync(async (req, res) => {
 });
 
 /* ======================================================
-   UPDATE PAYMENT (REVERSAL SAFE)
-====================================================== */
-// exports.updatePayment = catchAsync(async (req, res) => {
-//   const payment = await Payment.findOne({ _id: req.params.id, organizationId: req.user.organizationId });
-//   if (!payment) throw new AppError('Payment not found', 404);
-//   if (payment.status === 'completed' && req.body.status === 'cancelled') {
-//     const session = await mongoose.startSession();
-//     session.startTransaction();
-//     try {
-//       await postPaymentLedger({ payment, session, reverse: true });
-//       if (payment.type === 'inflow' && payment.customerId) {
-//         await Customer.findByIdAndUpdate(
-//           payment.customerId,
-//           { $inc: { outstandingBalance: payment.amount } },
-//           { session }
-//         );
-//       }
-
-//       if (payment.type === 'outflow' && payment.supplierId) {
-//         await Supplier.findByIdAndUpdate(
-//           payment.supplierId,
-//           { $inc: { outstandingBalance: payment.amount } },
-//           { session }
-//         );
-//       }
-
-//       payment.status = 'cancelled';
-//       await payment.save({ session });
-
-//       await session.commitTransaction();
-//     } catch (e) {
-//       await session.abortTransaction();
-//       throw e;
-//     } finally {
-//       session.endSession();
-//     }
-//   }
-
-//   res.json({ status: 'success' });
-// });
-/* ======================================================
    UPDATE PAYMENT (REVERSAL SAFE & SYNCED)
 ====================================================== */
 exports.updatePayment = catchAsync(async (req, res) => {
@@ -256,79 +295,7 @@ exports.updatePayment = catchAsync(async (req, res) => {
     session.startTransaction();
 
     try {
-      // 1. Reverse Ledger Entries (Existing Logic)
-      await postPaymentLedger({ payment, session, reverse: true });
-
-      // 2. Reverse Customer Balance (Existing Logic)
-      if (payment.type === 'inflow' && payment.customerId) {
-        await Customer.findByIdAndUpdate(
-          payment.customerId,
-          { $inc: { outstandingBalance: payment.amount } },
-          { session }
-        );
-      }
-
-      // 3. Reverse Supplier Balance (Existing Logic)
-      if (payment.type === 'outflow' && payment.supplierId) {
-        await Supplier.findByIdAndUpdate(
-          payment.supplierId,
-          { $inc: { outstandingBalance: payment.amount } },
-          { session }
-        );
-      }
-
-      // ============================================================
-      // 4. [NEW] Reverse Impact on INVOICE (Customer Payment)
-      // ============================================================
-      if (payment.invoiceId) {
-        const invoice = await Invoice.findById(payment.invoiceId).session(session);
-        if (invoice) {
-          // Decrease paid amount
-          invoice.paidAmount = (invoice.paidAmount || 0) - payment.amount;
-
-          // Prevent negative floating point errors
-          if (invoice.paidAmount < 0) invoice.paidAmount = 0;
-
-          // Recalculate Balance
-          invoice.balanceAmount = invoice.grandTotal - invoice.paidAmount;
-
-          // Revert Status
-          if (invoice.paidAmount === 0) {
-            invoice.paymentStatus = 'unpaid';
-          } else {
-            invoice.paymentStatus = 'partial';
-          }
-
-          await invoice.save({ session });
-        }
-      }
-
-      // ============================================================
-      // 5. [NEW] Reverse Impact on PURCHASE (Supplier Payment)
-      // ============================================================
-      if (payment.purchaseId) {
-        const purchase = await Purchase.findById(payment.purchaseId).session(session);
-        if (purchase) {
-          // Decrease paid amount
-          purchase.paidAmount = (purchase.paidAmount || 0) - payment.amount;
-
-          // Prevent negative floating point errors
-          if (purchase.paidAmount < 0) purchase.paidAmount = 0;
-
-          // Recalculate Balance
-          purchase.balanceAmount = purchase.grandTotal - purchase.paidAmount;
-
-          // Revert Status
-          if (purchase.paidAmount === 0) {
-            purchase.paymentStatus = 'unpaid';
-          } else {
-            purchase.paymentStatus = 'partial';
-          }
-
-          await purchase.save({ session });
-        }
-      }
-      // ============================================================
+      await handlePaymentReversal(payment, session);
 
       // 6. Mark Payment as Cancelled
       payment.status = 'cancelled';
@@ -348,28 +315,110 @@ exports.updatePayment = catchAsync(async (req, res) => {
 /* ======================================================
    READ / EXPORT
 ====================================================== */
+exports.exportPayments = factory.exportExcel(Payment, {
+  fileName: "Payments_Report",
+  sheetName: "Payments",
+  populate: [
+    { path: "customerId", select: "name" },
+    { path: "supplierId", select: "name" },
+    { path: "invoiceId", select: "invoiceNumber" },
+    { path: "branchId", select: "name" }
+  ],
+  exportFields: [
+    { header: "DATE", key: "paymentDate", width: 15 },
+    { header: "TYPE", key: "type", width: 10 },
+    { header: "CUSTOMER", key: "customerId.name", width: 25 },
+    { header: "SUPPLIER", key: "supplierId.name", width: 25 },
+    { header: "AMOUNT", key: "amount", width: 15 },
+    { header: "METHOD", key: "paymentMethod", width: 15 },
+    { header: "REFERENCE", key: "referenceNumber", width: 20 },
+    { header: "STATUS", key: "status", width: 15 },
+    { header: "BRANCH", key: "branchId.name", width: 20 }
+  ]
+});
+
 exports.getAllPayments = factory.getAll(Payment, {
   populate: [
-    { 
-      path: 'customerId', 
-      select: 'name phone type email gstNumber' 
+    {
+      path: 'customerId',
+      select: 'name phone type email gstNumber'
     },
-    { 
-      path: 'invoiceId', 
-      select: 'invoiceNumber grandTotal invoiceDate balanceAmount' 
+    {
+      path: 'supplierId',
+      select: 'name phone type email'
     },
-    { 
-      path: 'branchId', 
-      select: 'name branchCode' 
+    {
+      path: 'invoiceId',
+      select: 'invoiceNumber grandTotal invoiceDate balanceAmount'
+    },
+    {
+      path: 'purchaseId',
+      select: 'purchaseNumber grandTotal purchaseDate balanceAmount'
+    },
+    {
+      path: 'branchId',
+      select: 'name branchCode'
     }
   ]
 });
 
-exports.getPayment = factory.getOne(Payment);
-exports.deletePayment = factory.deleteOne(Payment);
+exports.getPayment = factory.getOne(Payment, {
+  populate: [
+    {
+      path: 'customerId',
+      select: 'name phone type email gstNumber'
+    },
+    {
+      path: 'supplierId',
+      select: 'name phone type email'
+    },
+    {
+      path: 'invoiceId',
+      select: 'invoiceNumber grandTotal invoiceDate balanceAmount'
+    },
+    {
+      path: 'purchaseId',
+      select: 'purchaseNumber grandTotal purchaseDate balanceAmount'
+    },
+    {
+      path: 'branchId',
+      select: 'name branchCode'
+    }
+  ]
+});
+exports.deletePayment = catchAsync(async (req, res) => {
+  const payment = await Payment.findOne({
+    _id: req.params.id,
+    organizationId: req.user.organizationId
+  });
+
+  if (!payment) throw new AppError('Payment not found', 404);
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // 1. Reverse all financial impacts
+    await handlePaymentReversal(payment, session);
+
+    // 2. Soft delete the payment
+    payment.isDeleted = true;
+    payment.status = 'cancelled';
+    payment.updatedBy = req.user._id;
+    await payment.save({ session });
+
+    await session.commitTransaction();
+    res.status(204).json({ status: 'success', data: null });
+  } catch (e) {
+    await session.abortTransaction();
+    throw e;
+  } finally {
+    session.endSession();
+  }
+});
 
 exports.downloadReceipt = catchAsync(async (req, res) => {
-  const buffer = await paymentPDFService.downloadPaymentPDF(req.params.id, req.user.organizationIds);
+  const buffer = await paymentPDFService.downloadPaymentPDF(req.params.id, req.user.organizationId);
   res.set({
     'Content-Type': 'application/pdf',
     'Content-Disposition': `inline; filename=receipt_${req.params.id}.pdf`
@@ -385,7 +434,12 @@ exports.getPaymentsByCustomer = catchAsync(async (req, res) => {
     organizationId: req.user.organizationId,
     customerId: req.params.customerId,
     isDeleted: { $ne: true }
-  }).sort({ paymentDate: -1 });
+  })
+    .populate([
+      { path: 'invoiceId', select: 'invoiceNumber grandTotal invoiceDate balanceAmount' },
+      { path: 'branchId', select: 'name branchCode' }
+    ])
+    .sort({ paymentDate: -1 });
 
   res.status(200).json({
     status: 'success',
@@ -402,7 +456,12 @@ exports.getPaymentsBySupplier = catchAsync(async (req, res) => {
     organizationId: req.user.organizationId,
     supplierId: req.params.supplierId,
     isDeleted: { $ne: true }
-  }).sort({ paymentDate: -1 });
+  })
+    .populate([
+      { path: 'purchaseId', select: 'purchaseNumber grandTotal purchaseDate balanceAmount' },
+      { path: 'branchId', select: 'name branchCode' }
+    ])
+    .sort({ paymentDate: -1 });
 
   res.status(200).json({
     status: 'success',
@@ -535,132 +594,6 @@ exports.paymentGatewayWebhook = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: 'acknowledged' });
 });
 
-// exports.paymentGatewayWebhook = catchAsync(async (req, res, next) => {
-//   const {
-//     event, // 'payment.success', 'payment.failed', etc.
-//     transaction_id,
-//     invoice_id, // Your invoice number
-//     amount,
-//     currency,
-//     payment_method,
-//     timestamp,
-//     customer_email,
-//     metadata
-//   } = req.body;
-
-//   // Find organization by invoice number
-//   const invoice = await Invoice.findOne({
-//     invoiceNumber: invoice_id
-//   }).populate('organizationId');
-
-//   if (!invoice) {
-//     return res.status(404).json({
-//       status: 'error',
-//       message: 'Invoice not found'
-//     });
-//   }
-
-//   // if (event === 'payment.success') {
-//   //   try {
-//   //     const result = await emiService.autoReconcilePayment({
-//   //       organizationId: invoice.organizationId._id,
-//   //       branchId: invoice.branchId,
-//   //       invoiceId: invoice._id,
-//   //       amount: amount / 100, // Convert from paise to rupees
-//   //       paymentDate: new Date(timestamp * 1000),
-//   //       paymentMethod: mapPaymentMethod(payment_method),
-//   //       transactionId: transaction_id,
-//   //       gateway: 'razorpay', // or 'stripe', 'paypal', etc.
-//   //       createdBy: null // System user
-//   //     });
-
-//   //     return res.status(200).json({
-//   //       status: 'success',
-//   //       message: 'Payment reconciled successfully',
-//   //       data: result
-//   //     });
-
-//   //   } catch (error) {
-//   //     // Store for manual reconciliation
-//   // await PendingReconciliation.create({
-//   //   organizationId: invoice.organizationId._id,
-//   //   invoiceId: invoice._id,
-//   //   customerId: invoice.customerId,
-//   //   externalTransactionId: transaction_id,
-//   //   amount: amount / 100,
-//   //   paymentDate: new Date(timestamp * 1000),
-//   //   paymentMethod: mapPaymentMethod(payment_method),
-//   //   gateway: 'razorpay',
-//   //   rawData: req.body,
-//   //   status: 'pending',
-//   //   error: error.message
-//   // });
-
-//   //     return res.status(200).json({
-//   //       status: 'pending',
-//   //       message: 'Payment queued for manual reconciliation',
-//   //       transaction_id
-//   //     });
-//   //   }
-//   // }
-
-//   if (event === 'payment.success') {
-//     try {
-//       // 1. Create payment record
-//       const payment = await Payment.create({
-//         organizationId: invoice.organizationId._id,
-//         branchId: invoice.branchId,
-//         type: 'inflow',
-//         amount: amount / 100,
-//         customerId: invoice.customerId,
-//         invoiceId: invoice._id,
-//         paymentMethod: mapPaymentMethod(payment_method),
-//         transactionId: transaction_id,
-//         paymentDate: new Date(timestamp * 1000),
-//         referenceNumber: transaction_id,
-//         status: 'completed',
-//         transactionMode: 'auto',
-//         createdBy: null
-//       });
-
-//       // 2. Auto-allocate payment
-//       await paymentAllocationService.autoAllocatePayment(
-//         payment._id,
-//         invoice.organizationId._id
-//       );
-
-//       return res.status(200).json({
-//         status: 'success',
-//         message: 'Payment recorded and allocated',
-//         data: { paymentId: payment._id }
-//       });
-
-//     } catch (error) {
-//       // Store for manual reconciliation
-//       await PendingReconciliation.create({
-//         organizationId: invoice.organizationId._id,
-//         invoiceId: invoice._id,
-//         customerId: invoice.customerId,
-//         externalTransactionId: transaction_id,
-//         amount: amount / 100,
-//         paymentDate: new Date(timestamp * 1000),
-//         paymentMethod: mapPaymentMethod(payment_method),
-//         gateway: 'razorpay',
-//         rawData: req.body,
-//         status: 'pending',
-//         error: error.message
-//       });
-
-//       return res.status(200).json({
-//         status: 'pending',
-//         message: 'Payment queued for manual reconciliation',
-//         transaction_id
-//       });
-//     }
-//   }
-//   res.status(200).json({ status: 'acknowledged' });
-// });
-
 function mapPaymentMethod(gatewayMethod) {
   const mapping = {
     'card': 'credit',
@@ -671,7 +604,6 @@ function mapPaymentMethod(gatewayMethod) {
   };
   return mapping[gatewayMethod] || 'other';
 }
-
 
 /* ======================================================
    GET CUSTOMER PAYMENT SUMMARY

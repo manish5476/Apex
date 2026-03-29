@@ -112,11 +112,11 @@ exports.getMyProfile = [
 exports.updateMyProfile = catchAsync(async (req, res, next) => {
   // 🟢 SECURITY: Prevent privilege escalation
   const restrictedFields = [
-    "password", "passwordConfirm", "role", "isOwner", "organizationId", 
+    "password", "passwordConfirm", "role", "isOwner", "organizationId",
     "isActive", "status", "email", "phone", "employeeProfile.employeeId",
     "isLoginBlocked", "loginAttempts", "lockUntil", "refreshTokens"
   ];
-  
+
   restrictedFields.forEach(field => {
     if (req.body[field] !== undefined) delete req.body[field];
   });
@@ -127,9 +127,9 @@ exports.updateMyProfile = catchAsync(async (req, res, next) => {
     "preferences.theme", "preferences.notifications",
     "employeeProfile.secondaryPhone", "employeeProfile.guarantorDetails"
   ];
-  
+
   const filteredBody = {};
-  
+
   // Handle nested updates
   Object.keys(req.body).forEach((key) => {
     if (allowedFields.includes(key) || key.startsWith('preferences.') || key.startsWith('employeeProfile.')) {
@@ -146,14 +146,14 @@ exports.updateMyProfile = catchAsync(async (req, res, next) => {
   }
 
   const updatedUser = await User.findByIdAndUpdate(
-    req.user.id, 
+    req.user.id,
     { $set: filteredBody },
     { new: true, runValidators: true }
   ).populate("role", "name");
 
-  res.status(200).json({ 
-    status: "success", 
-    data: { user: updatedUser } 
+  res.status(200).json({
+    status: "success",
+    data: { user: updatedUser }
   });
 });
 
@@ -177,9 +177,9 @@ exports.uploadProfilePhoto = catchAsync(async (req, res, next) => {
   const asset = await imageUploadService.uploadAndRecord(req.file, req.user, 'avatar');
   const updatedUser = await User.findByIdAndUpdate(
     req.user.id,
-    { 
-      avatar: asset.url,        
-      avatarAsset: asset._id    
+    {
+      avatar: asset.url,
+      avatarAsset: asset._id
     },
     { new: true, runValidators: true }
   ).select("-password -refreshTokens -loginAttempts -lockUntil");
@@ -187,38 +187,12 @@ exports.uploadProfilePhoto = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: "success",
     message: "Profile photo updated successfully.",
-    data: { 
+    data: {
       user: updatedUser,
       asset // Returning asset details in case the frontend needs the size/format
     },
   });
 });
-
-// /**
-//  * @desc    Upload profile photo
-//  * @route   POST /api/v1/users/me/photo
-//  * @access  Private
-//  */
-// exports.uploadProfilePhoto = catchAsync(async (req, res, next) => {
-//   if (!req.file || !req.file.buffer) {
-//     return next(new AppError("Please upload an image file.", 400));
-//   }
-
-//   const folder = `profiles/${req.user.organizationId || "global"}`;
-//   const uploadResult = await imageUploadService.uploadImage(req.file.buffer, folder);
-
-//   const updatedUser = await User.findByIdAndUpdate(
-//     req.user.id,
-//     { avatar: uploadResult.url || uploadResult },
-//     { new: true, runValidators: true }
-//   ).select("-password -refreshTokens -loginAttempts -lockUntil");
-
-//   res.status(200).json({
-//     status: "success",
-//     message: "Profile photo updated successfully.",
-//     data: { user: updatedUser },
-//   });
-// });
 
 /**
  * @desc    Get my permissions
@@ -260,8 +234,8 @@ exports.getMyDevices = catchAsync(async (req, res) => {
     userId: req.user._id,
     isValid: true
   })
-  .select('-token -refreshToken')
-  .sort('-lastActivityAt');
+    .select('-token -refreshToken')
+    .sort('-lastActivityAt');
 
   const currentSessionId = req.session?._id;
 
@@ -323,17 +297,17 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
 
   // Custom Filters for nested fields
   if (req.query.department) {
-    const dept = await Department.findOne({ 
-      name: req.query.department, 
-      organizationId: req.user.organizationId 
+    const dept = await Department.findOne({
+      name: req.query.department,
+      organizationId: req.user.organizationId
     });
     if (dept) req.query['employeeProfile.departmentId'] = dept._id;
   }
 
   if (req.query.designation) {
-    const desig = await Designation.findOne({ 
-      title: req.query.designation, 
-      organizationId: req.user.organizationId 
+    const desig = await Designation.findOne({
+      title: req.query.designation,
+      organizationId: req.user.organizationId
     });
     if (desig) req.query['employeeProfile.designationId'] = desig._id;
   }
@@ -421,7 +395,7 @@ exports.getUserActivity = catchAsync(async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(100)
       .lean(),
-    
+
     Session.find({
       userId: userId,
       organizationId: org
@@ -449,15 +423,15 @@ exports.getUserActivity = catchAsync(async (req, res, next) => {
  * @access  Private
  */
 exports.getOrgHierarchy = catchAsync(async (req, res, next) => {
-  const users = await User.find({ 
-    organizationId: req.user.organizationId, 
+  const users = await User.find({
+    organizationId: req.user.organizationId,
     isActive: true,
     status: 'approved'
   })
-  .select('name avatar email employeeProfile.designationId employeeProfile.departmentId employeeProfile.reportingManagerId')
-  .populate('employeeProfile.designationId', 'title level')
-  .populate('employeeProfile.departmentId', 'name')
-  .lean();
+    .select('name avatar email employeeProfile.designationId employeeProfile.departmentId employeeProfile.reportingManagerId')
+    .populate('employeeProfile.designationId', 'title level')
+    .populate('employeeProfile.departmentId', 'name')
+    .lean();
 
   // Build reporting tree
   const userMap = {};
@@ -517,9 +491,9 @@ exports.getUsersByDepartment = catchAsync(async (req, res, next) => {
     'employeeProfile.departmentId': departmentId,
     isActive: true
   })
-  .select('name email phone avatar employeeProfile.designationId employeeProfile.employeeId')
-  .populate('employeeProfile.designationId', 'title')
-  .sort('name');
+    .select('name email phone avatar employeeProfile.designationId employeeProfile.employeeId')
+    .populate('employeeProfile.designationId', 'title')
+    .sort('name');
 
   res.status(200).json({
     status: 'success',
@@ -566,33 +540,33 @@ exports.createUser = catchAsync(async (req, res, next) => {
     }
 
     if (attendanceConfig?.shiftId) {
-      const validShift = await Shift.findOne({ 
-        _id: attendanceConfig.shiftId, 
-        organizationId: orgId 
+      const validShift = await Shift.findOne({
+        _id: attendanceConfig.shiftId,
+        organizationId: orgId
       }).session(session);
       if (!validShift) throw new AppError("Invalid Shift ID.", 400);
     }
 
     if (employeeProfile?.departmentId) {
-      const validDept = await Department.findOne({ 
-        _id: employeeProfile.departmentId, 
-        organizationId: orgId 
+      const validDept = await Department.findOne({
+        _id: employeeProfile.departmentId,
+        organizationId: orgId
       }).session(session);
       if (!validDept) throw new AppError("Invalid Department ID.", 400);
     }
 
     if (employeeProfile?.designationId) {
-      const validDesig = await Designation.findOne({ 
-        _id: employeeProfile.designationId, 
-        organizationId: orgId 
+      const validDesig = await Designation.findOne({
+        _id: employeeProfile.designationId,
+        organizationId: orgId
       }).session(session);
       if (!validDesig) throw new AppError("Invalid Designation ID.", 400);
     }
 
     if (req.body.branchId) {
-      const validBranch = await Branch.findOne({ 
-        _id: req.body.branchId, 
-        organizationId: orgId 
+      const validBranch = await Branch.findOne({
+        _id: req.body.branchId,
+        organizationId: orgId
       }).session(session);
       if (!validBranch) throw new AppError("Invalid Branch ID.", 400);
     }
@@ -635,10 +609,10 @@ exports.createUser = catchAsync(async (req, res, next) => {
   } catch (error) {
     await session.abortTransaction();
     if (error.code === 11000) {
-      const field = error.keyPattern?.email ? 'Email' : 
-                   error.keyPattern?.phone ? 'Phone' : 
-                   error.keyPattern?.['employeeProfile.employeeId'] ? 'Employee ID' : 
-                   'Field';
+      const field = error.keyPattern?.email ? 'Email' :
+        error.keyPattern?.phone ? 'Phone' :
+          error.keyPattern?.['employeeProfile.employeeId'] ? 'Employee ID' :
+            'Field';
       return next(new AppError(`${field} already exists in this organization.`, 400));
     }
     return next(error);
@@ -660,12 +634,12 @@ exports.createUser = catchAsync(async (req, res, next) => {
 exports.updateUser = catchAsync(async (req, res, next) => {
   const targetUser = await User.findById(req.params.id).populate('role');
   if (!targetUser) return next(new AppError("User not found", 404));
-  
+
   validateUserAction(req.user, targetUser);
 
   // 1. Filter out restricted fields
   const forbiddenFields = [
-    "password", "passwordConfirm", "organizationId", "createdBy", 
+    "password", "passwordConfirm", "organizationId", "createdBy",
     "isOwner", "refreshTokens", "loginAttempts", "lockUntil"
   ];
   forbiddenFields.forEach(f => delete req.body[f]);
@@ -700,25 +674,25 @@ exports.updateUser = catchAsync(async (req, res, next) => {
 
   // 4. Validate Reference IDs (Organization-bound check)
   if (updatePayload['employeeProfile.reportingManagerId']) {
-    const managerExists = await User.exists({ 
-      _id: updatePayload['employeeProfile.reportingManagerId'], 
-      organizationId: req.user.organizationId 
+    const managerExists = await User.exists({
+      _id: updatePayload['employeeProfile.reportingManagerId'],
+      organizationId: req.user.organizationId
     });
     if (!managerExists) return next(new AppError("Reporting Manager not found.", 400));
   }
 
   if (updatePayload['employeeProfile.departmentId']) {
-    const deptExists = await Department.exists({ 
-      _id: updatePayload['employeeProfile.departmentId'], 
-      organizationId: req.user.organizationId 
+    const deptExists = await Department.exists({
+      _id: updatePayload['employeeProfile.departmentId'],
+      organizationId: req.user.organizationId
     });
     if (!deptExists) return next(new AppError("Department not found.", 400));
   }
 
   if (updatePayload['employeeProfile.designationId']) {
-    const desigExists = await Designation.exists({ 
-      _id: updatePayload['employeeProfile.designationId'], 
-      organizationId: req.user.organizationId 
+    const desigExists = await Designation.exists({
+      _id: updatePayload['employeeProfile.designationId'],
+      organizationId: req.user.organizationId
     });
     if (!desigExists) return next(new AppError("Designation not found.", 400));
   }
@@ -727,24 +701,24 @@ exports.updateUser = catchAsync(async (req, res, next) => {
   // 🛡️ CRITICAL: We MUST populate startTime and endTime. 
   // If we only select 'name', the duration virtual in Shift model will crash on .split(':')
   const updatedUser = await User.findByIdAndUpdate(
-    req.params.id, 
-    { $set: updatePayload }, 
+    req.params.id,
+    { $set: updatePayload },
     { new: true, runValidators: true }
   )
-  .populate("employeeProfile.designationId", "title")
-  .populate("employeeProfile.departmentId", "name")
-  .populate("attendanceConfig.shiftId", "name startTime endTime") // <--- FIXED: Added timing fields
-  .select("-password -refreshTokens -loginAttempts -lockUntil");
+    .populate("employeeProfile.designationId", "title")
+    .populate("employeeProfile.departmentId", "name")
+    .populate("attendanceConfig.shiftId", "name startTime endTime") // <--- FIXED: Added timing fields
+    .select("-password -refreshTokens -loginAttempts -lockUntil");
 
-  res.status(200).json({ 
-    status: "success", 
-    data: { user: updatedUser } 
+  res.status(200).json({
+    status: "success",
+    data: { user: updatedUser }
   });
 });
 // exports.updateUser = catchAsync(async (req, res, next) => {
 //   const targetUser = await User.findById(req.params.id).populate('role');
 //   if (!targetUser) return next(new AppError("User not found", 404));
-  
+
 //   validateUserAction(req.user, targetUser);
 
 //   const forbiddenFields = [
@@ -844,7 +818,7 @@ exports.deleteUser = catchAsync(async (req, res, next) => {
   targetUser.blockedAt = new Date();
   targetUser.blockedBy = req.user._id;
   targetUser.updatedBy = req.user._id;
-  
+
   await targetUser.save({ validateBeforeSave: false });
 
   // Invalidate all sessions
@@ -865,7 +839,7 @@ exports.deleteUser = catchAsync(async (req, res, next) => {
  */
 exports.adminUpdatePassword = catchAsync(async (req, res, next) => {
   const { password, passwordConfirm } = req.body;
-  
+
   if (password !== passwordConfirm) {
     return next(new AppError("Passwords do not match", 400));
   }
@@ -874,9 +848,9 @@ exports.adminUpdatePassword = catchAsync(async (req, res, next) => {
     return next(new AppError("Password must be at least 8 characters long", 400));
   }
 
-  const targetUser = await User.findOne({ 
-    _id: req.params.id, 
-    organizationId: req.user.organizationId 
+  const targetUser = await User.findOne({
+    _id: req.params.id,
+    organizationId: req.user.organizationId
   }).select("+password");
 
   if (!targetUser) return next(new AppError("User not found", 404));
@@ -887,7 +861,7 @@ exports.adminUpdatePassword = catchAsync(async (req, res, next) => {
   targetUser.passwordConfirm = passwordConfirm;
   targetUser.passwordChangedAt = Date.now() - 1000;
   targetUser.updatedBy = req.user._id;
-  
+
   await targetUser.save();
 
   // Invalidate all existing sessions for security
@@ -896,9 +870,9 @@ exports.adminUpdatePassword = catchAsync(async (req, res, next) => {
     { isValid: false, terminatedAt: new Date() }
   );
 
-  res.status(200).json({ 
-    status: "success", 
-    message: "Password updated successfully. User will need to login again." 
+  res.status(200).json({
+    status: "success",
+    message: "Password updated successfully. User will need to login again."
   });
 });
 
@@ -936,21 +910,21 @@ exports.uploadUserPhotoByAdmin = catchAsync(async (req, res, next) => {
   // 3. UPDATE TARGET USER: Link the new URL and Asset ID
   const updatedUser = await User.findByIdAndUpdate(
     targetUser._id,
-    { 
+    {
       avatar: asset.url,
       avatarAsset: asset._id, // Keep the DB link tight
-      updatedBy: req.user._id 
+      updatedBy: req.user._id
     },
     { new: true, runValidators: true }
   ).select("-password -refreshTokens -loginAttempts -lockUntil");
 
-  res.status(200).json({ 
+  res.status(200).json({
     status: "success",
     message: "User photo updated successfully by Admin.",
-    data: { 
+    data: {
       user: updatedUser,
-      asset 
-    } 
+      asset
+    }
   });
 });
 
@@ -1017,7 +991,7 @@ exports.toggleUserBlock = catchAsync(async (req, res, next) => {
     targetUser.blockReason = reason || 'Blocked by administrator';
     targetUser.blockedAt = new Date();
     targetUser.blockedBy = req.user._id;
-    
+
     // Invalidate all sessions when blocking
     await Session.updateMany(
       { userId: targetUser._id, isValid: true },
@@ -1034,10 +1008,10 @@ exports.toggleUserBlock = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     message: blockStatus ? 'User has been blocked successfully.' : 'User has been unblocked.',
-    data: { 
-      id: targetUser._id, 
+    data: {
+      id: targetUser._id,
       isLoginBlocked: targetUser.isLoginBlocked,
-      reason: targetUser.blockReason 
+      reason: targetUser.blockReason
     }
   });
 });
@@ -1050,7 +1024,7 @@ exports.toggleUserBlock = catchAsync(async (req, res, next) => {
 exports.activateUser = catchAsync(async (req, res, next) => {
   const targetUser = await User.findById(req.params.id).populate('role');
   if (!targetUser) return next(new AppError("User not found", 404));
-  
+
   validateUserAction(req.user, targetUser);
 
   targetUser.status = "approved";
@@ -1060,16 +1034,16 @@ exports.activateUser = catchAsync(async (req, res, next) => {
   targetUser.blockedAt = undefined;
   targetUser.blockedBy = undefined;
   targetUser.updatedBy = req.user._id;
-  
+
   await targetUser.save({ validateBeforeSave: false });
 
   // Optional: Send activation email
   // sendActivationEmail(targetUser);
 
-  res.status(200).json({ 
-    status: "success", 
+  res.status(200).json({
+    status: "success",
     message: "User activated successfully",
-    data: { user: targetUser } 
+    data: { user: targetUser }
   });
 });
 
@@ -1081,13 +1055,13 @@ exports.activateUser = catchAsync(async (req, res, next) => {
 exports.deactivateUser = catchAsync(async (req, res, next) => {
   const targetUser = await User.findById(req.params.id).populate('role');
   if (!targetUser) return next(new AppError("User not found", 404));
-  
+
   validateUserAction(req.user, targetUser);
 
   targetUser.status = "inactive";
   targetUser.isActive = false;
   targetUser.updatedBy = req.user._id;
-  
+
   await targetUser.save({ validateBeforeSave: false });
 
   // Invalidate all sessions
@@ -1096,10 +1070,10 @@ exports.deactivateUser = catchAsync(async (req, res, next) => {
     { isValid: false, terminatedAt: new Date() }
   );
 
-  res.status(200).json({ 
-    status: "success", 
+  res.status(200).json({
+    status: "success",
     message: "User deactivated successfully",
-    data: { user: targetUser } 
+    data: { user: targetUser }
   });
 });
 
@@ -1110,28 +1084,28 @@ exports.deactivateUser = catchAsync(async (req, res, next) => {
  */
 exports.checkPermission = catchAsync(async (req, res, next) => {
   const { permission } = req.body;
-  
+
   if (!permission) {
     return next(new AppError("Please provide permission to check", 400));
   }
 
   const user = await User.findById(req.user._id).populate("role");
-  
+
   const org = await Organization.findById(req.user.organizationId).select('owner').lean();
   const isOwner = org?.owner?.toString() === req.user._id.toString();
 
-  const hasPermission = isOwner || 
-                        user.role?.isSuperAdmin || 
-                        user.role?.permissions?.includes(permission) || 
-                        user.role?.permissions?.includes("*");
+  const hasPermission = isOwner ||
+    user.role?.isSuperAdmin ||
+    user.role?.permissions?.includes(permission) ||
+    user.role?.permissions?.includes("*");
 
-  res.status(200).json({ 
-    status: "success", 
-    data: { 
+  res.status(200).json({
+    status: "success",
+    data: {
       hasPermission,
       permission,
       role: user.role?.name
-    } 
+    }
   });
 });
 
@@ -1157,22 +1131,22 @@ exports.bulkUpdateStatus = catchAsync(async (req, res, next) => {
     }
 
     const result = await User.updateMany(
-      { 
-        _id: { $in: userIds }, 
+      {
+        _id: { $in: userIds },
         organizationId: req.user.organizationId,
         isOwner: { $ne: true } // Don't update owners
       },
-      { 
-        $set: { 
-          status, 
+      {
+        $set: {
+          status,
           updatedBy: req.user._id,
-          ...(status === 'suspended' && { 
+          ...(status === 'suspended' && {
             isLoginBlocked: true,
             blockReason: reason || 'Bulk status update',
             blockedAt: new Date(),
             blockedBy: req.user._id
           })
-        } 
+        }
       },
       { session }
     );

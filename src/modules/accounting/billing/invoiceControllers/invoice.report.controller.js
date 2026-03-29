@@ -1,33 +1,6 @@
 const mongoose = require("mongoose");
-const { z } = require("zod");
-const { format } = require('fast-csv');
 const Invoice = require("../invoice.model");
-const { invalidateOpeningBalance } = require("../../core/ledgerCache.service");
-const ProfitCalculator = require('../utils/profitCalculator');
-
-const Payment = require("../../payments/payment.model");
-const Product = require("../../../inventory/core/product.model");
-const Customer = require("../../../organization/core/customer.model");
-const AccountEntry = require('../../core/accountEntry.model');
-const Account = require('../../core/account.model');
-const Organization = require("../../../organization/core/organization.model");
-const InvoiceAudit = require('../invoiceAudit.model');
-
-const SalesService = require("../../../inventory/core/sales.service");
-const invoicePDFService = require("../invoicePDFService");
-const StockValidationService = require("../../../inventory/core/stockValidationService");
-const { createNotification } = require("../../../notification/core/notification.service");
-// CHANGED: Import the whole service to access reverseInvoiceJournal
-const salesJournalService = require('../../../inventory/core/salesJournal.service');
-
 const catchAsync = require("../../../../core/utils/api/catchAsync");
-const AppError = require("../../../../core/utils/api/appError");
-const factory = require("../../../../core/utils/api/handlerFactory");
-const { runInTransaction } = require("../../../../core/utils/db/runInTransaction");
-const { emitToOrg } = require("../../../../socketHandlers/socket");
-const automationService = require('../../../webhook/automationService');
-
-
 
 exports.getSalesReport = catchAsync(async (req, res, next) => {
   const { startDate, endDate, groupBy = 'day' } = req.query;
