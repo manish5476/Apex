@@ -138,13 +138,22 @@ app.use((req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-  logger.error(err.message || "Unhandled error", {
-    requestId: req.id,
-    stack: err.stack,
-    path: req.originalUrl,
-    method: req.method,
-    user: req.user?._id,
-  });
+  if (err.isOperational && err.statusCode < 500) {
+    logger.warn(err.message || "Operational note", {
+      requestId: req.id,
+      path: req.originalUrl,
+      method: req.method,
+      user: req.user?._id,
+    });
+  } else {
+    logger.error(err.message || "Unhandled error", {
+      requestId: req.id,
+      stack: err.stack,
+      path: req.originalUrl,
+      method: req.method,
+      user: req.user?._id,
+    });
+  }
 
   globalErrorHandler(err, req, res, next);
 });
