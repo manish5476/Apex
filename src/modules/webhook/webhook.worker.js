@@ -10,6 +10,13 @@ const WebhookDelivery = require('./webhookDelivery.model');
 const connection = new Redis(process.env.REDIS_URL, {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
+  retryStrategy(times) {
+    if (times > 3) {
+      console.error('⚠️ [WebhookWorker] Redis connection failed continuously. Is Redis running on 6379?');
+      return null;
+    }
+    return Math.min(times * 500, 2000);
+  }
 });
 
 // ── SSRF Protection ──────────────────────────────────

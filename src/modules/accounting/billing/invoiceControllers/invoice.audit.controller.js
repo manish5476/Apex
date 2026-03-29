@@ -2,14 +2,14 @@ const mongoose = require("mongoose");
 const { z } = require("zod");
 const { format } = require('fast-csv');
 const Invoice = require("../invoice.model");
-const { invalidateOpeningBalance } = require("../../core/ledgerCache.service");
+const { invalidateOpeningBalance } = require("../../core/service/ledgerCache.service");
 const ProfitCalculator = require('../utils/profitCalculator');
 
 const Payment = require("../../payments/payment.model");
 const Product = require("../../../inventory/core/model/product.model");
 const Customer = require("../../../organization/core/customer.model");
-const AccountEntry = require('../../core/accountEntry.model');
-const Account = require('../../core/account.model');
+const AccountEntry = require('../../core/model/accountEntry.model');
+const Account = require('../../core/model/account.model');
 const Organization = require("../../../organization/core/organization.model");
 const InvoiceAudit = require('../invoiceAudit.model');
 
@@ -25,7 +25,7 @@ const AppError = require("../../../../core/utils/api/appError");
 const factory = require("../../../../core/utils/api/handlerFactory");
 const { runInTransaction } = require("../../../../core/utils/db/runInTransaction");
 const { emitToOrg } = require("../../../../socketHandlers/socket");
-const automationService = require('../../../webhook/legacy/automationService');
+
 
 exports.sendInvoiceEmail = catchAsync(async (req, res, next) => {
   const invoice = await Invoice.findOne({ _id: req.params.id, organizationId: req.user.organizationId }).populate('customerId');

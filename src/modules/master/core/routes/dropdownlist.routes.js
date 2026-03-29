@@ -19,7 +19,7 @@ const Purchase = require("../../../inventory/core/model/purchase.model");
 const Sales = require("../../../inventory/core/model/sales.model");
 
 // 4. Accounting Models
-const Account = require("../../../accounting/core/account.model");
+const Account = require("../../../accounting/core/model/account.model");
 const Invoice = require("../../../accounting/billing/invoice.model");
 const Payment = require("../../../accounting/payments/payment.model");
 const EMI = require("../../../accounting/payments/emi.model");

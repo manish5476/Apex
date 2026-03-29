@@ -4,8 +4,8 @@ const crypto = require('crypto');
 const Webhook = require('./webhook.model');
 const WebhookDelivery = require('./webhookDelivery.model');
 const { enqueueWebhookDelivery } = require('./webhook.queue');
-const catchAsync = require('../../core/utils/catchAsync');
-const AppError = require('../../core/utils/AppError');
+const AppError = require("../../core/utils/api/appError");
+const catchAsync = require("../../core/utils/api/catchAsync");
 
 // ── CRUD ─────────────────────────────────────────────
 exports.createWebhook = catchAsync(async (req, res) => {
@@ -43,11 +43,11 @@ exports.updateWebhook = catchAsync(async (req, res) => {
   if (!hook) throw new AppError('Webhook not found', 404);
 
   const { name, url, events, secret, isActive } = req.body;
-  if (name)     hook.name = name;
-  if (url)      hook.url = url;
-  if (events)   hook.events = events;
+  if (name) hook.name = name;
+  if (url) hook.url = url;
+  if (events) hook.events = events;
   if (isActive !== undefined) hook.isActive = isActive;
-  if (secret)   hook.secret = secret; // Re-encrypts
+  if (secret) hook.secret = secret; // Re-encrypts
 
   await hook.save();
   res.status(200).json({ status: 'success', data: { webhook: hook } });
@@ -73,10 +73,10 @@ exports.testWebhook = catchAsync(async (req, res) => {
   if (!hook) throw new AppError('Webhook not found', 404);
 
   const body = {
-    id:        uuidv4(),
-    event:     'webhook.test',
+    id: uuidv4(),
+    event: 'webhook.test',
     timestamp: new Date().toISOString(),
-    data:      { message: 'This is a test delivery from Apex' },
+    data: { message: 'This is a test delivery from Apex' },
   };
 
   const secret = hook.getSecret();
@@ -88,9 +88,9 @@ exports.testWebhook = catchAsync(async (req, res) => {
   const start = Date.now();
   const response = await axios.post(hook.url, body, {
     headers: {
-      'Content-Type':       'application/json',
-      'X-Apex-Signature':   `sha256=${signature}`,
-      'X-Apex-Timestamp':   String(Date.now()),
+      'Content-Type': 'application/json',
+      'X-Apex-Signature': `sha256=${signature}`,
+      'X-Apex-Timestamp': String(Date.now()),
       'X-Apex-Delivery-Id': body.id,
     },
     timeout: 10_000,
@@ -100,10 +100,10 @@ exports.testWebhook = catchAsync(async (req, res) => {
   res.status(200).json({
     status: 'success',
     data: {
-      responseStatus:  response.status,
-      responseTimeMs:  Date.now() - start,
-      responseBody:    JSON.stringify(response.data).substring(0, 1000),
-      success:         response.status >= 200 && response.status < 300,
+      responseStatus: response.status,
+      responseTimeMs: Date.now() - start,
+      responseBody: JSON.stringify(response.data).substring(0, 1000),
+      success: response.status >= 200 && response.status < 300,
     }
   });
 });
@@ -111,7 +111,7 @@ exports.testWebhook = catchAsync(async (req, res) => {
 // ── Replay a Failed Delivery ──────────────────────────
 exports.replayDelivery = catchAsync(async (req, res) => {
   const delivery = await WebhookDelivery.findOne({
-    deliveryId:     req.params.deliveryId,
+    deliveryId: req.params.deliveryId,
     organizationId: req.user.organizationId
   });
 
@@ -123,23 +123,23 @@ exports.replayDelivery = catchAsync(async (req, res) => {
   const newDeliveryId = uuidv4();
 
   await WebhookDelivery.create({
-    webhookId:          delivery.webhookId,
-    organizationId:     delivery.organizationId,
-    deliveryId:         newDeliveryId,
-    event:              delivery.event,
-    requestPayload:     delivery.requestPayload,
-    requestUrl:         delivery.requestUrl,
-    status:             'pending',
-    isReplay:           true,
+    webhookId: delivery.webhookId,
+    organizationId: delivery.organizationId,
+    deliveryId: newDeliveryId,
+    event: delivery.event,
+    requestPayload: delivery.requestPayload,
+    requestUrl: delivery.requestUrl,
+    status: 'pending',
+    isReplay: true,
     originalDeliveryId: delivery.deliveryId,
-    maxAttempts:        5,
+    maxAttempts: 5,
   });
 
   await enqueueWebhookDelivery({
-    webhookId:  delivery.webhookId.toString(),
+    webhookId: delivery.webhookId.toString(),
     deliveryId: newDeliveryId,
-    event:      delivery.event,
-    payload:    delivery.requestPayload,
+    event: delivery.event,
+    payload: delivery.requestPayload,
   });
 
   res.status(200).json({
@@ -155,7 +155,7 @@ exports.getDeliveries = catchAsync(async (req, res) => {
 
   const filter = { organizationId: req.user.organizationId };
   if (webhookId) filter.webhookId = webhookId;
-  if (status)    filter.status = status;
+  if (status) filter.status = status;
 
   const skip = (page - 1) * limit;
 
@@ -174,7 +174,7 @@ exports.getDeliveries = catchAsync(async (req, res) => {
       deliveries,
       pagination: {
         total,
-        page:       Number(page),
+        page: Number(page),
         totalPages: Math.ceil(total / limit),
       }
     }
@@ -188,11 +188,13 @@ exports.getWebhookStats = catchAsync(async (req, res) => {
 
   const stats = await WebhookDelivery.aggregate([
     { $match: { organizationId: orgId, createdAt: { $gte: since } } },
-    { $group: {
-      _id: '$status',
-      count: { $sum: 1 },
-      avgResponseTime: { $avg: '$responseTimeMs' }
-    }}
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 },
+        avgResponseTime: { $avg: '$responseTimeMs' }
+      }
+    }
   ]);
 
   res.status(200).json({ status: 'success', data: { stats } });

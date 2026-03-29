@@ -5,7 +5,7 @@ const Payment = require('../../modules/accounting/payments/payment.model');
 const EMI = require('../../modules/accounting/payments/emi.model');
 const Invoice = require('../../modules/accounting/billing/invoice.model');
 const Customer = require('../../modules/organization/core/customer.model');
-const AccountEntry = require('../../modules/accounting/core/accountEntry.model');
+const AccountEntry = require('../../modules/accounting/core/model/accountEntry.model');
 
 // Import your existing services
 const emiService = require('../../modules/_legacy/services/emiService');
@@ -422,7 +422,7 @@ module.exports = PaymentCronManager;
 // const emiService = require('../../../modules/_legacy/services/emiService');
 // const paymentAllocationService = require('./paymentAllocation.service');
 // const mongoose = require('mongoose');
-// const AccountEntry = require('../../../modules/accounting/core/accountEntry.model');
+// const AccountEntry = require('../../../modules/accounting/core/model/accountEntry.model');
 // // const cron = require('node-cron');
 // const paymentAllocationService = require('./paymentAllocation.service');
 // const Payment = require('.payment.model');

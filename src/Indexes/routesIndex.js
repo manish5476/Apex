@@ -53,7 +53,7 @@ module.exports = {
   masterTypeRoutes: require('../routes/v1/masterType.routes.js'),
   sessionRoutes: require('../routes/v1/session.routes.js'),
   ownershipRoutes: require('../routes/v1/ownership.routes.js'),
-  automationRoutes: require('../routes/v1/automation.routes.js'),
+  webhookRoutes: require('../modules/webhook/webhook.routes.js'),
   cronRoutes: require('../routes/v1/cron.routes.js'),
 
   // --- External/Public Modules ---

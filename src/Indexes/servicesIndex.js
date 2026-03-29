@@ -40,7 +40,7 @@ export { default as dashboardService } from './modules/_legacy/services/dashboar
 export { default as notificationService } from './modules/notification/core/notification.service.js';
 export { default as overdueReminderService } from './modules/notification/core/overdueReminder.service.js';
 export { default as paymentReminderService } from './modules/notification/core/paymentReminder.service.js';
-export { default as automationService } from './modules/webhook/automationService.js';
+export { default as webhookService } from './modules/webhook/webhook.service.js';
 
 // --- Organization & Utility Services ---
 export { default as activityLogService } from './modules/activity/activityLogService.js';

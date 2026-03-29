@@ -4,6 +4,13 @@ const Redis = require('ioredis');
 const connection = new Redis(process.env.REDIS_URL, {
   maxRetriesPerRequest: null, // Required by BullMQ
   enableReadyCheck: false,
+  retryStrategy(times) {
+    if (times > 3) {
+      console.error('⚠️ [WebhookQueue] Redis connection failed continuously. Is Redis running on 6379?');
+      return null;
+    }
+    return Math.min(times * 500, 2000);
+  }
 });
 
 // The queue all webhook jobs go through

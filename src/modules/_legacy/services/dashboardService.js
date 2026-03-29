@@ -5,8 +5,8 @@ const Payment = require('../../accounting/payments/payment.model');
 const Customer = require('../../organization/core/customer.model');
 const Supplier = require('../../organization/core/supplier.model');
 const Product = require('../../inventory/core/model/product.model');
-const AccountEntry = require('../../accounting/core/accountEntry.model'); // ✅ New Source
-const Account = require('../../accounting/core/account.model'); // ✅ Needed for Profit
+const AccountEntry = require('../../accounting/core/model/accountEntry.model'); // ✅ New Source
+const Account = require('../../accounting/core/model/account.model'); // ✅ Needed for Profit
 
 /* ==========================================================
    SERVICE: Dashboard / Reports

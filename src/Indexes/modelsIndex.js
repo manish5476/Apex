@@ -5,9 +5,9 @@ export { default as ActivityLog } from './modules/activity/activityLogModel.js';
 // --- Accounting ---
 export { default as InvoiceAudit } from './modules/accounting/billing/invoiceAudit.model.js';
 export { default as Invoice } from './modules/accounting/billing/invoice.model.js';
-export { default as AccountEntry } from './modules/accounting/core/accountEntry.model.js';
-export { default as Account } from './modules/accounting/core/account.model.js';
-export { default as PendingReconciliation } from './modules/accounting/core/pendingReconciliationModel.js';
+export { default as AccountEntry } from './modules/accounting/core/model/accountEntry.model.js';
+export { default as Account } from './modules/accounting/core/model/account.model.js';
+export { default as PendingReconciliation } from './modules/accounting/core/model/pendingReconciliation.model.js';
 export { default as Emi } from './modules/accounting/payments/emi.model.js';
 export { default as Payment } from './modules/accounting/payments/payment.model.js';
 
@@ -42,7 +42,7 @@ export { default as Announcement } from './modules/notification/core/announcemen
 export { default as Message } from './modules/notification/core/message.model.js';
 export { default as Notification } from './modules/notification/core/notification.model.js';
 export { default as Asset } from './modules/uploads/asset.model.js';
-export { default as Automation } from './modules/webhook/automationModel.js';
+export { default as Webhook } from './modules/webhook/webhook.model.js';
 
 // --- HRMS ---
 export { default as AttendanceDaily } from './modules/HRMS/models/attendanceDaily.model.js';
