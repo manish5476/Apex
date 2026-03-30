@@ -5,8 +5,7 @@ const authController = require('../../modules/auth/core/auth.controller');
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
 
-router.
-router.get('/my-branches',checkPermission(PERMISSIONS.BRANCH.READ),branchController.getMyBranches);
+router.get('/my-branches', checkPermission(PERMISSIONS.BRANCH.READ), branchController.getMyBranches);
 router.route('/')
   .post(checkPermission(PERMISSIONS.BRANCH.MANAGE), branchController.createBranch)
   .get(checkPermission(PERMISSIONS.BRANCH.READ), branchController.getAllBranches);

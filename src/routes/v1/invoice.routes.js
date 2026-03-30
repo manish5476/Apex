@@ -174,27 +174,8 @@ router.route('/')
   );
 
 /* ============================================================
-   6. ID-BASED CRUD
-   Base /:id must come before /:id/* sub-routes
-   ============================================================ */
-
-router.route('/:id')
-  .get(
-    checkPermission(PERMISSIONS.INVOICE.READ),
-    invoiceController.getInvoice
-  )
-  .patch(
-    checkPermission(PERMISSIONS.INVOICE.UPDATE),
-    invoiceController.updateInvoice
-  )
-  .delete(
-    checkPermission(PERMISSIONS.INVOICE.DELETE),
-    invoiceController.deleteInvoice
-  );
-
-/* ============================================================
-   7. ID-BASED SPECIALIZED ACTIONS
-   All /:id/* must come AFTER the base /:id route
+   6. ID-BASED SPECIALIZED ACTIONS
+   All /:id/* must come BEFORE the base /:id route
    ============================================================ */
 
 // Stock info for a specific invoice
@@ -259,6 +240,24 @@ router.post('/:id/restore',
   checkPermission(PERMISSIONS.INVOICE.DELETE),
   invoiceController.restoreInvoice
 );
+
+/* ============================================================
+   7. ID-BASED CRUD (PARAM ROUTES LAST)
+   ============================================================ */
+
+router.route('/:id')
+  .get(
+    checkPermission(PERMISSIONS.INVOICE.READ),
+    invoiceController.getInvoice
+  )
+  .patch(
+    checkPermission(PERMISSIONS.INVOICE.UPDATE),
+    invoiceController.updateInvoice
+  )
+  .delete(
+    checkPermission(PERMISSIONS.INVOICE.DELETE),
+    invoiceController.deleteInvoice
+  );
 
 module.exports = router;
 

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { VALID_TAGS } = require('../../../config/permissions');
 
 const userSchema = new mongoose.Schema({
   // --- Auth & Identity ---
