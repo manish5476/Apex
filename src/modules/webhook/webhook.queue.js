@@ -1,50 +1,64 @@
 const { Queue, QueueEvents } = require('bullmq');
 const Redis = require('ioredis');
 
-const connection = new Redis(process.env.REDIS_URL, {
-  maxRetriesPerRequest: null, // Required by BullMQ
-  enableReadyCheck: false,
-  retryStrategy(times) {
-    if (times > 3) {
-      console.error('⚠️ [WebhookQueue] Redis connection failed continuously. Is Redis running on 6379?');
-      return null;
+const redisUrl = process.env.REDIS_URL;
+
+let webhookQueue = null;
+let queueEvents = null;
+let connection = null;
+
+if (redisUrl) {
+  connection = new Redis(redisUrl, {
+    maxRetriesPerRequest: null, // Required by BullMQ
+    enableReadyCheck: false,
+    retryStrategy(times) {
+      if (times > 3) {
+        console.warn('⚠️ [WebhookQueue] Redis connection failed after 3 attempts. Disabling queue features.');
+        return null;
+      }
+      return Math.min(times * 500, 2000);
     }
-    return Math.min(times * 500, 2000);
-  }
-});
+  });
 
-// The queue all webhook jobs go through
-const webhookQueue = new Queue('webhook-deliveries', {
-  connection,
-  defaultJobOptions: {
-    attempts: 5,
-    backoff: {
-      type: 'exponential',
-      delay: 60_000, // 1 min → 2 min → 4 min → 8 min → 16 min
-    },
-    removeOnComplete: { count: 1000 },  // Keep last 1000 completed
-    removeOnFail: { count: 5000 },      // Keep last 5000 failed for review
-  }
-});
+  // The queue all webhook jobs go through
+  webhookQueue = new Queue('webhook-deliveries', {
+    connection,
+    defaultJobOptions: {
+      attempts: 5,
+      backoff: {
+        type: 'exponential',
+        delay: 60_000,
+      },
+      removeOnComplete: { count: 1000 },
+      removeOnFail: { count: 5000 },
+    }
+  });
 
-// Log queue-level events (useful for monitoring)
-const queueEvents = new QueueEvents('webhook-deliveries', { connection });
+  // Log queue-level events (useful for monitoring)
+  queueEvents = new QueueEvents('webhook-deliveries', { connection });
 
-queueEvents.on('completed', ({ jobId }) => {
-  console.log(`✅ Webhook job ${jobId} completed`);
-});
+  queueEvents.on('completed', ({ jobId }) => {
+    console.log(`✅ Webhook job ${jobId} completed`);
+  });
 
-queueEvents.on('failed', ({ jobId, failedReason }) => {
-  console.error(`❌ Webhook job ${jobId} failed: ${failedReason}`);
-});
+  queueEvents.on('failed', ({ jobId, failedReason }) => {
+    console.error(`❌ Webhook job ${jobId} failed: ${failedReason}`);
+  });
+} else {
+  console.log('ℹ️ [WebhookQueue] Redis disabled. Background webhooks will be skipped.');
+}
 
 /**
  * Add a webhook delivery job to the queue.
  * Called from webhook.service.js after triggerEvent().
  */
 async function enqueueWebhookDelivery(data) {
+  if (!webhookQueue) {
+    console.warn(`⚠️ [WebhookQueue] Enqueue skipped for deliveryId ${data.deliveryId} (Redis disabled).`);
+    return null;
+  }
   const job = await webhookQueue.add('deliver', data, {
-    jobId: data.deliveryId, // Idempotency — same deliveryId = same job
+    jobId: data.deliveryId, // Idempotency
   });
   return job;
 }
