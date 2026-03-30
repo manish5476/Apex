@@ -194,33 +194,147 @@ exports.uploadProfilePhoto = catchAsync(async (req, res, next) => {
   });
 });
 
+// /**
+//  * @desc    Get my permissions
+//  * @route   GET /api/v1/users/me/permissions
+//  * @access  Private
+//  */
+// exports.getMyPermissions = catchAsync(async (req, res) => {
+//   const user = await User.findById(req.user._id).populate({
+//     path: "role",
+//     select: "name permissions isSuperAdmin",
+//   });
+
+//   const org = await Organization.findById(req.user.organizationId).select('owner').lean();
+//   const isOwner = org?.owner?.toString() === req.user._id.toString();
+
+//   const permissions = isOwner ? ["*"] : user.role?.permissions || [];
+
+//   res.status(200).json({
+//     status: "success",
+//     data: {
+//       permissions,
+//       role: user.role?.name,
+//       isOwner,
+//       isSuperAdmin: isOwner ? true : user.role?.isSuperAdmin || false,
+//       organizationId: req.user.organizationId,
+//       emailVerified: user.emailVerified,
+//       status: user.status
+//     },
+//   });
+// });
 /**
- * @desc    Get my permissions
+ * @desc    Get my effective permissions (role + overrides merged)
  * @route   GET /api/v1/users/me/permissions
  * @access  Private
  */
 exports.getMyPermissions = catchAsync(async (req, res) => {
-  const user = await User.findById(req.user._id).populate({
-    path: "role",
-    select: "name permissions isSuperAdmin",
-  });
+  const user = await User.findById(req.user._id)
+    .populate('role', 'name permissions isSuperAdmin')
+    .select('role permissionOverrides isSuperAdmin isOwner')
+    .lean();
 
-  const org = await Organization.findById(req.user.organizationId).select('owner').lean();
+  const org = await Organization.findById(req.user.organizationId)
+    .select('owner')
+    .lean();
+
   const isOwner = org?.owner?.toString() === req.user._id.toString();
 
-  const permissions = isOwner ? ["*"] : user.role?.permissions || [];
+  // Owner / superadmin → full access
+  if (isOwner || user.role?.isSuperAdmin) {
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        permissions: VALID_TAGS,
+        role: user.role?.name,
+        isOwner,
+        isSuperAdmin: true,
+        overrides: { granted: [], revoked: [] }
+      }
+    });
+  }
+
+  const base    = new Set(user.role?.permissions ?? []);
+  const granted = user.permissionOverrides?.granted ?? [];
+  const revoked = new Set(user.permissionOverrides?.revoked ?? []);
+
+  granted.forEach(p => base.add(p));
+  revoked.forEach(p => base.delete(p));
 
   res.status(200).json({
-    status: "success",
+    status: 'success',
     data: {
-      permissions,
+      permissions: [...base],
       role: user.role?.name,
-      isOwner,
-      isSuperAdmin: isOwner ? true : user.role?.isSuperAdmin || false,
-      organizationId: req.user.organizationId,
-      emailVerified: user.emailVerified,
-      status: user.status
-    },
+      isOwner: false,
+      isSuperAdmin: false,
+      overrides: {
+        granted: user.permissionOverrides?.granted ?? [],
+        revoked: user.permissionOverrides?.revoked ?? []
+      }
+    }
+  });
+});
+
+/**
+ * @desc    Update per-user permission overrides
+ * @route   PATCH /api/v1/users/:id/permission-overrides
+ * @access  Private (Admin/Owner only)
+ */
+exports.updatePermissionOverrides = catchAsync(async (req, res, next) => {
+  const orgId  = req.user.organizationId;
+  const userId = req.params.id;
+  const { grant = [], revoke = [] } = req.body;
+
+  // Validate all tags exist
+  const allTags = [...grant, ...revoke];
+  const invalid = allTags.filter(p => !VALID_TAGS.includes(p));
+  if (invalid.length) {
+    return next(new AppError(`Invalid permissions: ${invalid.join(', ')}`, 400));
+  }
+
+  // Can't grant AND revoke the same tag simultaneously
+  const conflict = grant.filter(p => revoke.includes(p));
+  if (conflict.length) {
+    return next(new AppError(`Cannot grant and revoke same permission: ${conflict.join(', ')}`, 400));
+  }
+
+  const target = await User.findOne({ _id: userId, organizationId: orgId }).populate('role');
+  if (!target) return next(new AppError('User not found', 404));
+
+  validateUserAction(req.user, target);
+
+  // Only owners can grant system-level permissions
+  const sensitiveGroups = ['System', 'Organization', 'Platform'];
+  const sensitiveTags = PERMISSIONS_LIST
+    .filter(p => sensitiveGroups.includes(p.group))
+    .map(p => p.tag);
+
+  if (!req.user.isOwner && grant.some(p => sensitiveTags.includes(p))) {
+    return next(new AppError('Only owners can grant system-level permissions', 403));
+  }
+
+  target.permissionOverrides = { granted: grant, revoked: revoke };
+  target.updatedBy = req.user._id;
+  await target.save({ validateBeforeSave: false });
+
+  // Notify only this specific user via their socket room
+  const io = req.app.get('io');
+  if (io) {
+    io.to(`user:${userId}`).emit('permissions:updated', {
+      type: 'override',
+      userId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Permission overrides updated',
+    data: {
+      userId,
+      overrides: target.permissionOverrides
+    }
   });
 });
 
@@ -715,83 +829,6 @@ exports.updateUser = catchAsync(async (req, res, next) => {
     data: { user: updatedUser }
   });
 });
-// exports.updateUser = catchAsync(async (req, res, next) => {
-//   const targetUser = await User.findById(req.params.id).populate('role');
-//   if (!targetUser) return next(new AppError("User not found", 404));
-
-//   validateUserAction(req.user, targetUser);
-
-//   const forbiddenFields = [
-//     "password", "passwordConfirm", "organizationId", "createdBy", 
-//     "isOwner", "refreshTokens", "loginAttempts", "lockUntil"
-//   ];
-//   forbiddenFields.forEach(f => delete req.body[f]);
-
-//   // Validate phone if being updated
-//   if (req.body.phone) {
-//     if (!validatePhone(req.body.phone)) {
-//       return next(new AppError("Please provide a valid primary phone number", 400));
-//     }
-//     req.body.phone = cleanPhone(req.body.phone);
-//   }
-
-//   const updatePayload = { ...req.body, updatedBy: req.user._id };
-
-//   // Transform nested updates to dot notation
-//   const flattenObject = (obj, prefix) => {
-//     if (!obj || typeof obj !== 'object') return;
-//     Object.keys(obj).forEach(key => {
-//       if (obj[key] !== undefined && obj[key] !== null) {
-//         updatePayload[`${prefix}.${key}`] = obj[key];
-//       }
-//     });
-//     delete updatePayload[prefix];
-//   };
-
-//   if (req.body.employeeProfile) flattenObject(req.body.employeeProfile, 'employeeProfile');
-//   if (req.body.attendanceConfig) flattenObject(req.body.attendanceConfig, 'attendanceConfig');
-//   if (req.body.preferences) flattenObject(req.body.preferences, 'preferences');
-
-//   // Validate References if changed
-//   if (updatePayload['employeeProfile.reportingManagerId']) {
-//     const managerExists = await User.exists({ 
-//       _id: updatePayload['employeeProfile.reportingManagerId'], 
-//       organizationId: req.user.organizationId 
-//     });
-//     if (!managerExists) return next(new AppError("Reporting Manager not found.", 400));
-//   }
-
-//   if (updatePayload['employeeProfile.departmentId']) {
-//     const deptExists = await Department.exists({ 
-//       _id: updatePayload['employeeProfile.departmentId'], 
-//       organizationId: req.user.organizationId 
-//     });
-//     if (!deptExists) return next(new AppError("Department not found.", 400));
-//   }
-
-//   if (updatePayload['employeeProfile.designationId']) {
-//     const desigExists = await Designation.exists({ 
-//       _id: updatePayload['employeeProfile.designationId'], 
-//       organizationId: req.user.organizationId 
-//     });
-//     if (!desigExists) return next(new AppError("Designation not found.", 400));
-//   }
-
-//   const updatedUser = await User.findByIdAndUpdate(
-//     req.params.id, 
-//     { $set: updatePayload }, 
-//     { new: true, runValidators: true }
-//   )
-//   .populate("employeeProfile.designationId", "title")
-//   .populate("employeeProfile.departmentId", "name")
-//   .populate("attendanceConfig.shiftId", "name")
-//   .select("-password -refreshTokens -loginAttempts -lockUntil");
-
-//   res.status(200).json({ 
-//     status: "success", 
-//     data: { user: updatedUser } 
-//   });
-// });
 
 /**
  * @desc    Delete user (soft delete)
@@ -927,41 +964,6 @@ exports.uploadUserPhotoByAdmin = catchAsync(async (req, res, next) => {
     }
   });
 });
-
-// /**
-//  * @desc    Upload user photo by admin
-//  * @route   PATCH /api/v1/users/:id/photo
-//  * @access  Private (Admin/HR)
-//  */
-// exports.uploadUserPhotoByAdmin = catchAsync(async (req, res, next) => {
-//   const targetUser = await User.findById(req.params.id);
-//   if (!targetUser) return next(new AppError("User not found.", 404));
-
-//   validateUserAction(req.user, targetUser);
-
-//   if (!req.file || !req.file.buffer) {
-//     return next(new AppError("Please upload an image file.", 400));
-//   }
-
-//   const folder = `profiles/${targetUser.organizationId}`;
-//   const uploadResult = await imageUploadService.uploadImage(req.file.buffer, folder);
-
-//   const updatedUser = await User.findByIdAndUpdate(
-//     targetUser._id,
-//     { 
-//       avatar: uploadResult.url || uploadResult,
-//       updatedBy: req.user._id 
-//     },
-//     { new: true, runValidators: true }
-//   ).select("-password -refreshTokens -loginAttempts -lockUntil");
-
-//   res.status(200).json({ 
-//     status: "success", 
-//     data: { user: updatedUser } 
-//   });
-// });
-
-
 
 // ======================================================
 //  4. STATUS & PERMISSION CONTROL

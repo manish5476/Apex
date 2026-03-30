@@ -34,7 +34,11 @@ const userSchema = new mongoose.Schema({
     index: true
   },
   isActive: { type: Boolean, default: true },
-
+  // Inside userSchema, after the role field:
+  permissionOverrides: {
+    granted: [{ type: String, enum: { values: VALID_TAGS, message: 'Invalid: {VALUE}' } }],
+    revoked: [{ type: String, enum: { values: VALID_TAGS, message: 'Invalid: {VALUE}' } }]
+  },
   // --- HRMS Specific Profile ---
   employeeProfile: {
     employeeId: { type: String, trim: true },

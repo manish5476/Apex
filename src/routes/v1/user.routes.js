@@ -24,6 +24,9 @@ router.patch("/me", userController.updateMyProfile);
 router.patch("/me/photo", upload.single("photo"), userController.uploadProfilePhoto);
 router.patch("/updateMyPassword", authController.updateMyPassword);
 router.get("/me/permissions", userController.getMyPermissions);
+// router.get('/me/permissions', protect, getMyPermissions);
+router.patch('/:id/permission-overrides', protect, requirePermission('users.manage'), updatePermissionOverrides);
+
 router.get("/me/devices", userController.getMyDevices);
 router.delete("/me/devices/:sessionId", userController.revokeDevice);
 router.post("/check-permission", userController.checkPermission); // Utility for frontend
