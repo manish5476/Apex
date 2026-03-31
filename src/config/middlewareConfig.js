@@ -86,9 +86,9 @@ const middlewareConfig = {
       req.setTimeout(30000, () => {
         logger.warn(`Request timeout: ${req.id} ${req.method} ${req.url}`);
         if (!res.headersSent) {
-          res.status(408).json({ 
-            error: "Request timeout", 
-            requestId: req.id 
+          res.status(408).json({
+            error: "Request timeout",
+            requestId: req.id
           });
         }
       });

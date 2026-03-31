@@ -235,9 +235,8 @@ function init(server, options = {}) {
     pingInterval,
     maxHttpBufferSize: 1e6, // 1 MB max payload
     connectionStateRecovery: {
-      maxDisconnectionDuration: 2 * 60 * 1000, // 2 min
-      // ✅ FIX: Do NOT skip middlewares — expired tokens must still be rejected
-      skipMiddlewares: false,
+      maxDisconnectionDuration: 2 * 60 * 1000,
+      skipMiddlewares: false,  // KEEP false — expired tokens must still be rejected
     },
   });
 
@@ -328,9 +327,10 @@ function init(server, options = {}) {
       });
     }
 
-    // Auto-join org room
+    // Auto-join org & identity rooms
     socket.join(`org:${orgId}`);
-    
+    socket.join(`user:${userId}`); // ✅ FIXED: Added for direct user-scoped emits
+
     if (socket.user.role) {
       socket.join(`role:${String(socket.user.role)}`);
     }
@@ -915,16 +915,15 @@ function init(server, options = {}) {
       });
     });
 
-    // ── DISCONNECT CLEANUP ────────────────────────────────────────────────────
-    socket.on("disconnect", (reason) => {
+    // ── In the connection handler, update the disconnect listener: ────────────
+    socket.on('disconnect', (reason) => {
       console.log(`🔌 Disconnected: ${socket.id} | user=${userId} | reason=${reason}`);
 
       removeSocketForUser(userId, socket.id);
 
-      // Clean up all channel presence for this socket's joined channels
       for (const chId of socket.joinedChannels) {
         removeUserFromChannel(chId, userId);
-        io.to(`channel:${chId}`).emit("userLeftChannel", {
+        io.to(`channel:${chId}`).emit('userLeftChannel', {
           userId,
           channelId: chId,
           timestamp: new Date().toISOString(),
@@ -933,16 +932,44 @@ function init(server, options = {}) {
       socket.joinedChannels.clear();
       socket.rateLimits.clear();
 
-      // Last socket for this user → mark offline
       if (getSocketIdsForUser(userId).length === 0) {
         removeOrgOnlineUser(orgId, userId);
-        io.to(`org:${orgId}`).emit("userOffline", {
+        io.to(`org:${orgId}`).emit('userOffline', {
           userId,
           organizationId: orgId,
           timestamp: new Date().toISOString(),
         });
       }
     });
+
+    // // ── DISCONNECT CLEANUP ────────────────────────────────────────────────────
+    // socket.on("disconnect", (reason) => {
+    //   console.log(`🔌 Disconnected: ${socket.id} | user=${userId} | reason=${reason}`);
+
+    //   removeSocketForUser(userId, socket.id);
+
+    //   // Clean up all channel presence for this socket's joined channels
+    //   for (const chId of socket.joinedChannels) {
+    //     removeUserFromChannel(chId, userId);
+    //     io.to(`channel:${chId}`).emit("userLeftChannel", {
+    //       userId,
+    //       channelId: chId,
+    //       timestamp: new Date().toISOString(),
+    //     });
+    //   }
+    //   socket.joinedChannels.clear();
+    //   socket.rateLimits.clear();
+
+    //   // Last socket for this user → mark offline
+    //   if (getSocketIdsForUser(userId).length === 0) {
+    //     removeOrgOnlineUser(orgId, userId);
+    //     io.to(`org:${orgId}`).emit("userOffline", {
+    //       userId,
+    //       organizationId: orgId,
+    //       timestamp: new Date().toISOString(),
+    //     });
+    //   }
+    // });
   });
 
   return io;

@@ -395,7 +395,7 @@ exports.getProfitDashboard = catchAsync(async (req, res, next) => {
   const { period = 'today', startDate, endDate, branchId, compareWith = 'previous_period' } = req.query;
   const orgId = req.user.organizationId;
 
-  const { start: periodStart, end: periodEnd } = getPeriodDates(period, startDate, endDate);
+  const { startDate: periodStart, endDate: periodEnd } = getPeriodDates(period, startDate, endDate);
 
   const filters = {
     organizationId: orgId,

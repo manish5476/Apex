@@ -23,8 +23,10 @@ const SENSITIVE_TAGS = new Set(
  * Called after any permission mutation so connected clients re-fetch.
  */
 const emitRolePermissionsUpdated = (io, role) => {
-  if (!io) return;
-  io.to(`role:${role._id}`).emit('permissions:updated', {
+  if (!io) return console.warn('[SOCKET DEBUG] io instance missing in emitRolePermissionsUpdated');
+  const roomId = `role:${String(role._id)}`;
+  console.log(`[SOCKET DEBUG] Emitting role update to room ${roomId}`);
+  io.to(roomId).emit('permissions:updated', {
     type: 'role',
     roleId: String(role._id),
     permissions: role.permissions,
@@ -37,13 +39,21 @@ const emitRolePermissionsUpdated = (io, role) => {
  * The client re-fetches merged permissions and rejoins the correct role room.
  */
 const emitUserRoleChanged = (io, userId, roleId) => {
-  if (!io) return;
-  io.to(`user:${userId}`).emit('permissions:updated', {
-    type: 'role_assigned',
-    userId: String(userId),
-    roleId: String(roleId),
-    timestamp: new Date().toISOString()
-  });
+  if (!io) return console.warn('[SOCKET DEBUG] io instance missing in emitUserRoleChanged');
+    const roomId = `user:${String(userId)}`;
+    
+    // 💡 DIAGNOSTIC: Check if anyone is actually in this room
+    const room = io.sockets.adapter.rooms.get(roomId);
+    const memberCount = room ? room.size : 0;
+    
+    console.log(`[SOCKET DEBUG] Emitting role_assigned update to room ${roomId} (${memberCount} active members)`);
+    
+    io.to(roomId).emit('permissions:updated', {
+      type: 'role_assigned',
+      roleId: String(roleId),
+      userId: String(userId),
+      timestamp: new Date().toISOString()
+    });
 };
 
 // ======================================================

@@ -276,7 +276,7 @@ exports.getMyPermissions = catchAsync(async (req, res) => {
  * @access  Private (Admin/Owner only)
  */
 exports.updatePermissionOverrides = catchAsync(async (req, res, next) => {
-  const orgId  = req.user.organizationId;
+  const orgId = req.user.organizationId;
   const userId = req.params.id;
   const { grant = [], revoke = [] } = req.body;
 
@@ -328,11 +328,21 @@ exports.updatePermissionOverrides = catchAsync(async (req, res, next) => {
   // ✅ Emit only to this specific user's socket room
   const io = req.app.get('io');
   if (io) {
-    io.to(`user:${userId}`).emit('permissions:updated', {
+    const roomId = `user:${String(userId)}`;
+
+    // 💡 DIAGNOSTIC: Check if anyone is actually in this room
+    const room = io.sockets.adapter.rooms.get(roomId);
+    const memberCount = room ? room.size : 0;
+
+    console.log(`[SOCKET DEBUG] Emitting override update to room ${roomId} (${memberCount} active members)`);
+
+    io.to(roomId).emit('permissions:updated', {
       type: 'override',
       userId,
       timestamp: new Date().toISOString()
     });
+  } else {
+    console.warn('[SOCKET DEBUG] Socket.io not found on app instance');
   }
 
   res.status(200).json({
@@ -700,8 +710,8 @@ exports.createUser = catchAsync(async (req, res, next) => {
     if (error.code === 11000) {
       const field = error.keyPattern?.email ? 'Email'
         : error.keyPattern?.phone ? 'Phone'
-        : error.keyPattern?.['employeeProfile.employeeId'] ? 'Employee ID'
-        : 'Field';
+          : error.keyPattern?.['employeeProfile.employeeId'] ? 'Employee ID'
+            : 'Field';
       return next(new AppError(`${field} already exists in this organization.`, 400));
     }
     return next(error);
@@ -787,6 +797,26 @@ exports.updateUser = catchAsync(async (req, res, next) => {
     .populate("employeeProfile.departmentId", "name")
     .populate("attendanceConfig.shiftId", "name startTime endTime")
     .select("-password -refreshTokens -loginAttempts -lockUntil -permissionOverrides");
+
+  // ✅ Emit to user's socket room so they re-fetch permissions/role
+  const io = req.app.get('io');
+  if (io) {
+    const roomId = `user:${String(req.params.id)}`;
+
+    // 💡 DIAGNOSTIC: Check if anyone is actually in this room
+    const room = io.sockets.adapter.rooms.get(roomId);
+    const memberCount = room ? room.size : 0;
+
+    console.log(`[SOCKET DEBUG] Emitting update from updateUser to room ${roomId} (${memberCount} active members)`);
+
+    io.to(roomId).emit('permissions:updated', {
+      type: 'role_assigned',
+      userId: String(req.params.id),
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    console.warn('[SOCKET DEBUG] Socket.io not found on app instance during updateUser');
+  }
 
   res.status(200).json({
     status: "success",
@@ -971,6 +1001,18 @@ exports.toggleUserBlock = catchAsync(async (req, res, next) => {
 
   await targetUser.save({ validateBeforeSave: false });
 
+  // ✅ Emit refresh signal to user's room (especially useful for unblocking)
+  const io = req.app.get('io');
+  if (io && !blockStatus) {
+    console.log(`[SOCKET DEBUG] Emitting unblock refresh to room user:${userId}`);
+    io.to(`user:${String(userId)}`).emit('permissions:updated', {
+      type: 'status_change',
+      userId: String(userId),
+      status: 'active',
+      timestamp: new Date().toISOString()
+    });
+  }
+
   res.status(200).json({
     status: 'success',
     message: blockStatus ? 'User has been blocked successfully.' : 'User has been unblocked.',
@@ -1003,6 +1045,18 @@ exports.activateUser = catchAsync(async (req, res, next) => {
 
   await targetUser.save({ validateBeforeSave: false });
 
+  // ✅ Emit refresh signal
+  const io = req.app.get('io');
+  if (io) {
+    console.log(`[SOCKET DEBUG] Emitting activation refresh to room user:${req.params.id}`);
+    io.to(`user:${String(req.params.id)}`).emit('permissions:updated', {
+      type: 'status_change',
+      userId: String(req.params.id),
+      status: 'active',
+      timestamp: new Date().toISOString()
+    });
+  }
+
   res.status(200).json({
     status: "success",
     message: "User activated successfully",
@@ -1031,6 +1085,18 @@ exports.deactivateUser = catchAsync(async (req, res, next) => {
     { userId: targetUser._id, isValid: true },
     { isValid: false, terminatedAt: new Date() }
   );
+
+  // ✅ Emit refresh signal (just in case they haven't been disconnected yet)
+  const io = req.app.get('io');
+  if (io) {
+    console.log(`[SOCKET DEBUG] Emitting deactivation refresh to room user:${req.params.id}`);
+    io.to(`user:${String(req.params.id)}`).emit('permissions:updated', {
+      type: 'status_change',
+      userId: String(req.params.id),
+      status: 'inactive',
+      timestamp: new Date().toISOString()
+    });
+  }
 
   res.status(200).json({
     status: "success",
@@ -1204,6 +1270,30 @@ exports.exportUsers = catchAsync(async (req, res, next) => {
 });
 
 module.exports = exports;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // 'use strict';
 
@@ -1528,6 +1618,7 @@ module.exports = exports;
 //   // Notify only this specific user via their socket room
 //   const io = req.app.get('io');
 //   if (io) {
+//     console.log(`[SOCKET DEBUG] Emitting override update to room user:${userId}`);
 //     io.to(`user:${userId}`).emit('permissions:updated', {
 //       type: 'override',
 //       userId,
@@ -2019,7 +2110,7 @@ module.exports = exports;
 //   }
 
 //   // 5. Execute Update and Populate Result
-//   // 🛡️ CRITICAL: We MUST populate startTime and endTime. 
+//   // 🛡️ CRITICAL: We MUST populate startTime and endTime.
 //   // If we only select 'name', the duration virtual in Shift model will crash on .split(':')
 //   const updatedUser = await User.findByIdAndUpdate(
 //     req.params.id,
