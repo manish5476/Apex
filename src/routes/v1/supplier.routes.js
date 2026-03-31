@@ -1,24 +1,24 @@
 const express = require('express');
-const router  = express.Router();
+const router = express.Router();
 
 const supplierController = require('../../modules/organization/core/supplier.controller');
-const authController     = require('../../modules/auth/core/auth.controller');
+const authController = require('../../modules/auth/core/auth.controller');
 const { checkPermission } = require('../../core/middleware/permission.middleware');
-const { PERMISSIONS }     = require('../../config/permissions');
-const { upload }          = require('../../core/middleware/upload.middleware'); // central middleware — no duplicate multer config
+const { PERMISSIONS } = require('../../config/permissions');
+const { upload } = require('../../core/middleware/upload.middleware'); // central middleware — no duplicate multer config
 
 // Protect all routes
 router.use(authController.protect);
 
 // ── Static routes (MUST be before /:id) ─────────────────────────────────────
 router.get('/search', checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.searchSuppliers);
-router.get('/list',   checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getSupplierList);
+router.get('/list', checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getSupplierList);
 router.post('/bulk-supplier', checkPermission(PERMISSIONS.SUPPLIER.CREATE), supplierController.createbulkSupplier);
 
 // ── Root CRUD ────────────────────────────────────────────────────────────────
 router.route('/')
   .post(checkPermission(PERMISSIONS.SUPPLIER.CREATE), supplierController.createSupplier)
-  .get(checkPermission(PERMISSIONS.SUPPLIER.READ),    supplierController.getAllSuppliers);
+  .get(checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getAllSuppliers);
 
 // ── KYC document routes ──────────────────────────────────────────────────────
 // Note: route param is :docId (not :docIndex) — deletion is now _id-based, not index-based
@@ -33,134 +33,15 @@ router.delete('/:id/kyc/:docId',
 );
 
 // ── Analytics & exports ──────────────────────────────────────────────────────
-router.get('/:id/ledger-export', checkPermission(PERMISSIONS.SUPPLIER.READ),  supplierController.downloadSupplierLedger);
-router.get('/:id/dashboard',     checkPermission(PERMISSIONS.SUPPLIER.READ),  supplierController.getSupplierDashboard);
+router.get('/:id/ledger-export', checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.downloadSupplierLedger);
+router.get('/:id/dashboard', checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getSupplierDashboard);
 
 // ── Dynamic ID CRUD (always last) ───────────────────────────────────────────
 router.route('/:id')
-  .get(checkPermission(PERMISSIONS.SUPPLIER.READ),     supplierController.getSupplier)
+  .get(checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getSupplier)
   .patch(checkPermission(PERMISSIONS.SUPPLIER.UPDATE), supplierController.updateSupplier)
   .delete(checkPermission(PERMISSIONS.SUPPLIER.DELETE), supplierController.deleteSupplier);
 
 router.patch('/:id/restore', checkPermission(PERMISSIONS.SUPPLIER.UPDATE), supplierController.restoreSupplier);
 
 module.exports = router;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// const express = require('express');
-// const router = express.Router();
-// const multer = require('multer'); // 🟢 Added for file uploads
-// const supplierController = require('../../modules/organization/core/supplier.controller');
-// const authController = require('../../modules/auth/core/auth.controller');
-// const { checkPermission } = require("../../core/middleware/permission.middleware");
-// const { PERMISSIONS } = require("../../config/permissions");
-
-// // Set up multer to store files in memory temporarily before Cloudinary upload
-// const upload = multer({ storage: multer.memoryStorage() });
-
-// // Protect all routes
-// router.use(authController.protect);
-
-// // Static Routes (Must go before /:id)
-// router.get('/search', checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.searchSuppliers);
-// router.get('/list', checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getSupplierList);
-
-// router.route('/bulk-supplier')
-//   .post(checkPermission(PERMISSIONS.SUPPLIER.CREATE), supplierController.createbulkSupplier);
-
-// router.route('/')
-//   .post(checkPermission(PERMISSIONS.SUPPLIER.CREATE), supplierController.createSupplier)
-//   .get(checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getAllSuppliers);
-
-// // ==========================================
-// // 🟢 NEW KYC ROUTES 
-// // ==========================================
-// router.post('/:id/kyc', 
-//   checkPermission(PERMISSIONS.SUPPLIER.UPDATE), 
-//   upload.single('file'), // Multer middleware captures the 'file' field
-//   supplierController.uploadKycDocument
-// );
-
-// router.delete('/:id/kyc/:docIndex', 
-//   checkPermission(PERMISSIONS.SUPPLIER.UPDATE), 
-//   supplierController.deleteKycDocument
-// );
-// // ==========================================
-
-// router.get('/:id/ledger-export',
-//   checkPermission(PERMISSIONS.SUPPLIER.READ), // If you prefer stricter financial access, you could use PERMISSIONS.PURCHASE.SUPPLIER_STATEMENT here!
-//   supplierController.downloadSupplierLedger
-// );
-// router.get('/:id/dashboard', checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getSupplierDashboard);
-
-// // Dynamic ID Routes
-// router.route('/:id')
-//   .get(checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getSupplier)
-//   .patch(checkPermission(PERMISSIONS.SUPPLIER.UPDATE), supplierController.updateSupplier)
-//   .delete(checkPermission(PERMISSIONS.SUPPLIER.DELETE), supplierController.deleteSupplier);
-
-// module.exports = router;// const express = require('express');
-// // const router = express.Router();
-// // const multer = require('multer'); // 🟢 Added for file uploads
-// // const supplierController = require('../../modules/organization/core/supplier.controller');
-// // const authController = require('../../modules/auth/core/auth.controller');
-// // const { checkPermission } = require("../../core/middleware/permission.middleware");
-// // const { PERMISSIONS } = require("../../config/permissions");
-
-// // // Set up multer to store files in memory temporarily before Cloudinary upload
-// // const upload = multer({ storage: multer.memoryStorage() });
-
-// // router.use(authController.protect);
-
-// // router.get('/search', checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.searchSuppliers);
-// // router.get('/list', checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getSupplierList);
-
-// // router.route('/bulk-supplier')
-// //   .post(checkPermission(PERMISSIONS.SUPPLIER.CREATE), supplierController.createbulkSupplier);
-
-// // router.route('/')
-// //   .post(checkPermission(PERMISSIONS.SUPPLIER.CREATE), supplierController.createSupplier)
-// //   .get(checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getAllSuppliers);
-
-// // // ==========================================
-// // // 🟢 NEW KYC ROUTES (Must be placed BEFORE /:id)
-// // // ==========================================
-// // router.post('/:id/kyc', 
-// //   checkPermission(PERMISSIONS.SUPPLIER.UPDATE), 
-// //   upload.single('file'), // Multer middleware captures the 'file' field
-// //   supplierController.uploadKycDocument
-// // );
-
-// // router.delete('/:id/kyc/:docIndex', 
-// //   checkPermission(PERMISSIONS.SUPPLIER.UPDATE), 
-// //   supplierController.deleteKycDocument
-// // );
-
-// // // ==========================================
-
-// // router.get('/:id/ledger-export',
-// //   checkPermission(PERMISSIONS.SUPPLIER.READ),
-// //   supplierController.downloadSupplierLedger
-// // );
-// // router.get('/:id/dashboard', checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getSupplierDashboard);
-
-// // router.route('/:id')
-// //   .get(checkPermission(PERMISSIONS.SUPPLIER.READ), supplierController.getSupplier)
-// //   .patch(checkPermission(PERMISSIONS.SUPPLIER.UPDATE), supplierController.updateSupplier)
-// //   .delete(checkPermission(PERMISSIONS.SUPPLIER.DELETE), supplierController.deleteSupplier);
-
-// // module.exports = router;
