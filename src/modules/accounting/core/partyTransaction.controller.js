@@ -19,7 +19,8 @@ exports.getCustomerTransactions = asyncHandler(async (req, res) => {
     total: data.total,
     page: data.page,
     limit: data.limit,
-    results: data.results
+    results: data.results.length,
+    data: { data: data.results }
   });
 });
 
@@ -38,6 +39,7 @@ exports.getSupplierTransactions = asyncHandler(async (req, res) => {
     total: data.total,
     page: data.page,
     limit: data.limit,
-    results: data.results
+    results: data.results.length,
+    data: { data: data.results }
   });
 });

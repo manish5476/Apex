@@ -8,7 +8,6 @@ const authController = require('../../modules/auth/core/auth.controller');
 const { checkPermission } = require('../../core/middleware/permission.middleware');
 const { PERMISSIONS } = require('../../config/permissions');
 const { upload } = require('../../core/middleware/upload.middleware');
-
 router.use(authController.protect);
 
 // ── Static & bulk routes (MUST be before /:id) ──────────────────────────────
