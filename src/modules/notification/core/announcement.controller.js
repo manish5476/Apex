@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Announcement = require('./announcement.model');
 const User = require('../../auth/core/user.model');
 const catchAsync = require('../../../core/utils/api/catchAsync');
@@ -337,7 +338,7 @@ exports.getAnnouncementStats = catchAsync(async (req, res, next) => {
   const stats = await Announcement.aggregate([
     {
       $match: {
-        organizationId: mongoose.Types.ObjectId(req.user.organizationId),
+        organizationId: new mongoose.Types.ObjectId(req.user.organizationId),
         isActive: true
       }
     },
@@ -348,7 +349,7 @@ exports.getAnnouncementStats = catchAsync(async (req, res, next) => {
         unread: {
           $sum: {
             $cond: [
-              { $in: [mongoose.Types.ObjectId(req.user.id), '$readBy.userId'] },
+              { $in: [new mongoose.Types.ObjectId(req.user.id), { $ifNull: ['$readBy.userId', []] }] },
               0,
               1
             ]

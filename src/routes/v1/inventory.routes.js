@@ -13,6 +13,10 @@ router.use(authController.protect);
 // ======================================================
 
 // Move stock between branches or warehouses
+/**
+ * POST /transfer
+ * @payload { productId*, fromBranchId*, toBranchId*, quantity*, reason }
+ */
 router.post(
   "/transfer", 
   checkPermission(PERMISSIONS.STOCK.MANAGE), 
@@ -20,6 +24,10 @@ router.post(
 );
 
 // Manually adjust stock levels (e.g., for breakage or count errors)
+/**
+ * POST /adjust
+ * @payload { productId*, branchId*, quantity*, reason }
+ */
 router.post(
   "/adjust", 
   checkPermission(PERMISSIONS.PRODUCT.STOCK_ADJUST), 

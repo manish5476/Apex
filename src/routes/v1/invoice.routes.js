@@ -64,32 +64,39 @@ router.use(authController.protect);
    Must be defined FIRST — before any /:id routes
    ============================================================ */
 
+/** GET /invoiceanalytics/profit-summary @payload none */
 router.get('/invoiceanalytics/profit-summary',
   checkPermission(PERMISSIONS.INVOICE.READ),
   invoiceProfitController.profitSummary
 );
+/** GET /invoiceanalytics/profit @payload none */
 router.get('/invoiceanalytics/profit',
   checkPermission(PERMISSIONS.INVOICE.READ),
   invoiceProfitController.getProfitAnalysis
 );
+/** GET /invoiceanalytics/advanced-profit @payload none */
 router.get('/invoiceanalytics/advanced-profit',
   checkPermission(PERMISSIONS.INVOICE.READ),
   invoiceProfitController.getAdvancedProfitAnalysis
 );
+/** GET /invoiceanalytics/profit-dashboard @payload none */
 router.get('/invoiceanalytics/profit-dashboard',
   checkPermission(PERMISSIONS.INVOICE.READ),
   invoiceProfitController.getProfitDashboard
 );
+/** GET /invoiceanalytics/export-profit @payload none */
 router.get('/invoiceanalytics/export-profit',
   checkPermission(PERMISSIONS.INVOICE.READ),
   invoiceProfitController.exportProfitData
 );
+/** GET /invoiceanalytics/product-profit/:productId @params { productId } @payload none */
 router.get('/invoiceanalytics/product-profit/:productId',
   checkPermission(PERMISSIONS.INVOICE.READ),
   invoiceProfitController.getProductProfitAnalysis
 );
 
 // Granular report permission alias
+/** GET /reports/profit @payload none */
 router.get('/reports/profit',
   checkPermission(PERMISSIONS.REPORT.PROFIT),
   invoiceProfitController.profitSummary
@@ -100,19 +107,27 @@ router.get('/reports/profit',
    All static — must come before /:id
    ============================================================ */
 
-// Stock check
-// FIX: Now routes through invoiceController.checkStock → InvoiceService.checkStock
-// which does one batch Product.find instead of N+1 per item loop.
+/**
+ * POST /check-stock
+ * @payload { items* (array of { productId, quantity }) }
+ */
 router.post('/check-stock',
   checkPermission(PERMISSIONS.INVOICE.CREATE),
   invoiceController.checkStock
 );
 
-// Bulk operations
+/**
+ * PATCH /bulk/status
+ * @payload { invoiceIds* (array), status* }
+ */
 router.patch('/bulk/status',
   checkPermission(PERMISSIONS.INVOICE.UPDATE),
   invoiceController.bulkUpdateStatus
 );
+/**
+ * POST /bulk/cancel
+ * @payload { invoiceIds* (array) }
+ */
 router.post('/bulk/cancel',
   checkPermission(PERMISSIONS.INVOICE.UPDATE),
   financialLimiter,
@@ -120,14 +135,17 @@ router.post('/bulk/cancel',
 );
 
 // Utility
+/** GET /validate/number/:number @params { number } @payload none */
 router.get('/validate/number/:number',
   checkPermission(PERMISSIONS.INVOICE.CREATE),
   invoiceController.validateNumber
 );
+/** GET /export/all @payload none */
 router.get('/export/all',
   checkPermission(PERMISSIONS.INVOICE.EXPORT),
   invoiceController.exportInvoices
 );
+/** GET /search/:query @params { query } @payload none */
 router.get('/search/:query',
   checkPermission(PERMISSIONS.INVOICE.READ),
   invoiceController.searchInvoices
@@ -138,10 +156,12 @@ router.get('/search/:query',
    Static paths — must come before /:id
    ============================================================ */
 
+/** GET /drafts/all @payload none */
 router.get('/drafts/all',
   checkPermission(PERMISSIONS.INVOICE.READ),
   invoiceController.getAllDrafts
 );
+/** GET /trash/all @payload none */
 router.get('/trash/all',
   checkPermission(PERMISSIONS.INVOICE.DELETE),
   invoiceController.getDeletedInvoices
@@ -152,6 +172,7 @@ router.get('/trash/all',
    Must come before /:id to avoid collision
    ============================================================ */
 
+/** GET /customer/:customerId @params { customerId } @payload none */
 router.get('/customer/:customerId',
   checkPermission(PERMISSIONS.INVOICE.READ),
   invoiceController.getInvoicesByCustomer
@@ -162,10 +183,19 @@ router.get('/customer/:customerId',
    ============================================================ */
 
 router.route('/')
+  /**
+   * GET /
+   * @query { page, limit, status, etc }
+   * @payload none
+   */
   .get(
     checkPermission(PERMISSIONS.INVOICE.READ),
     invoiceController.getAllInvoices
   )
+  /**
+   * POST /
+   * @payload { customerId*, items*, discount, tax, subTotal, total, etc }
+   */
   .post(
     checkPermission(PERMISSIONS.INVOICE.CREATE),
     validateStockForInvoice,  // middleware pre-checks stock before hitting service
@@ -178,32 +208,32 @@ router.route('/')
    All /:id/* must come BEFORE the base /:id route
    ============================================================ */
 
-// Stock info for a specific invoice
+/** GET /:id/stock-info @params { id } @payload none */
 router.get('/:id/stock-info',
   checkPermission(PERMISSIONS.INVOICE.READ),
   invoiceController.getInvoiceWithStock
 );
 
-// FIX: Added low stock warnings route — was missing from original routes entirely
+/** GET /:id/low-stock @params { id } @payload none */
 router.get('/:id/low-stock',
   checkPermission(PERMISSIONS.INVOICE.READ),
   invoiceController.getLowStockWarnings
 );
 
-// Cancel & convert (financial operations — rate limited)
+/** POST /:id/cancel @params { id } @payload none */
 router.post('/:id/cancel',
   checkPermission(PERMISSIONS.INVOICE.UPDATE),
   financialLimiter,
   invoiceController.cancelInvoice
 );
+
+/** POST /:id/convert @params { id } @payload none */
 router.post('/:id/convert',
   checkPermission(PERMISSIONS.INVOICE.UPDATE),
   invoiceController.convertDraftToActive
 );
 
-// FIX: Was pointing to invoiceAudit controller (separate file) which is now gone.
-// getInvoiceHistory is on invoiceController → InvoiceService.getInvoiceHistory.
-// This also adds organizationId scoping which the original audit controller lacked.
+/** GET /:id/history @params { id } @payload none */
 router.get('/:id/history',
   checkPermission(PERMISSIONS.INVOICE.READ),
   invoiceController.getInvoiceHistory
@@ -211,31 +241,31 @@ router.get('/:id/history',
 
 // Payments
 router.route('/:id/payments')
+  /** GET /:id/payments @params { id } @payload none */
   .get(
     checkPermission(PERMISSIONS.INVOICE.READ),
     invoiceController.getInvoicePayments
   )
+  /** POST /:id/payments @params { id } @payload { amount*, paymentMethod*, etc } */
   .post(
     checkPermission(PERMISSIONS.PAYMENT.CREATE),
     financialLimiter,
     invoiceController.addPayment
   );
 
-// PDF download — stays on invoicePDFController (generates buffer, sets headers)
+/** GET /:id/download @params { id } @payload none */
 router.get('/:id/download',
   checkPermission(PERMISSIONS.INVOICE.DOWNLOAD),
   invoicePDFController.downloadInvoicePDF
 );
 
-// FIX: Was invoicePDFController.emailInvoice (PDF-only, no audit).
-// Now invoiceController.sendInvoiceEmail → InvoiceService.sendInvoiceEmail
-// which validates customer email exists and creates an audit log entry.
+/** POST /:id/email @params { id } @payload { email } */
 router.post('/:id/email',
   checkPermission(PERMISSIONS.INVOICE.DOWNLOAD),
   invoiceController.sendInvoiceEmail
 );
 
-// Restore soft-deleted invoice
+/** POST /:id/restore @params { id } @payload none */
 router.post('/:id/restore',
   checkPermission(PERMISSIONS.INVOICE.DELETE),
   invoiceController.restoreInvoice
@@ -246,14 +276,17 @@ router.post('/:id/restore',
    ============================================================ */
 
 router.route('/:id')
+  /** GET /:id @params { id } @payload none */
   .get(
     checkPermission(PERMISSIONS.INVOICE.READ),
     invoiceController.getInvoice
   )
+  /** PATCH /:id @params { id } @payload { items, status, metadata } */
   .patch(
     checkPermission(PERMISSIONS.INVOICE.UPDATE),
     invoiceController.updateInvoice
   )
+  /** DELETE /:id @params { id } @payload none */
   .delete(
     checkPermission(PERMISSIONS.INVOICE.DELETE),
     invoiceController.deleteInvoice

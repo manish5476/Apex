@@ -26,18 +26,25 @@ router.use(authController.protect);
    COLLECTION ROUTES
    ============================================================ */
 
-// POST /api/v1/sales-returns
 // Create a new return in PENDING status.
 // No stock or ledger changes happen here — those happen on approval.
+/**
+ * POST /
+ * @payload { salesId*, items*, returnReason, notes, etc }
+ */
 router.post(
   '/',
   checkPermission(PERMISSIONS.SALES_RETURN.MANAGE),
   salesReturnController.createReturn
 );
 
-// GET /api/v1/sales-returns
 // List all returns with filters: status, customerId, invoiceId, startDate, endDate
 // Supports pagination via ?page=1&limit=20
+/**
+ * GET /
+ * @query { page, limit, status, customerId, invoiceId, startDate, endDate }
+ * @payload none
+ */
 router.get(
   '/',
   checkPermission(PERMISSIONS.SALES_RETURN.READ),
@@ -49,18 +56,26 @@ router.get(
    Must be defined BEFORE /:id to avoid route collisions
    ============================================================ */
 
-// PATCH /api/v1/sales-returns/:id/approve
 // Approves a pending return.
 // Triggers: stock restoration, COGS reversal, credit note journal, customer balance update.
+/**
+ * PATCH /:id/approve
+ * @params { id }
+ * @payload none
+ */
 router.patch(
   '/:id/approve',
   checkPermission(PERMISSIONS.SALES_RETURN.MANAGE),
   salesReturnController.approveReturn
 );
 
-// PATCH /api/v1/sales-returns/:id/reject
 // Rejects a pending return. Requires rejectionReason in body.
 // No stock or ledger changes — just marks as rejected with audit trail.
+/**
+ * PATCH /:id/reject
+ * @params { id }
+ * @payload { rejectionReason* }
+ */
 router.patch(
   '/:id/reject',
   checkPermission(PERMISSIONS.SALES_RETURN.MANAGE),
@@ -71,9 +86,13 @@ router.patch(
    ITEM ROUTES
    ============================================================ */
 
-// GET /api/v1/sales-returns/:id
 // Get full details of a single return including populated items,
 // customer, invoice, and audit fields (approvedBy, rejectedBy).
+/**
+ * GET /:id
+ * @params { id }
+ * @payload none
+ */
 router.get(
   '/:id',
   checkPermission(PERMISSIONS.SALES_RETURN.READ),

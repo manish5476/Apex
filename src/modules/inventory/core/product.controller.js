@@ -156,17 +156,31 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
 /* ======================================================
    8. SCAN PRODUCT (POS barcode / SKU lookup)
 ====================================================== */
-exports.scanProduct = catchAsync(async (req, res, next) => {
-  const { code, branchId } = req.body;
+// exports.scanProduct = catchAsync(async (req, res, next) => {
+//   const { code, branchId } = req.body;
 
-  const result = await ProductService.scanProduct(code, branchId, req.user);
+//   const result = await ProductService.scanProduct(code, branchId, req.user);
+
+//   res.status(200).json({
+//     status: 'success',
+//     data: result,
+//   });
+// });
+
+exports.scanProduct = catchAsync(async (req, res, next) => {
+  // Grab BOTH possible keys from the request body
+  const { barcode, code, branchId } = req.body;
+
+  // Use whichever one was actually sent
+  const scanValue = barcode || code;
+
+  const result = await ProductService.scanProduct(scanValue, branchId, req.user);
 
   res.status(200).json({
     status: 'success',
     data: result,
   });
 });
-
 /* ======================================================
    9. LOW STOCK REPORT
 ====================================================== */

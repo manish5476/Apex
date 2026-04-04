@@ -419,9 +419,22 @@ class EmiService {
     ]);
   }
 
-  static async getEmiAnalytics(organizationId) {
+  
+  static async getEmiAnalytics(organizationId, filters = {}) {
+    const { startDate, endDate } = filters;
+    
+    // Base match is always the organization
+    const matchStage = { organizationId: new mongoose.Types.ObjectId(organizationId) };
+
+    // Dynamically add date filtering if the frontend provided them
+    if (startDate || endDate) {
+      matchStage.createdAt = {}; // You can change createdAt to whichever date field matters most
+      if (startDate) matchStage.createdAt.$gte = new Date(startDate);
+      if (endDate) matchStage.createdAt.$lte = new Date(endDate);
+    }
+
     const result = await EMI.aggregate([
-      { $match: { organizationId: new mongoose.Types.ObjectId(organizationId) } },
+      { $match: matchStage }, // Applies the dynamic filters here
       { $unwind: '$installments' },
       {
         $group: {
@@ -454,13 +467,50 @@ class EmiService {
       totalEmis: 0, active: 0, completed: 0, defaulted: 0, totalOutstanding: 0,
       installments: { pending: 0, paid: 0, partial: 0, overdue: 0 },
     };
-  }
+}
+
+  // static async getEmiAnalytics(organizationId) {
+  //   const result = await EMI.aggregate([
+  //     { $match: { organizationId: new mongoose.Types.ObjectId(organizationId) } },
+  //     { $unwind: '$installments' },
+  //     {
+  //       $group: {
+  //         _id:               null,
+  //         totalEmis:         { $addToSet: '$_id' },
+  //         active:            { $sum: { $cond: [{ $eq: ['$status', 'active']    }, 1, 0] } },
+  //         completed:         { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+  //         defaulted:         { $sum: { $cond: [{ $eq: ['$status', 'defaulted'] }, 1, 0] } },
+  //         totalOutstanding:  { $sum: '$balanceAmount' },
+  //         instPending:       { $sum: { $cond: [{ $eq: ['$installments.paymentStatus', 'pending']  }, 1, 0] } },
+  //         instPaid:          { $sum: { $cond: [{ $eq: ['$installments.paymentStatus', 'paid']     }, 1, 0] } },
+  //         instPartial:       { $sum: { $cond: [{ $eq: ['$installments.paymentStatus', 'partial']  }, 1, 0] } },
+  //         instOverdue:       { $sum: { $cond: [{ $eq: ['$installments.paymentStatus', 'overdue']  }, 1, 0] } },
+  //       },
+  //     },
+  //     {
+  //       $project: {
+  //         _id: 0,
+  //         totalEmis:        { $size: '$totalEmis' },
+  //         active: 1, completed: 1, defaulted: 1, totalOutstanding: 1,
+  //         installments: {
+  //           pending: '$instPending', paid: '$instPaid',
+  //           partial: '$instPartial', overdue: '$instOverdue',
+  //         },
+  //       },
+  //     },
+  //   ]);
+
+  //   return result[0] || {
+  //     totalEmis: 0, active: 0, completed: 0, defaulted: 0, totalOutstanding: 0,
+  //     installments: { pending: 0, paid: 0, partial: 0, overdue: 0 },
+  //   };
+  // }
 
   static async getEmiLedgerReconciliation({ organizationId, fromDate, toDate }) {
     const match = { organizationId, referenceType: 'emi_payment' };
     if (fromDate && toDate) match.createdAt = { $gte: new Date(fromDate), $lte: new Date(toDate) };
 
-    const AccountEntry = require('../../core/model/accountEntry.model');
+    const AccountEntry = require('../core/model/accountEntry.model');
     return AccountEntry.find(match)
       .populate('accountId', 'name code')
       .populate('paymentId', 'amount paymentMethod')

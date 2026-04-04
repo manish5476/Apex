@@ -1,4 +1,5 @@
 // Updated announcement routes
+
 const express = require('express');
 const router = express.Router();
 const announcementController = require('../../modules/notification/core/announcement.controller');

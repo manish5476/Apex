@@ -4,13 +4,9 @@ const AppError = require('../../../core/utils/api/appError');
 
 // in src/controllers/dashboardController.js
 const SalesService = require('../../inventory/core/service/sales.service');
-
 async function dashboardSummary(req, res, next) {
-  // existing computations
   const lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth() - 1);
   const salesAgg = await SalesService.aggregateTotal({ createdAt: { $gte: lastMonth } });
-
-  // include monthly totals
   const monthly = await require('../../inventory/core/model/sales.model').aggregateMonthlyTotals(
     new Date(new Date().getFullYear(), 0, 1),
     new Date()
