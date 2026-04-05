@@ -1,14 +1,14 @@
 // cron/paymentCronManager.js
 const cron = require('node-cron');
 const mongoose = require('mongoose');
-const Payment = require('../../modules/accounting/payments/payment.model');
-const EMI = require('../../modules/accounting/payments/emi.model');
-const Invoice = require('../../modules/accounting/billing/invoice.model');
-const Customer = require('../../modules/organization/core/customer.model');
-const AccountEntry = require('../../modules/accounting/core/model/accountEntry.model');
+const Payment = require('./payment.model');
+const EMI = require('./emi.model');
+const Invoice = require('../billing/invoice.model');
+const Customer = require('../../organization/core/customer.model');
+const AccountEntry = require('../core/model/accountEntry.model');
 
 // Import your existing services
-const emiService = require('../../modules/_legacy/services/emiService');
+const emiService = require('./emi.service');
 
 class PaymentCronManager {
   // Store active cron jobs
@@ -380,6 +380,36 @@ class PaymentCronManager {
   }
 
   /**
+   * 5. SCHEDULE ALL JOBS
+   * Initializes and schedules all payment-related cron jobs
+   */
+  static scheduleAllJobs() {
+    console.log('📅 [PAYMENT CRON] Scheduling all payment-related jobs...');
+
+    // A. Payment Allocation (Every 30 minutes)
+    cron.schedule('0,30 * * * *', async () => {
+      await this.runPaymentAllocationJob();
+    });
+
+    // B. Customer Balance Recalculation (Daily at 1 AM)
+    cron.schedule('0 1 * * *', async () => {
+      await this.recalculateCustomerBalances();
+    });
+
+    // C. Accounting Integrity Check (Daily at 2 AM)
+    cron.schedule('0 2 * * *', async () => {
+      await this.runAccountingIntegrityCheck();
+    });
+
+    // D. Cleanup Old Data (Weekly on Sunday at 3 AM)
+    cron.schedule('0 3 * * 0', async () => {
+      await this.cleanupOldData();
+    });
+
+    console.log('✅ [PAYMENT CRON] All jobs scheduled successfully!');
+  }
+
+  /**
    * Manual trigger for testing
    */
   static async runJobManually(jobName) {
@@ -413,7 +443,7 @@ class PaymentCronManager {
   }
 }
 
-module.exports = PaymentCronManager;
+module.exports = { PaymentCronManager };
 // // cron/paymentCronManager.js
 // const cron = require('node-cron');
 // const { runPaymentReminderJob } = require('../../../modules/notification/core/paymentReminder.service');

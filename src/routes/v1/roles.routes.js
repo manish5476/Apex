@@ -18,6 +18,7 @@ router.use(protect);
  * GET  /api/v1/roles/permissions
  * Available permission tags for UI dropdowns
  * Filtered by owner/superAdmin status automatically in controller
+ * @payload none
  */
 router.get(
   "/permissions",
@@ -28,6 +29,7 @@ router.get(
 /**
  * POST /api/v1/roles/assign
  * Assign a role to a single user
+ * @payload { userId*, roleId* }
  */
 router.post(
   "/assign",
@@ -38,6 +40,7 @@ router.post(
 /**
  * POST /api/v1/roles/assign-bulk
  * Assign a role to multiple users at once
+ * @payload { userIds* (array), roleId* }
  */
 router.post(
   "/assign-bulk",
@@ -54,6 +57,7 @@ router.route("/")
    * GET  /api/v1/roles
    * List all roles (with user counts)
    * SuperAdmin roles hidden from non-owners
+   * @payload none
    */
   .get(
     checkPermission(PERMISSIONS.ROLE.MANAGE),
@@ -63,6 +67,7 @@ router.route("/")
    * POST /api/v1/roles
    * Create a new role
    * isSuperAdmin roles restricted to owners only (enforced in controller)
+   * @payload { name*, permissions (array), isDefault, isSuperAdmin }
    */
   .post(
     checkPermission(PERMISSIONS.ROLE.MANAGE),
@@ -77,6 +82,7 @@ router.route("/:id")
   /**
    * GET  /api/v1/roles/:id
    * Single role + assigned users list
+   * @payload none
    */
   .get(
     checkPermission(PERMISSIONS.ROLE.MANAGE),
@@ -86,6 +92,7 @@ router.route("/:id")
    * PATCH /api/v1/roles/:id
    * Update role name / permissions / flags
    * Emits permissions:updated socket event to role room if permissions changed
+   * @payload { name, permissions (array), isSuperAdmin, isDefault }
    */
   .patch(
     checkPermission(PERMISSIONS.ROLE.MANAGE),
@@ -94,6 +101,7 @@ router.route("/:id")
   /**
    * DELETE /api/v1/roles/:id
    * Delete role — blocked if any users are assigned
+   * @payload none
    */
   .delete(
     checkPermission(PERMISSIONS.ROLE.MANAGE),

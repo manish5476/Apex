@@ -127,11 +127,19 @@ exports.getEmiHistory = catchAsync(async (req, res, next) => {
 /* ======================================================
    8. EMI ANALYTICS
 ====================================================== */
+// exports.getEmiAnalytics = catchAsync(async (req, res, next) => {
+//   const analytics = await EmiService.getEmiAnalytics(req.user.organizationId);
+//   res.status(200).json({ status: 'success', data: analytics });
+// });
 exports.getEmiAnalytics = catchAsync(async (req, res, next) => {
-  const analytics = await EmiService.getEmiAnalytics(req.user.organizationId);
+  // 1. Extract dates from the query
+  const { startDate, endDate } = req.query;
+
+  // 2. Pass them to the service
+  const analytics = await EmiService.getEmiAnalytics(req.user.organizationId, { startDate, endDate });
+
   res.status(200).json({ status: 'success', data: analytics });
 });
-
 /* ======================================================
    9. EMI LEDGER REPORT
 ====================================================== */

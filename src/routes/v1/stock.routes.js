@@ -48,6 +48,10 @@ router.put('/reorder-level/:productId',
 // ==========================================
 // ACTIVE ROUTES
 // ==========================================
+/**
+ * POST /transfer
+ * @payload { productId*, fromBranchId*, toBranchId*, quantity*, reason }
+ */
 router.post('/transfer',
   checkPermission(PERMISSIONS.STOCK.MANAGE),
   stockController.transferStock

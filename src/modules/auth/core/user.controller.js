@@ -3,21 +3,21 @@
 const mongoose = require('mongoose');
 const { Parser } = require('json2csv');
 
-const User         = require('./user.model');
+const User = require('./user.model');
 const Organization = require('../../organization/core/organization.model');
-const ActivityLog  = require('../../activity/activityLogModel');
+const ActivityLog = require('../../activity/activityLogModel');
 const LeaveBalance = require('../../HRMS/models/leaveBalance.model');
-const Shift        = require('../../HRMS/models/shift.model');
-const Department   = require('../../HRMS/models/department.model');
-const Designation  = require('../../HRMS/models/designation.model');
-const Branch       = require('../../organization/core/branch.model');
-const Session      = require('./session.model');
+const Shift = require('../../HRMS/models/shift.model');
+const Department = require('../../HRMS/models/department.model');
+const Designation = require('../../HRMS/models/designation.model');
+const Branch = require('../../organization/core/branch.model');
+const Session = require('./session.model');
 
-const catchAsync         = require('../../../core/utils/api/catchAsync');
-const AppError           = require('../../../core/utils/api/appError');
-const factory            = require('../../../core/utils/api/handlerFactory');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
+const factory = require('../../../core/utils/api/handlerFactory');
 const imageUploadService = require('../../uploads/imageUploadService');
-const logger      = require('../../../bootstrap/logger');
+const logger = require('../../../bootstrap/logger');
 const { PERMISSIONS_LIST, VALID_TAGS, getPermissionGroups } = require('../../../config/permissions');
 
 // ======================================================
@@ -25,7 +25,7 @@ const { PERMISSIONS_LIST, VALID_TAGS, getPermissionGroups } = require('../../../
 // ======================================================
 
 const getFinancialYear = () => {
-  const now  = new Date();
+  const now = new Date();
   const year = now.getFullYear();
   return now.getMonth() >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
 };
@@ -57,7 +57,7 @@ const validateUserAction = (actor, target) => {
   if (target.isOwner && actor._id.toString() !== target._id.toString())
     throw new AppError('The Organization Owner cannot be modified by other users.', 403);
 
-  const actorIsSuper  = actor.role?.isSuperAdmin || actor.isSuperAdmin;
+  const actorIsSuper = actor.role?.isSuperAdmin || actor.isSuperAdmin;
   const targetIsSuper = target.role?.isSuperAdmin || target.isSuperAdmin;
   if (targetIsSuper && !actorIsSuper)
     throw new AppError('You do not have permission to modify a Super Administrator.', 403);
@@ -65,7 +65,7 @@ const validateUserAction = (actor, target) => {
 
 const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,4}[-\s.]?[0-9]{1,9}$/;
 const validatePhone = (phone) => phoneRegex.test(phone);
-const cleanPhone    = (phone) => phone.replace(/[\s\-\(\)\+]/g, '');
+const cleanPhone = (phone) => phone.replace(/[\s\-\(\)\+]/g, '');
 
 /** Emit a socket event safely — no-op if io is not available */
 const emitSocket = (req, room, event, payload) => {
@@ -215,20 +215,20 @@ exports.getMyPermissions = catchAsync(async (req, res) => {
     .select('role permissionOverrides isSuperAdmin isOwner emailVerified status')
     .lean();
 
-  const org     = await Organization.findById(req.user.organizationId).select('owner').lean();
+  const org = await Organization.findById(req.user.organizationId).select('owner').lean();
   const isOwner = org?.owner?.toString() === req.user._id.toString();
 
   if (isOwner || user.role?.isSuperAdmin) {
     return res.status(200).json({
       status: 'success',
       data: {
-        permissions:  VALID_TAGS,
-        role:         user.role?.name,
+        permissions: VALID_TAGS,
+        role: user.role?.name,
         isOwner,
         isSuperAdmin: true,
-        overrides:    { granted: [], revoked: [] },
+        overrides: { granted: [], revoked: [] },
         emailVerified: user.emailVerified,
-        status:       user.status,
+        status: user.status,
       },
     });
   }
@@ -239,15 +239,15 @@ exports.getMyPermissions = catchAsync(async (req, res) => {
     status: 'success',
     data: {
       permissions,
-      role:         user.role?.name,
-      isOwner:      false,
+      role: user.role?.name,
+      isOwner: false,
       isSuperAdmin: false,
       overrides: {
         granted: user.permissionOverrides?.granted ?? [],
         revoked: user.permissionOverrides?.revoked ?? [],
       },
       emailVerified: user.emailVerified,
-      status:        user.status,
+      status: user.status,
     },
   });
 });
@@ -281,8 +281,8 @@ exports.revokeDevice = catchAsync(async (req, res, next) => {
   if (req.session?._id?.toString() === sessionId)
     return next(new AppError('Cannot revoke current session. Use logout instead.', 400));
 
-  session.isValid       = false;
-  session.terminatedAt  = new Date();
+  session.isValid = false;
+  session.terminatedAt = new Date();
   await session.save();
 
   res.status(200).json({ status: 'success', message: 'Device session revoked successfully.' });
@@ -327,12 +327,12 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
     searchFields: ['name', 'email', 'phone', 'employeeProfile.employeeId', 'employeeProfile.secondaryPhone'],
     select: '-permissionOverrides -loginAttempts -lockUntil -refreshTokens -passwordResetToken -emailVerificationToken -bankDetails',
     populate: [
-      { path: 'role',                                  select: 'name' },
-      { path: 'branchId',                              select: 'name' },
-      { path: 'employeeProfile.departmentId',          select: 'name' },
-      { path: 'employeeProfile.designationId',         select: 'title' },
-      { path: 'employeeProfile.reportingManagerId',    select: 'name' },
-      { path: 'attendanceConfig.shiftId',              select: 'name' },
+      { path: 'role', select: 'name' },
+      { path: 'branchId', select: 'name' },
+      { path: 'employeeProfile.departmentId', select: 'name' },
+      { path: 'employeeProfile.designationId', select: 'title' },
+      { path: 'employeeProfile.reportingManagerId', select: 'name' },
+      { path: 'attendanceConfig.shiftId', select: 'name' },
     ],
   })(req, res, next);
 });
@@ -343,17 +343,17 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
  */
 exports.getUser = factory.getOne(User, {
   populate: [
-    { path: 'role',                                 select: 'name permissions isSuperAdmin' },
-    { path: 'branchId',                             select: 'name address city' },
-    { path: 'employeeProfile.designationId',        select: 'title' },
-    { path: 'employeeProfile.departmentId',         select: 'name' },
-    { path: 'employeeProfile.reportingManagerId',   select: 'name avatar' },
-    { path: 'attendanceConfig.shiftId',             select: 'name startTime endTime' },
-    { path: 'attendanceConfig.shiftGroupId',        select: 'name' },
-    { path: 'attendanceConfig.geoFenceId',          select: 'name' },
-    { path: 'createdBy',                            select: 'name' },
-    { path: 'updatedBy',                            select: 'name' },
-    { path: 'blockedBy',                            select: 'name' },
+    { path: 'role', select: 'name permissions isSuperAdmin' },
+    { path: 'branchId', select: 'name address city' },
+    { path: 'employeeProfile.designationId', select: 'title' },
+    { path: 'employeeProfile.departmentId', select: 'name' },
+    { path: 'employeeProfile.reportingManagerId', select: 'name avatar' },
+    { path: 'attendanceConfig.shiftId', select: 'name startTime endTime' },
+    { path: 'attendanceConfig.shiftGroupId', select: 'name' },
+    { path: 'attendanceConfig.geoFenceId', select: 'name' },
+    { path: 'createdBy', select: 'name' },
+    { path: 'updatedBy', select: 'name' },
+    { path: 'blockedBy', select: 'name' },
   ],
 });
 
@@ -369,7 +369,7 @@ exports.searchUsers = (req, res, next) => {
     searchFields: ['name', 'email', 'phone', 'employeeProfile.employeeId'],
     select: '-permissionOverrides -loginAttempts -lockUntil -refreshTokens -passwordResetToken -emailVerificationToken',
     populate: [
-      { path: 'role',     select: 'name' },
+      { path: 'role', select: 'name' },
       { path: 'branchId', select: 'name' },
     ],
   })(req, res, next);
@@ -381,7 +381,7 @@ exports.searchUsers = (req, res, next) => {
  */
 exports.getUserActivity = catchAsync(async (req, res, next) => {
   const { id: userId } = req.params;
-  const orgId          = req.user.organizationId;
+  const orgId = req.user.organizationId;
 
   const targetExists = await User.exists({ _id: userId, organizationId: orgId });
   if (!targetExists) return next(new AppError('User not found or access denied.', 404));
@@ -425,7 +425,7 @@ exports.getOrgHierarchy = catchAsync(async (req, res, next) => {
     .lean();
 
   const userMap = {};
-  const roots   = [];
+  const roots = [];
 
   users.forEach(u => { userMap[u._id] = { ...u, reportees: [] }; });
 
@@ -483,8 +483,8 @@ exports.createUser = catchAsync(async (req, res, next) => {
 
     // Force org + audit fields; strip privilege-escalation fields
     req.body.organizationId = orgId;
-    req.body.createdBy      = req.user._id;
-    req.body.updatedBy      = req.user._id;
+    req.body.createdBy = req.user._id;
+    req.body.updatedBy = req.user._id;
 
     const escalationFields = [
       'permissionOverrides', 'isOwner', 'isSuperAdmin',
@@ -526,8 +526,8 @@ exports.createUser = catchAsync(async (req, res, next) => {
     // Auto-generate secure temp password — admin never sets it
     // User must reset via forgot-password flow on first login
     if (!req.body.password) {
-      const tempPassword      = require('crypto').randomBytes(16).toString('hex');
-      req.body.password       = tempPassword;
+      const tempPassword = require('crypto').randomBytes(16).toString('hex');
+      req.body.password = tempPassword;
       req.body.passwordConfirm = tempPassword;
       req.body.mustChangePassword = true;
     }
@@ -537,17 +537,17 @@ exports.createUser = catchAsync(async (req, res, next) => {
     const [newUser] = await User.create([req.body], { session });
 
     await LeaveBalance.create([{
-      user:           newUser._id,
+      user: newUser._id,
       organizationId: orgId,
-      financialYear:  getFinancialYear(),
-      casualLeave:    { total: 12, used: 0 },
-      sickLeave:      { total: 10, used: 0 },
-      earnedLeave:    { total: 0,  used: 0 },
+      financialYear: getFinancialYear(),
+      casualLeave: { total: 12, used: 0 },
+      sickLeave: { total: 10, used: 0 },
+      earnedLeave: { total: 0, used: 0 },
     }], { session });
 
     await session.commitTransaction();
 
-    newUser.password      = undefined;
+    newUser.password = undefined;
     newUser.refreshTokens = undefined;
 
     res.status(201).json({
@@ -559,10 +559,10 @@ exports.createUser = catchAsync(async (req, res, next) => {
     await session.abortTransaction();
 
     if (err.code === 11000) {
-      const field = err.keyPattern?.email                          ? 'Email'
-        : err.keyPattern?.phone                                    ? 'Phone'
-        : err.keyPattern?.['employeeProfile.employeeId']           ? 'Employee ID'
-        : 'Field';
+      const field = err.keyPattern?.email ? 'Email'
+        : err.keyPattern?.phone ? 'Phone'
+          : err.keyPattern?.['employeeProfile.employeeId'] ? 'Employee ID'
+            : 'Field';
       return next(new AppError(`${field} already exists in this organization.`, 400));
     }
 
@@ -610,7 +610,7 @@ exports.updateUser = catchAsync(async (req, res, next) => {
 
   if (req.body.employeeProfile) flatten(req.body.employeeProfile, 'employeeProfile');
   if (req.body.attendanceConfig) flatten(req.body.attendanceConfig, 'attendanceConfig');
-  if (req.body.preferences)      flatten(req.body.preferences,      'preferences');
+  if (req.body.preferences) flatten(req.body.preferences, 'preferences');
 
   // Validate all reference IDs are org-bound
   if (updatePayload['employeeProfile.reportingManagerId']) {
@@ -654,13 +654,13 @@ exports.deleteUser = catchAsync(async (req, res, next) => {
 
   validateUserAction(req.user, targetUser);
 
-  targetUser.isActive       = false;
-  targetUser.status         = 'inactive';
+  targetUser.isActive = false;
+  targetUser.status = 'inactive';
   targetUser.isLoginBlocked = true;
-  targetUser.blockReason    = 'User deleted by administrator';
-  targetUser.blockedAt      = new Date();
-  targetUser.blockedBy      = req.user._id;
-  targetUser.updatedBy      = req.user._id;
+  targetUser.blockReason = 'User deleted by administrator';
+  targetUser.blockedAt = new Date();
+  targetUser.blockedBy = req.user._id;
+  targetUser.updatedBy = req.user._id;
 
   await targetUser.save({ validateBeforeSave: false });
 
@@ -700,11 +700,11 @@ exports.adminUpdatePassword = catchAsync(async (req, res, next) => {
 
   validateUserAction(req.user, targetUser);
 
-  targetUser.password          = password;
-  targetUser.passwordConfirm   = passwordConfirm;
+  targetUser.password = password;
+  targetUser.passwordConfirm = passwordConfirm;
   targetUser.passwordChangedAt = Date.now() - 1000;
   targetUser.mustChangePassword = true; // force them to set their own on next login
-  targetUser.updatedBy         = req.user._id;
+  targetUser.updatedBy = req.user._id;
 
   await targetUser.save();
 
@@ -766,8 +766,8 @@ exports.uploadUserPhotoByAdmin = catchAsync(async (req, res, next) => {
  */
 exports.updatePermissionOverrides = catchAsync(async (req, res, next) => {
   const { grant = [], revoke = [] } = req.body;
-  const { id: userId }              = req.params;
-  const orgId                       = req.user.organizationId;
+  const { id: userId } = req.params;
+  const orgId = req.user.organizationId;
 
   if (!Array.isArray(grant) || !Array.isArray(revoke))
     return next(new AppError('grant and revoke must be arrays', 400));
@@ -790,15 +790,15 @@ exports.updatePermissionOverrides = catchAsync(async (req, res, next) => {
 
   // Prevent granting permissions the actor doesn't hold themselves
   if (!req.user.isOwner) {
-    const actorUser   = await User.findById(req.user._id).populate('role', 'permissions').select('permissionOverrides').lean();
-    const actorPerms  = new Set(mergePermissions(actorUser.role?.permissions, actorUser.permissionOverrides));
+    const actorUser = await User.findById(req.user._id).populate('role', 'permissions').select('permissionOverrides').lean();
+    const actorPerms = new Set(mergePermissions(actorUser.role?.permissions, actorUser.permissionOverrides));
     const cannotGrant = grant.filter(p => !actorPerms.has(p));
     if (cannotGrant.length)
       return next(new AppError(`You cannot grant permissions you don't have: ${cannotGrant.join(', ')}`, 403));
   }
 
   target.permissionOverrides = { granted: grant, revoked: revoke };
-  target.updatedBy           = req.user._id;
+  target.updatedBy = req.user._id;
   await target.save({ validateBeforeSave: false });
 
   emitSocket(req, `user:${userId}`, 'permissions:updated', {
@@ -835,12 +835,12 @@ exports.toggleUserBlock = catchAsync(async (req, res, next) => {
   const io = req.app.get('io');
 
   targetUser.isLoginBlocked = blockStatus;
-  targetUser.updatedBy      = req.user._id;
+  targetUser.updatedBy = req.user._id;
 
   if (blockStatus) {
     targetUser.blockReason = reason || 'Blocked by administrator';
-    targetUser.blockedAt   = new Date();
-    targetUser.blockedBy   = req.user._id;
+    targetUser.blockedAt = new Date();
+    targetUser.blockedBy = req.user._id;
 
     await Session.updateMany(
       { userId: targetUser._id, isValid: true },
@@ -854,8 +854,8 @@ exports.toggleUserBlock = catchAsync(async (req, res, next) => {
     }
   } else {
     targetUser.blockReason = undefined;
-    targetUser.blockedAt   = undefined;
-    targetUser.blockedBy   = undefined;
+    targetUser.blockedAt = undefined;
+    targetUser.blockedBy = undefined;
   }
 
   await targetUser.save({ validateBeforeSave: false });
@@ -884,13 +884,13 @@ exports.activateUser = catchAsync(async (req, res, next) => {
 
   validateUserAction(req.user, targetUser);
 
-  targetUser.status         = 'approved';
-  targetUser.isActive       = true;
+  targetUser.status = 'approved';
+  targetUser.isActive = true;
   targetUser.isLoginBlocked = false;
-  targetUser.blockReason    = undefined;
-  targetUser.blockedAt      = undefined;
-  targetUser.blockedBy      = undefined;
-  targetUser.updatedBy      = req.user._id;
+  targetUser.blockReason = undefined;
+  targetUser.blockedAt = undefined;
+  targetUser.blockedBy = undefined;
+  targetUser.updatedBy = req.user._id;
 
   await targetUser.save({ validateBeforeSave: false });
 
@@ -911,8 +911,8 @@ exports.deactivateUser = catchAsync(async (req, res, next) => {
 
   validateUserAction(req.user, targetUser);
 
-  targetUser.status    = 'inactive';
-  targetUser.isActive  = false;
+  targetUser.status = 'inactive';
+  targetUser.isActive = false;
   targetUser.updatedBy = req.user._id;
 
   await targetUser.save({ validateBeforeSave: false });
@@ -942,7 +942,7 @@ exports.checkPermission = catchAsync(async (req, res, next) => {
     .select('role permissionOverrides isOwner')
     .lean();
 
-  const org     = await Organization.findById(req.user.organizationId).select('owner').lean();
+  const org = await Organization.findById(req.user.organizationId).select('owner').lean();
   const isOwner = org?.owner?.toString() === req.user._id.toString();
 
   let hasPermission = false;
@@ -950,7 +950,7 @@ exports.checkPermission = catchAsync(async (req, res, next) => {
     hasPermission = true;
   } else {
     const effective = new Set(mergePermissions(user.role?.permissions, user.permissionOverrides));
-    hasPermission   = effective.has(permission) || effective.has('*');
+    hasPermission = effective.has(permission) || effective.has('*');
   }
 
   res.status(200).json({
@@ -993,9 +993,9 @@ exports.bulkUpdateStatus = catchAsync(async (req, res, next) => {
           updatedBy: req.user._id,
           ...(status === 'suspended' && {
             isLoginBlocked: true,
-            blockReason:    reason || 'Bulk status update',
-            blockedAt:      new Date(),
-            blockedBy:      req.user._id,
+            blockReason: reason || 'Bulk status update',
+            blockedAt: new Date(),
+            blockedBy: req.user._id,
           }),
         },
       },
@@ -1013,7 +1013,7 @@ exports.bulkUpdateStatus = catchAsync(async (req, res, next) => {
       if (io) {
         userIds.forEach(uid => {
           io.to(`user:${uid}`).emit('forceLogout', {
-            reason:    status === 'suspended' ? 'account_suspended' : 'account_deactivated',
+            reason: status === 'suspended' ? 'account_suspended' : 'account_deactivated',
             timestamp: new Date().toISOString(),
           });
         });
@@ -1048,7 +1048,7 @@ exports.exportUsers = catchAsync(async (req, res, next) => {
 
   const query = {
     organizationId: req.user.organizationId,
-    isActive:       req.query.isActive !== 'false',
+    isActive: req.query.isActive !== 'false',
   };
   if (departmentId) query['employeeProfile.departmentId'] = departmentId;
 
@@ -1062,19 +1062,19 @@ exports.exportUsers = catchAsync(async (req, res, next) => {
 
   if (format === 'csv') {
     const fields = [
-      { label: 'Employee ID',      value: 'employeeProfile.employeeId' },
-      { label: 'Name',             value: 'name' },
-      { label: 'Email',            value: 'email' },
-      { label: 'Phone',            value: 'phone' },
-      { label: 'Department',       value: 'employeeProfile.departmentId.name' },
-      { label: 'Designation',      value: 'employeeProfile.designationId.title' },
-      { label: 'Status',           value: 'status' },
-      { label: 'Employment Type',  value: 'employeeProfile.employmentType' },
-      { label: 'Date of Joining',  value: 'employeeProfile.dateOfJoining' },
+      { label: 'Employee ID', value: 'employeeProfile.employeeId' },
+      { label: 'Name', value: 'name' },
+      { label: 'Email', value: 'email' },
+      { label: 'Phone', value: 'phone' },
+      { label: 'Department', value: 'employeeProfile.departmentId.name' },
+      { label: 'Designation', value: 'employeeProfile.designationId.title' },
+      { label: 'Status', value: 'status' },
+      { label: 'Employment Type', value: 'employeeProfile.employmentType' },
+      { label: 'Date of Joining', value: 'employeeProfile.dateOfJoining' },
     ];
 
     const parser = new Parser({ fields });
-    const csv    = parser.parse(users);
+    const csv = parser.parse(users);
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=users_export.csv');
@@ -1088,8 +1088,10 @@ module.exports = exports;
 
 
 
-// 'use strict';
 
+
+
+// 'use strict';
 // const mongoose = require('mongoose');
 // const User = require("./user.model");
 // const Organization = require("../../organization/core/organization.model");

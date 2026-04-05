@@ -372,7 +372,7 @@ class PurchaseService {
    * ============================================================ */
   static async deletePayment(purchaseId, paymentId, user) {
     await runInTransaction(async (session) => {
-      const payment = await (require('../../modules/accounting/payments/payment.model'))
+      const payment = await (require('../../../../accounting/payments/payment.model'))
         .findOne({ _id: paymentId, purchaseId, organizationId: user.organizationId })
         .session(session);
 
@@ -700,7 +700,7 @@ class PurchaseService {
     reference, notes, userId, date, session,
     updatePurchase = true,
   }) {
-    const Payment = require('../../modules/accounting/payments/payment.model');
+    const Payment = require('../../../../accounting/payments/payment.model');
 
     const [payment] = await Payment.create([{
       organizationId: orgId,

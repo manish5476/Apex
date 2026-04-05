@@ -1,12 +1,12 @@
 'use strict';
 
-const mongoose  = require('mongoose');
+const mongoose = require('mongoose');
 const { nanoid } = require('nanoid');
 
-const Product      = require('../model/product.model');
+const Product = require('../model/product.model');
 const StockService = require('./stock.service');
 const JournalService = require('./Journal.service');
-const AppError     = require('../../../../core/utils/api/appError');
+const AppError = require('../../../../core/utils/api/appError');
 const { runInTransaction } = require('../../../../core/utils/db/runInTransaction');
 
 const slugify = (value) =>
@@ -34,8 +34,8 @@ class ProductService {
       // Normalize flat quantity → inventory array
       if (data.quantity && (!data.inventory || data.inventory.length === 0)) {
         data.inventory = [{
-          branchId:     user.branchId,
-          quantity:     Number(data.quantity),
+          branchId: user.branchId,
+          quantity: Number(data.quantity),
           reorderLevel: data.reorderLevel || 10,
         }];
       }
@@ -43,21 +43,21 @@ class ProductService {
       [product] = await Product.create([{
         ...data,
         organizationId: user.organizationId,
-        slug:           `${slugify(data.name)}-${nanoid(6)}`,
-        createdBy:      user._id,
+        slug: `${slugify(data.name)}-${nanoid(6)}`,
+        createdBy: user._id,
       }], { session, ordered: true });
 
       // Opening stock journal (Dr Inventory / Cr Equity)
-      const totalQty   = product.inventory?.reduce((a, b) => a + (b.quantity || 0), 0) || 0;
+      const totalQty = product.inventory?.reduce((a, b) => a + (b.quantity || 0), 0) || 0;
       const stockValue = totalQty * (product.purchasePrice || 0);
 
       if (stockValue > 0) {
         await JournalService.postOpeningStockJournal({
-          orgId:      user.organizationId,
-          branchId:   user.branchId,
+          orgId: user.organizationId,
+          branchId: user.branchId,
           product,
           stockValue,
-          userId:     user._id,
+          userId: user._id,
           session,
         });
       }
@@ -110,7 +110,7 @@ class ProductService {
     }
 
     product.isDeleted = true;
-    product.isActive  = false;
+    product.isActive = false;
     await product.save();
   }
 
@@ -128,7 +128,7 @@ class ProductService {
 
     await runInTransaction(async (session) => {
       const targetBranch = branchId || user.branchId;
-      const item         = { productId, quantity: qty };
+      const item = { productId, quantity: qty };
 
       if (type === 'subtract') {
         // StockService.decrement validates availability before touching DB
@@ -141,13 +141,13 @@ class ProductService {
         .session(session);
 
       await JournalService.postStockAdjustmentJournal({
-        orgId:    user.organizationId,
+        orgId: user.organizationId,
         branchId: targetBranch,
         product,
         quantity: qty,
         type,
         reason,
-        userId:   user._id,
+        userId: user._id,
         session,
       });
 
@@ -206,17 +206,17 @@ class ProductService {
       }
     }
 
-    let importedCount    = 0;
-    let journalCount     = 0;
+    let importedCount = 0;
+    let journalCount = 0;
 
     await runInTransaction(async (session) => {
       // Pre-fetch accounts once for the whole import
       const [inventoryAcc, equityAcc] = await Promise.all([
-        JournalService.getOrInitAccount(user.organizationId, 'asset',  'Inventory Asset',       '1500', session),
+        JournalService.getOrInitAccount(user.organizationId, 'asset', 'Inventory Asset', '1500', session),
         JournalService.getOrInitAccount(user.organizationId, 'equity', 'Opening Balance Equity', '3000', session),
       ]);
 
-      const BATCH_SIZE    = 100;
+      const BATCH_SIZE = 100;
       const journalEntries = [];
 
       for (let i = 0; i < rawProducts.length; i += BATCH_SIZE) {
@@ -225,8 +225,8 @@ class ProductService {
         const mapped = batch.map(p => ({
           ...p,
           organizationId: user.organizationId,
-          slug:           `${slugify(p.name)}-${nanoid(6)}`,
-          inventory:      p.inventory?.length
+          slug: `${slugify(p.name)}-${nanoid(6)}`,
+          inventory: p.inventory?.length
             ? p.inventory
             : (p.quantity ? [{ branchId: user.branchId, quantity: Number(p.quantity) }] : []),
           createdBy: user._id,
@@ -237,34 +237,34 @@ class ProductService {
 
         // Build journal entries — iterate RESULT to get generated _ids
         for (const product of created) {
-          const totalQty   = product.inventory.reduce((s, i) => s + (i.quantity || 0), 0);
+          const totalQty = product.inventory.reduce((s, i) => s + (i.quantity || 0), 0);
           const stockValue = parseFloat((totalQty * (product.purchasePrice || 0)).toFixed(2));
 
           if (stockValue > 0) {
             journalEntries.push(
               {
                 organizationId: user.organizationId,
-                branchId:       user.branchId,
-                accountId:      inventoryAcc._id,
-                date:           new Date(),
-                debit:          stockValue,
-                credit:         0,
-                description:    `Opening Stock: ${product.name}`,
-                referenceType:  'opening_stock',
-                referenceId:    product._id,
-                createdBy:      user._id,
+                branchId: user.branchId,
+                accountId: inventoryAcc._id,
+                date: new Date(),
+                debit: stockValue,
+                credit: 0,
+                description: `Opening Stock: ${product.name}`,
+                referenceType: 'opening_stock',
+                referenceId: product._id,
+                createdBy: user._id,
               },
               {
                 organizationId: user.organizationId,
-                branchId:       user.branchId,
-                accountId:      equityAcc._id,
-                date:           new Date(),
-                debit:          0,
-                credit:         stockValue,
-                description:    `Opening Stock Equity: ${product.name}`,
-                referenceType:  'opening_stock',
-                referenceId:    product._id,
-                createdBy:      user._id,
+                branchId: user.branchId,
+                accountId: equityAcc._id,
+                date: new Date(),
+                debit: 0,
+                credit: stockValue,
+                description: `Opening Stock Equity: ${product.name}`,
+                referenceType: 'opening_stock',
+                referenceId: product._id,
+                createdBy: user._id,
               }
             );
             journalCount += 2;
@@ -327,7 +327,7 @@ class ProductService {
         bulkOps.push({
           updateOne: {
             filter: {
-              _id:            new mongoose.Types.ObjectId(u._id),
+              _id: new mongoose.Types.ObjectId(u._id),
               organizationId: new mongoose.Types.ObjectId(user.organizationId),
             },
             update: { $set: cleanUpdate },
@@ -348,16 +348,16 @@ class ProductService {
    * 8. GET PRODUCT HISTORY (cross-collection movement ledger)
    * ============================================================ */
   static async getProductHistory(productId, orgId, { startDate, endDate }) {
-    const Invoice       = require('../../accounting/billing/invoice.model');
-    const Purchase      = require('../model/purchase.model');
+    const Invoice = require('../../accounting/billing/invoice.model');
+    const Purchase = require('../model/purchase.model');
     const PurchaseReturn = require('../model/purchase.return.model');
-    const AccountEntry  = require('../../accounting/core/model/accountEntry.model');
+    const AccountEntry = require('../../accounting/core/model/accountEntry.model');
 
     // Build a clean date filter — guard against "null" / "undefined" strings
     const dateFilter = {};
     if (startDate && endDate && startDate !== 'null' && startDate !== 'undefined') {
       const start = new Date(startDate);
-      const end   = new Date(endDate);
+      const end = new Date(endDate);
       if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
         end.setHours(23, 59, 59, 999);
         dateFilter.$gte = start;
@@ -370,30 +370,30 @@ class ProductService {
     // Run all four queries in parallel
     const [invoices, purchases, returns, adjustments] = await Promise.all([
       Invoice.find({
-        organizationId:    orgId,
+        organizationId: orgId,
         'items.productId': productId,
-        status:            { $ne: 'cancelled' },
+        status: { $ne: 'cancelled' },
         ...(applyDate ? { invoiceDate: dateFilter } : {}),
       }).populate('customerId', 'name').lean(),
 
       Purchase.find({
-        organizationId:    orgId,
+        organizationId: orgId,
         'items.productId': productId,
-        status:            { $ne: 'cancelled' },
-        isDeleted:         false,
+        status: { $ne: 'cancelled' },
+        isDeleted: false,
         ...(applyDate ? { purchaseDate: dateFilter } : {}),
       }).populate('supplierId', 'companyName').lean(),
 
       PurchaseReturn.find({
-        organizationId:    orgId,
+        organizationId: orgId,
         'items.productId': productId,
         ...(applyDate ? { returnDate: dateFilter } : {}),
       }).populate('supplierId', 'companyName').lean(),
 
       AccountEntry.find({
         organizationId: orgId,
-        referenceId:    productId,
-        referenceType:  { $in: ['journal', 'opening_stock'] },
+        referenceId: productId,
+        referenceType: { $in: ['journal', 'opening_stock'] },
         ...(applyDate ? { date: dateFilter } : {}),
       }).lean(),
     ]);
@@ -464,7 +464,7 @@ class ProductService {
           totalStockCalculated: { $sum: '$inventory.quantity' },
           maxReorderLevel: {
             $cond: {
-              if:   { $gt: [{ $size: '$inventory' }, 0] },
+              if: { $gt: [{ $size: '$inventory' }, 0] },
               then: { $max: '$inventory.reorderLevel' },
               else: 10,
             },
@@ -478,8 +478,8 @@ class ProductService {
         $project: {
           name: 1, sku: 1, barcode: 1,
           currentStock: '$totalStockCalculated',
-          reorderLevel:  '$maxReorderLevel',
-          image:         { $arrayElemAt: ['$images', 0] },
+          reorderLevel: '$maxReorderLevel',
+          image: { $arrayElemAt: ['$images', 0] },
         },
       },
       { $sort: { currentStock: 1 } },
@@ -489,27 +489,53 @@ class ProductService {
   /* ============================================================
    * 10. SCAN PRODUCT (POS barcode / SKU lookup)
    * ============================================================ */
-  static async scanProduct(code, branchId, user) {
-    if (!code) throw new AppError('Please provide a scan code', 400);
+  // static async scanProduct(code, branchId, user) {
+  //   if (!code) throw new AppError('Please provide a scan code', 400);
+
+  //   const product = await Product.findOne({
+  //     organizationId: user.organizationId,
+  //     isActive:  true,
+  //     isDeleted: false,
+  //     $or: [{ barcode: code }, { sku: code }],
+  //   })
+  //     .select('_id name sku sellingPrice taxRate unitId inventory')
+  //     .lean();
+
+  //   if (!product) throw new AppError('Product not found', 404);
+
+  //   const targetBranchId  = branchId || user.branchId;
+  //   const branchInventory = product.inventory?.find(
+  //     inv => String(inv.branchId) === String(targetBranchId)
+  //   );
+  //   const availableStock = branchInventory?.quantity ?? 0;
+
+  //   // Strip raw inventory array from the response payload
+  //   const { inventory: _inv, ...productData } = product;
+
+  //   return { product: productData, availableStock };
+  // }
+  static async scanProduct(scanValue, branchId, user) {
+    // Update the error check to look at scanValue
+    if (!scanValue) throw new AppError('Please provide a scan code', 400);
 
     const product = await Product.findOne({
       organizationId: user.organizationId,
-      isActive:  true,
+      isActive: true,
       isDeleted: false,
-      $or: [{ barcode: code }, { sku: code }],
+      // Check against scanValue
+      $or: [{ barcode: scanValue }, { sku: scanValue }],
     })
       .select('_id name sku sellingPrice taxRate unitId inventory')
       .lean();
 
     if (!product) throw new AppError('Product not found', 404);
 
-    const targetBranchId  = branchId || user.branchId;
+    const targetBranchId = branchId || user.branchId;
     const branchInventory = product.inventory?.find(
       inv => String(inv.branchId) === String(targetBranchId)
     );
     const availableStock = branchInventory?.quantity ?? 0;
 
-    // Strip raw inventory array from the response payload
     const { inventory: _inv, ...productData } = product;
 
     return { product: productData, availableStock };
