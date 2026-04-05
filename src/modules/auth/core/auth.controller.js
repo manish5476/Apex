@@ -17,6 +17,7 @@ const logger      = require('../../../bootstrap/logger');
 const { signAccessToken, signRefreshToken } = require('../../../core/utils/helpers/authUtils');
 const { createNotification }               = require('../../notification/core/notification.service');
 const { emitToUser }                       = require('../../../socketHandlers/socket');
+const { mergePermissions }                 = require('../../../config/permissions');
 
 // ======================================================
 //  1. HELPERS
@@ -189,7 +190,7 @@ exports.login = catchAsync(async (req, res, next) => {
     organizationId: organization._id,
     $or: [{ email: email.toLowerCase() }, { phone: cleanPhone(email) }],
   })
-    .select('+password +loginAttempts +lockUntil')
+    .select('+password +loginAttempts +lockUntil +permissionOverrides')
     .populate({ path: 'role', select: 'name permissions isSuperAdmin isActive' });
 
   if (!user) return next(new AppError('Invalid credentials.', 401));
@@ -321,16 +322,20 @@ exports.login = catchAsync(async (req, res, next) => {
 
   await user.save({ validateBeforeSave: false });
 
-  user.password      = undefined;
-  user.loginAttempts = undefined;
-  user.lockUntil     = undefined;
-  user.refreshTokens = undefined;
+  // ── Calculate Effective Permissions ─────────────────────────────────────
+  const effectivePermissions = (isOwner || user.role?.isSuperAdmin || user.isSuperAdmin)
+    ? ['*']
+    : mergePermissions(user.role?.permissions, user.permissionOverrides);
 
   res.status(200).json({
     status: 'success',
     token:  accessToken,
     data: {
-      user:         { ...user.toObject(), isOwner },
+      user: {
+        ...user.toObject(),
+        isOwner,
+        permissions: effectivePermissions,
+      },
       session,
       organization: {
         id:           organization._id,
@@ -375,7 +380,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   const user = await User.findById(userId).populate({
     path:   'role',
     select: 'name permissions isSuperAdmin isActive',
-  });
+  }).select('+permissionOverrides');
 
   if (!user)
     return next(new AppError('The user belonging to this token no longer exists.', 401));
@@ -414,11 +419,15 @@ exports.protect = catchAsync(async (req, res, next) => {
       return next(new AppError('User recently changed password. Please log in again.', 401));
   }
 
+  const isSuperAdmin = user.role?.isSuperAdmin || user.isSuperAdmin || false;
+  const isOwner = user.isOwner;
+
   req.user = {
     ...user.toObject(),
     id:           user._id,
-    isSuperAdmin: user.role?.isSuperAdmin || user.isSuperAdmin || false,
-    permissions:  user.role?.permissions || [],
+    isSuperAdmin,
+    isOwner,
+    permissions:  (isOwner || isSuperAdmin) ? ['*'] : mergePermissions(user.role?.permissions, user.permissionOverrides),
     roleName:     user.role?.name || 'No Role',
   };
   req.session = session;
@@ -481,7 +490,7 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
 
   const user = await User.findById(decoded.id)
     .populate('role')
-    .select('-refreshTokens -passwordResetToken -passwordResetExpires');
+    .select('-refreshTokens -passwordResetToken -passwordResetExpires +permissionOverrides');
 
   if (!user)           return next(new AppError('User not found', 401));
   if (!user.isActive)  return next(new AppError('User account is deactivated', 401));
@@ -499,10 +508,11 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
         name:           user.name,
         email:          user.email,
         phone:          user.phone,
-        role:           user.role?.name ?? null,
-        permissions:    user.role?.permissions ?? [],
         isOwner:        user.isOwner,
         isSuperAdmin:   user.isSuperAdmin || user.role?.isSuperAdmin,
+        permissions:    (user.isOwner || user.isSuperAdmin || user.role?.isSuperAdmin)
+          ? ['*']
+          : mergePermissions(user.role?.permissions, user.permissionOverrides),
         organizationId: user.organizationId,
         branchId:       user.branchId,
         avatar:         user.avatar,
@@ -726,7 +736,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   const user = await User.findOne({
     passwordResetToken:   hashedToken,
     passwordResetExpires: { $gt: Date.now() },
-  }).populate('role');
+  }).populate('role').select('+permissionOverrides');
 
   if (!user) return next(new AppError('Password reset token is invalid or has expired.', 400));
 
@@ -787,11 +797,30 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
     `,
   }).catch(err => logger.error('Password reset confirmation email failed:', err.message));
 
+  // Fetch organization info for consistent response
+  const organization = await Organization.findById(user.organizationId);
+
+  const effectivePermissions = (isOwner || user.role?.isSuperAdmin || user.isSuperAdmin)
+    ? ['*']
+    : mergePermissions(user.role?.permissions, user.permissionOverrides);
+
   res.status(200).json({
     status:  'success',
     token:   accessToken,
     message: 'Password reset successful. You are now logged in.',
-    data:    { session },
+    data: {
+      user: {
+        ...user.toObject(),
+        isOwner,
+        permissions: effectivePermissions,
+      },
+      session,
+      organization: {
+        id:           organization?._id,
+        name:         organization?.name,
+        uniqueShopId: organization?.uniqueShopId,
+      },
+    },
   });
 });
 
