@@ -6,9 +6,10 @@ const { Schema } = mongoose;
 // ─────────────────────────────────────────────
 const SalesItemSchema = new Schema({
   productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
-  sku:  { type: String, default: '' },
+  sku: { type: String, default: '' },
   name: { type: String, default: '' },
-  qty:  { type: Number, required: true, min: 1 },
+  qty: { type: Number, required: true, min: 0 },
+  originalQty: { type: Number, min: 0 },
   rate: { type: Number, required: true, min: 0 },
 
   // FIX #1 — purchasePriceAtSale must NOT default to 0.
@@ -17,8 +18,8 @@ const SalesItemSchema = new Schema({
   // Set to null and handle missing values explicitly in aggregation (see below).
   purchasePriceAtSale: { type: Number, default: null },
 
-  discount:  { type: Number, default: 0, min: 0 },
-  tax:       { type: Number, default: 0, min: 0 },
+  discount: { type: Number, default: 0, min: 0 },
+  tax: { type: Number, default: 0, min: 0 },
   lineTotal: { type: Number, required: true, min: 0 },
 }, { _id: false });
 
@@ -27,19 +28,19 @@ const SalesItemSchema = new Schema({
 // ─────────────────────────────────────────────
 const SalesSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
-  branchId:       { type: Schema.Types.ObjectId, ref: 'Branch',       required: true, index: true },
-  invoiceId:      { type: Schema.Types.ObjectId, ref: 'Invoice',      required: true, unique: true },
-  invoiceNumber:  { type: String, trim: true },
-  customerId:     { type: Schema.Types.ObjectId, ref: 'Customer',     required: true, index: true },
+  branchId: { type: Schema.Types.ObjectId, ref: 'Branch', required: true, index: true },
+  invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice', required: true, unique: true },
+  invoiceNumber: { type: String, trim: true },
+  customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true, index: true },
 
   items: { type: [SalesItemSchema], default: [] },
 
-  subTotal:      { type: Number, default: 0 },
-  taxTotal:      { type: Number, default: 0 },
+  subTotal: { type: Number, default: 0 },
+  taxTotal: { type: Number, default: 0 },
   discountTotal: { type: Number, default: 0 },
-  totalAmount:   { type: Number, required: true, min: 0 },
-  paidAmount:    { type: Number, default: 0 },
-  dueAmount:     { type: Number, default: 0 },
+  totalAmount: { type: Number, required: true, min: 0 },
+  paidAmount: { type: Number, default: 0 },
+  dueAmount: { type: Number, default: 0 },
 
   paymentStatus: {
     type: String,
@@ -49,12 +50,12 @@ const SalesSchema = new Schema({
 
   status: {
     type: String,
-    enum: ['active', 'cancelled', 'returned'],
+    enum: ['active', 'cancelled', 'returned', 'partially_returned'],
     default: 'active',
   },
 
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  meta:       { type: Schema.Types.Mixed },
+  meta: { type: Schema.Types.Mixed },
 
 }, { timestamps: true });
 
@@ -93,14 +94,14 @@ SalesSchema.index({ invoiceId: 1 }, { unique: true, sparse: true });
  */
 SalesSchema.statics.aggregateMonthlyProfit = function (orgId, fromDate, toDate) {
   const start = new Date(fromDate);
-  const end   = new Date(toDate);
+  const end = new Date(toDate);
 
   return this.aggregate([
     // Stage 1: Filter to the org, active sales, within date range
     {
       $match: {
         organizationId: new mongoose.Types.ObjectId(orgId),
-        status:    'active',
+        status: 'active',
         createdAt: { $gte: start, $lte: end },
       },
     },
@@ -111,8 +112,8 @@ SalesSchema.statics.aggregateMonthlyProfit = function (orgId, fromDate, toDate) 
     // Stage 3: Project clean per-item financial fields with null guards
     {
       $project: {
-        _id:          1,
-        createdAt:    1,
+        _id: 1,
+        createdAt: 1,
         // Revenue = post-discount line total (what the customer actually paid per line)
         lineRevenue: '$items.lineTotal',
 
@@ -120,7 +121,7 @@ SalesSchema.statics.aggregateMonthlyProfit = function (orgId, fromDate, toDate) 
         // $ifNull returns null when purchasePriceAtSale is null, which lets $sum skip it cleanly.
         lineCost: {
           $cond: {
-            if:   { $gt: [{ $ifNull: ['$items.purchasePriceAtSale', null] }, null] },
+            if: { $gt: [{ $ifNull: ['$items.purchasePriceAtSale', null] }, null] },
             then: { $multiply: ['$items.qty', '$items.purchasePriceAtSale'] },
             else: null,
           },
@@ -129,7 +130,7 @@ SalesSchema.statics.aggregateMonthlyProfit = function (orgId, fromDate, toDate) 
         // Track items missing cost data for data quality reporting
         hasMissingCost: {
           $cond: {
-            if:   { $eq: [{ $ifNull: ['$items.purchasePriceAtSale', null] }, null] },
+            if: { $eq: [{ $ifNull: ['$items.purchasePriceAtSale', null] }, null] },
             then: 1,
             else: 0,
           },
@@ -163,10 +164,10 @@ SalesSchema.statics.aggregateMonthlyProfit = function (orgId, fromDate, toDate) 
     // Stage 6: Project final output shape
     {
       $project: {
-        _id:         0,
-        month:       '$_id',
-        revenue:     { $round: ['$revenue',   2] },
-        totalCost:   { $round: ['$totalCost', 2] },
+        _id: 0,
+        month: '$_id',
+        revenue: { $round: ['$revenue', 2] },
+        totalCost: { $round: ['$totalCost', 2] },
 
         // grossProfit = revenue - cost (both on same net basis now)
         grossProfit: { $round: [{ $subtract: ['$revenue', '$totalCost'] }, 2] },
@@ -177,7 +178,7 @@ SalesSchema.statics.aggregateMonthlyProfit = function (orgId, fromDate, toDate) 
         // Guard against division by zero when revenue is 0
         margin: {
           $cond: {
-            if:   { $eq: ['$revenue', 0] },
+            if: { $eq: ['$revenue', 0] },
             then: 0,
             else: {
               $round: [
@@ -206,168 +207,3 @@ SalesSchema.statics.aggregateMonthlyProfit = function (orgId, fromDate, toDate) 
 };
 
 module.exports = mongoose.model('Sales', SalesSchema);
-
-// const mongoose = require('mongoose');
-// const { Schema } = mongoose;
-// // const SalesItemSchema = new Schema({
-// //   productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
-// //   sku: { type: String, default: "" },
-// //   name: { type: String, default: "" },
-// //   qty: { type: Number, required: true, min: 1 },
-// //   rate: { type: Number, required: true, min: 0 },
-// //   discount: { type: Number, default: 0 },
-// //   tax: { type: Number, default: 0 },
-// //   lineTotal: { type: Number, required: true, min: 0 }
-// // }, { _id: false });
-
-// const SalesItemSchema = new Schema({
-//   productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
-//   sku: { type: String, default: "" },
-//   name: { type: String, default: "" },
-//   qty: { type: Number, required: true, min: 1 },
-//   rate: { type: Number, required: true, min: 0 }, // Selling price
-  
-//   // 🟢 ADDED: Historical cost snapshot
-//   purchasePriceAtSale: { type: Number, default: 0 }, 
-  
-//   discount: { type: Number, default: 0 },
-//   tax: { type: Number, default: 0 },
-//   lineTotal: { type: Number, required: true, min: 0 }
-// }, { _id: false });
-
-// const SalesSchema = new Schema({
-//   organizationId: {
-//     type: Schema.Types.ObjectId,
-//     ref: 'Organization',
-//     required: true,
-//     index: true
-//   },
-//   branchId: {
-//     type: Schema.Types.ObjectId,
-//     ref: 'Branch',
-//     required: true,
-//     index: true
-//   },
-
-
-//   invoiceId: {
-//     type: Schema.Types.ObjectId,
-//     ref: 'Invoice',
-//     required: true,
-//     unique: true
-//   },
-//   invoiceNumber: { type: String, trim: true },
-
-//   customerId: {
-//     type: Schema.Types.ObjectId,
-//     ref: 'Customer',
-//     required: true,
-//     index: true
-//   },
-//   items: { type: [SalesItemSchema], default: [] },
-//   subTotal: { type: Number, default: 0 },
-//   taxTotal: { type: Number, default: 0 },
-//   discountTotal: { type: Number, default: 0 },
-//   totalAmount: { type: Number, required: true, min: 0 },
-//   paidAmount: { type: Number, default: 0 },
-//   dueAmount: { type: Number, default: 0 },
-//   paymentStatus: {
-//     type: String,
-//     enum: ['unpaid', 'partial', 'paid', 'refunded'],
-//     default: 'unpaid'
-//   },
-//   status: {
-//     type: String,
-//     enum: ['active', 'cancelled', 'returned'],
-//     default: 'active'
-//   },
-//   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
-//   meta: { type: Schema.Types.Mixed }
-// }, { timestamps: true });
-// SalesSchema.index({ organizationId: 1, branchId: 1, createdAt: -1 });
-// SalesSchema.index({ organizationId: 1, customerId: 1 });
-// SalesSchema.index({ organizationId: 1, invoiceNumber: 1 });
-// // ... existing SalesSchema definition ...
-
-// SalesSchema.statics.aggregateMonthlyProfit = function (orgId, fromDate, toDate) {
-//   // Ensure the dates are objects and OrgId is an ObjectId
-//   const start = new Date(fromDate);
-//   const end = new Date(toDate);
-//   const mongoose = require('mongoose');
-
-//   return this.aggregate([
-//     { 
-//       $match: { 
-//         organizationId: new mongoose.Types.ObjectId(orgId), 
-//         status: 'active', 
-//         createdAt: { $gte: start, $lte: end } 
-//       } 
-//     },
-//     { $unwind: '$items' },
-//     {
-//       $group: {
-//         _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
-//         // Revenue is based on line totals to be accurate with the profit calculation
-//         revenue: { $sum: '$items.lineTotal' }, 
-//         // Gross Profit Calculation
-//         grossProfit: { 
-//           $sum: { 
-//             $subtract: [
-//               { $multiply: ['$items.qty', '$items.rate'] }, 
-//               { $multiply: ['$items.qty', '$items.purchasePriceAtSale'] }
-//             ] 
-//           } 
-//         },
-//         count: { $addToSet: '$_id' } // Counts unique invoices
-//       }
-//     },
-//     { $sort: { _id: 1 } },
-//     {
-//       $project: {
-//         month: '$_id',
-//         revenue: 1,
-//         grossProfit: 1,
-//         orderCount: { $size: '$count' },
-//         margin: { 
-//           $cond: [
-//             { $eq: ['$revenue', 0] }, 
-//             0, 
-//             { $multiply: [{ $divide: ['$grossProfit', '$revenue'] }, 100] }
-//           ]
-//         },
-//         _id: 0
-//       }
-//     }
-//   ]).exec();
-// };
-
-
-// module.exports = mongoose.model('Sales', SalesSchema);
-
-// // SalesSchema.statics.aggregateMonthlyTotals = function (orgId, fromDate, toDate) {
-// //   const match = {
-// //     organizationId: new mongoose.Types.ObjectId(orgId),
-// //     createdAt: { $gte: fromDate, $lte: toDate },
-// //     status: 'active'
-// //   };
-// //   return this.aggregate([
-// //     { $match: match },
-// //     {
-// //       $group: {
-// //         _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
-// //         total: { $sum: '$totalAmount' },
-// //         count: { $sum: 1 }
-// //       }
-// //     },
-// //     { $sort: { _id: 1 } },
-// //     {
-// //       $project: {
-// //         month: '$_id',
-// //         total: 1,
-// //         count: 1,
-// //         _id: 0
-// //       }
-// //     }
-// //   ]).exec();
-// // };
-// // module.exports = mongoose.model('Sales', SalesSchema);

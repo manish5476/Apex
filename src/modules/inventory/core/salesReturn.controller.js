@@ -43,8 +43,10 @@ exports.createReturn = catchAsync(async (req, res, next) => {
    2. APPROVE RETURN  (triggers stock restore + ledger)
 ====================================================== */
 exports.approveReturn = catchAsync(async (req, res, next) => {
+  const { reason } = req.body;
   const salesReturn = await SalesReturnService.approveReturn(
     req.params.id,
+    reason,
     req.user
   );
 

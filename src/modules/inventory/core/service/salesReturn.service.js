@@ -19,6 +19,7 @@ const mongoose = require('mongoose');
 // Internal module imports (Inventory)
 const SalesReturn = require('../model/salesReturn.model');
 const Product = require('../model/product.model');
+const Sales = require('../model/sales.model');
 const StockService = require('./stock.service');
 const JournalService = require('./Journal.service');
 
@@ -217,19 +218,73 @@ class SalesReturnService {
         { session }
       );
 
-      // 5. Update invoice balance
-      await Invoice.findByIdAndUpdate(
-        salesReturn.invoiceId,
-        {
-          $inc: { balanceAmount: -salesReturn.totalRefundAmount, paidAmount: salesReturn.totalRefundAmount },
-        },
-        { session }
-      );
+      // 5. Update Invoice & Linked Sales (quantities, status, paidAmount)
+      const sales = await Sales.findOne({ invoiceId: salesReturn.invoiceId }).session(session);
+
+      // Update items & preserve original quantities
+      for (const retItem of salesReturn.items) {
+        const invItem = invoice.items.find(i => String(i.productId) === String(retItem.productId));
+        if (invItem) {
+          if (invItem.originalQuantity === undefined) invItem.originalQuantity = invItem.quantity;
+          invItem.quantity = Math.max(0, invItem.quantity - retItem.quantity);
+        }
+
+        if (sales) {
+          const salesItem = sales.items.find(i => String(i.productId) === String(retItem.productId));
+          if (salesItem) {
+            if (salesItem.originalQty === undefined) salesItem.originalQty = salesItem.qty;
+            salesItem.qty = Math.max(0, salesItem.qty - retItem.quantity);
+          }
+        }
+      }
+
+      // Determine new status
+      const allReturned = invoice.items.every(i => i.quantity === 0);
+      const newStatus = allReturned ? 'returned' : 'partially_returned';
+      invoice.status = newStatus;
+
+      // Manually recalculate grandTotal to adjust paidAmount BEFORE save (to avoid negative balance)
+      let subTotal = 0;
+      let taxTotal = 0;
+      let discountTotal = 0;
+      invoice.items.forEach(item => {
+        const lineTotal = item.price * item.quantity;
+        const lineDiscount = item.discount || 0;
+        const taxableBase = lineTotal - lineDiscount;
+        subTotal += lineTotal;
+        discountTotal += lineDiscount;
+        taxTotal += ((item.taxRate || 0) / 100) * taxableBase;
+      });
+      const newGrandTotal = parseFloat((subTotal - discountTotal + taxTotal + (invoice.shippingCharges || 0) + (invoice.roundOff || 0)).toFixed(2));
+
+      // Adjust paidAmount if it exceeds the new total (effectively recording a refund)
+      if (invoice.paidAmount > newGrandTotal) {
+        invoice.paidAmount = newGrandTotal;
+      }
+
+      // Save Invoice (triggers middleware for balance/status recalculation)
+      await invoice.save({ session });
+
+      // Sync Sales record
+      if (sales) {
+        sales.status = newStatus;
+        sales.totalAmount = newGrandTotal;
+        sales.paidAmount = invoice.paidAmount;
+        sales.dueAmount = Math.max(0, newGrandTotal - invoice.paidAmount);
+        
+        // Recalculate Sales subTotal/taxTotal etc. for consistency
+        sales.subTotal = parseFloat(subTotal.toFixed(2));
+        sales.taxTotal = parseFloat(taxTotal.toFixed(2));
+        sales.discountTotal = parseFloat(discountTotal.toFixed(2));
+        
+        await sales.save({ session });
+      }
 
       // 6. Mark approved
       salesReturn.status = 'approved';
       salesReturn.approvedBy = user._id;
       salesReturn.approvedAt = new Date();
+      salesReturn.approvalReason = reason || null;
       await salesReturn.save({ session });
 
     }, 3, { action: 'APPROVE_SALES_RETURN', userId: user._id });

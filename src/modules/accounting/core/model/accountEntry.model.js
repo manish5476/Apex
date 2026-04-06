@@ -29,7 +29,8 @@ const accountEntrySchema = new mongoose.Schema(
       type: String,
       enum: [
         'invoice', 'opening_stock', 'emi_payment', 'emi_down_payment',
-        'purchase', 'purchase_return', 'payment', 'journal', 'manual', null,
+        'purchase', 'purchase_return', 'sales_return', 'credit_note',
+        'payment', 'journal', 'manual', null,
       ],
       default: null,
     },
