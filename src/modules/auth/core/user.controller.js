@@ -18,7 +18,7 @@ const AppError = require('../../../core/utils/api/appError');
 const factory = require('../../../core/utils/api/handlerFactory');
 const imageUploadService = require('../../uploads/imageUploadService');
 const logger = require('../../../bootstrap/logger');
-const { PERMISSIONS_LIST, VALID_TAGS, getPermissionGroups } = require('../../../config/permissions');
+const { PERMISSIONS_LIST, VALID_TAGS, getPermissionGroups, mergePermissions } = require('../../../config/permissions');
 
 // ======================================================
 //  INTERNAL HELPERS
@@ -35,16 +35,6 @@ const SENSITIVE_TAGS = PERMISSIONS_LIST
   .filter(p => ['System', 'Organization', 'Platform'].includes(p.group))
   .map(p => p.tag);
 
-/**
- * Merge role permissions + per-user overrides → effective permission set.
- * Single source of truth used by getMyPermissions, checkPermission, updatePermissionOverrides.
- */
-const mergePermissions = (rolePermissions = [], overrides = {}) => {
-  const base = new Set(rolePermissions);
-  (overrides.granted ?? []).forEach(p => base.add(p));
-  (overrides.revoked ?? []).forEach(p => base.delete(p));
-  return [...base];
-};
 
 /**
  * Hierarchy & tenant guard — throws AppError on violation.

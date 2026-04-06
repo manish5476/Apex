@@ -210,6 +210,17 @@ PERMISSIONS_LIST.forEach(({ tag }) => {
   (PERMISSIONS[R] ??= {})[A] = tag;
 });
 
+/**
+ * Merge role permissions + per-user overrides → effective permission set.
+ * Single source of truth used by auth controllers, middlewares, and HRMS logic.
+ */
+const mergePermissions = (rolePermissions = [], overrides = {}) => {
+  const base = new Set(rolePermissions);
+  (overrides?.granted ?? []).forEach(p => base.add(p));
+  (overrides?.revoked ?? []).forEach(p => base.delete(p));
+  return [...base];
+};
+
 // ── Helper functions ───────────────────────────────────────────────
 
 const hasPermission = (userPerms, required) => {
@@ -236,6 +247,7 @@ module.exports = {
   PERMISSIONS,
   PERMISSIONS_LIST,
   VALID_TAGS,
+  mergePermissions,
   hasPermission,
   hasAnyPermission,
   hasAllPermissions,
