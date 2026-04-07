@@ -1,23 +1,23 @@
 'use strict';
 
 const { promisify } = require('util');
-const jwt    = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const UAParser = require('ua-parser-js');
 
-const User         = require('./user.model');
+const User = require('./user.model');
 const Organization = require('../../organization/core/organization.model');
-const Role         = require('./role.model');
-const Session      = require('./session.model');
+const Role = require('./role.model');
+const Session = require('./session.model');
 
-const catchAsync  = require('../../../core/utils/api/catchAsync');
-const AppError    = require('../../../core/utils/api/appError');
-const sendEmail   = require('../../../core/infra/email');
-const logger      = require('../../../bootstrap/logger');
+const catchAsync = require('../../../core/utils/api/catchAsync');
+const AppError = require('../../../core/utils/api/appError');
+const sendEmail = require('../../../core/infra/email');
+const logger = require('../../../bootstrap/logger');
 const { signAccessToken, signRefreshToken } = require('../../../core/utils/helpers/authUtils');
-const { createNotification }               = require('../../notification/core/notification.service');
-const { emitToUser }                       = require('../../../socketHandlers/socket');
-const { mergePermissions }                 = require('../../../config/permissions');
+const { createNotification } = require('../../notification/core/notification.service');
+const { emitToUser } = require('../../../socketHandlers/socket');
+const { mergePermissions } = require('../../../config/permissions');
 
 // ======================================================
 //  1. HELPERS
@@ -32,11 +32,11 @@ const getClientIp = (req) =>
 
 const getDeviceInfo = (req) => {
   try {
-    const parser  = new UAParser(req.headers['user-agent'] || '');
+    const parser = new UAParser(req.headers['user-agent'] || '');
     const browser = parser.getBrowser()?.name || 'unknown';
-    const os      = parser.getOS()?.name      || 'unknown';
-    const dev     = parser.getDevice();
-    const device  = dev?.model || dev?.type   || 'unknown';
+    const os = parser.getOS()?.name || 'unknown';
+    const dev = parser.getDevice();
+    const device = dev?.model || dev?.type || 'unknown';
     return { browser, os, device };
   } catch {
     return { browser: 'unknown', os: 'unknown', device: 'unknown' };
@@ -50,17 +50,17 @@ const getDeviceInfo = (req) => {
 const getCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === 'production';
   return {
-    expires:  new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+    expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
     httpOnly: true,
-    secure:   isProduction,
+    secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax',
-    path:     '/',
+    path: '/',
   };
 };
 
-const phoneRegex  = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,4}[-\s.]?[0-9]{1,9}$/;
+const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,4}[-\s.]?[0-9]{1,9}$/;
 const validatePhone = (phone) => phoneRegex.test(phone);
-const cleanPhone    = (phone) => phone.replace(/[\s\-\(\)\+]/g, '');
+const cleanPhone = (phone) => phone.replace(/[\s\-\(\)\+]/g, '');
 
 // ======================================================
 //  2. SIGNUP
@@ -69,8 +69,12 @@ const cleanPhone    = (phone) => phone.replace(/[\s\-\(\)\+]/g, '');
 exports.signup = catchAsync(async (req, res, next) => {
   const { name, email, password, passwordConfirm, phone, uniqueShopId } = req.body;
 
-  if (!name || !email || !password || !passwordConfirm || !uniqueShopId || !phone)
-    return next(new AppError('All fields including phone are required', 400));
+  const requiredFields = { name, email, password, passwordConfirm, uniqueShopId, phone };
+  const missingFields = Object.keys(requiredFields).filter(field => !requiredFields[field]);
+
+  if (missingFields.length > 0) {
+    return next(new AppError(`The following fields are required: ${missingFields.join(', ')}`, 400));
+  }
 
   if (!validatePhone(phone))
     return next(new AppError('Please provide a valid phone number', 400));
@@ -106,15 +110,15 @@ exports.signup = catchAsync(async (req, res, next) => {
     password,
     passwordConfirm,
     organizationId: organization._id,
-    status:         'pending',
-    isActive:       true,
+    status: 'pending',
+    isActive: true,
     isLoginBlocked: false,
-    employeeProfile:  { employmentType: 'permanent' },
+    employeeProfile: { employmentType: 'permanent' },
     attendanceConfig: {
       isAttendanceEnabled: true,
-      allowWebPunch:       false,
-      allowMobilePunch:    true,
-      enforceGeoFence:     false,
+      allowWebPunch: false,
+      allowMobilePunch: true,
+      enforceGeoFence: false,
     },
   });
 
@@ -123,9 +127,9 @@ exports.signup = catchAsync(async (req, res, next) => {
     const ownerId = organization.owner._id.toString();
 
     emitToUser(ownerId, 'newNotification', {
-      title:     'New Signup Request',
-      message:   `${newUser.name} (${newUser.email}) has signed up.`,
-      type:      'info',
+      title: 'New Signup Request',
+      message: `${newUser.name} (${newUser.email}) has signed up.`,
+      type: 'info',
       createdAt: new Date().toISOString(),
     });
 
@@ -138,7 +142,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     ).catch(err => logger.error('DB Notification creation failed:', err.message));
 
     sendEmail({
-      email:   organization.owner.email,
+      email: organization.owner.email,
       subject: 'New Signup Request - Awaits Approval',
       html: `
         <h2>New Signup Request</h2>
@@ -153,7 +157,7 @@ exports.signup = catchAsync(async (req, res, next) => {
   }
 
   sendEmail({
-    email:   newUser.email,
+    email: newUser.email,
     subject: 'Registration Received - Awaiting Approval',
     html: `
       <h2>Welcome ${name}!</h2>
@@ -166,9 +170,9 @@ exports.signup = catchAsync(async (req, res, next) => {
   }).catch(err => logger.error('Welcome email to user failed:', err.message));
 
   res.status(201).json({
-    status:  'success',
+    status: 'success',
     message: 'Signup successful. Awaiting organization approval. You will be notified via email once approved.',
-    data:    { email: newUser.email, name: newUser.name, status: newUser.status },
+    data: { email: newUser.email, name: newUser.name, status: newUser.status },
   });
 });
 
@@ -219,9 +223,9 @@ exports.login = catchAsync(async (req, res, next) => {
     ));
 
   const statusMessages = {
-    pending:   'Account awaiting approval from organization administrator.',
-    rejected:  'Account registration was rejected. Please contact administrator.',
-    inactive:  'Account is inactive.',
+    pending: 'Account awaiting approval from organization administrator.',
+    rejected: 'Account registration was rejected. Please contact administrator.',
+    inactive: 'Account is inactive.',
     suspended: 'Account has been suspended.',
   };
   if (user.status !== 'approved')
@@ -236,28 +240,28 @@ exports.login = catchAsync(async (req, res, next) => {
   // Reset login attempts on success
   if (user.loginAttempts > 0) {
     user.loginAttempts = 0;
-    user.lockUntil     = undefined;
+    user.lockUntil = undefined;
     await user.save({ validateBeforeSave: false });
   }
 
   // ── Session concurrency control ──────────────────────────────────────────
   const activeSessions = await Session.find({ userId: user._id, isValid: true });
-  const maxSessions    = user.maxConcurrentSessions || 1;
+  const maxSessions = user.maxConcurrentSessions || 1;
 
   if (activeSessions.length >= maxSessions && !req.body.forceLogout) {
     return res.status(409).json({
       status: 'fail',
-      code:   'SESSION_CONCURRENCY_LIMIT',
+      code: 'SESSION_CONCURRENCY_LIMIT',
       message: `Maximum concurrent sessions (${maxSessions}) reached. Would you like to logout from other devices?`,
       data: {
         maxSessions,
         activeSessionsCount: activeSessions.length,
         sessions: activeSessions.map(s => ({
-          sessionId:    s._id,
-          device:       s.deviceType || s.device,
-          browser:      s.browser,
-          os:           s.os,
-          ip:           s.ipAddress,
+          sessionId: s._id,
+          device: s.deviceType || s.device,
+          browser: s.browser,
+          os: s.os,
+          ip: s.ipAddress,
           lastActivity: s.lastActivityAt,
         })),
       },
@@ -275,25 +279,25 @@ exports.login = catchAsync(async (req, res, next) => {
   // ── Token generation ──────────────────────────────────────────────────────
   const isOwner = organization.owner.toString() === user._id.toString();
 
-  const accessToken  = signAccessToken({
-    id:             user._id,
+  const accessToken = signAccessToken({
+    id: user._id,
     organizationId: user.organizationId,
     isOwner,
-    isSuperAdmin:   user.role?.isSuperAdmin || false,
+    isSuperAdmin: user.role?.isSuperAdmin || false,
   });
   const refreshToken = signRefreshToken({ id: user._id });
 
   const { browser, os, device } = getDeviceInfo(req);
 
   const session = await Session.create({
-    userId:         user._id,
-    token:          accessToken,
+    userId: user._id,
+    token: accessToken,
     refreshToken,
-    isValid:        true,
+    isValid: true,
     browser,
     os,
-    deviceType:     device,
-    ipAddress:      getClientIp(req),
+    deviceType: device,
+    ipAddress: getClientIp(req),
     organizationId: user.organizationId,
     lastActivityAt: new Date(),
   });
@@ -312,10 +316,10 @@ exports.login = catchAsync(async (req, res, next) => {
   if (!deviceExists && req.headers['user-agent']) {
     user.devices = user.devices || [];
     user.devices.push({
-      deviceId:   req.headers['x-device-id'] || crypto.randomBytes(16).toString('hex'),
+      deviceId: req.headers['x-device-id'] || crypto.randomBytes(16).toString('hex'),
       deviceType: device.includes('mobile') ? 'mobile' : device.includes('tablet') ? 'tablet' : 'web',
       lastActive: new Date(),
-      userAgent:  req.headers['user-agent'],
+      userAgent: req.headers['user-agent'],
     });
     if (user.devices.length > 10) user.devices = user.devices.slice(-10);
   }
@@ -329,7 +333,7 @@ exports.login = catchAsync(async (req, res, next) => {
 
   res.status(200).json({
     status: 'success',
-    token:  accessToken,
+    token: accessToken,
     data: {
       user: {
         ...user.toObject(),
@@ -338,8 +342,8 @@ exports.login = catchAsync(async (req, res, next) => {
       },
       session,
       organization: {
-        id:           organization._id,
-        name:         organization.name,
+        id: organization._id,
+        name: organization.name,
         uniqueShopId: organization.uniqueShopId,
       },
     },
@@ -378,7 +382,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   if (!userId) return next(new AppError('Invalid token payload.', 401));
 
   const user = await User.findById(userId).populate({
-    path:   'role',
+    path: 'role',
     select: 'name permissions isSuperAdmin isActive',
   }).select('+permissionOverrides');
 
@@ -399,7 +403,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     const rotatedSession = await Session.findOne({ userId, previousToken: token, isValid: true });
 
     if (rotatedSession) {
-      const gracePeriod    = 30 * 1000;
+      const gracePeriod = 30 * 1000;
       const timeSinceRotation = Date.now() - (rotatedSession.lastTokenUpdateAt?.getTime() || 0);
 
       if (timeSinceRotation > gracePeriod)
@@ -424,11 +428,11 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   req.user = {
     ...user.toObject(),
-    id:           user._id,
+    id: user._id,
     isSuperAdmin,
     isOwner,
-    permissions:  (isOwner || isSuperAdmin) ? ['*'] : mergePermissions(user.role?.permissions, user.permissionOverrides),
-    roleName:     user.role?.name || 'No Role',
+    permissions: (isOwner || isSuperAdmin) ? ['*'] : mergePermissions(user.role?.permissions, user.permissionOverrides),
+    roleName: user.role?.name || 'No Role',
   };
   req.session = session;
 
@@ -492,10 +496,10 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
     .populate('role')
     .select('-refreshTokens -passwordResetToken -passwordResetExpires +permissionOverrides');
 
-  if (!user)           return next(new AppError('User not found', 401));
-  if (!user.isActive)  return next(new AppError('User account is deactivated', 401));
+  if (!user) return next(new AppError('User not found', 401));
+  if (!user.isActive) return next(new AppError('User account is deactivated', 401));
   if (user.status !== 'approved') return next(new AppError('Account not approved', 401));
-  if (user.isLoginBlocked)        return next(new AppError('Account blocked', 403));
+  if (user.isLoginBlocked) return next(new AppError('Account blocked', 403));
 
   const session = await Session.findOne({ userId: user._id, token, isValid: true });
   if (!session) return next(new AppError('Session expired', 401));
@@ -504,24 +508,24 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
     status: 'success',
     data: {
       user: {
-        id:             user._id,
-        name:           user.name,
-        email:          user.email,
-        phone:          user.phone,
-        isOwner:        user.isOwner,
-        isSuperAdmin:   user.isSuperAdmin || user.role?.isSuperAdmin,
-        permissions:    (user.isOwner || user.isSuperAdmin || user.role?.isSuperAdmin)
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        isOwner: user.isOwner,
+        isSuperAdmin: user.isSuperAdmin || user.role?.isSuperAdmin,
+        permissions: (user.isOwner || user.isSuperAdmin || user.role?.isSuperAdmin)
           ? ['*']
           : mergePermissions(user.role?.permissions, user.permissionOverrides),
         organizationId: user.organizationId,
-        branchId:       user.branchId,
-        avatar:         user.avatar,
+        branchId: user.branchId,
+        avatar: user.avatar,
         employeeProfile: user.employeeProfile,
       },
       session: {
-        id:             session._id,
-        browser:        session.browser,
-        deviceType:     session.deviceType,
+        id: session._id,
+        browser: session.browser,
+        deviceType: session.deviceType,
         lastActivityAt: session.lastActivityAt,
       },
     },
@@ -582,22 +586,22 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
   const isOwner = await Organization.exists({ _id: user.organizationId, owner: user._id });
 
   const newAccessToken = signAccessToken({
-    id:             user._id,
+    id: user._id,
     organizationId: user.organizationId,
-    isOwner:        !!isOwner,
-    isSuperAdmin:   user.role?.isSuperAdmin || false,
+    isOwner: !!isOwner,
+    isSuperAdmin: user.role?.isSuperAdmin || false,
   });
 
   // Token rotation with grace-period window
-  session.previousToken      = session.token;
-  session.token              = newAccessToken;
-  session.lastTokenUpdateAt  = new Date();
-  session.lastActivityAt     = new Date();
+  session.previousToken = session.token;
+  session.token = newAccessToken;
+  session.lastTokenUpdateAt = new Date();
+  session.lastActivityAt = new Date();
   await session.save();
 
   res.status(200).json({
-    status:    'success',
-    token:     newAccessToken,
+    status: 'success',
+    token: newAccessToken,
     expiresIn: process.env.JWT_EXPIRES_IN || '15m',
   });
 });
@@ -611,7 +615,7 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
  * @route POST /api/v1/auth/logout
  */
 exports.logout = catchAsync(async (req, res, next) => {
-  const accessToken  = req.headers.authorization?.split(' ')[1];
+  const accessToken = req.headers.authorization?.split(' ')[1];
   const refreshToken = req.cookies.refreshToken;
 
   if (req.user?.id && accessToken) {
@@ -672,7 +676,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   // Always return 200 — prevents email enumeration
   if (!user) {
     return res.status(200).json({
-      status:  'success',
+      status: 'success',
       message: 'If an account exists with that email, a password reset link will be sent.',
     });
   }
@@ -680,8 +684,8 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   if (!user.isActive || user.isLoginBlocked || user.status !== 'approved')
     return next(new AppError('Account is not active. Please contact administrator.', 400));
 
-  const resetToken  = crypto.randomBytes(32).toString('hex');
-  user.passwordResetToken   = crypto.createHash('sha256').update(resetToken).digest('hex');
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  user.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
   user.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 min
 
   await user.save({ validateBeforeSave: false });
@@ -690,7 +694,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
 
   try {
     await sendEmail({
-      email:   user.email,
+      email: user.email,
       subject: 'Password Reset Request (Valid for 10 minutes)',
       html: `
         <h2>Password Reset Request</h2>
@@ -704,14 +708,14 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
       `,
     });
   } catch (err) {
-    user.passwordResetToken   = undefined;
+    user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     await user.save({ validateBeforeSave: false });
     return next(new AppError('Failed to send reset email. Please try again later.', 500));
   }
 
   res.status(200).json({
-    status:  'success',
+    status: 'success',
     message: 'Password reset link sent to your email. Valid for 10 minutes.',
   });
 });
@@ -734,20 +738,20 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
   const user = await User.findOne({
-    passwordResetToken:   hashedToken,
+    passwordResetToken: hashedToken,
     passwordResetExpires: { $gt: Date.now() },
   }).populate('role').select('+permissionOverrides');
 
   if (!user) return next(new AppError('Password reset token is invalid or has expired.', 400));
 
-  user.password             = password;
-  user.passwordConfirm      = passwordConfirm;
-  user.passwordResetToken   = undefined;
+  user.password = password;
+  user.passwordConfirm = passwordConfirm;
+  user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
-  user.passwordChangedAt    = Date.now() - 1000;
-  user.loginAttempts        = 0;
-  user.lockUntil            = undefined;
-  user.mustChangePassword   = false;
+  user.passwordChangedAt = Date.now() - 1000;
+  user.loginAttempts = 0;
+  user.lockUntil = undefined;
+  user.mustChangePassword = false;
 
   await user.save();
 
@@ -761,25 +765,25 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   // Auto-login after reset
   const isOwner = await Organization.exists({ _id: user.organizationId, owner: user._id });
 
-  const accessToken  = signAccessToken({
-    id:             user._id,
+  const accessToken = signAccessToken({
+    id: user._id,
     organizationId: user.organizationId,
-    isOwner:        !!isOwner,
-    isSuperAdmin:   user.role?.isSuperAdmin || false,
+    isOwner: !!isOwner,
+    isSuperAdmin: user.role?.isSuperAdmin || false,
   });
   const refreshToken = signRefreshToken({ id: user._id });
 
   const { browser, os, device } = getDeviceInfo(req);
 
   const session = await Session.create({
-    userId:         user._id,
-    token:          accessToken,
+    userId: user._id,
+    token: accessToken,
     refreshToken,
-    isValid:        true,
+    isValid: true,
     browser,
     os,
-    deviceType:     device,
-    ipAddress:      getClientIp(req),
+    deviceType: device,
+    ipAddress: getClientIp(req),
     organizationId: user.organizationId,
     lastActivityAt: new Date(),
   });
@@ -787,7 +791,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   res.cookie('refreshToken', refreshToken, getCookieOptions());
 
   sendEmail({
-    email:   user.email,
+    email: user.email,
     subject: 'Password Successfully Reset',
     html: `
       <h2>Password Reset Successful</h2>
@@ -805,8 +809,8 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
     : mergePermissions(user.role?.permissions, user.permissionOverrides);
 
   res.status(200).json({
-    status:  'success',
-    token:   accessToken,
+    status: 'success',
+    token: accessToken,
     message: 'Password reset successful. You are now logged in.',
     data: {
       user: {
@@ -816,8 +820,8 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
       },
       session,
       organization: {
-        id:           organization?._id,
-        name:         organization?.name,
+        id: organization?._id,
+        name: organization?.name,
         uniqueShopId: organization?.uniqueShopId,
       },
     },
@@ -846,8 +850,8 @@ exports.updateMyPassword = catchAsync(async (req, res, next) => {
   if (!(await user.correctPassword(currentPassword, user.password)))
     return next(new AppError('Current password is incorrect.', 401));
 
-  user.password          = newPassword;
-  user.passwordConfirm   = newPasswordConfirm;
+  user.password = newPassword;
+  user.passwordConfirm = newPasswordConfirm;
   user.passwordChangedAt = Date.now() - 1000;
   user.mustChangePassword = false;
 
@@ -863,22 +867,22 @@ exports.updateMyPassword = catchAsync(async (req, res, next) => {
   const isOwner = await Organization.exists({ _id: user.organizationId, owner: user._id });
 
   const newAccessToken = signAccessToken({
-    id:             user._id,
+    id: user._id,
     organizationId: user.organizationId,
-    isOwner:        !!isOwner,
-    isSuperAdmin:   user.role?.isSuperAdmin || false,
+    isOwner: !!isOwner,
+    isSuperAdmin: user.role?.isSuperAdmin || false,
   });
 
   // Update current session's stored token
   if (req.session) {
-    req.session.token         = newAccessToken;
+    req.session.token = newAccessToken;
     req.session.lastActivityAt = new Date();
     await req.session.save();
   }
 
   res.status(200).json({
-    status:  'success',
-    token:   newAccessToken,
+    status: 'success',
+    token: newAccessToken,
     message: 'Password updated successfully.',
   });
 });
@@ -907,7 +911,7 @@ exports.sendVerificationEmail = catchAsync(async (req, res, next) => {
   const verificationURL = `${process.env.FRONTEND_URL}/auth/verify-email/${verificationToken}`;
 
   await sendEmail({
-    email:   user.email,
+    email: user.email,
     subject: 'Verify Your Email Address',
     html: `
       <h2>Email Verification</h2>
@@ -930,14 +934,14 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
   const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
 
   const user = await User.findOne({
-    emailVerificationToken:   hashedToken,
+    emailVerificationToken: hashedToken,
     emailVerificationExpires: { $gt: Date.now() }, // enforce expiry
   });
 
   if (!user) return next(new AppError('Invalid or expired verification token', 400));
 
-  user.emailVerified            = true;
-  user.emailVerificationToken   = undefined;
+  user.emailVerified = true;
+  user.emailVerificationToken = undefined;
   user.emailVerificationExpires = undefined;
   await user.save({ validateBeforeSave: false });
 
@@ -1238,7 +1242,7 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
 //   // Check if account is blocked
 //   if (user.isLoginBlocked) {
 //     return next(new AppError(
-//       `Access Denied: Account blocked. Reason: ${user.blockReason || 'Administrative Action'}. 
+//       `Access Denied: Account blocked. Reason: ${user.blockReason || 'Administrative Action'}.
 //       Please contact your organization administrator.`, 403
 //     ));
 //   }

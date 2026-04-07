@@ -30,7 +30,7 @@ const registerRoutes = (app) => {
   app.use(`${v1Prefix}/products`, routes.productRoutes);
   app.use(`${v1Prefix}/purchases`, routes.purchaseRoutes);
   app.use(`${v1Prefix}/sales`, routes.salesRoutes);
-  // app.use(`${v1Prefix}/sales-returns`, routes.salesReturnRoutes); // Not present in routesIndex.js
+  app.use(`${v1Prefix}/sales-returns`, routes.salesReturnRoutes);
   app.use(`${v1Prefix}/stock`, routes.stockRoutes);
 
   // --- Organization & CRM ---

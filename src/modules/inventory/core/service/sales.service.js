@@ -345,6 +345,7 @@ class SalesService {
       enrichedItems.push({
         ...item,
         qty: requiredQty,
+        originalQty: requiredQty,
         name: product.name,
         sku: product.sku || item.sku,
         purchasePriceAtSale,
@@ -420,6 +421,7 @@ class SalesService {
         sku: i.sku || i.hsnCode || '',
         name: i.name || '',
         qty,
+        originalQty: qty,
         rate,
         discount,
         // FIX: null when not available — not 0

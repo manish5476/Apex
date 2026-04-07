@@ -16,6 +16,7 @@ module.exports = {
   invoicePDFRoutes: require('../routes/v1/invoicePDF.routes.js'),
   paymentRoutes: require('../routes/v1/payment.routes.js'),
   salesRoutes: require('../routes/v1/sales.routes.js'),
+  salesReturnRoutes: require('../routes/v1/salesReturn.routes.js'),
   purchaseRoutes: require('../routes/v1/purchase.routes.js'),
   emiRoutes: require('../routes/v1/emi.routes.js'),
   transactionRoutes: require('../routes/v1/transaction.routes.js'),

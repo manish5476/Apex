@@ -80,6 +80,7 @@ const salesReturnSchema = new mongoose.Schema({
 
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   approvedAt: { type: Date, default: null },
+  approvalReason: { type: String, trim: true, default: null },
 
   rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   rejectedAt: { type: Date, default: null },
@@ -156,6 +157,7 @@ salesReturnSchema.pre('save', function (next) {
   if (this.status !== 'approved') {
     this.approvedBy = null;
     this.approvedAt = null;
+    this.approvalReason = null;
   }
   // Enforce: rejectedBy/rejectedAt only valid when status is 'rejected'
   if (this.status !== 'rejected') {
