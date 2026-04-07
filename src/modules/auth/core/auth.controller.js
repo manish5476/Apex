@@ -17,7 +17,7 @@ const logger = require('../../../bootstrap/logger');
 const { signAccessToken, signRefreshToken } = require('../../../core/utils/helpers/authUtils');
 const { createNotification } = require('../../notification/core/notification.service');
 const { emitToUser } = require('../../../socketHandlers/socket');
-const { mergePermissions } = require('../../../config/permissions');
+const { mergePermissions, VALID_TAGS } = require('../../../config/permissions');
 
 // ======================================================
 //  1. HELPERS
@@ -176,10 +176,188 @@ exports.signup = catchAsync(async (req, res, next) => {
   });
 });
 
-// ======================================================
-//  3. LOGIN
-//  POST /api/v1/auth/login
-// ======================================================
+// // ======================================================
+// //  3. LOGIN
+// //  POST /api/v1/auth/login
+// // ======================================================
+// exports.login = catchAsync(async (req, res, next) => {
+//   const { email, password, uniqueShopId } = req.body;
+
+//   if (!email || !password || !uniqueShopId)
+//     return next(new AppError('Email, password and Shop ID are required.', 400));
+
+//   const organization = await Organization.findOne({ uniqueShopId });
+//   if (!organization) return next(new AppError('Invalid Shop ID.', 404));
+
+//   // Allow login with email OR phone number
+//   const user = await User.findOne({
+//     organizationId: organization._id,
+//     $or: [{ email: email.toLowerCase() }, { phone: cleanPhone(email) }],
+//   })
+//     .select('+password +loginAttempts +lockUntil +permissionOverrides')
+//     .populate({ path: 'role', select: 'name permissions isSuperAdmin isActive' });
+
+//   if (!user) return next(new AppError('Invalid credentials.', 401));
+
+//   // Account lock check
+//   if (user.isLocked?.()) {
+//     const mins = Math.ceil((user.lockUntil - Date.now()) / 60000);
+//     return next(new AppError(`Account temporarily locked. Try again in ${mins} minutes.`, 423));
+//   }
+
+//   const isPasswordCorrect = await user.correctPassword(password, user.password);
+
+//   if (!isPasswordCorrect) {
+//     await user.incrementLoginAttempts();
+//     const updated = await User.findById(user._id).select('+loginAttempts +lockUntil');
+//     if (updated.lockUntil && updated.lockUntil > Date.now())
+//       return next(new AppError('Too many failed attempts. Account locked for 2 hours.', 423));
+//     return next(new AppError('Invalid credentials.', 401));
+//   }
+
+//   // Status/block checks
+//   if (user.isLoginBlocked)
+//     return next(new AppError(
+//       `Access Denied: Account blocked. Reason: ${user.blockReason || 'Administrative Action'}. ` +
+//       'Please contact your organization administrator.', 403
+//     ));
+
+//   const statusMessages = {
+//     pending: 'Account awaiting approval from organization administrator.',
+//     rejected: 'Account registration was rejected. Please contact administrator.',
+//     inactive: 'Account is inactive.',
+//     suspended: 'Account has been suspended.',
+//   };
+//   if (user.status !== 'approved')
+//     return next(new AppError(statusMessages[user.status] || 'Account not approved.', 401));
+
+//   if (!user.isActive)
+//     return next(new AppError('Account is deactivated. Please contact administrator.', 401));
+
+//   if (!user.emailVerified && process.env.REQUIRE_EMAIL_VERIFICATION === 'true')
+//     return next(new AppError('Please verify your email before logging in.', 401));
+
+//   // Reset login attempts on success
+//   if (user.loginAttempts > 0) {
+//     user.loginAttempts = 0;
+//     user.lockUntil = undefined;
+//     await user.save({ validateBeforeSave: false });
+//   }
+
+//   // ── Session concurrency control ──────────────────────────────────────────
+//   const activeSessions = await Session.find({ userId: user._id, isValid: true });
+//   const maxSessions = user.maxConcurrentSessions || 1;
+
+//   if (activeSessions.length >= maxSessions && !req.body.forceLogout) {
+//     return res.status(409).json({
+//       status: 'fail',
+//       code: 'SESSION_CONCURRENCY_LIMIT',
+//       message: `Maximum concurrent sessions (${maxSessions}) reached. Would you like to logout from other devices?`,
+//       data: {
+//         maxSessions,
+//         activeSessionsCount: activeSessions.length,
+//         sessions: activeSessions.map(s => ({
+//           sessionId: s._id,
+//           device: s.deviceType || s.device,
+//           browser: s.browser,
+//           os: s.os,
+//           ip: s.ipAddress,
+//           lastActivity: s.lastActivityAt,
+//         })),
+//       },
+//     });
+//   }
+
+//   if (req.body.forceLogout || maxSessions === 1) {
+//     await Session.updateMany(
+//       { userId: user._id, isValid: true },
+//       { isValid: false, terminatedAt: new Date(), token: 'revoked', refreshToken: 'revoked' }
+//     );
+//     user.refreshTokens = [];
+//   }
+
+//   // ── Token generation ──────────────────────────────────────────────────────
+//   const isOwner = organization.owner.toString() === user._id.toString();
+
+//   const accessToken = signAccessToken({
+//     id: user._id,
+//     organizationId: user.organizationId,
+//     isOwner,
+//     isSuperAdmin: user.role?.isSuperAdmin || false,
+//   });
+//   const refreshToken = signRefreshToken({ id: user._id });
+
+//   const { browser, os, device } = getDeviceInfo(req);
+
+//   const session = await Session.create({
+//     userId: user._id,
+//     token: accessToken,
+//     refreshToken,
+//     isValid: true,
+//     browser,
+//     os,
+//     deviceType: device,
+//     ipAddress: getClientIp(req),
+//     organizationId: user.organizationId,
+//     lastActivityAt: new Date(),
+//   });
+
+//   res.cookie('refreshToken', refreshToken, getCookieOptions());
+
+//   // ── Update last login + device registry ──────────────────────────────────
+//   user.lastLoginAt = new Date();
+//   user.lastLoginIP = getClientIp(req);
+
+//   const deviceExists = user.devices?.some(d =>
+//     d.deviceId === req.headers['x-device-id'] ||
+//     (d.userAgent === req.headers['user-agent'] && d.deviceType === device)
+//   );
+
+//   if (!deviceExists && req.headers['user-agent']) {
+//     user.devices = user.devices || [];
+//     user.devices.push({
+//       deviceId: req.headers['x-device-id'] || crypto.randomBytes(16).toString('hex'),
+//       deviceType: device.includes('mobile') ? 'mobile' : device.includes('tablet') ? 'tablet' : 'web',
+//       lastActive: new Date(),
+//       userAgent: req.headers['user-agent'],
+//     });
+//     if (user.devices.length > 10) user.devices = user.devices.slice(-10);
+//   }
+
+//   await user.save({ validateBeforeSave: false });
+
+//   // ── Calculate Effective Permissions ─────────────────────────────────────
+//   const isSuperAdmin = !!(user.role?.isSuperAdmin || user.isSuperAdmin);
+//   const permissions = (isOwner || isSuperAdmin)
+//     ? VALID_TAGS
+//     : mergePermissions(user.role?.permissions, user.permissionOverrides);
+
+//   const overrides = {
+//     granted: user.permissionOverrides?.granted ?? [],
+//     revoked: user.permissionOverrides?.revoked ?? [],
+//   };
+
+//   res.status(200).json({
+//     status: 'success',
+//     token: accessToken,
+//     data: {
+//       user: {
+//         ...user.toObject(),
+//         isOwner,
+//         isSuperAdmin,
+//         permissions,
+//         role: user.role?.name,
+//         overrides,
+//       },
+//       session,
+//       organization: {
+//         id: organization._id,
+//         name: organization.name,
+//         uniqueShopId: organization.uniqueShopId,
+//       },
+//     },
+//   });
+// });
 exports.login = catchAsync(async (req, res, next) => {
   const { email, password, uniqueShopId } = req.body;
 
@@ -189,7 +367,6 @@ exports.login = catchAsync(async (req, res, next) => {
   const organization = await Organization.findOne({ uniqueShopId });
   if (!organization) return next(new AppError('Invalid Shop ID.', 404));
 
-  // Allow login with email OR phone number
   const user = await User.findOne({
     organizationId: organization._id,
     $or: [{ email: email.toLowerCase() }, { phone: cleanPhone(email) }],
@@ -199,14 +376,12 @@ exports.login = catchAsync(async (req, res, next) => {
 
   if (!user) return next(new AppError('Invalid credentials.', 401));
 
-  // Account lock check
   if (user.isLocked?.()) {
     const mins = Math.ceil((user.lockUntil - Date.now()) / 60000);
     return next(new AppError(`Account temporarily locked. Try again in ${mins} minutes.`, 423));
   }
 
   const isPasswordCorrect = await user.correctPassword(password, user.password);
-
   if (!isPasswordCorrect) {
     await user.incrementLoginAttempts();
     const updated = await User.findById(user._id).select('+loginAttempts +lockUntil');
@@ -215,7 +390,6 @@ exports.login = catchAsync(async (req, res, next) => {
     return next(new AppError('Invalid credentials.', 401));
   }
 
-  // Status/block checks
   if (user.isLoginBlocked)
     return next(new AppError(
       `Access Denied: Account blocked. Reason: ${user.blockReason || 'Administrative Action'}. ` +
@@ -237,14 +411,7 @@ exports.login = catchAsync(async (req, res, next) => {
   if (!user.emailVerified && process.env.REQUIRE_EMAIL_VERIFICATION === 'true')
     return next(new AppError('Please verify your email before logging in.', 401));
 
-  // Reset login attempts on success
-  if (user.loginAttempts > 0) {
-    user.loginAttempts = 0;
-    user.lockUntil = undefined;
-    await user.save({ validateBeforeSave: false });
-  }
-
-  // ── Session concurrency control ──────────────────────────────────────────
+  // ── Session concurrency ─────────────────────────────────────────────────
   const activeSessions = await Session.find({ userId: user._id, isValid: true });
   const maxSessions = user.maxConcurrentSessions || 1;
 
@@ -273,17 +440,18 @@ exports.login = catchAsync(async (req, res, next) => {
       { userId: user._id, isValid: true },
       { isValid: false, terminatedAt: new Date(), token: 'revoked', refreshToken: 'revoked' }
     );
-    user.refreshTokens = [];
   }
 
-  // ── Token generation ──────────────────────────────────────────────────────
-  const isOwner = organization.owner.toString() === user._id.toString();
+  // ── Token generation ─────────────────────────────────────────────────────
+  // FIX (Issue 2): derive isOwner from DB field, not string comparison
+  const isOwner = user.isOwner || organization.owner.toString() === user._id.toString();
+  const isSuperAdmin = !!(user.role?.isSuperAdmin || user.isSuperAdmin);
 
   const accessToken = signAccessToken({
     id: user._id,
     organizationId: user.organizationId,
     isOwner,
-    isSuperAdmin: user.role?.isSuperAdmin || false,
+    isSuperAdmin,
   });
   const refreshToken = signRefreshToken({ id: user._id });
 
@@ -304,15 +472,17 @@ exports.login = catchAsync(async (req, res, next) => {
 
   res.cookie('refreshToken', refreshToken, getCookieOptions());
 
-  // ── Update last login + device registry ──────────────────────────────────
+  // ── FIX (Issue 7): single save — merge all updates together ─────────────
+  user.loginAttempts = 0;
+  user.lockUntil = undefined;
   user.lastLoginAt = new Date();
   user.lastLoginIP = getClientIp(req);
+  user.refreshTokens = [];
 
   const deviceExists = user.devices?.some(d =>
     d.deviceId === req.headers['x-device-id'] ||
     (d.userAgent === req.headers['user-agent'] && d.deviceType === device)
   );
-
   if (!deviceExists && req.headers['user-agent']) {
     user.devices = user.devices || [];
     user.devices.push({
@@ -326,21 +496,49 @@ exports.login = catchAsync(async (req, res, next) => {
 
   await user.save({ validateBeforeSave: false });
 
-  // ── Calculate Effective Permissions ─────────────────────────────────────
-  const effectivePermissions = (isOwner || user.role?.isSuperAdmin || user.isSuperAdmin)
+  // ── FIX (Issue 1): permissions — send ['*'] not the full tag list ────────
+  const permissions = (isOwner || isSuperAdmin)
     ? ['*']
     : mergePermissions(user.role?.permissions, user.permissionOverrides);
+
+  // ── FIX (Issue 3): strip sensitive fields from user before sending ───────
+  const userObj = user.toObject();
+  delete userObj.password;
+  delete userObj.loginAttempts;
+  delete userObj.lockUntil;
+  delete userObj.refreshTokens;
+  delete userObj.passwordResetToken;
+  delete userObj.passwordResetExpires;
+  delete userObj.emailVerificationToken;
+  delete userObj.permissionOverrides; // sent separately below, no need to duplicate
+
+  // ── FIX (Issue 5): strip token strings from session ─────────────────────
+  const sessionObj = {
+    id: session._id,
+    browser: session.browser,
+    os: session.os,
+    deviceType: session.deviceType,
+    ipAddress: session.ipAddress,
+    lastActivityAt: session.lastActivityAt,
+  };
 
   res.status(200).json({
     status: 'success',
     token: accessToken,
     data: {
       user: {
-        ...user.toObject(),
+        ...userObj,
         isOwner,
-        permissions: effectivePermissions,
+        isSuperAdmin,
+        permissions,
+        role: user.role?.name,
+        ...(
+          (user.permissionOverrides?.granted?.length || user.permissionOverrides?.revoked?.length)
+            ? { overrides: user.permissionOverrides }
+            : {}
+        ),
       },
-      session,
+      session: sessionObj,
       organization: {
         id: organization._id,
         name: organization.name,
@@ -494,7 +692,7 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
 
   const user = await User.findById(decoded.id)
     .populate('role')
-    .select('-refreshTokens -passwordResetToken -passwordResetExpires +permissionOverrides');
+    .select('+permissionOverrides');
 
   if (!user) return next(new AppError('User not found', 401));
   if (!user.isActive) return next(new AppError('User account is deactivated', 401));
