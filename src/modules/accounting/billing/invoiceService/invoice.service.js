@@ -100,7 +100,7 @@ class InvoiceService {
     // Validate
     const parsed = createInvoiceSchema.safeParse(rawBody);
     if (!parsed.success) {
-      const msg = parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      const msg = (parsed.error.issues ?? parsed.error.errors ?? []).map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
       throw new AppError(msg, 400);
     }
 
