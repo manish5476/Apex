@@ -85,7 +85,6 @@ exports.rejectReturn = catchAsync(async (req, res, next) => {
 ====================================================== */
 exports.getReturns = catchAsync(async (req, res, next) => {
   const { status, customerId, invoiceId, startDate, endDate, page, limit } = req.query;
-
   const result = await SalesReturnService.getReturns(
     req.user.organizationId,
     { status, customerId, invoiceId, startDate, endDate },
