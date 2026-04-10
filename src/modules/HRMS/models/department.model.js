@@ -29,7 +29,7 @@ const departmentSchema = new mongoose.Schema({
   // --- Hierarchy Path ---
   // Materialized path: "/rootId/childId/grandChildId"
   // Used for efficient ancestor/descendant queries without recursive lookups.
-  path:  { type: String, index: true },
+  path:  { type: String },
   level: { type: Number, default: 0 },
 
   metadata: {

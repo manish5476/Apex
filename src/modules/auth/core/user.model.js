@@ -128,7 +128,7 @@ const userSchema = new mongoose.Schema(
       bankDetails: { type: bankDetailsSchema, select: false },
     },
 
-    upiId: { type: String, trim: true, sparse: true }, // sparse makes sense only with a sparse index below
+    upiId: { type: String, trim: true },
 
     // ── Attendance Configuration ────────────────────────────────────────────
     attendanceConfig: {
