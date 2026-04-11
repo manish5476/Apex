@@ -238,7 +238,7 @@ const noteSchema = new Schema({
   // Project this item belongs to
   projectId:    { type: Schema.Types.ObjectId, ref: 'Project', index: true },
   // When itemType = 'meeting_note', link to the Meeting document
-  meetingId:    { type: Schema.Types.ObjectId, ref: 'Meeting', index: true },
+  meetingId:    { type: Schema.Types.ObjectId, ref: 'Meeting' },
 
   // ── Attachments ───────────────────────────────────────────────────────────
   attachments: [attachmentSchema],

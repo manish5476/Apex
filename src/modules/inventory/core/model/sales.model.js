@@ -29,7 +29,7 @@ const SalesItemSchema = new Schema({
 const SalesSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
   branchId: { type: Schema.Types.ObjectId, ref: 'Branch', required: true, index: true },
-  invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice', required: true, unique: true },
+  invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice', required: true },
   invoiceNumber: { type: String, trim: true },
   customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true, index: true },
 
