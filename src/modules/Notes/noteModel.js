@@ -20,7 +20,7 @@ const { Schema } = mongoose;
 // ─────────────────────────────────────────────
 
 const ITEM_TYPES    = ['note', 'task', 'idea', 'journal', 'project', 'meeting_note'];
-const STATUSES      = ['draft', 'open', 'in_progress', 'in_review', 'done', 'archived', 'cancelled'];
+const STATUSES      = ['draft', 'open', 'in_progress', 'in_review', 'done', 'archived', 'cancelled', 'active', 'completed', 'deferred'];
 const PRIORITIES    = ['none', 'low', 'medium', 'high', 'urgent'];
 const VISIBILITIES  = ['private', 'assignees', 'team', 'department', 'organization'];
 
