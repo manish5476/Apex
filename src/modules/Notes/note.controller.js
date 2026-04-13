@@ -229,14 +229,20 @@ exports.getNoteById = catchAsync(async (req, res, next) => {
   })
     .populate('owner', 'name email avatar')
     .populate('assignees.user', 'name email avatar')
+    .populate('assignees.assignedBy', 'name email avatar')
+    .populate('watchers', 'name email avatar')
     .populate('sharedWith.user', 'name email avatar')
     .populate('projectId', 'name')
     .populate('relatedNotes', 'title itemType status priority')
     .populate('checklist.assignedTo', 'name avatar')
-    .populate('parentId', 'title itemType');
+    .populate('checklist.completedBy', 'name avatar')
+    .populate('parentId', 'title itemType')
+    .populate('createdBy', 'name email avatar')
+    .populate('updatedBy', 'name email avatar');
 
   if (!note) return next(new AppError('Note not found or access denied', 404));
 
+  // Increment view count & log activity (fire-and-forget)
   Note.findByIdAndUpdate(note._id, {
     $inc: { viewCount: 1 },
     $set: { lastViewedAt: new Date(), lastViewedBy: req.user._id },
@@ -247,7 +253,44 @@ exports.getNoteById = catchAsync(async (req, res, next) => {
     actor: req.user._id, action: 'viewed',
   });
 
-  res.status(200).json({ status: 'success', data: { note } });
+  // Fetch activity log from the dedicated NoteActivity collection
+  // (excludes noisy "viewed" events, newest first, max 50)
+  let activityLog = await NoteActivity.find({
+    noteId: note._id,
+    action: { $ne: 'viewed' },
+  })
+    .populate('actor', 'name email avatar')
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .lean();
+
+  // Convert to a plain object so we can clean it up before sending.
+  const noteObj = note.toObject({ virtuals: true });
+
+  // OLD SCHEMA COMPAT: some notes were created with the previous schema that stored
+  // activityLog / subtasks / allowedDepartments inside the note document itself.
+  // We fall back to the embedded activityLog for old notes that have nothing in
+  // the NoteActivity collection yet, then strip all the legacy keys.
+  if (activityLog.length === 0 && Array.isArray(noteObj.activityLog) && noteObj.activityLog.length > 0) {
+    activityLog = noteObj.activityLog
+      .filter(e => e.action && e.action !== 'viewed')
+      .map(e => ({
+        _id: e._id,
+        noteId: note._id,
+        action: e.action,
+        actor: e.user ? { _id: e.user, name: 'Unknown' } : null,
+        createdAt: e.timestamp || e.createdAt,
+      }))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 50);
+  }
+
+  // Strip every field that belonged to the old schema so the client
+  // always receives the canonical, clean structure.
+  ['activityLog', 'subtasks', 'allowedDepartments', 'noteType',
+    'participants', 'accessCount', 'lastAccessed', 'duration'].forEach(f => delete noteObj[f]);
+
+  res.status(200).json({ status: 'success', data: { note: noteObj, activityLog } });
 });
 
 // ─────────────────────────────────────────────
@@ -266,16 +309,13 @@ exports.updateNote = catchAsync(async (req, res, next) => {
   });
 
   if (!note) return next(new AppError('Note not found or insufficient permissions', 404));
-
   const { content, tags, relatedNotes, assignees, ...updates } = req.body;
-
   if (content !== undefined || tags) {
     const contentTags = extractHashtags(content || note.content);
     const incomingTags = tags || note.tags;
     updates.tags = [...new Set([...incomingTags, ...contentTags])];
   }
   if (content !== undefined) updates.content = content;
-
   if (relatedNotes !== undefined) {
     const newLinks = relatedNotes.filter(id => !note.relatedNotes.some(r => r.toString() === id.toString()));
     if (newLinks.length) {
@@ -417,11 +457,15 @@ exports.updateAssignmentStatus = catchAsync(async (req, res, next) => {
 exports.addChecklistItem = catchAsync(async (req, res, next) => {
   const { title, assignedTo, dueDate, order } = req.body;
   const note = await Note.findOneAndUpdate(
-    { _id: req.params.id, isDeleted: false, 'assignees.user': req.user._id },
+    {
+      _id: req.params.id,
+      isDeleted: false,
+      $or: [{ owner: req.user._id }, { 'assignees.user': req.user._id }],
+    },
     { $push: { checklist: { title, assignedTo, dueDate, order: order ?? 999, completed: false } } },
     { new: true, runValidators: true }
   );
-  if (!note) return next(new AppError('Note not found', 404));
+  if (!note) return next(new AppError('Note not found or access denied', 404));
   res.status(200).json({ status: 'success', data: { note } });
 });
 
@@ -431,8 +475,12 @@ exports.addSubtask = exports.addChecklistItem;
 exports.toggleSubtask = catchAsync(async (req, res, next) => {
   const { id: noteId, subtaskId } = req.params;
   const { completed } = req.body;
-  const note = await Note.findOne({ _id: noteId, isDeleted: false, 'assignees.user': req.user._id });
-  if (!note) return next(new AppError('Note not found', 404));
+  const note = await Note.findOne({
+    _id: noteId,
+    isDeleted: false,
+    $or: [{ owner: req.user._id }, { 'assignees.user': req.user._id }],
+  });
+  if (!note) return next(new AppError('Note not found or access denied', 404));
   note.toggleChecklistItem(subtaskId, completed, req.user._id);
   await note.save();
   res.status(200).json({ status: 'success', data: { note } });
@@ -441,11 +489,15 @@ exports.toggleSubtask = catchAsync(async (req, res, next) => {
 exports.removeSubtask = catchAsync(async (req, res, next) => {
   const { id: noteId, subtaskId } = req.params;
   const note = await Note.findOneAndUpdate(
-    { _id: noteId, 'assignees.user': req.user._id },
+    {
+      _id: noteId,
+      isDeleted: false,
+      $or: [{ owner: req.user._id }, { 'assignees.user': req.user._id }],
+    },
     { $pull: { checklist: { _id: subtaskId } } },
     { new: true }
   );
-  if (!note) return next(new AppError('Note not found', 404));
+  if (!note) return next(new AppError('Note not found or access denied', 404));
   res.status(200).json({ status: 'success', data: { note } });
 });
 
@@ -458,8 +510,12 @@ exports.logTime = catchAsync(async (req, res, next) => {
   if (!hours && (!startTime || !endTime)) {
     return next(new AppError('Please provide either hours or startTime + endTime', 400));
   }
-  const note = await Note.findOne({ _id: req.params.id, isDeleted: false, 'assignees.user': req.user._id });
-  if (!note) return next(new AppError('Note not found or you are not an assignee', 404));
+  const note = await Note.findOne({
+    _id: req.params.id,
+    isDeleted: false,
+    $or: [{ owner: req.user._id }, { 'assignees.user': req.user._id }],
+  });
+  if (!note) return next(new AppError('Note not found or access denied', 404));
 
   const computedHours = hours
     || parseFloat(((new Date(endTime) - new Date(startTime)) / 3_600_000).toFixed(2));
