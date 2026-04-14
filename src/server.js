@@ -44,11 +44,48 @@ async function startServer() {
 
     // --- Initialize Socket.IO via Utility ---
     // This activates the logic in src/utils/socket.js
+    // const io = socketUtil.init(server, {
+    //   cors: {
+    //     origin: process.env.CORS_ORIGIN
+    //       ? process.env.CORS_ORIGIN.split(",")
+    //       : [
+    //         "http://localhost:4200",
+    //         "http://localhost:8081",
+    //         "http://10.155.124.42:8081",
+    //         "http://10.155.124.42:5000",
+    //         "https://apex-infinity.vercel.app",
+    //         "https://apex-infinity-vert.vercel.app"
+    //       ],
+    //     methods: ["GET", "POST"],
+    //     credentials: true,
+    //   },
+    //   jwtSecret: process.env.JWT_SECRET
+    // });
+
     const io = socketUtil.init(server, {
       cors: {
-        origin: process.env.CORS_ORIGIN
-          ? process.env.CORS_ORIGIN.split(",")
-          : ["http://localhost:4200"],
+        origin: function (origin, callback) {
+          // Mobile app websocket connections might not have an origin.
+          if (!origin) return callback(null, true);
+
+          const allowedOrigins = process.env.CORS_ORIGIN
+            ? process.env.CORS_ORIGIN.split(",")
+            : [
+              "http://localhost:4200",
+              "http://localhost:8081",
+              "http://10.155.124.42:8081",
+              "http://10.155.124.42:5000",
+              "https://apex-infinity.vercel.app",
+              "https://apex-infinity-vert.vercel.app"
+            ];
+
+          // Allow Expo Go or whitelisted origins
+          if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('exp://')) {
+            callback(null, true);
+          } else {
+            callback(new Error('Not allowed by CORS'));
+          }
+        },
         methods: ["GET", "POST"],
         credentials: true,
       },
