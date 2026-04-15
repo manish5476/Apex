@@ -5,6 +5,7 @@ const ledgerController = require("../../modules/accounting/core/ledger.controlle
 const authController = require("../../modules/auth/core/auth.controller");
 const { checkPermission } = require("../../core/middleware/permission.middleware");
 const { PERMISSIONS } = require("../../config/permissions");
+const validateIds = require("../../core/middleware/validateId.middleware");
 
 // Protect all routes globally
 router.use(authController.protect);
@@ -22,12 +23,12 @@ router.get("/summary/retained-earnings", checkPermission(PERMISSIONS.LEDGER.READ
 router.get("/cash-flow", checkPermission(PERMISSIONS.LEDGER.READ), ledgerController.getCashFlow);
 
 // Party-Specific Ledgers
-router.get("/customer/:customerId", checkPermission(PERMISSIONS.LEDGER.READ), ledgerController.getCustomerLedger);
-router.get("/supplier/:supplierId", checkPermission(PERMISSIONS.LEDGER.READ), ledgerController.getSupplierLedger);
+router.get("/customer/:customerId", validateIds('customerId'), checkPermission(PERMISSIONS.LEDGER.READ), ledgerController.getCustomerLedger);
+router.get("/supplier/:supplierId", validateIds('supplierId'), checkPermission(PERMISSIONS.LEDGER.READ), ledgerController.getSupplierLedger);
 
 // Export & Search
 router.get("/export", checkPermission(PERMISSIONS.LEDGER.READ), ledgerController.exportLedgers);
-router.get("/account/:accountId", checkPermission(PERMISSIONS.LEDGER.READ), ledgerController.getAccountDrillDown);
+router.get("/account/:accountId", validateIds('accountId'), checkPermission(PERMISSIONS.LEDGER.READ), ledgerController.getAccountDrillDown);
 
 // ======================================================
 // 2. CORE CRUD & ROOT
@@ -38,6 +39,7 @@ router.get("/", checkPermission(PERMISSIONS.LEDGER.READ), ledgerController.getAl
 
 // ID-Based operations (Must be last)
 router.route("/:id")
+  .all(validateIds('id'))
   .get(checkPermission(PERMISSIONS.LEDGER.READ), ledgerController.getLedger)
   .delete(checkPermission(PERMISSIONS.LEDGER.DELETE), ledgerController.deleteLedger);
 

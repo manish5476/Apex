@@ -29,17 +29,59 @@ const app = express();
 app.set("trust proxy", 1);
 app.set("query parser", (str) => qs.parse(str, { defaultCharset: "utf-8" }));
 app.use(assignRequestId);
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN
+// app.use(
+//   cors({
+//     origin: process.env.CORS_ORIGIN
+//       ? process.env.CORS_ORIGIN.split(",")
+//       : [
+//         "http://localhost:4200",
+//         "http://localhost:8081",
+//         "http://10.155.124.42:8081",
+//         "http://10.155.124.42:5000",
+//         "https://apex-infinity.vercel.app",
+//         "https://apex-infinity-vert.vercel.app"
+//       ],
+//     credentials: true,
+//     allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
+//     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+//   }),
+// );
+// app.options("*", cors());
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Mobile apps (React Native) often don't send an origin header.
+    // If there's no origin, it's likely a mobile API call or a server-to-server call.
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    const allowedOrigins = process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(",")
-      : ["http://localhost:4200", "https://apex-infinity.vercel.app", "https://apex-infinity-vert.vercel.app"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
-    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-  }),
-);
-app.options("*", cors());
+      : [
+        "http://localhost:4200",
+        "http://localhost:8081",
+        "http://10.155.124.42:8081",
+        "http://10.155.124.42:5000",
+        "https://apex-infinity.vercel.app",
+        "https://apex-infinity-vert.vercel.app"
+      ];
+
+    // Also allow local Expo Go origins like exp://...
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('exp://')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
+  methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+};
+
+app.use(cors(corsOptions));
+
+
 app.use((req, res, next) => {
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();

@@ -177,6 +177,9 @@ class LedgerService {
    * FIX #2: Opening balance aggregation uses only 'asset' type
    * ============================================================ */
   static async getCustomerLedger(customerId, orgId, { startDate, endDate, limit = 200 }) {
+    if (!mongoose.Types.ObjectId.isValid(orgId)) throw new Error(`Invalid organization ID: ${orgId}`);
+    if (!mongoose.Types.ObjectId.isValid(customerId)) throw new Error(`Invalid customer ID: ${customerId}`);
+
     const orgOid  = new mongoose.Types.ObjectId(orgId);
     const custOid = new mongoose.Types.ObjectId(customerId);
 
@@ -255,6 +258,9 @@ class LedgerService {
    * 3. SUPPLIER LEDGER (AP statement)
    * ============================================================ */
   static async getSupplierLedger(supplierId, orgId, { startDate, endDate, limit = 200 }) {
+    if (!mongoose.Types.ObjectId.isValid(orgId)) throw new Error(`Invalid organization ID: ${orgId}`);
+    if (!mongoose.Types.ObjectId.isValid(supplierId)) throw new Error(`Invalid supplier ID: ${supplierId}`);
+
     const orgOid  = new mongoose.Types.ObjectId(orgId);
     const suppOid = new mongoose.Types.ObjectId(supplierId);
 

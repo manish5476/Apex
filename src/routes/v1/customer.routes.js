@@ -8,6 +8,8 @@ const authController = require('../../modules/auth/core/auth.controller');
 const { checkPermission } = require('../../core/middleware/permission.middleware');
 const { PERMISSIONS } = require('../../config/permissions');
 const { upload } = require('../../core/middleware/upload.middleware');
+const validateIds = require('../../core/middleware/validateId.middleware');
+
 router.use(authController.protect);
 
 // ── Static & bulk routes (MUST be before /:id) ──────────────────────────────
@@ -43,21 +45,21 @@ router.post('/bulk-customer', checkPermission(PERMISSIONS.CUSTOMER.CREATE), cust
  * @params { id }
  * @payload { avatar (file) }
  */
-router.patch('/:id/upload', checkPermission(PERMISSIONS.CUSTOMER.UPDATE), upload.single('avatar'), customerController.uploadCustomerPhoto);
+router.patch('/:id/upload', validateIds('id'), checkPermission(PERMISSIONS.CUSTOMER.UPDATE), upload.single('avatar'), customerController.uploadCustomerPhoto);
 
 /**
  * PATCH /:id/restore
  * @params { id }
  * @payload none
  */
-router.patch('/:id/restore', checkPermission(PERMISSIONS.CUSTOMER.UPDATE), customerController.restoreCustomer);
+router.patch('/:id/restore', validateIds('id'), checkPermission(PERMISSIONS.CUSTOMER.UPDATE), customerController.restoreCustomer);
 
 /**
  * PATCH /:id/credit-limit
  * @params { id }
  * @payload { creditLimit }
  */
-router.patch('/:id/credit-limit', checkPermission(PERMISSIONS.CUSTOMER.CREDIT_LIMIT), customerController.updateCreditLimit);
+router.patch('/:id/credit-limit', validateIds('id'), checkPermission(PERMISSIONS.CUSTOMER.CREDIT_LIMIT), customerController.updateCreditLimit);
 
 // ── Core CRUD ────────────────────────────────────────────────────────────────
 router.route('/')
@@ -74,6 +76,7 @@ router.route('/')
   .post(checkPermission(PERMISSIONS.CUSTOMER.CREATE), customerController.createCustomer);
 
 router.route('/:id')
+  .all(validateIds('id'))
   /**
    * GET /:id
    * @params { id }
