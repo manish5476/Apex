@@ -18,7 +18,7 @@ module.exports = {
     PRICING_TABLE: 'pricing_table',
     FAQ_SECTION: 'faq_section'
   },
-  
+
   DATA_SOURCES: {
     STATIC: 'static',
     SMART: 'smart',
@@ -26,7 +26,7 @@ module.exports = {
     DYNAMIC: 'dynamic',
     CATEGORY: 'category'
   },
-  
+
   SMART_RULE_TYPES: {
     NEW_ARRIVALS: 'new_arrivals',
     BEST_SELLERS: 'best_sellers',
@@ -39,7 +39,7 @@ module.exports = {
     HIGH_MARGIN: 'high_margin',
     CUSTOM_QUERY: 'custom_query'
   },
-  
+
   PAGE_TYPES: {
     HOME: 'home',
     PRODUCTS: 'products',
