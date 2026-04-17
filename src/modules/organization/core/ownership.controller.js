@@ -8,7 +8,7 @@ const catchAsync = require('../../../core/utils/api/catchAsync');
 const AppError = require('../../../core/utils/api/appError');
 const sendEmail = require('../../../core/infra/email');
 const { emitToOrg } = require('../../../socketHandlers/socket');
-const TransferRequest = require('./TransferRequest');
+const TransferRequest = require('./transferrequest.model');
 
 /* ---------------------------------------------------------------
  * Helper: resolve super-admin + fallback-admin roles for an org
