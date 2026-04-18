@@ -13,18 +13,11 @@ const factory = require('../../../core/utils/api/handlerFactory');
 exports.getAllBranches = factory.getAll(Branch, {
   searchFields: ['name', 'branchCode', 'phoneNumber', 'address.city', 'address.state'],
   populate: [
-    { path: 'managerId',     select: 'name email' },
+    { path: 'managerId', select: 'name email' },
     { path: 'organizationId', select: 'name' },
   ],
 });
 
-// ======================================================
-// GET MY BRANCHES (scoped to req.user.organizationId)
-// GET /branches/my-branches
-// ======================================================
-// NOTE: Relies on factory.getAll automatically injecting
-// { organizationId: req.user.organizationId } into the query filter.
-// Verify your handlerFactory does this — if not, use a custom handler.
 exports.getMyBranches = factory.getAll(Branch, {
   fields: 'name branchCode isActive isMainBranch address',
   searchFields: ['name', 'branchCode'],
@@ -36,7 +29,7 @@ exports.getMyBranches = factory.getAll(Branch, {
 // ======================================================
 exports.getBranch = factory.getOne(Branch, {
   populate: [
-    { path: 'managerId',     select: 'name email' },
+    { path: 'managerId', select: 'name email' },
     { path: 'organizationId', select: 'name' },
   ],
 });
@@ -107,7 +100,7 @@ exports.createBranch = catchAsync(async (req, res, next) => {
 // PATCH /branches/:id
 // ======================================================
 exports.updateBranch = catchAsync(async (req, res, next) => {
-  const orgId    = req.user.organizationId;
+  const orgId = req.user.organizationId;
   const branchId = req.params.id;
 
   // Validate managerId belongs to this org (if being changed)
@@ -169,7 +162,7 @@ exports.updateBranch = catchAsync(async (req, res, next) => {
 // DELETE /branches/:id
 // ======================================================
 exports.deleteBranch = catchAsync(async (req, res, next) => {
-  const orgId    = req.user.organizationId;
+  const orgId = req.user.organizationId;
   const branchId = req.params.id;
 
   const branch = await Branch.findOne({ _id: branchId, organizationId: orgId });
@@ -199,7 +192,7 @@ exports.deleteBranch = catchAsync(async (req, res, next) => {
   try {
     // Soft delete the branch
     branch.isDeleted = true;
-    branch.isActive  = false;
+    branch.isActive = false;
     await branch.save({ session });
 
     // Remove from Organization.branches[] cache
@@ -223,77 +216,3 @@ exports.deleteBranch = catchAsync(async (req, res, next) => {
     session.endSession();
   }
 });
-
-
-
-// // src/controllers/branchController.js
-// const Branch = require('./branch.model');
-// const Organization = require('./organization.model');
-// const catchAsync = require('../../../core/utils/api/catchAsync');
-// const factory = require('../../../core/utils/api/handlerFactory');
-
-// // // GET /branches
-// exports.getAllBranches = factory.getAll(Branch, {
-//   searchFields: ['name', 'branchCode', 'phoneNumber', 'address.city', 'address.state'],
-//   populate: [
-//     { path: 'managerId', select: 'name email' },
-//     { path: 'organizationId', select: 'name' }
-//   ]
-// });
-
-// /* -------------------------------------------------------------
-//    Get All EMIs
-// ------------------------------------------------------------- */
-
-// // GET /branches/my
-// exports.getMyBranches = factory.getAll(Branch, {
-//   fields: 'name branchCode isActive',
-//   searchFields: ['name', 'branchCode']
-// });
-
-// // GET /branches/:id
-// exports.getBranch = factory.getOne(Branch, {
-//   populate: [
-//     { path: 'managerId', select: 'name email' },
-//     { path: 'organizationId', select: 'name' }
-//   ]
-// });
-
-// // POST /branches
-// exports.createBranch = catchAsync(async (req, res, next) => {
-//   req.body.organizationId = req.user.organizationId;
-
-//   // if new branch = main, demote others
-//   if (req.body.isMainBranch) {
-//     await Branch.updateMany(
-//       { organizationId: req.user.organizationId },
-//       { $set: { isMainBranch: false } }
-//     );
-//   }
-
-//   const branch = await Branch.create(req.body);
-
-//   await Organization.findByIdAndUpdate(req.user.organizationId, {
-//     $addToSet: { branches: branch._id }
-//   });
-
-//   res.status(201).json({
-//     status: 'success',
-//     data: { data: branch }
-//   });
-// });
-
-// // PATCH /branches/:id
-// exports.updateBranch = catchAsync(async (req, res, next) => {
-//   if (req.body.isMainBranch) {
-//     await Branch.updateMany(
-//       { organizationId: req.user.organizationId },
-//       { $set: { isMainBranch: false } }
-//     );
-//   }
-
-//   return factory.updateOne(Branch)(req, res, next);
-// });
-
-// // DELETE /branches/:id  (soft by default)
-// exports.deleteBranch = factory.deleteOne(Branch);
