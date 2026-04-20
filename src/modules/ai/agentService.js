@@ -8,7 +8,7 @@ async function initLangchainDeps() {
   if (langChainDeps) return langChainDeps;
   try {
     const { ChatGoogleGenerativeAI } = require("@langchain/google-genai");
-    const { createToolCallingAgent, AgentExecutor } = require("@langchain/agents");
+    const { createToolCallingAgent, AgentExecutor } = require("langchain/agents");
     const { ChatPromptTemplate } = require("@langchain/core/prompts");
     const { DynamicStructuredTool } = require("@langchain/core/tools");
     const { z } = require("zod");
