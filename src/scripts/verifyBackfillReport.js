@@ -11,7 +11,7 @@ const ledgerSchema = new mongoose.Schema({}, { strict: false });
 const OldLedger = mongoose.model('OldLedger', ledgerSchema, 'ledgers');
 
 async function connect() {
-  await mongoose.connect(process.env.MONGO_URI);
+  await mongoose.connect(process.env.DATABASE);
   console.log('✅ Connected to MongoDB');
 }
 
@@ -62,17 +62,21 @@ async function sumOldLedger(orgId) {
 async function sumAccountEntriesByReference(orgId) {
   const agg = [
     { $match: { organizationId: new mongoose.Types.ObjectId(orgId), referenceType: { $exists: true, $ne: null } } },
-    { $group: {
+    {
+      $group: {
         _id: { referenceType: '$referenceType', referenceId: '$referenceId' },
         totalDebit: { $sum: '$debit' },
         totalCredit: { $sum: '$credit' }
-    } },
-    { $project: {
+      }
+    },
+    {
+      $project: {
         referenceType: '$_id.referenceType',
         referenceId: '$_id.referenceId',
         totalDebit: 1,
         totalCredit: 1
-    } }
+      }
+    }
   ];
   const rows = await AccountEntry.aggregate(agg);
   return rows;
@@ -114,7 +118,7 @@ async function runVerification(orgId) {
   const invPost = totalsByType['invoice'] || { debit: 0, credit: 0 };
   const invCombined = (invPost.debit || 0) + (invPost.credit || 0);
   const invExpectedCombined = (invoicesSum.total || 0) * 2;
-  
+
   if (Math.abs(invCombined - invExpectedCombined) > 1) { // Tolerance of 1.00
     report.discrepancies.push({
       type: 'Invoice Mismatch',
@@ -141,10 +145,10 @@ async function runVerification(orgId) {
   // 3. Payments
   const payPost = totalsByType['payment'] || { debit: 0, credit: 0 };
   const payCombined = (payPost.debit || 0) + (payPost.credit || 0);
-  
+
   let totalPayments = 0;
-  for(let key in report.sourceTotals.payments) {
-      totalPayments += report.sourceTotals.payments[key].total;
+  for (let key in report.sourceTotals.payments) {
+    totalPayments += report.sourceTotals.payments[key].total;
   }
   const payExpectedCombined = totalPayments * 2;
 
@@ -159,11 +163,11 @@ async function runVerification(orgId) {
 
   console.log('--- VERIFICATION REPORT ---');
   console.log(JSON.stringify(report, null, 2));
-  
-  if(report.discrepancies.length === 0) {
-      console.log("✅ All Systems Balanced.");
+
+  if (report.discrepancies.length === 0) {
+    console.log("✅ All Systems Balanced.");
   } else {
-      console.log("⚠️ Discrepancies Found. Run backfill script again.");
+    console.log("⚠️ Discrepancies Found. Run backfill script again.");
   }
 }
 
