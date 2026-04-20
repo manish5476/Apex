@@ -1,7 +1,7 @@
 // services/ownership.service.js
 const mongoose = require('mongoose');
 const crypto = require('crypto');
-const TransferRequest = require('./TransferRequest');
+const TransferRequest = require('./transferrequest.model');
 const Organization = require('./organization.model'); // Your Org Model
 const User = require('../../auth/core/user.model'); // Your User Model
 const EmailService = require('../../../core/infra/email'); // Your Email logic

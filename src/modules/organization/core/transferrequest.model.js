@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const transferRequestSchema = new mongoose.Schema({
   organizationId: {
@@ -39,6 +40,12 @@ const transferRequestSchema = new mongoose.Schema({
 
 // Compound index: fast lookup for "is there a pending request for this org?"
 transferRequestSchema.index({ organizationId: 1, status: 1 });
+
+// Method to verify token
+transferRequestSchema.methods.correctToken = function (candidateToken) {
+  const hashedCandidate = crypto.createHash('sha256').update(candidateToken).digest('hex');
+  return hashedCandidate === this.tokenHash;
+};
 
 const TransferRequest = mongoose.model('TransferRequest', transferRequestSchema);
 module.exports = TransferRequest;
