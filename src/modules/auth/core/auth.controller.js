@@ -412,7 +412,23 @@ exports.login = catchAsync(async (req, res, next) => {
     return next(new AppError('Please verify your email before logging in.', 401));
 
   // ── Session concurrency ─────────────────────────────────────────────────
-  const activeSessions = await Session.find({ userId: user._id, isValid: true });
+  // Only count sessions whose access-token has NOT yet expired.
+  // Without this, sessions whose JWT expired naturally (no explicit logout)
+  // keep isValid:true in DB and falsely block new logins.
+  const accessTokenTtlMs = (() => {
+    const raw = process.env.ACCESS_TOKEN_EXPIRES_IN || '1h';
+    const match = raw.match(/^(\d+)([smhd])$/);
+    if (!match) return 60 * 60 * 1000; // fallback 1h
+    const [, num, unit] = match;
+    const mult = { s: 1000, m: 60000, h: 3600000, d: 86400000 };
+    return parseInt(num, 10) * mult[unit];
+  })();
+  const tokenNotExpiredBefore = new Date(Date.now() - accessTokenTtlMs);
+  const activeSessions = await Session.find({
+    userId: user._id,
+    isValid: true,
+    lastActivityAt: { $gte: tokenNotExpiredBefore },
+  });
   const maxSessions = user.maxConcurrentSessions || 1;
 
   if (activeSessions.length >= maxSessions && !req.body.forceLogout) {
@@ -699,7 +715,20 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
   if (user.status !== 'approved') return next(new AppError('Account not approved', 401));
   if (user.isLoginBlocked) return next(new AppError('Account blocked', 403));
 
-  const session = await Session.findOne({ userId: user._id, token, isValid: true });
+  let session = await Session.findOne({ userId: user._id, token, isValid: true });
+
+  if (!session) {
+    // Grace-period check for token rotation (same 30s window as protect middleware)
+    const rotatedSession = await Session.findOne({ userId: user._id, previousToken: token, isValid: true });
+    if (rotatedSession) {
+      const gracePeriod = 30 * 1000;
+      const timeSinceRotation = Date.now() - (rotatedSession.lastTokenUpdateAt?.getTime() || 0);
+      if (timeSinceRotation <= gracePeriod) {
+        session = rotatedSession;
+      }
+    }
+  }
+
   if (!session) return next(new AppError('Session expired', 401));
 
   res.status(200).json({

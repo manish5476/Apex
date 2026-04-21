@@ -144,33 +144,39 @@ class PaymentAllocationService {
       type: 'inflow'
     }).populate('customerId');
 
-    if (!payment || payment.customerId === null) {
+    if (!payment || !payment.customerId) {
       throw new AppError('Payment not found or no customer associated', 400);
     }
 
     let remainingAmount = payment.remainingAmount || payment.amount;
     const allocations = [];
-    
+
+    // Bug fix: payment.customerId may be a populated document after .populate('customerId').
+    // Always resolve to a raw ObjectId string before DB queries.
+    const customerId = payment.customerId._id || payment.customerId;
+
     // 1. First, use customer advance if available
-    const customer = await Customer.findById(payment.customerId);
+    const customer = await Customer.findById(customerId);
+    if (!customer) throw new AppError('Customer not found', 404);
+
     if (customer.advanceBalance > 0) {
       const advanceUsed = Math.min(customer.advanceBalance, remainingAmount);
       customer.advanceBalance -= advanceUsed;
       remainingAmount -= advanceUsed;
-      
+
       allocations.push({
         type: 'advance',
         amount: advanceUsed,
         allocatedAt: new Date()
       });
-      
+
       await customer.save();
     }
 
     // 2. Find all EMIs for this customer
     const emis = await EMI.find({
       organizationId,
-      customerId: payment.customerId,
+      customerId,
       status: 'active'
     }).populate('invoiceId');
 
@@ -248,7 +254,7 @@ class PaymentAllocationService {
     if (remainingAmount > 0) {
       const nonEMIInvoices = await Invoice.find({
         organizationId,
-        customerId: payment.customerId,
+        customerId,
         status: { $in: ['issued', 'partially_paid'] },
         _id: { $nin: emis.map(e => e.invoiceId) }
       }).sort({ dueDate: 1 });
@@ -296,8 +302,8 @@ class PaymentAllocationService {
     payment.allocationStatus = allocations.length > 0 ? 'fully_allocated' : 'unallocated';
     await payment.save();
 
-    // 7. Recalculate customer outstanding balance
-    await this.recalculateCustomerBalance(payment.customerId, organizationId);
+    // 7. Recalculate customer outstanding balance (authoritative, from DB)
+    await this.recalculateCustomerBalance(customerId, organizationId);
 
     return {
       paymentId: payment._id,
@@ -382,23 +388,43 @@ class PaymentAllocationService {
   }
 
   /**
-   * Recalculate customer balance from scratch
+   * Recalculate customer balance from scratch.
+   * Authoritative source: sum of open invoice balanceAmounts + pending EMI installments.
+   * This prevents the balance from ever going negative due to stale $inc chains.
    */
   async recalculateCustomerBalance(customerId, organizationId, session = null) {
+    // Resolve ObjectId in case a populated document was passed
+    const resolvedId = customerId._id || customerId;
     const options = session ? { session } : {};
-    
-    // Get all invoices
+
+    // 1. Sum open invoice balances
     const invoices = await Invoice.find({
       organizationId,
-      customerId,
+      customerId: resolvedId,
       status: { $in: ['issued', 'partially_paid'] }
     }, null, options);
+    const invoiceOutstanding = invoices.reduce((sum, inv) => sum + (inv.balanceAmount || 0), 0);
 
-    const totalOutstanding = invoices.reduce((sum, inv) => sum + inv.balanceAmount, 0);
+    // 2. Sum pending EMI installment amounts (catches EMI-only debts)
+    const emis = await EMI.find({
+      organizationId,
+      customerId: resolvedId,
+      status: 'active'
+    }, null, options);
+    const emiOutstanding = emis.reduce((sum, emi) => {
+      return sum + emi.installments.reduce((iSum, inst) => {
+        if (inst.paymentStatus !== 'paid') {
+          return iSum + Math.max(0, (inst.totalAmount || 0) - (inst.paidAmount || 0));
+        }
+        return iSum;
+      }, 0);
+    }, 0);
 
-    // Update customer
+    // 3. Total outstanding is always >= 0
+    const totalOutstanding = Math.max(0, invoiceOutstanding + emiOutstanding);
+
     await Customer.findByIdAndUpdate(
-      customerId,
+      resolvedId,
       { outstandingBalance: totalOutstanding },
       options
     );
