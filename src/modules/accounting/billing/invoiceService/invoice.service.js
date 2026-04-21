@@ -1,25 +1,5 @@
 'use strict';
 
-/**
- * InvoiceService
- * ─────────────────────────────────────────────
- * All invoice business logic lives here.
- * The controller is only responsible for:
- *   - Parsing / validating HTTP input
- *   - Calling service methods
- *   - Sending HTTP responses
- *
- * Double-deduction fix:
- *   Stock is reduced ONLY inside SalesService.createFromInvoiceTransactional.
- *   The invoice controller and this service NEVER call reduceStockForInvoice
- *   directly when creating an invoice — that was the source of the bug.
- *   The flow is:
- *     createInvoice → salesJournalService.postInvoiceJournal (revenue/AR)
- *                   → SalesService.createFromInvoiceTransactional
- *                       → StockService.decrement (stock, once, here only)
- *                       → JournalService.postCOGSJournal (COGS, once, here only)
- */
-
 const mongoose = require('mongoose');
 const { z } = require('zod');
 
