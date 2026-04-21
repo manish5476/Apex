@@ -1,4 +1,3 @@
-const { v4: uuidv4 } = require('uuid');
 const Webhook = require('./webhook.model');
 const WebhookDelivery = require('./webhookDelivery.model');
 const { enqueueWebhookDelivery } = require('./webhook.queue');
@@ -35,6 +34,7 @@ async function _processWebhooks(eventName, payload, orgId) {
 }
 
 async function _enqueueDelivery(hook, event, payload) {
+  const { v4: uuidv4 } = await import('uuid');
   const deliveryId = uuidv4();
 
   // Write delivery log immediately so it appears in dashboard as 'pending'
