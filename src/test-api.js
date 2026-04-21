@@ -2,9 +2,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
 const http = require('http');
-
 dotenv.config({ path: './.env' });
-
 async function run() {
   try {
     await mongoose.connect(process.env.DATABASE, {
@@ -12,16 +10,15 @@ async function run() {
       useUnifiedTopology: true,
     });
     console.log('Connected to DB');
-
-const User = require('./modules/auth/core/user.model');
-const Session = require('./modules/auth/core/session.model');
+    const User = require('./modules/auth/core/user.model');
+    const Session = require('./modules/auth/core/session.model');
     // Grab the first user
     const user = await User.findOne({ email: 'shivam.electronics.j@gmail.com' });
     if (!user) {
-        console.log("User not found");
-        process.exit(0);
+      console.log("User not found");
+      process.exit(0);
     }
-    
+
     const token = jwt.sign({ id: user._id, organizationId: user.organizationId }, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN
     });

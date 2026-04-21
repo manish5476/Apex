@@ -50,8 +50,6 @@ app.use(assignRequestId);
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Mobile apps (React Native) often don't send an origin header.
-    // If there's no origin, it's likely a mobile API call or a server-to-server call.
     if (!origin) {
       return callback(null, true);
     }

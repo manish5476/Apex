@@ -14,13 +14,13 @@
 
 'use strict';
 
-const mongoose       = require('mongoose');
+const mongoose = require('mongoose');
 const StorefrontCart = require('../../models/storefront/storefrontCart.model');
-const Product        = require('../../../modules/inventory/core/model/product.model');
-const AppError       = require('../../../core/utils/api/appError');
+const Product = require('../../../modules/inventory/core/model/product.model');
+const AppError = require('../../../core/utils/api/appError');
 
 // Guest carts expire in 7 days, customer carts in 30
-const GUEST_CART_TTL    = 7  * 24 * 60 * 60 * 1000;
+const GUEST_CART_TTL = 7 * 24 * 60 * 60 * 1000;
 const CUSTOMER_CART_TTL = 30 * 24 * 60 * 60 * 1000;
 
 class CartService {
@@ -44,15 +44,15 @@ class CartService {
 
     if (!cart) {
       const isCustomer = !!identity.customerId;
-      const ttl        = isCustomer ? CUSTOMER_CART_TTL : GUEST_CART_TTL;
+      const ttl = isCustomer ? CUSTOMER_CART_TTL : GUEST_CART_TTL;
 
       cart = await StorefrontCart.create({
         organizationId,
-        customerId:   identity.customerId   ?? null,
+        customerId: identity.customerId ?? null,
         sessionToken: identity.sessionToken ?? null,
-        expiresAt:    new Date(Date.now() + ttl),
-        status:       'active',
-        items:        []
+        expiresAt: new Date(Date.now() + ttl),
+        status: 'active',
+        items: []
       });
     }
 
@@ -80,10 +80,10 @@ class CartService {
 
     // Fetch product and validate it belongs to this org
     const product = await Product.findOne({
-      _id:            productId,
+      _id: productId,
       organizationId,
-      isActive:       true,
-      isDeleted:      { $ne: true }
+      isActive: true,
+      isDeleted: { $ne: true }
     }).lean();
 
     if (!product) throw new AppError('Product not found or unavailable', 404);
@@ -119,14 +119,14 @@ class CartService {
     } else {
       // Build snapshot — this is the price frozen at add-time
       const snapshot = {
-        name:            product.name,
-        slug:            product.slug,
-        image:           product.images?.[0] ?? null,
-        sku:             product.sku          ?? null,
-        sellingPrice:    product.sellingPrice,
+        name: product.name,
+        slug: product.slug,
+        image: product.images?.[0] ?? null,
+        sku: product.sku ?? null,
+        sellingPrice: product.sellingPrice,
         discountedPrice: product.discountedPrice ?? null,
-        taxRate:         product.taxRate         ?? 0,
-        isTaxInclusive:  product.isTaxInclusive  ?? false
+        taxRate: product.taxRate ?? 0,
+        isTaxInclusive: product.isTaxInclusive ?? false
       };
 
       cart.items.push({ productId, snapshot, quantity, branchId: branchId ?? undefined });
@@ -233,10 +233,10 @@ class CartService {
     let target = customerCart;
     if (!target) {
       // Customer has no cart yet — just reassign the guest cart
-      guestCart.customerId   = customerId;
+      guestCart.customerId = customerId;
       guestCart.sessionToken = null;
-      guestCart.expiresAt    = new Date(Date.now() + CUSTOMER_CART_TTL);
-      guestCart.status       = 'active';
+      guestCart.expiresAt = new Date(Date.now() + CUSTOMER_CART_TTL);
+      guestCart.status = 'active';
       await guestCart.save();
       return this._toDTO(guestCart);
     }
@@ -255,9 +255,9 @@ class CartService {
       } else {
         target.items.push({
           productId: guestItem.productId,
-          snapshot:  guestItem.snapshot,
-          quantity:  guestItem.quantity,
-          branchId:  guestItem.branchId
+          snapshot: guestItem.snapshot,
+          quantity: guestItem.quantity,
+          branchId: guestItem.branchId
         });
       }
     }
@@ -286,7 +286,7 @@ class CartService {
     }
 
     const productIds = cart.items.map(i => i.productId);
-    const products   = await Product.find({
+    const products = await Product.find({
       _id: { $in: productIds },
       organizationId,
       isActive: true,
@@ -294,17 +294,17 @@ class CartService {
     }).lean();
 
     const productMap = new Map(products.map(p => [p._id.toString(), p]));
-    const issues     = [];
+    const issues = [];
 
     for (const item of cart.items) {
       const product = productMap.get(item.productId.toString());
       if (!product) {
         issues.push({
-          itemId:      item._id,
+          itemId: item._id,
           productName: item.snapshot.name,
-          issue:       'unavailable',
-          requested:   item.quantity,
-          available:   0
+          issue: 'unavailable',
+          requested: item.quantity,
+          available: 0
         });
         continue;
       }
@@ -312,10 +312,10 @@ class CartService {
       const available = this._getStock(product, item.branchId?.toString());
       if (available < item.quantity) {
         issues.push({
-          itemId:      item._id,
+          itemId: item._id,
           productName: product.name,
-          issue:       available === 0 ? 'out_of_stock' : 'insufficient_stock',
-          requested:   item.quantity,
+          issue: available === 0 ? 'out_of_stock' : 'insufficient_stock',
+          requested: item.quantity,
           available
         });
       }
@@ -378,28 +378,28 @@ class CartService {
     const grandTotal = Math.max(0, subtotal - (doc.discountAmount ?? 0));
 
     return {
-      id:            doc._id,
-      organizationId:doc.organizationId,
-      customerId:    doc.customerId    ?? null,
-      sessionToken:  doc.sessionToken  ?? null,
-      status:        doc.status,
+      id: doc._id,
+      organizationId: doc.organizationId,
+      customerId: doc.customerId ?? null,
+      sessionToken: doc.sessionToken ?? null,
+      status: doc.status,
       items: doc.items.map(item => ({
-        id:         item._id,
-        productId:  item.productId,
-        quantity:   item.quantity,
-        snapshot:   item.snapshot,
-        branchId:   item.branchId ?? null,
-        lineTotal:  parseFloat(
+        id: item._id,
+        productId: item.productId,
+        quantity: item.quantity,
+        snapshot: item.snapshot,
+        branchId: item.branchId ?? null,
+        lineTotal: parseFloat(
           ((item.snapshot.discountedPrice ?? item.snapshot.sellingPrice) * item.quantity).toFixed(2)
         )
       })),
-      couponCode:    doc.couponCode    ?? null,
-      discountAmount:doc.discountAmount ?? 0,
-      subtotal:      parseFloat(subtotal.toFixed(2)),
-      grandTotal:    parseFloat(grandTotal.toFixed(2)),
-      itemCount:     doc.items.reduce((n, i) => n + i.quantity, 0),
-      expiresAt:     doc.expiresAt,
-      updatedAt:     doc.updatedAt
+      couponCode: doc.couponCode ?? null,
+      discountAmount: doc.discountAmount ?? 0,
+      subtotal: parseFloat(subtotal.toFixed(2)),
+      grandTotal: parseFloat(grandTotal.toFixed(2)),
+      itemCount: doc.items.reduce((n, i) => n + i.quantity, 0),
+      expiresAt: doc.expiresAt,
+      updatedAt: doc.updatedAt
     };
   }
 }
