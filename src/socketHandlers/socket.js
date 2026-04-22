@@ -235,6 +235,15 @@ function init(server, options = {}) {
     },
   });
 
+  io.engine.on("connection_error", (err) => {
+    console.error("❌ Socket Engine Error:", {
+      url: err.req?.url,
+      code: err.code,
+      message: err.message,
+      context: err.context
+    });
+  });
+
   // ── Optional Redis adapter (horizontal scaling) ──────────────────────────
   if (redisUrl) {
     (async () => {
@@ -269,13 +278,16 @@ function init(server, options = {}) {
         payload = jwt.verify(token, secret);
       } catch (err) {
         if (err.name === "TokenExpiredError") {
+          console.warn(`⏳ Socket Auth: Token Expired (Socket ID: ${socket.id})`);
           return next(Object.assign(new Error("TOKEN_EXPIRED"), { data: { code: "TOKEN_EXPIRED" } }));
         }
+        console.warn(`❌ Socket Auth: Invalid Token - ${err.message} (Socket ID: ${socket.id})`);
         return next(Object.assign(new Error("INVALID_TOKEN"), { data: { code: "INVALID_TOKEN" } }));
       }
 
       const userId = payload.sub || payload.id;
       if (!userId || !payload.organizationId) {
+        console.warn(`❌ Socket Auth: Invalid Payload - missing userId or orgId (Socket ID: ${socket.id})`);
         return next(Object.assign(new Error("INVALID_PAYLOAD"), { data: { code: "INVALID_PAYLOAD" } }));
       }
 
@@ -283,8 +295,14 @@ function init(server, options = {}) {
         .select("_id name email organizationId role isActive")
         .lean();
 
-      if (!user) return next(Object.assign(new Error("USER_NOT_FOUND"), { data: { code: "USER_NOT_FOUND" } }));
-      if (!user.isActive) return next(Object.assign(new Error("USER_INACTIVE"), { data: { code: "USER_INACTIVE" } }));
+      if (!user) {
+        console.warn(`👤 Socket Auth: User not found (${userId}) (Socket ID: ${socket.id})`);
+        return next(Object.assign(new Error("USER_NOT_FOUND"), { data: { code: "USER_NOT_FOUND" } }));
+      }
+      if (!user.isActive) {
+        console.warn(`🚫 Socket Auth: User inactive (${userId}) (Socket ID: ${socket.id})`);
+        return next(Object.assign(new Error("USER_INACTIVE"), { data: { code: "USER_INACTIVE" } }));
+      }
 
       // Attach everything we need — zero DB calls during events
       socket.user = {
