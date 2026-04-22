@@ -167,18 +167,13 @@ function emitToOrg(organizationId, event, payload) {
 
 function emitToUser(userId, event, payload) {
   if (!io) { console.error("❌ Socket.IO not initialized"); return; }
-  for (const sId of getSocketIdsForUser(userId)) {
-    io.to(sId).emit(event, payload);
-  }
+  io.to(`user:${userId}`).emit(event, payload);
 }
 
 function emitToUsers(userIds, event, payload) {
   if (!io || !Array.isArray(userIds)) return;
-  const seen = new Set();
   for (const uid of userIds) {
-    for (const sId of getSocketIdsForUser(uid)) {
-      if (!seen.has(sId)) { seen.add(sId); io.to(sId).emit(event, payload); }
-    }
+    io.to(`user:${uid}`).emit(event, payload);
   }
 }
 
@@ -260,8 +255,12 @@ function init(server, options = {}) {
   // ── JWT Auth Middleware ───────────────────────────────────────────────────
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth?.token;
-      if (!token) return next(Object.assign(new Error("AUTH_REQUIRED"), { data: { code: "AUTH_REQUIRED" } }));
+      const token = socket.handshake.auth?.token || socket.handshake.query?.token || socket.handshake.headers?.authorization?.split(' ')[1];
+      
+      if (!token) {
+        console.warn(`⚠️ Socket connection rejected: No token provided (Socket ID: ${socket.id})`);
+        return next(Object.assign(new Error("AUTH_REQUIRED"), { data: { code: "AUTH_REQUIRED" } }));
+      }
 
       const secret = jwtSecret || process.env.JWT_SECRET;
       let payload;
@@ -301,9 +300,10 @@ function init(server, options = {}) {
       socket.joinedChannels = new Set();
       socket.rateLimits = new Map(); // per-socket rate limit buckets
 
+      console.log(`✅ Socket authenticated: User ${userId} (Socket ID: ${socket.id})`);
       return next();
     } catch (err) {
-      console.error("🔴 Socket Auth Error:", err.message);
+      console.error("🔴 Socket Auth Error:", err.message, "| Stack:", err.stack);
       return next(Object.assign(new Error("INTERNAL_ERROR"), { data: { code: "INTERNAL_ERROR" } }));
     }
   });

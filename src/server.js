@@ -66,7 +66,10 @@ async function startServer() {
       cors: {
         origin: function (origin, callback) {
           // Mobile app websocket connections might not have an origin.
-          if (!origin) return callback(null, true);
+          if (!origin) {
+            console.log("ℹ️ Socket CORS: No origin header (allowing)");
+            return callback(null, true);
+          }
 
           const allowedOrigins = process.env.CORS_ORIGIN
             ? process.env.CORS_ORIGIN.split(",")
@@ -80,9 +83,13 @@ async function startServer() {
             ];
 
           // Allow Expo Go or whitelisted origins
-          if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('exp://')) {
+          const isAllowed = allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('exp://');
+          
+          if (isAllowed) {
+            console.log(`✅ Socket CORS: Allowed origin ${origin}`);
             callback(null, true);
           } else {
+            console.warn(`❌ Socket CORS: Rejected origin ${origin}`);
             callback(new Error('Not allowed by CORS'));
           }
         },
