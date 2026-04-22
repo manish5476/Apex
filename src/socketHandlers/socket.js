@@ -254,6 +254,7 @@ function init(server, options = {}) {
 
   // ── JWT Auth Middleware ───────────────────────────────────────────────────
   io.use(async (socket, next) => {
+    console.log(`🔍 Socket handshake attempt (Socket ID: ${socket.id})`);
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token || socket.handshake.headers?.authorization?.split(' ')[1];
       
