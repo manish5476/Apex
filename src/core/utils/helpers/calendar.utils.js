@@ -1,5 +1,5 @@
 const moment = require('moment');
-const Holiday = require('../../modules/hr/holiday/models/holiday.model');
+const Holiday = require('../../../modules/HRMS/models/holiday.model');
 
 /**
  * 📅 CENTRALIZED CALENDAR LOGIC
@@ -10,6 +10,8 @@ exports.getDayStatus = async (dateStr, organizationId, branchId) => {
     // APEX FIX: Use moment instead of dayjs
     const date = moment(dateStr); 
     const dayOfWeek = date.day(); // 0=Sunday, 1=Monday, ... 6=Saturday
+    const dayStart = date.clone().startOf('day').toDate();
+    const dayEnd = date.clone().endOf('day').toDate();
 
     // 1. CHECK WEEKENDS (Static Rule)
     // currently hardcoded for Sunday, can be made dynamic later
@@ -19,7 +21,8 @@ exports.getDayStatus = async (dateStr, organizationId, branchId) => {
     // Check global org holidays OR branch-specific holidays
     const holiday = await Holiday.findOne({
         organizationId,
-        date: dateStr,
+        date: { $gte: dayStart, $lte: dayEnd },
+        isActive: true,
         $or: [
             { branchId: null },       // Applies to whole company
             { branchId: branchId }    // Applies to specific branch

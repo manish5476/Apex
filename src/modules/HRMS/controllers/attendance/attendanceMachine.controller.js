@@ -3,6 +3,7 @@ const mongoose          = require('mongoose');
 const crypto            = require('crypto');
 const AttendanceMachine = require('../../models/attendanceMachine.model');
 const AttendanceLog     = require('../../models/attendanceLog.model');
+const AttendanceDaily   = require('../../models/attendanceDaily.model');
 const User              = require('../../../auth/core/user.model');
 const catchAsync        = require('../../../../core/utils/api/catchAsync');
 const AppError          = require('../../../../core/utils/api/appError');
@@ -247,8 +248,6 @@ exports.syncMachine = catchAsync(async (req, res, next) => {
     const results = { received: 0, processed: 0, duplicates: 0, errors: [] };
 
     // Inline import to avoid circular dependency
-    const { processLogForDaily } = require('./attendanceLog.controller');
-
     if (Array.isArray(logs)) {
       results.received = logs.length;
 
@@ -356,14 +355,30 @@ exports.syncMachine = catchAsync(async (req, res, next) => {
 
 exports.bulkUpdateStatus = catchAsync(async (req, res, next) => {
   const { machineIds, status, reason } = req.body;
-  if (!machineIds?.length || !status) return next(new AppError('Please provide machine IDs and status', 400));
+  if (!Array.isArray(machineIds) || machineIds.length === 0 || !status) {
+    return next(new AppError('Please provide machine IDs and status', 400));
+  }
+
+  const allowedStatuses = ['active', 'inactive', 'maintenance', 'offline', 'error'];
+  if (!allowedStatuses.includes(status)) {
+    return next(new AppError(`Invalid status. Allowed values: ${allowedStatuses.join(', ')}`, 400));
+  }
 
   const result = await AttendanceMachine.updateMany(
     { _id: { $in: machineIds }, organizationId: req.user.organizationId },
     { $set: { status, lastError: reason, updatedBy: req.user._id } }
   );
 
-  res.status(200).json({ status: 'success', data: { matched: result.matchedCount, modified: result.modifiedCount } });
+  res.status(200).json({
+    success: true,
+    status: 'success',
+    message: `Updated ${result.modifiedCount} machine(s) to ${status}`,
+    data: {
+      status,
+      matched: result.matchedCount,
+      modified: result.modifiedCount,
+    },
+  });
 });
 
 // ─────────────────────────────────────────────

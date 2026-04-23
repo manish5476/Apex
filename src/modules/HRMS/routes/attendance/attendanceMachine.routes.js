@@ -37,6 +37,11 @@ router.post('/bulk-map',
   attendanceMachineController.bulkMapUsers
 );
 
+router.post('/bulk-status',
+  checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_MANAGE),
+  attendanceMachineController.bulkUpdateStatus
+);
+
 // Analytics & Monitoring
 router.get('/analytics', 
   checkPermission(PERMISSIONS.ATTENDANCE.MACHINE_READ), 
