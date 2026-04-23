@@ -3,20 +3,50 @@ const Account = require('../model/account.model');
 const Product = require('../../../inventory/core/model/product.model');
 const AppError = require('../../../../core/utils/api/appError');
 
-async function getAccount(orgId, code, fallbackName, type, session) {
-  let acc = await Account.findOne({ organizationId: orgId, code }).session(session);
-  if (!acc) {
-    const created = await Account.create([{
-      organizationId: orgId,
-      code,
-      name: fallbackName,
-      type,
-      isGroup: false
-    }], { session });
-    acc = created[0];
-  }
-  return acc;
+/**
+ * Atomic find-or-create for a ledger account.
+ * Uses findOneAndUpdate with $setOnInsert to prevent race conditions.
+ */
+async function getOrInitAccount(orgId, type, name, code, session = null) {
+  const opts = { upsert: true, new: true };
+  if (session) opts.session = session;
+
+  const account = await Account.findOneAndUpdate(
+    { organizationId: orgId, code },
+    {
+      $setOnInsert: {
+        organizationId: orgId,
+        name,
+        code,
+        type,
+        isGroup: false,
+        isActive: true,
+        cachedBalance: 0,
+      },
+    },
+    opts
+  );
+
+  return account;
 }
+
+/**
+ * Resolve the asset account (Cash / Bank / UPI / Card) from paymentMethod string.
+ */
+async function getPaymentAssetAccount(orgId, paymentMethod, session = null) {
+  const map = {
+    cash:   { name: 'Cash',             code: '1001', type: 'asset' },
+    bank:   { name: 'Bank',             code: '1002', type: 'asset' },
+    cheque: { name: 'Bank',             code: '1002', type: 'asset' },
+    upi:    { name: 'UPI Receivables',  code: '1003', type: 'asset' },
+    card:   { name: 'Card Receivables', code: '1004', type: 'asset' },
+  };
+  const def = map[paymentMethod] || { name: 'Other Payment Account', code: '1009', type: 'asset' };
+  return getOrInitAccount(orgId, def.type, def.name, def.code, session);
+}
+
+exports.getOrInitAccount = getOrInitAccount;
+exports.getPaymentAssetAccount = getPaymentAssetAccount;
 
 /* ======================================================
    SALES INVOICE JOURNAL (REVENUE + TAX + COGS)
@@ -28,13 +58,13 @@ exports.postInvoiceJournal = async ({
   userId,
   session
 }) => {
-  const ar = await getAccount(orgId, '1200', 'Accounts Receivable', 'asset', session);
-  const sales = await getAccount(orgId, '4000', 'Sales', 'income', session);
+  const ar = await getOrInitAccount(orgId, 'asset', 'Accounts Receivable', '1200', session);
+  const sales = await getOrInitAccount(orgId, 'income', 'Sales', '4000', session);
   const tax = invoice.totalTax > 0
-    ? await getAccount(orgId, '2100', 'Tax Payable', 'liability', session)
+    ? await getOrInitAccount(orgId, 'liability', 'Tax Payable', '2100', session)
     : null;
-  const inventory = await getAccount(orgId, '1500', 'Inventory Asset', 'asset', session);
-  const cogs = await getAccount(orgId, '5000', 'Cost of Goods Sold', 'expense', session);
+  const inventory = await getOrInitAccount(orgId, 'asset', 'Inventory Asset', '1500', session);
+  const cogs = await getOrInitAccount(orgId, 'expense', 'Cost of Goods Sold', '5000', session);
 
   // --- AR
   await AccountEntry.create([{
@@ -125,13 +155,13 @@ exports.postSalesReturnJournal = async ({
   userId,
   session
 }) => {
-  const ar = await getAccount(orgId, '1200', 'Accounts Receivable', 'asset', session);
-  const sales = await getAccount(orgId, '4000', 'Sales', 'income', session);
+  const ar = await getOrInitAccount(orgId, 'asset', 'Accounts Receivable', '1200', session);
+  const sales = await getOrInitAccount(orgId, 'income', 'Sales', '4000', session);
   const tax = salesReturn.taxTotal > 0
-    ? await getAccount(orgId, '2100', 'Tax Payable', 'liability', session)
+    ? await getOrInitAccount(orgId, 'liability', 'Tax Payable', '2100', session)
     : null;
-  const inventory = await getAccount(orgId, '1500', 'Inventory Asset', 'asset', session);
-  const cogs = await getAccount(orgId, '5000', 'Cost of Goods Sold', 'expense', session);
+  const inventory = await getOrInitAccount(orgId, 'asset', 'Inventory Asset', '1500', session);
+  const cogs = await getOrInitAccount(orgId, 'expense', 'Cost of Goods Sold', '5000', session);
 
   const netRevenue = salesReturn.totalRefundAmount - salesReturn.taxTotal;
 

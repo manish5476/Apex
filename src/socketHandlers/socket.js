@@ -167,18 +167,13 @@ function emitToOrg(organizationId, event, payload) {
 
 function emitToUser(userId, event, payload) {
   if (!io) { console.error("❌ Socket.IO not initialized"); return; }
-  for (const sId of getSocketIdsForUser(userId)) {
-    io.to(sId).emit(event, payload);
-  }
+  io.to(`user:${userId}`).emit(event, payload);
 }
 
 function emitToUsers(userIds, event, payload) {
   if (!io || !Array.isArray(userIds)) return;
-  const seen = new Set();
   for (const uid of userIds) {
-    for (const sId of getSocketIdsForUser(uid)) {
-      if (!seen.has(sId)) { seen.add(sId); io.to(sId).emit(event, payload); }
-    }
+    io.to(`user:${uid}`).emit(event, payload);
   }
 }
 
@@ -240,6 +235,15 @@ function init(server, options = {}) {
     },
   });
 
+  io.engine.on("connection_error", (err) => {
+    console.error("❌ Socket Engine Error:", {
+      url: err.req?.url,
+      code: err.code,
+      message: err.message,
+      context: err.context
+    });
+  });
+
   // ── Optional Redis adapter (horizontal scaling) ──────────────────────────
   if (redisUrl) {
     (async () => {
@@ -259,9 +263,14 @@ function init(server, options = {}) {
 
   // ── JWT Auth Middleware ───────────────────────────────────────────────────
   io.use(async (socket, next) => {
+    console.log(`🔍 Socket handshake attempt (Socket ID: ${socket.id})`);
     try {
-      const token = socket.handshake.auth?.token;
-      if (!token) return next(Object.assign(new Error("AUTH_REQUIRED"), { data: { code: "AUTH_REQUIRED" } }));
+      const token = socket.handshake.auth?.token || socket.handshake.query?.token || socket.handshake.headers?.authorization?.split(' ')[1];
+      
+      if (!token) {
+        console.warn(`⚠️ Socket connection rejected: No token provided (Socket ID: ${socket.id})`);
+        return next(Object.assign(new Error("AUTH_REQUIRED"), { data: { code: "AUTH_REQUIRED" } }));
+      }
 
       const secret = jwtSecret || process.env.JWT_SECRET;
       let payload;
@@ -269,13 +278,16 @@ function init(server, options = {}) {
         payload = jwt.verify(token, secret);
       } catch (err) {
         if (err.name === "TokenExpiredError") {
+          console.warn(`⏳ Socket Auth: Token Expired (Socket ID: ${socket.id})`);
           return next(Object.assign(new Error("TOKEN_EXPIRED"), { data: { code: "TOKEN_EXPIRED" } }));
         }
+        console.warn(`❌ Socket Auth: Invalid Token - ${err.message} (Socket ID: ${socket.id})`);
         return next(Object.assign(new Error("INVALID_TOKEN"), { data: { code: "INVALID_TOKEN" } }));
       }
 
       const userId = payload.sub || payload.id;
       if (!userId || !payload.organizationId) {
+        console.warn(`❌ Socket Auth: Invalid Payload - missing userId or orgId (Socket ID: ${socket.id})`);
         return next(Object.assign(new Error("INVALID_PAYLOAD"), { data: { code: "INVALID_PAYLOAD" } }));
       }
 
@@ -283,8 +295,14 @@ function init(server, options = {}) {
         .select("_id name email organizationId role isActive")
         .lean();
 
-      if (!user) return next(Object.assign(new Error("USER_NOT_FOUND"), { data: { code: "USER_NOT_FOUND" } }));
-      if (!user.isActive) return next(Object.assign(new Error("USER_INACTIVE"), { data: { code: "USER_INACTIVE" } }));
+      if (!user) {
+        console.warn(`👤 Socket Auth: User not found (${userId}) (Socket ID: ${socket.id})`);
+        return next(Object.assign(new Error("USER_NOT_FOUND"), { data: { code: "USER_NOT_FOUND" } }));
+      }
+      if (!user.isActive) {
+        console.warn(`🚫 Socket Auth: User inactive (${userId}) (Socket ID: ${socket.id})`);
+        return next(Object.assign(new Error("USER_INACTIVE"), { data: { code: "USER_INACTIVE" } }));
+      }
 
       // Attach everything we need — zero DB calls during events
       socket.user = {
@@ -301,9 +319,10 @@ function init(server, options = {}) {
       socket.joinedChannels = new Set();
       socket.rateLimits = new Map(); // per-socket rate limit buckets
 
+      console.log(`✅ Socket authenticated: User ${userId} (Socket ID: ${socket.id})`);
       return next();
     } catch (err) {
-      console.error("🔴 Socket Auth Error:", err.message);
+      console.error("🔴 Socket Auth Error:", err.message, "| Stack:", err.stack);
       return next(Object.assign(new Error("INTERNAL_ERROR"), { data: { code: "INTERNAL_ERROR" } }));
     }
   });

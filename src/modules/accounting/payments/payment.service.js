@@ -75,12 +75,22 @@ class PaymentService {
       // Post ledger entries
       await this._postPaymentLedger({ payment, session });
 
-      // Update customer/supplier balance
+      // Update customer/supplier balance — floor at 0 to prevent negative values.
+      // $inc alone can go negative on overpayments; we use an aggregation-pipeline
+      // update to clamp the result to 0.
       if (type === 'inflow' && customerId) {
-        await Customer.findByIdAndUpdate(customerId, { $inc: { outstandingBalance: -amount } }, { session });
+        await Customer.findByIdAndUpdate(
+          customerId,
+          [{ $set: { outstandingBalance: { $max: [0, { $subtract: ['$outstandingBalance', amount] }] } } }],
+          { session }
+        );
       }
       if (type === 'outflow' && supplierId) {
-        await Supplier.findByIdAndUpdate(supplierId, { $inc: { outstandingBalance: -amount } }, { session });
+        await Supplier.findByIdAndUpdate(
+          supplierId,
+          [{ $set: { outstandingBalance: { $max: [0, { $subtract: ['$outstandingBalance', amount] }] } } }],
+          { session }
+        );
       }
 
       // Update invoice
@@ -192,11 +202,10 @@ class PaymentService {
 
       await this._postPaymentLedger({ payment, session });
 
-      await Customer.findByIdAndUpdate(
-        invoice.customerId,
-        { $inc: { outstandingBalance: -(amount / 100) } },
-        { session }
-      );
+      // NOTE: Do NOT manually $inc outstandingBalance here.
+      // autoAllocatePayment (called below) will call recalculateCustomerBalance
+      // which is the single authoritative source of truth derived from open invoices.
+      // A manual $inc here would double-deduct the balance.
 
     }, 3, { action: 'WEBHOOK_PAYMENT' });
 
