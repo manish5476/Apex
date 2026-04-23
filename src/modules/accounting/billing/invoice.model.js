@@ -38,7 +38,7 @@ const invoiceSchema = new mongoose.Schema(
     dueDate: { type: Date },
     status: {
       type: String,
-      enum: ["draft", "issued", "paid", "cancelled", "returned", "partially_returned"],
+      enum: ["draft", "issued", "paid", "partially_paid", "cancelled", "returned", "partially_returned"],
       default: "issued",
     },
 
