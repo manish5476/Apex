@@ -14,12 +14,27 @@ const getDateRange = (query) => {
     const now = new Date();
     const parseDate = (dateStr) => {
         if (!dateStr) return null;
+        if (dateStr instanceof Date && !isNaN(dateStr.getTime())) return dateStr;
+        if (typeof dateStr === 'number') {
+            const ts = new Date(dateStr);
+            return isNaN(ts.getTime()) ? null : ts;
+        }
+        const numeric = Number(dateStr);
+        if (!Number.isNaN(numeric) && `${numeric}` === `${dateStr}` && `${dateStr}`.length >= 10) {
+            const ts = new Date(numeric);
+            return isNaN(ts.getTime()) ? null : ts;
+        }
         const parsed = new Date(dateStr);
         return isNaN(parsed.getTime()) ? null : parsed;
     };
 
-    let start = parseDate(query.startDate) || new Date(now.getFullYear(), now.getMonth(), 1);
-    let end = parseDate(query.endDate) || new Date();
+    const startInput =
+        query.startDate ?? query.fromDate ?? query.dateFrom ?? query.start ?? null;
+    const endInput =
+        query.endDate ?? query.toDate ?? query.dateTo ?? query.end ?? null;
+
+    let start = parseDate(startInput) || new Date(now.getFullYear(), now.getMonth(), 1);
+    let end = parseDate(endInput) || new Date();
     end.setHours(23, 59, 59, 999);
 
     // Ensure start is before end

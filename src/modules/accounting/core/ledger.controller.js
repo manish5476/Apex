@@ -123,13 +123,31 @@ exports.getAccountDrillDown = catchAsync(async (req, res, next) => {
 ====================================================== */
 exports.exportLedgers = catchAsync(async (req, res, next) => {
   const { organizationId } = req.user;
-  const { start, end, customerId, supplierId } = req.query;
+  const {
+    customerId,
+    supplierId,
+    start,
+    end,
+    startDate,
+    endDate,
+    fromDate,
+    toDate,
+    dateFrom,
+    dateTo,
+  } = req.query;
+
+  const startValue = start || startDate || fromDate || dateFrom;
+  const endValue = end || endDate || toDate || dateTo;
 
   const match = { organizationId: new mongoose.Types.ObjectId(organizationId) };
-  if (start || end) {
+  if (startValue || endValue) {
     match.date = {};
-    if (start) match.date.$gte = new Date(start);
-    if (end)   match.date.$lte = new Date(end);
+    if (startValue) match.date.$gte = new Date(startValue);
+    if (endValue) {
+      const endDateValue = new Date(endValue);
+      endDateValue.setHours(23, 59, 59, 999);
+      match.date.$lte = endDateValue;
+    }
   }
   if (customerId) match.customerId = new mongoose.Types.ObjectId(customerId);
   if (supplierId) match.supplierId = new mongoose.Types.ObjectId(supplierId);

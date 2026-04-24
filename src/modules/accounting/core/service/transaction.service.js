@@ -45,7 +45,14 @@ async function fetchTransactionsAggregated(user, query = {}) {
   const qEffect = (query.effect === 'null' || query.effect === 'undefined') ? null : query.effect;
   const wantedEffect = qEffect ? String(qEffect).toLowerCase() : null;
   
-  const qSearch = (query.search === 'null' || query.search === 'undefined') ? null : query.search;
+  const rawSearch =
+    query.search ??
+    query.q ??
+    query.query ??
+    query.searchTerm ??
+    query.keyword ??
+    query.term;
+  const qSearch = (rawSearch === 'null' || rawSearch === 'undefined') ? null : rawSearch;
   const searchText = qSearch || null;
   
   const sortDir = query.sort?.toLowerCase() === 'asc' ? 1 : -1;
@@ -58,8 +65,10 @@ async function fetchTransactionsAggregated(user, query = {}) {
 
   if (branchId) match.branchId = toObjectId(branchId);
 
-  const qStart = (query.startDate === 'null' || query.startDate === 'undefined') ? null : query.startDate;
-  const qEnd = (query.endDate === 'null' || query.endDate === 'undefined') ? null : query.endDate;
+  const rawStart = query.startDate ?? query.fromDate ?? query.dateFrom ?? query.start;
+  const rawEnd = query.endDate ?? query.toDate ?? query.dateTo ?? query.end;
+  const qStart = (rawStart === 'null' || rawStart === 'undefined') ? null : rawStart;
+  const qEnd = (rawEnd === 'null' || rawEnd === 'undefined') ? null : rawEnd;
 
   if (qStart || qEnd) {
     match.date = {};

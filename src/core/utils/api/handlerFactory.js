@@ -12,6 +12,69 @@ const getDeepValue = (obj, path) => {
   return path.split(".").reduce((acc, part) => acc && acc[part], obj);
 };
 
+const toValidDateString = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
+const resolveDateField = (Model, options = {}) => {
+  if (options.dateField && Model.schema.path(options.dateField)) {
+    return options.dateField;
+  }
+
+  const schemaPaths = Object.entries(Model.schema.paths || {})
+    .filter(([, pathDef]) => pathDef?.instance === "Date")
+    .map(([field]) => field);
+
+  const preferred = [
+    "invoiceDate",
+    "purchaseDate",
+    "saleDate",
+    "transactionDate",
+    "date",
+    "createdAt",
+  ];
+
+  const picked = preferred.find((field) => schemaPaths.includes(field));
+  return picked || null;
+};
+
+const normalizeQueryForDateRange = (Model, rawQuery = {}, options = {}) => {
+  const query = { ...rawQuery };
+
+  const rawStart = query.startDate ?? query.fromDate ?? query.dateFrom ?? query.start;
+  const rawEnd = query.endDate ?? query.toDate ?? query.dateTo ?? query.end;
+
+  const dateField = resolveDateField(Model, options);
+  if (dateField && (rawStart || rawEnd)) {
+    const range = (typeof query[dateField] === "object" && query[dateField] !== null)
+      ? { ...query[dateField] }
+      : {};
+
+    const startIso = toValidDateString(rawStart);
+    const endIso = toValidDateString(rawEnd);
+
+    if (startIso) range.gte = startIso;
+    if (endIso) range.lte = endIso;
+
+    if (Object.keys(range).length) {
+      query[dateField] = range;
+    }
+  }
+
+  delete query.startDate;
+  delete query.endDate;
+  delete query.fromDate;
+  delete query.toDate;
+  delete query.dateFrom;
+  delete query.dateTo;
+  delete query.start;
+  delete query.end;
+
+  return query;
+};
+
 /**
  * CRUD HANDLER FACTORY
  * Enforces strict multi-tenant isolation across all system models.
@@ -28,10 +91,27 @@ exports.getAll = (Model, options = {}) =>
       filter.isActive = { $ne: false };
     }
 
+    const resolveSearchFields = () => {
+      if (Array.isArray(options.searchFields) && options.searchFields.length) {
+        return options.searchFields;
+      }
+
+      const preferred = [
+        "name", "companyName", "partyName", "contactPerson",
+        "phone", "email", "code", "referenceNumber",
+        "description", "title", "sku", "gstNumber", "panNumber",
+      ];
+      const schemaPaths = Object.keys(Model.schema.paths || {});
+      const detected = preferred.filter((field) => schemaPaths.includes(field));
+      return detected.length ? detected : ["name", "title", "description"];
+    };
+
     // 3. Build Features
-    const features = new ApiFeatures(Model.find(filter), req.query)
+    const normalizedQuery = normalizeQueryForDateRange(Model, req.query, options);
+
+    const features = new ApiFeatures(Model.find(filter), normalizedQuery)
       .filter()
-      .search(options.searchFields || ["name", "title", "description"])
+      .search(resolveSearchFields())
       .sort()
       .limitFields()
       .paginate();
@@ -221,7 +301,8 @@ exports.count = (Model) =>
     const filter = { organizationId: req.user.organizationId };
     if (Model.schema.path("isDeleted")) filter.isDeleted = { $ne: true };
 
-    const features = new ApiFeatures(Model.find(filter), req.query).filter();
+    const normalizedQuery = normalizeQueryForDateRange(Model, req.query);
+    const features = new ApiFeatures(Model.find(filter), normalizedQuery).filter();
     const count = await Model.countDocuments(features.query.getFilter());
 
     res.status(200).json({ status: "success", data: { count } });
@@ -232,9 +313,25 @@ exports.exportData = (Model, options = {}) =>
     const filter = { organizationId: req.user.organizationId };
     if (Model.schema.path("isDeleted")) filter.isDeleted = { $ne: true };
 
-    const features = new ApiFeatures(Model.find(filter), req.query)
+    const resolveSearchFields = () => {
+      if (Array.isArray(options.searchFields) && options.searchFields.length) {
+        return options.searchFields;
+      }
+      const preferred = [
+        "name", "companyName", "partyName", "contactPerson",
+        "phone", "email", "code", "referenceNumber",
+        "description", "title", "sku", "gstNumber", "panNumber",
+      ];
+      const schemaPaths = Object.keys(Model.schema.paths || {});
+      const detected = preferred.filter((field) => schemaPaths.includes(field));
+      return detected.length ? detected : ["name", "title"];
+    };
+
+    const normalizedQuery = normalizeQueryForDateRange(Model, req.query, options);
+
+    const features = new ApiFeatures(Model.find(filter), normalizedQuery)
       .filter()
-      .search(options.searchFields || ["name", "title"])
+      .search(resolveSearchFields())
       .sort()
       .limitFields();
 
@@ -283,9 +380,25 @@ exports.exportExcel = (Model, options = {}) =>
     // We EXCLUDE standard pagination but apply a safety limit
     const exportLimit = Math.min(Math.abs(parseInt(req.query.limit, 10)) || 10000, 20000);
 
-    const features = new ApiFeatures(Model.find(filter), req.query)
+    const resolveSearchFields = () => {
+      if (Array.isArray(options.searchFields) && options.searchFields.length) {
+        return options.searchFields;
+      }
+      const preferred = [
+        "name", "companyName", "partyName", "contactPerson",
+        "phone", "email", "code", "referenceNumber",
+        "description", "title", "sku", "gstNumber", "panNumber",
+      ];
+      const schemaPaths = Object.keys(Model.schema.paths || {});
+      const detected = preferred.filter((field) => schemaPaths.includes(field));
+      return detected.length ? detected : ["name", "description", "referenceNumber"];
+    };
+
+    const normalizedQuery = normalizeQueryForDateRange(Model, req.query, options);
+
+    const features = new ApiFeatures(Model.find(filter), normalizedQuery)
       .filter()
-      .search(options.searchFields || ["name", "description", "referenceNumber"])
+      .search(resolveSearchFields())
       .sort();
 
     // Population
