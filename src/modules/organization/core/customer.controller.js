@@ -4,6 +4,7 @@ const factory = require('../../../core/utils/api/handlerFactory');
 const AppError = require('../../../core/utils/api/appError');
 const catchAsync = require('../../../core/utils/api/catchAsync');
 const imageUploadService = require('../../uploads/imageUploadService');
+const ApiFeatures = require('../../../core/utils/api/ApiFeatures');
 
 // ======================================================
 // UPDATE CREDIT LIMIT
@@ -70,7 +71,8 @@ exports.deleteCustomer = catchAsync(async (req, res, next) => {
 // GET /customers/search?q=...
 // ======================================================
 exports.searchCustomers = catchAsync(async (req, res, next) => {
-  const q = (req.query.q || '').trim();
+  const q = (req.query.q || req.query.search || req.query.query || '').trim();
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
   const orgId = req.user.organizationId;
 
   // Always exclude soft-deleted records
@@ -80,20 +82,20 @@ exports.searchCustomers = catchAsync(async (req, res, next) => {
     isActive: true,
   };
 
-  const filter = q
-    ? {
-      ...baseFilter,
-      $or: [
-        { name: { $regex: q, $options: 'i' } },
-        { phone: { $regex: q, $options: 'i' } },
-        { gstNumber: { $regex: q, $options: 'i' } },
-      ],
-    }
+  const tokens = q.split(/\s+/).filter(Boolean).slice(0, 8);
+  const searchFields = ['name', 'contactPerson', 'phone', 'email', 'gstNumber', 'panNumber'];
+
+  const tokenClauses = tokens.map((token) => ({
+    $or: searchFields.flatMap((field) => ApiFeatures.buildFuzzyConditions(field, token)),
+  }));
+
+  const filter = tokenClauses.length
+    ? { ...baseFilter, $and: tokenClauses }
     : baseFilter;
 
   const customers = await Customer.find(filter)
     .select('name phone email type avatar outstandingBalance')
-    .limit(20)
+    .limit(limit)
     .lean();
 
   res.status(200).json({
@@ -175,12 +177,13 @@ exports.uploadCustomerPhoto = catchAsync(async (req, res, next) => {
 // GET /customers/check-duplicate?email=&phone=&name=
 // ======================================================
 exports.checkDuplicate = catchAsync(async (req, res, next) => {
-  const { email, phone, name } = req.query;
+  const { email, phone, gstNumber, name } = req.query;
   const orgId = req.user.organizationId;
 
   const orClauses = [];
   if (email) orClauses.push({ email });
   if (phone) orClauses.push({ phone });
+  if (gstNumber) orClauses.push({ gstNumber: String(gstNumber).toUpperCase() });
   if (name) orClauses.push({ name: { $regex: `^${name}$`, $options: 'i' } });
 
   if (orClauses.length === 0)
@@ -203,7 +206,9 @@ exports.checkDuplicate = catchAsync(async (req, res, next) => {
 // FACTORY DELEGATES
 // ======================================================
 exports.createCustomer = factory.createOne(Customer);
-exports.getAllCustomers = factory.getAll(Customer);
+exports.getAllCustomers = factory.getAll(Customer, {
+  searchFields: ['name', 'contactPerson', 'phone', 'email', 'gstNumber', 'panNumber'],
+});
 exports.getCustomer = factory.getOne(Customer);
 exports.updateCustomer = factory.updateOne(Customer);
 exports.restoreCustomer = factory.restoreOne(Customer);

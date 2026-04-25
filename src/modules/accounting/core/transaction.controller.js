@@ -49,21 +49,31 @@ exports.getTransactions = catchAsync(async (req, res) => {
 exports.exportTransactionsCsv = catchAsync(async (req, res) => {
   const orgId = new mongoose.Types.ObjectId(req.user.organizationId);
   const partyId = req.query.partyId;
-  const needsParty = !!partyId || true; // always join for export (small datasets expected)
+  const searchText =
+    req.query.search ||
+    req.query.q ||
+    req.query.query ||
+    req.query.searchTerm ||
+    req.query.keyword ||
+    req.query.term ||
+    null;
 
   const match = { organizationId: orgId };
   if (req.query.branchId) match.branchId = new mongoose.Types.ObjectId(req.query.branchId);
-  if (req.query.startDate || req.query.endDate) {
+  const startDate = req.query.startDate || req.query.fromDate || req.query.dateFrom || req.query.start;
+  const endDate = req.query.endDate || req.query.toDate || req.query.dateTo || req.query.end;
+  if (startDate || endDate) {
     match.date = {};
-    if (req.query.startDate) match.date.$gte = new Date(req.query.startDate);
-    if (req.query.endDate) {
-      const end = new Date(req.query.endDate);
+    if (startDate) match.date.$gte = new Date(startDate);
+    if (endDate) {
+      const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
       match.date.$lte = end;
     }
   }
-  if (req.query.type) {
-    match.referenceType = { $in: req.query.type.split(',').map(t => t.trim().toLowerCase()) };
+  const type = req.query.type || req.query.types;
+  if (type) {
+    match.referenceType = { $in: String(type).split(',').map(t => t.trim().toLowerCase()) };
   }
   if (partyId) {
     const pId = new mongoose.Types.ObjectId(partyId);
@@ -77,6 +87,23 @@ exports.exportTransactionsCsv = catchAsync(async (req, res) => {
     { $sort: { date: sortDir } },
     { $lookup: { from: 'customers', localField: 'customerId', foreignField: '_id', as: 'customer' } },
     { $lookup: { from: 'suppliers', localField: 'supplierId', foreignField: '_id', as: 'supplier' } },
+  ];
+
+  if (searchText) {
+    const regex = new RegExp(searchText, 'i');
+    pipeline.push({
+      $match: {
+        $or: [
+          { description: regex },
+          { referenceNumber: regex },
+          { 'customer.name': regex },
+          { 'supplier.companyName': regex },
+        ],
+      },
+    });
+  }
+
+  pipeline.push(
     {
       $project: {
         Date: { $dateToString: { format: '%Y-%m-%d %H:%M', date: '$date', timezone: 'Asia/Kolkata' } },
@@ -93,8 +120,8 @@ exports.exportTransactionsCsv = catchAsync(async (req, res) => {
         Debit: '$debit',
         Credit: '$credit',
       },
-    },
-  ];
+    }
+  );
 
   const fileName = `Export_Transactions_${new Date().toISOString().slice(0, 10)}.csv`;
   res.setHeader('Content-Type', 'text/csv');

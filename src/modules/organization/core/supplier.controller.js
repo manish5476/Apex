@@ -11,11 +11,11 @@ const PurchaseReturn = require('../../inventory/core/model/purchase.return.model
 const factory       = require('../../../core/utils/api/handlerFactory');
 const catchAsync    = require('../../../core/utils/api/catchAsync');
 const AppError      = require('../../../core/utils/api/appError');
+const ApiFeatures   = require('../../../core/utils/api/ApiFeatures');
 const fileUploadService  = require('../../uploads/fileUploadService');  // for KYC docs (PDFs)
 const imageUploadService = require('../../uploads/imageUploadService'); // for avatar only
 
 // Escape regex special chars — prevents ReDoS
-const escapeRegex = (text) => text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 
 // ======================================================
 // FACTORY DELEGATES
@@ -23,7 +23,9 @@ const escapeRegex = (text) => text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 
 // createSupplier injects organizationId via the route (see createSupplier below)
 exports.getSupplier      = factory.getOne(Supplier);
-exports.getAllSuppliers   = factory.getAll(Supplier);
+exports.getAllSuppliers   = factory.getAll(Supplier, {
+  searchFields: ['companyName', 'contactPerson', 'phone', 'email', 'gstNumber', 'panNumber'],
+});
 exports.updateSupplier   = factory.updateOne(Supplier);
 exports.restoreSupplier  = factory.restoreOne(Supplier);
 exports.createbulkSupplier = factory.bulkCreate(Supplier);
@@ -117,26 +119,25 @@ exports.getSupplierList = catchAsync(async (req, res, next) => {
 // GET /suppliers/search?q=...
 // ======================================================
 exports.searchSuppliers = catchAsync(async (req, res, next) => {
-  const q = req.query.q;
+  const q = (req.query.q || req.query.search || req.query.query || '').trim();
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
   if (!q)
     return res.status(200).json({ status: 'success', results: 0, data: { suppliers: [] } });
 
-  const regex = new RegExp(escapeRegex(q), 'i');
+  const tokens = q.split(/\s+/).filter(Boolean).slice(0, 8);
+  const searchFields = ['companyName', 'contactPerson', 'phone', 'altPhone', 'email', 'gstNumber', 'panNumber'];
+
+  const tokenClauses = tokens.map((token) => ({
+    $or: searchFields.flatMap((field) => ApiFeatures.buildFuzzyConditions(field, token)),
+  }));
 
   const suppliers = await Supplier.find({
     organizationId: req.user.organizationId,
     isDeleted: false,
-    $or: [
-      { companyName:   regex },
-      { contactPerson: regex },
-      { phone:         regex },
-      { altPhone:      regex },
-      { gstNumber:     regex },
-      { panNumber:     regex },
-    ],
+    ...(tokenClauses.length ? { $and: tokenClauses } : {}),
   })
     .select('companyName contactPerson phone gstNumber avatar isActive')
-    .limit(50);
+    .limit(limit);
 
   res.status(200).json({
     status: 'success',

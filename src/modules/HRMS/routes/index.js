@@ -1,6 +1,7 @@
 // routes/v1/hrms.routes.js
 const express = require('express');
 const router = express.Router();
+const hrmsResponseFormatter = require('../middleware/responseFormatter');
 
 // Import HRMS route modules
 const departmentRoutes = require('./core/department.routes');
@@ -23,6 +24,9 @@ router.get('/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Apply standardized response shape to every HRMS endpoint.
+router.use(hrmsResponseFormatter);
 
 // Mount all HRMS routes under /hrms
 router.use('/departments', departmentRoutes);

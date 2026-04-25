@@ -50,6 +50,7 @@ const registerRoutes = (app) => {
   // --- Utilities, Analytics & Automation ---
   app.use(`${v1Prefix}/analytics`, routes.analyticsRoutes);
   app.use(`${v1Prefix}/customeranalytics`, routes.customerAnalytics);
+  app.use(`${v1Prefix}/customer-analytics`, routes.customerAnalytics);
   app.use(`${v1Prefix}/dashboard`, routes.dashboard);
   app.use(`${v1Prefix}/ai-agent`, routes.aiAgent);
   app.use(`${v1Prefix}/webhooks`, routes.webhookRoutes);

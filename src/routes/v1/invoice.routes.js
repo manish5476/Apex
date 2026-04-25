@@ -101,6 +101,21 @@ router.get('/reports/profit',
   checkPermission(PERMISSIONS.REPORT.PROFIT),
   invoiceProfitController.profitSummary
 );
+/** GET /reports/sales @payload none */
+router.get('/reports/sales',
+  checkPermission(PERMISSIONS.INVOICE.READ),
+  invoiceReport.getSalesReport
+);
+/** GET /reports/tax @payload none */
+router.get('/reports/tax',
+  checkPermission(PERMISSIONS.INVOICE.READ),
+  invoiceReport.getTaxReport
+);
+/** GET /reports/outstanding @payload none */
+router.get('/reports/outstanding',
+  checkPermission(PERMISSIONS.INVOICE.READ),
+  invoiceReport.getOutstandingInvoices
+);
 
 /* ============================================================
    2. BULK & UTILITY OPERATIONS
@@ -172,6 +187,11 @@ router.get('/trash/all',
    Must come before /:id to avoid collision
    ============================================================ */
 
+/** GET /customer/:customerId @params { customerId } @payload none */
+router.get('/customer/:customerId/summary',
+  checkPermission(PERMISSIONS.INVOICE.READ),
+  invoiceReport.getCustomerInvoiceSummary
+);
 /** GET /customer/:customerId @params { customerId } @payload none */
 router.get('/customer/:customerId',
   checkPermission(PERMISSIONS.INVOICE.READ),

@@ -169,7 +169,7 @@ class ApiFeatures {
 
     const excludedFields = [
       "page", "sort", "limit", "fields",
-      "search", "populate", "lastId", "lastDate",
+      "search", "q", "query", "searchTerm", "keyword", "term", "populate", "lastId", "lastDate",
     ];
     excludedFields.forEach((el) => delete queryObj[el]);
 
@@ -178,9 +178,10 @@ class ApiFeatures {
 
     // These fields use fuzzy matching — everything else is exact
     const FUZZY_FIELDS = [
-      "name", "sku", "title", "description",
-      "referenceNumber", "barcode", "email",
-      "phone", "brand", "tags",
+      "name", "companyName", "contactPerson", "partyName",
+      "sku", "title", "description", "referenceNumber",
+      "barcode", "email", "phone", "gstNumber", "panNumber",
+      "brand", "tags",
     ];
 
     for (const key in queryObj) {
@@ -265,20 +266,38 @@ class ApiFeatures {
    * Query:  ?search=godr
    */
   search(fields = []) {
-    const searchTerm = this.queryString.search;
-    if (!searchTerm || fields.length === 0) return this;
+    const rawSearchTerm =
+      this.queryString.search ||
+      this.queryString.q ||
+      this.queryString.query ||
+      this.queryString.searchTerm ||
+      this.queryString.keyword ||
+      this.queryString.term ||
+      "";
+    const terms = String(rawSearchTerm)
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 8);
 
-    const searchConditions = [];
+    if (!terms.length || fields.length === 0) return this;
 
-    fields.forEach((field) => {
-      const conditions = ApiFeatures.buildFuzzyConditions(field, searchTerm);
-      searchConditions.push(...conditions);
+    // "Google-like" behavior: each token must match at least one target field.
+    const andConditions = terms.map((term) => {
+      const perTermOr = [];
+      fields.forEach((field) => {
+        perTermOr.push(...ApiFeatures.buildFuzzyConditions(field, term));
+      });
+      return { $or: perTermOr };
     });
 
+    const searchFilter =
+      andConditions.length === 1 ? andConditions[0] : { $and: andConditions };
+
     if (this.isAggregate) {
-      this.query.pipeline().push({ $match: { $or: searchConditions } });
+      this.query.pipeline().push({ $match: searchFilter });
     } else {
-      this.query = this.query.find({ $or: searchConditions });
+      this.query = this.query.find(searchFilter);
     }
 
     return this;
