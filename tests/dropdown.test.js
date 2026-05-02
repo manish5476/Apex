@@ -6,6 +6,7 @@ const User = require('../src/modules/auth/core/user.model');
 const Organization = require('../src/modules/organization/core/organization.model');
 const Branch = require('../src/modules/organization/core/branch.model');
 const Session = require('../src/modules/auth/core/session.model');
+const Master = require('../src/modules/master/core/model/master.model');
 const jwt = require('jsonwebtoken');
 
 describe('Dropdown Factory Integration Tests', () => {
@@ -150,5 +151,48 @@ describe('Dropdown Factory Integration Tests', () => {
       const res = await request(app).get('/api/v1/dropdowns/branches');
       expect(res.statusCode).toBe(401);
     }, 10000);
+  });
+
+  describe('Electronics master dropdown routes', () => {
+    beforeEach(async () => {
+      await Master.deleteMany({});
+
+      const categoryId = new mongoose.Types.ObjectId();
+      await Master.create([
+        { _id: categoryId, organizationId: orgId, type: 'category', name: 'Smartphones', code: 'CAT-MOB', isActive: true },
+        { organizationId: orgId, type: 'sub_category', name: '5G Smartphones', code: 'SUB-5GPH', parentId: categoryId, isActive: true },
+        { organizationId: orgId, type: 'department', name: 'Mobiles & Tablets', code: 'DEP-MOB', isActive: true },
+        { organizationId: orgId, type: 'brand', name: 'Samsung', code: 'BRD-SAMSUNG', isActive: true },
+        { organizationId: orgId, type: 'unit', name: 'Piece', code: 'UNT-PC', isActive: true },
+        { organizationId: orgId, type: 'tax_rate', name: 'GST 18%', code: 'GST-18', isActive: true },
+        { organizationId: orgId, type: 'warranty_plan', name: 'Extended Warranty - 1 Year', code: 'WAR-EXT1', isActive: true },
+        { organizationId: orgId, type: 'product_condition', name: 'Open Box', code: 'CON-OPEN', isActive: true },
+        { organizationId: orgId, type: 'tag', name: 'Should Not Leak', code: 'TAG-NO', isActive: true },
+        { organizationId: new mongoose.Types.ObjectId(), type: 'brand', name: 'Foreign Brand', code: 'BRD-FGN', isActive: true },
+      ]);
+    });
+
+    test.each([
+      ['/api/v1/dropdowns/master-departments', 'Mobiles & Tablets'],
+      ['/api/v1/dropdowns/categories', 'Smartphones'],
+      ['/api/v1/dropdowns/subcategories', '5G Smartphones'],
+      ['/api/v1/dropdowns/sub-categories', '5G Smartphones'],
+      ['/api/v1/dropdowns/brands', 'Samsung'],
+      ['/api/v1/dropdowns/units', 'Piece [UNT-PC]'],
+      ['/api/v1/dropdowns/tax-rates', 'GST 18% [GST-18]'],
+      ['/api/v1/dropdowns/warranty-plans', 'Extended Warranty - 1 Year'],
+      ['/api/v1/dropdowns/product-conditions', 'Open Box'],
+    ])('returns scoped master dropdown data for %s', async (url, expectedLabel) => {
+      const res = await request(app)
+        .get(url)
+        .set('Authorization', `Bearer ${token}`);
+
+      const labels = res.body.data.map((item) => item.label);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.status).toBe('success');
+      expect(labels).toContain(expectedLabel);
+      expect(labels).not.toContain('Should Not Leak');
+      expect(labels).not.toContain('Foreign Brand');
+    });
   });
 });

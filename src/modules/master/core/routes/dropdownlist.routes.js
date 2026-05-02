@@ -143,6 +143,13 @@ router.get('/purchase-returns', dropdownFactory.getDropdownList(PurchaseReturn, 
 }));
 
 // ─── Master Type Based Routes ────────────────────────────────────────────────
+router.get('/master-departments', dropdownFactory.getDropdownList(Master, {
+  defaultSearchField: 'name',
+  defaultLabelField: 'name',
+  extraFilter: { type: 'department' },
+  metaFields: ['description', 'code'],
+}));
+
 router.get('/brands', dropdownFactory.getDropdownList(Master, {
   defaultSearchField: 'name',
   defaultLabelField: 'name',
@@ -161,7 +168,15 @@ router.get('/categories', dropdownFactory.getDropdownList(Master, {
 router.get('/subcategories', dropdownFactory.getDropdownList(Master, {
   defaultSearchField: 'name',
   defaultLabelField: 'name',
-  extraFilter: { type: 'subcategory' },
+  extraFilter: { type: 'sub_category' },
+  metaFields: ['description', 'code'],
+  allowedFilters: ['parentId'],
+}));
+
+router.get('/sub-categories', dropdownFactory.getDropdownList(Master, {
+  defaultSearchField: 'name',
+  defaultLabelField: 'name',
+  extraFilter: { type: 'sub_category' },
   metaFields: ['description', 'code'],
   allowedFilters: ['parentId'],
 }));
@@ -170,6 +185,27 @@ router.get('/units', dropdownFactory.getDropdownList(Master, {
   defaultSearchField: 'name',
   labelTemplate: '{{name}} [{{code}}]',
   extraFilter: { type: 'unit' },
+  metaFields: ['description', 'code'],
+}));
+
+router.get('/tax-rates', dropdownFactory.getDropdownList(Master, {
+  defaultSearchField: 'name',
+  labelTemplate: '{{name}} [{{code}}]',
+  extraFilter: { type: 'tax_rate' },
+  metaFields: ['description', 'code'],
+}));
+
+router.get('/warranty-plans', dropdownFactory.getDropdownList(Master, {
+  defaultSearchField: 'name',
+  defaultLabelField: 'name',
+  extraFilter: { type: 'warranty_plan' },
+  metaFields: ['description', 'code'],
+}));
+
+router.get('/product-conditions', dropdownFactory.getDropdownList(Master, {
+  defaultSearchField: 'name',
+  defaultLabelField: 'name',
+  extraFilter: { type: 'product_condition' },
   metaFields: ['description', 'code'],
 }));
 

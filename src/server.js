@@ -78,6 +78,8 @@ async function startServer() {
               "http://localhost:8081",
               "http://10.155.124.42:8081",
               "http://10.155.124.42:5000",
+              "http://10.168.158.6:8081",
+              "http://10.168.158.6:5000",
               "https://apex-infinity.vercel.app",
               "https://apex-infinity-vert.vercel.app"
             ];
