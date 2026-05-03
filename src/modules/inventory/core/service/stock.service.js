@@ -175,55 +175,98 @@ class StockService {
   /**
    * Adjust a single product's inventory at one branch.
    * Handles the "branch not yet stocked" case by pushing a new entry.
+   *
+   * Cost Pricing Strategy: WEIGHTED AVERAGE COST (WAC)
+   * ─────────────────────────────────────────────────────
+   * When goods come IN from any supplier, we blend the incoming price
+   * with the existing stock value instead of overwriting ("last wins"):
+   *
+   *   New WAC = (currentQty × currentCost + incomingQty × incomingCost)
+   *             ─────────────────────────────────────────────────────────
+   *             (currentQty + incomingQty)
+   *
+   * Example — two suppliers, ₹500 price difference:
+   *   Existing:  100 units @ ₹10,000  = ₹10,00,000
+   *   Incoming:   50 units @ ₹10,500  =  ₹5,25,000
+   *   WAC     = ₹15,25,000 ÷ 150     = ₹10,166.67  ✓
+   *
+   * Decrement (sale / purchase return) never mutates the cost price.
    */
   static async _adjustOne(item, branchId, organizationId, direction, session) {
-    const qty    = Number(item.quantity ?? item.qty ?? 0);
-    const amount = direction === 'increment' ? qty : -qty;
-
-    const updateOp = { $inc: { 'inventory.$.quantity': amount } };
-
-    // On increment, update cost price so ledger stays current
-    if (direction === 'increment' && item.purchasePrice > 0) {
-      updateOp.$set = { purchasePrice: item.purchasePrice };
-    }
-
-    // Try updating existing branch inventory row
+    const qty  = Number(item.quantity ?? item.qty ?? 0);
     const opts = { new: true, runValidators: true };
     if (session) opts.session = session;
 
+    // ── DECREMENT path ───────────────────────────────────────────────────
+    if (direction === 'decrement') {
+      const updated = await Product.findOneAndUpdate(
+        {
+          _id: item.productId,
+          organizationId,
+          inventory: { $elemMatch: { branchId, quantity: { $gte: qty } } },
+        },
+        { $inc: { 'inventory.$.quantity': -qty } },
+        opts
+      );
+
+      if (!updated) {
+        throw new AppError(
+          `Race condition: stock depleted for product ${item.productId} during transaction`,
+          409
+        );
+      }
+      return;
+    }
+
+    // ── INCREMENT path: compute Weighted Average Cost ────────────────────
+    const incomingCost = Number(item.purchasePrice ?? 0);
+
+    let newCostPrice = null; // null = do not update purchasePrice
+    if (incomingCost > 0) {
+      // Read current state to calculate WAC
+      const readQuery = Product.findOne(
+        { _id: item.productId, organizationId },
+        { purchasePrice: 1, inventory: 1 }
+      );
+      if (session) readQuery.session(session);
+      const current = await readQuery;
+
+      if (!current) throw new AppError(`Product ${item.productId} not found`, 404);
+
+      const branchInv   = current.inventory?.find(i => String(i.branchId) === String(branchId));
+      const currentQty  = branchInv?.quantity ?? 0;
+      const currentCost = current.purchasePrice ?? 0;
+
+      if (currentQty <= 0 || currentCost <= 0) {
+        // No existing stock → incoming price becomes the catalog cost
+        newCostPrice = incomingCost;
+      } else {
+        // WAC: blend existing stock value with new purchase value
+        newCostPrice = parseFloat(
+          ((currentQty * currentCost + qty * incomingCost) / (currentQty + qty)).toFixed(2)
+        );
+      }
+    }
+
+    const updateOp = {
+      $inc: { 'inventory.$.quantity': qty },
+      ...(newCostPrice !== null ? { $set: { purchasePrice: newCostPrice } } : {}),
+    };
+
+    // Try updating existing branch row
     const updated = await Product.findOneAndUpdate(
-      {
-        _id: item.productId,
-        organizationId,
-        'inventory.branchId': branchId,
-        // Guard: only decrement when stock is actually sufficient
-        ...(direction === 'decrement'
-          ? { 'inventory': { $elemMatch: { branchId, quantity: { $gte: qty } } } }
-          : { 'inventory.branchId': branchId }),
-      },
+      { _id: item.productId, organizationId, 'inventory.branchId': branchId },
       updateOp,
       opts
     );
 
     if (updated) return; // happy path
 
-    // ── Fallback: branch entry doesn't exist yet ──
-    if (direction === 'decrement') {
-      // We already validated availability above, so reaching here means
-      // a race condition occurred between validate and update.
-      throw new AppError(
-        `Race condition: stock depleted for product ${item.productId} during transaction`,
-        409
-      );
-    }
-
-    // direction === 'increment': push new branch inventory entry
+    // ── Fallback: branch not yet stocked → push new inventory entry ──────
     const pushOp = {
       $push: { inventory: { branchId, quantity: qty, reorderLevel: 10 } },
+      ...(newCostPrice !== null ? { $set: { purchasePrice: newCostPrice } } : {}),
     };
-    if (item.purchasePrice > 0) {
-      pushOp.$set = { purchasePrice: item.purchasePrice };
-    }
 
     const pushed = await Product.findOneAndUpdate(
       { _id: item.productId, organizationId },
@@ -238,12 +281,14 @@ class StockService {
 
   static async _aggregateMovement(modelName, { orgId, brId, prodId, startDate }, dateField, qtyField) {
     const Model = require('mongoose').model(modelName);
+    const statusFilter = modelName === 'Purchase' ? 'received' : { $ne: 'cancelled' };
+
     return Model.aggregate([
       {
         $match: {
           organizationId: orgId,
           branchId:       brId,
-          status:         { $ne: 'cancelled' },
+          status:         statusFilter,
           [dateField]:    { $gte: startDate },
         },
       },

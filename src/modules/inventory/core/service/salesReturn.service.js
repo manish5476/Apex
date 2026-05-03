@@ -1,17 +1,3 @@
-// 'use strict';
-
-// const mongoose = require('mongoose');
-
-// const SalesReturn = require('../model/salesReturn.model');
-// const Invoice = require('../../accounting/billing/invoice.model');
-// const Product = require('../model/product.model');
-// const Customer = require('../../organization/core/customer.model');
-// const AccountEntry = require('../../accounting/core/model/accountEntry.model');
-
-// const StockService = require('./stock.service');
-// const JournalService = require('./Journal.service');
-// const AppError = require('../../../../core/utils/api/appError');
-// const { runInTransaction } = require('../../../../core/utils/db/runInTransaction');
 'use strict';
 
 const mongoose = require('mongoose');
@@ -197,9 +183,19 @@ class SalesReturnService {
       const invoice = await Invoice.findById(salesReturn.invoiceId).session(session);
       if (!invoice) throw new AppError('Original invoice not found', 404);
 
-      // 1. Restore stock via StockService (throws if branch entry missing)
+      // 1. Restore stock via StockService.
+      //    Bug fix: pass purchasePriceAtSale from the original invoice so WAC
+      //    is correctly recalculated when returned units re-enter stock.
+      const invoiceItemMap = new Map(
+        invoice.items.map(i => [String(i.productId), i])
+      );
       await StockService.increment(
-        salesReturn.items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+        salesReturn.items.map(i => ({
+          productId: i.productId,
+          quantity:  i.quantity,
+          // Snapshot cost at time of original sale — used for WAC recalc
+          purchasePrice: invoiceItemMap.get(String(i.productId))?.purchasePriceAtSale ?? null,
+        })),
         salesReturn.branchId,
         user.organizationId,
         session
@@ -257,8 +253,38 @@ class SalesReturnService {
       });
       const newGrandTotal = parseFloat((subTotal - discountTotal + taxTotal + (invoice.shippingCharges || 0) + (invoice.roundOff || 0)).toFixed(2));
 
-      // Adjust paidAmount if it exceeds the new total (effectively recording a refund)
+      // Adjust paidAmount if it exceeds the new total — record a proper refund
+      // instead of silently clipping the value.
+      // Bug fix: when customer already paid more than the post-return total,
+      // the excess must be recorded as a real refund/credit transaction.
       if (invoice.paidAmount > newGrandTotal) {
+        const refundDiff = parseFloat((invoice.paidAmount - newGrandTotal).toFixed(2));
+
+        // Create a credit/refund record so the cash outflow is visible in the ledger
+        const Payment = require('../../../accounting/payments/payment.model');
+        await Payment.create([{
+          organizationId: user.organizationId,
+          branchId: salesReturn.branchId,
+          type: 'refund',
+          customerId: salesReturn.customerId,
+          referenceId: salesReturn._id,
+          referenceType: 'credit_note',
+          paymentDate: new Date(),
+          amount: refundDiff,
+          paymentMethod: 'credit', // generic — operator can reconcile later
+          status: 'completed',
+          remarks: `Refund for Return ${salesReturn.returnNumber}`,
+          createdBy: user._id,
+        }], { session, ordered: true });
+
+        // Reduce customer outstanding balance by the refund amount
+        await Customer.findByIdAndUpdate(
+          salesReturn.customerId,
+          { $inc: { outstandingBalance: -refundDiff } },
+          { session }
+        );
+
+        // Cap paidAmount to the new total (no longer a silent clip — refund covers the diff)
         invoice.paidAmount = newGrandTotal;
       }
 
