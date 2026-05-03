@@ -128,6 +128,7 @@ exports.getAllDepartments = catchAsync(async (req, res, next) => {
 
   return factory.getAll(Department, {
     searchFields: ['name', 'code', 'description'],
+    includeInactive: true,
     populate: [
       { path: 'headOfDepartment', select: 'name avatar' },
       { path: 'parentDepartment', select: 'name code' },

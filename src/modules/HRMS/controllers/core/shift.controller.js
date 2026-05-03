@@ -98,6 +98,7 @@ exports.createShift = catchAsync(async (req, res, next) => {
  */
 exports.getAllShifts = factory.getAll(Shift, {
   searchFields: ['name', 'code', 'description'],
+  includeInactive: true,
   populate: [
     { path: 'createdBy', select: 'name' }
   ],

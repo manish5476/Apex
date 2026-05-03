@@ -121,6 +121,7 @@ exports.getAllHolidays = factory.getAll(Holiday, {
   searchFields: ['name', 'description', 'holidayType'],
   populate:     [{ path: 'branchId', select: 'name' }, { path: 'createdBy', select: 'name' }],
   sort:         { date: 1 },
+  includeInactive: true,
 });
 
 exports.getHoliday = factory.getOne(Holiday, {

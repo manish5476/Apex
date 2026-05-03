@@ -28,8 +28,8 @@ if (envPath) {
 // 2. IMPORTS
 // ==========================================================
 // Adjust paths based on your folder structure
-const Organization = require('../models/organizationModel');
-const Account = require('../models/accountModel');
+const Organization = require('../modules/organization/core/organization.model');
+const Account = require('../modules/accounting/core/model/account.model');
 
 const DB_URI = process.env.DATABASE;
 

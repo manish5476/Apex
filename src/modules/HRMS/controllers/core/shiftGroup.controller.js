@@ -326,6 +326,7 @@ SG_exports.createShiftGroup = catchAsync(async (req, res, next) => {
 
 SG_exports.getAllShiftGroups = factory.getAll(ShiftGroup, {
   searchFields: ['name', 'code', 'description'],
+  includeInactive: true,
   populate:     [{ path: 'shifts.shiftId', select: 'name code startTime endTime shiftType' }],
 });
 

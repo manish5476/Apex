@@ -1,31 +1,40 @@
 // src/scripts/createIndexes.js
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
-const Invoice = require('../models/invoiceModel');
-const Payment = require('../models/paymentModel');
-const Purchase = require('../models/purchaseModel');
-const AccountEntry = require('../models/accountEntryModel'); // ✅ Added
-const Account = require('../models/accountModel'); // ✅ Added
+
+// --- Models ---
+const Invoice = require('../modules/accounting/billing/invoice.model');
+const Payment = require('../modules/accounting/payments/payment.model');
+const Purchase = require('../modules/inventory/core/model/purchase.model');
+const AccountEntry = require('../modules/accounting/core/model/accountEntry.model');
+const Account = require('../modules/accounting/core/model/account.model');
+
+const DB_URI = process.env.DATABASE;
+
+if (!DB_URI) {
+  console.error('❌ Missing DATABASE connection string in .env file');
+  process.exit(1);
+}
 
 (async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log('Connected to MongoDB');
+    await mongoose.connect(DB_URI);
+    console.log('✅ Connected to MongoDB');
 
-    console.log('Creating Indexes...');
+    console.log('⏳ Creating Indexes...');
     await Invoice.createIndexes();
     await Payment.createIndexes();
     await Purchase.createIndexes();
-    
-    // ✅ Index the new financial models
     await Account.createIndexes();
     await AccountEntry.createIndexes();
 
-    console.log('Indexes created successfully.');
+    console.log('✨ Indexes created successfully.');
   } catch (err) {
-    console.error('Error creating indexes:', err);
+    console.error('💥 Error creating indexes:', err.message);
   } finally {
     await mongoose.disconnect();
-    console.log('Disconnected.');
+    console.log('👋 Disconnected.');
+    process.exit(0);
   }
 })();

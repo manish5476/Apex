@@ -87,6 +87,7 @@ exports.getAllGeoFences = factory.getAll(GeoFence, {
   searchFields: ['name', 'code', 'address.line1', 'address.city'],
   populate:     [{ path: 'branchId', select: 'name' }, { path: 'createdBy', select: 'name' }],
   sort:         { name: 1 },
+  includeInactive: true,
 });
 
 exports.getGeoFence = factory.getOne(GeoFence, {
@@ -129,7 +130,9 @@ exports.deleteGeoFence = catchAsync(async (req, res, next) => {
 
 exports.checkPoint = catchAsync(async (req, res, next) => {
   const { longitude, latitude } = req.body;
-  if (!longitude || !latitude) return next(new AppError('Please provide longitude and latitude', 400));
+  if (longitude === undefined || latitude === undefined || longitude === null || latitude === null) {
+    return next(new AppError('Please provide longitude and latitude', 400));
+  }
 
   const geofence = await GeoFence.findOne({ _id: req.params.id, organizationId: req.user.organizationId, isActive: true });
   if (!geofence) return next(new AppError('GeoFence not found', 404));
@@ -172,7 +175,9 @@ exports.checkPoint = catchAsync(async (req, res, next) => {
  */
 exports.findNearby = catchAsync(async (req, res, next) => {
   const { longitude, latitude, radius = 1000 } = req.body;
-  if (!longitude || !latitude) return next(new AppError('Please provide longitude and latitude', 400));
+  if (longitude === undefined || latitude === undefined || longitude === null || latitude === null) {
+    return next(new AppError('Please provide longitude and latitude', 400));
+  }
 
   // FIX BUG-GF-C03 — Use $geoNear aggregation (supports filters + distance output).
   // Original used $near inside $or which MongoDB explicitly prohibits.

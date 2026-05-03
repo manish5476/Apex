@@ -79,6 +79,7 @@ exports.createDesignation = catchAsync(async (req, res, next) => {
 
 exports.getAllDesignations = factory.getAll(Designation, {
   searchFields: ['title', 'code', 'description', 'jobFamily'],
+  includeInactive: true,
   populate: [
     { path: 'nextDesignation', select: 'title code level' },
     { path: 'reportsTo',       select: 'title code level' },
