@@ -253,6 +253,12 @@ exports.getStockValue = catchAsync(async (req, res, next) => {
 /* ======================================================
    14. READ-ONLY (factory-powered)
 ====================================================== */
-exports.getAllProducts = factory.getAll(Product);
+exports.getAllProducts = factory.getAll(Product, {
+  populate: [
+    { path: 'categoryId', select: 'name' },
+    { path: 'departmentId', select: 'name' },
+    { path: 'inventory.branchId', select: 'name' }
+  ]
+});
 exports.getProduct = factory.getOne(Product, [{ path: 'inventory.branchId', select: 'name' }]);
 exports.restoreProduct = factory.restoreOne(Product);
