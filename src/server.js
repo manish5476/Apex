@@ -65,9 +65,8 @@ async function startServer() {
     const io = socketUtil.init(server, {
       cors: {
         origin: function (origin, callback) {
-          // Mobile app websocket connections might not have an origin.
-          if (!origin) {
-            console.log("ℹ️ Socket CORS: No origin header (allowing)");
+          // In development, allow all origins to accommodate dynamic local IPs
+          if (process.env.NODE_ENV === "development" || !origin) {
             return callback(null, true);
           }
 
@@ -76,22 +75,16 @@ async function startServer() {
             : [
               "http://localhost:4200",
               "http://localhost:8081",
-              "http://10.155.124.42:8081",
-              "http://10.155.124.42:5000",
-              "http://10.168.158.6:8081",
-              "http://10.168.158.6:5000",
               "https://apex-infinity.vercel.app",
               "https://apex-infinity-vert.vercel.app"
             ];
 
           // Allow Expo Go or whitelisted origins
           const isAllowed = allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('exp://');
-          
+
           if (isAllowed) {
-            console.log(`✅ Socket CORS: Allowed origin ${origin}`);
             callback(null, true);
           } else {
-            console.warn(`❌ Socket CORS: Rejected origin ${origin}`);
             callback(new Error('Not allowed by CORS'));
           }
         },

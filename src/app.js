@@ -59,18 +59,19 @@ const corsOptions = {
       : [
         "http://localhost:4200",
         "http://localhost:8081",
-        "http://10.155.124.42:8081",
-        "http://10.155.124.42:5000",
-        "http://10.168.158.6:8081",
-        "http://10.168.158.6:5000",
         "https://apex-infinity.vercel.app",
         "https://apex-infinity-vert.vercel.app"
       ];
 
-    // Also allow local Expo Go origins like exp://...
+    // In development, allow all origins to accommodate dynamic local IPs
+    if (process.env.NODE_ENV === "development" || !origin) {
+      return callback(null, true);
+    }
+
     if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('exp://')) {
       callback(null, true);
     } else {
+      console.warn(`❌ CORS: Rejected origin ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -95,7 +96,7 @@ app.use(hpp());
 app.use(compression());
 morgan.token("id", (req) => req.id);
 if (process.env.NODE_ENV === "development") {
-  app.use(morgan(":id :method :url :status :response-time ms"));
+  app.use(morgan("dev"));
 } else {
   app.use(
     morgan(

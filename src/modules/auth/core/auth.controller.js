@@ -364,7 +364,7 @@ exports.login = catchAsync(async (req, res, next) => {
   if (!email || !password || !uniqueShopId)
     return next(new AppError('Email, password and Shop ID are required.', 400));
 
-  const organization = await Organization.findOne({ uniqueShopId });
+  const organization = await Organization.findOne({ uniqueShopId: uniqueShopId.trim().toUpperCase() });
   if (!organization) return next(new AppError('Invalid Shop ID.', 404));
 
   const user = await User.findOne({
