@@ -14,10 +14,12 @@ router.use(authController.protect);
 // ==============================================================================
 router.get("/stats", checkPermission(PERMISSIONS.NOTIFICATION.READ), notificationController.getNotificationStats);
 router.get("/unread-count", checkPermission(PERMISSIONS.NOTIFICATION.READ), notificationController.getUnreadCount);
+router.get("/my-notifications", checkPermission(PERMISSIONS.NOTIFICATION.READ), notificationController.getMyNotifications);
 
 // Bulk Updates
 router.patch("/mark-read", checkPermission(PERMISSIONS.NOTIFICATION.READ), notificationController.markMultipleAsRead);
 router.patch("/mark-all-read", checkPermission(PERMISSIONS.NOTIFICATION.READ), notificationController.markAllRead);
+router.patch("/read-all", checkPermission(PERMISSIONS.NOTIFICATION.READ), notificationController.markAllRead);
 
 // Deletions
 router.delete("/clear-all", checkPermission(PERMISSIONS.NOTIFICATION.READ), notificationController.clearAll);
@@ -35,5 +37,7 @@ router.route("/:id")
   .get(checkPermission(PERMISSIONS.NOTIFICATION.READ), notificationController.getNotification)
   .patch(checkPermission(PERMISSIONS.NOTIFICATION.READ), notificationController.markAsRead)
   .delete(checkPermission(PERMISSIONS.NOTIFICATION.READ), notificationController.deleteNotification);
+
+router.patch("/:id/read", checkPermission(PERMISSIONS.NOTIFICATION.READ), notificationController.markAsRead);
 
 module.exports = router;
