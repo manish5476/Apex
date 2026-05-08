@@ -216,6 +216,13 @@ router.get('/tags', dropdownFactory.getDropdownList(Master, {
   metaFields: ['description', 'code'],
 }));
 
+router.get('/supplier-categories', dropdownFactory.getDropdownList(Master, {
+  defaultSearchField: 'name',
+  defaultLabelField: 'name',
+  extraFilter: { type: 'supplier_category' },
+  metaFields: ['description', 'code'],
+}));
+
 /* ============================================================================
    ACCOUNTING
 ============================================================================ */

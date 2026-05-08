@@ -73,7 +73,8 @@ const supplierSchema = new mongoose.Schema(
     // --- 1. CRM / CONTACTS ---
     contactPerson: { type: String, trim: true }, // kept for backward compat
     contacts: [contactSchema],
-    category: { type: String, trim: true },
+    category: { type: String, trim: true }, // legacy string — kept for backward compat
+    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Master', index: true, default: null }, // preferred: links to Master list
     tags: [{ type: String, trim: true }],
 
     // --- 2. BASIC CONTACT INFO ---
