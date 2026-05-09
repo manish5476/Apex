@@ -278,7 +278,6 @@ router.get('/designations', dropdownFactory.getDropdownList(Designation, {
   defaultSearchField: 'title',
   defaultLabelField: 'title',
   metaFields: ['level'],
-  populate: { path: 'departmentId', select: 'name' },
 }));
 
 router.get('/shifts', dropdownFactory.getDropdownList(Shift, {

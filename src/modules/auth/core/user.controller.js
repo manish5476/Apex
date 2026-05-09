@@ -522,6 +522,10 @@ exports.createUser = catchAsync(async (req, res, next) => {
       req.body.mustChangePassword = true;
     }
 
+    if (req.body.upiId === '') {
+      delete req.body.upiId;
+    }
+
     if (req.body.emailVerified === undefined) req.body.emailVerified = false;
 
     const [newUser] = await User.create([req.body], { session });
@@ -616,9 +620,21 @@ exports.updateUser = catchAsync(async (req, res, next) => {
     if (!ok) return next(new AppError('Designation not found.', 400));
   }
 
+  const updateOperation = { $set: updatePayload };
+  const unsetPayload = {};
+
+  if (updatePayload.upiId === '' || updatePayload.upiId === null) {
+    unsetPayload.upiId = 1;
+    delete updatePayload.upiId;
+  }
+
+  if (Object.keys(unsetPayload).length > 0) {
+    updateOperation.$unset = unsetPayload;
+  }
+
   const updatedUser = await User.findByIdAndUpdate(
     req.params.id,
-    { $set: updatePayload },
+    updateOperation,
     { new: true, runValidators: true }
   )
     .populate('role', 'name permissions isSuperAdmin')
