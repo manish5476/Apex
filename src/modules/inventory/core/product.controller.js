@@ -215,7 +215,8 @@ exports.getProductHistory = catchAsync(async (req, res, next) => {
    11. BULK IMPORT
 ====================================================== */
 exports.bulkImportProducts = catchAsync(async (req, res, next) => {
-  const result = await ProductService.bulkImport(req.body, req.user);
+  const products = Array.isArray(req.body) ? req.body : req.body.products;
+  const result = await ProductService.bulkImport(products, req.user);
 
   res.status(201).json({
     status: 'success',
@@ -228,7 +229,8 @@ exports.bulkImportProducts = catchAsync(async (req, res, next) => {
    12. BULK UPDATE
 ====================================================== */
 exports.bulkUpdateProducts = catchAsync(async (req, res, next) => {
-  const result = await ProductService.bulkUpdate(req.body, req.user);
+  const updates = Array.isArray(req.body) ? req.body : (req.body.products || req.body.updates);
+  const result = await ProductService.bulkUpdate(updates, req.user);
 
   res.status(200).json({
     status: 'success',
