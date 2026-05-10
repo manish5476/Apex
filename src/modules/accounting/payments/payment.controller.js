@@ -27,9 +27,9 @@ const AppError = require('../../../core/utils/api/appError');
 
 const PAYMENT_POPULATE = [
   { path: 'customerId', select: 'name phone type email gstNumber' },
-  { path: 'supplierId', select: 'name phone type email' },
+  { path: 'supplierId', select: 'companyName contactPerson phone type email' },
   { path: 'invoiceId', select: 'invoiceNumber grandTotal invoiceDate balanceAmount' },
-  { path: 'purchaseId', select: 'purchaseNumber grandTotal purchaseDate balanceAmount' },
+  { path: 'purchaseId', select: 'invoiceNumber grandTotal purchaseDate balanceAmount' },
   { path: 'branchId', select: 'name branchCode' },
 ];
 
@@ -124,7 +124,7 @@ exports.getPaymentsBySupplier = catchAsync(async (req, res, next) => {
     isDeleted: { $ne: true },
   })
     .populate([
-      { path: 'purchaseId', select: 'purchaseNumber grandTotal purchaseDate balanceAmount' },
+      { path: 'purchaseId', select: 'invoiceNumber grandTotal purchaseDate balanceAmount' },
       { path: 'branchId', select: 'name branchCode' },
     ])
     .sort({ paymentDate: -1 });
@@ -186,7 +186,7 @@ exports.exportPayments = factory.exportExcel(Payment, {
   sheetName: 'Payments',
   populate: [
     { path: 'customerId', select: 'name' },
-    { path: 'supplierId', select: 'name' },
+    { path: 'supplierId', select: 'companyName' },
     { path: 'invoiceId', select: 'invoiceNumber' },
     { path: 'branchId', select: 'name' },
   ],
@@ -194,7 +194,7 @@ exports.exportPayments = factory.exportExcel(Payment, {
     { header: 'DATE', key: 'paymentDate', width: 15 },
     { header: 'TYPE', key: 'type', width: 10 },
     { header: 'CUSTOMER', key: 'customerId.name', width: 25 },
-    { header: 'SUPPLIER', key: 'supplierId.name', width: 25 },
+    { header: 'SUPPLIER', key: 'supplierId.companyName', width: 25 },
     { header: 'AMOUNT', key: 'amount', width: 15 },
     { header: 'METHOD', key: 'paymentMethod', width: 15 },
     { header: 'REFERENCE', key: 'referenceNumber', width: 20 },
