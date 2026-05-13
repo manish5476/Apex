@@ -65,10 +65,12 @@ const corsOptions = {
 
     // In development, allow all origins to accommodate dynamic local IPs
     if (process.env.NODE_ENV === "development" || !origin) {
+      console.log(`✅ CORS: Accepted origin ${origin || 'Local/No Origin'} [${process.env.NODE_ENV}]`);
       return callback(null, true);
     }
 
     if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('exp://')) {
+      console.log(`✅ CORS: Allowed specific origin ${origin}`);
       callback(null, true);
     } else {
       console.warn(`❌ CORS: Rejected origin ${origin}`);
