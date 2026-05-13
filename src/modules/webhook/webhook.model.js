@@ -8,8 +8,8 @@ const IV_LENGTH = 16;
 function encryptSecret(text) {
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(
-    'aes-256-cbc', 
-    Buffer.from(ENCRYPTION_KEY), 
+    'aes-256-cbc',
+    Buffer.from(ENCRYPTION_KEY),
     iv
   );
   const encrypted = Buffer.concat([cipher.update(text), cipher.final()]);
@@ -21,34 +21,34 @@ function decryptSecret(text) {
   const iv = Buffer.from(ivHex, 'hex');
   const encrypted = Buffer.from(encryptedHex, 'hex');
   const decipher = crypto.createDecipheriv(
-    'aes-256-cbc', 
-    Buffer.from(ENCRYPTION_KEY), 
+    'aes-256-cbc',
+    Buffer.from(ENCRYPTION_KEY),
     iv
   );
   return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString();
 }
 
 const CircuitBreakerSchema = new Schema({
-  state: { 
-    type: String, 
-    enum: ['closed', 'open', 'half-open'], 
-    default: 'closed' 
+  state: {
+    type: String,
+    enum: ['closed', 'open', 'half-open'],
+    default: 'closed'
   },
-  failureCount:  { type: Number, default: 0 },
-  successCount:  { type: Number, default: 0 }, // Counts successes in half-open
-  openedAt:      Date,
-  nextRetryAt:   Date,
+  failureCount: { type: Number, default: 0 },
+  successCount: { type: Number, default: 0 }, // Counts successes in half-open
+  openedAt: Date,
+  nextRetryAt: Date,
 }, { _id: false });
 
 const WebhookSchema = new Schema({
-  organizationId: { 
-    type: Schema.Types.ObjectId, 
-    ref: 'Organization', 
-    required: true, 
-    index: true 
+  organizationId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
   },
-  name:   { type: String, required: true, trim: true },
-  url:    { type: String, required: true, trim: true },
+  name: { type: String, required: true, trim: true },
+  url: { type: String, required: true, trim: true },
 
   // Stored AES-256 encrypted. Never stored plaintext.
   _encryptedSecret: { type: String, select: false },
@@ -56,25 +56,25 @@ const WebhookSchema = new Schema({
   events: [{
     type: String,
     enum: [
-      'invoice.created', 
+      'invoice.created',
       'invoice.updated',
-      'payment.received', 
-      'stock.low', 
+      'payment.received',
+      'stock.low',
       'customer.created',
       'customer.updated'
     ]
   }],
 
   // Stats
-  totalDeliveries:     { type: Number, default: 0 },
-  successfulDeliveries:{ type: Number, default: 0 },
-  failedDeliveries:    { type: Number, default: 0 },
-  lastDeliveryAt:      Date,
-  lastDeliveryStatus:  { type: String, enum: ['success', 'failed'] },
+  totalDeliveries: { type: Number, default: 0 },
+  successfulDeliveries: { type: Number, default: 0 },
+  failedDeliveries: { type: Number, default: 0 },
+  lastDeliveryAt: Date,
+  lastDeliveryStatus: { type: String, enum: ['success', 'failed'] },
 
   circuitBreaker: { type: CircuitBreakerSchema, default: () => ({}) },
 
-  isActive:  { type: Boolean, default: true, index: true },
+  isActive: { type: Boolean, default: true, index: true },
 }, { timestamps: true });
 
 // ── Indexes ─────────────────────────────────────────
@@ -83,22 +83,22 @@ WebhookSchema.index({ organizationId: 1, events: 1 }); // Fast event lookup
 
 // ── Secret Handling ─────────────────────────────────
 // Set plain secret → it gets encrypted before save
-WebhookSchema.virtual('secret').set(function(plainSecret) {
+WebhookSchema.virtual('secret').set(function (plainSecret) {
   this._encryptedSecret = encryptSecret(plainSecret);
 });
 
 // Expose decrypted secret for signing only (never sent to client)
-WebhookSchema.methods.getSecret = function() {
+WebhookSchema.methods.getSecret = function () {
   if (!this._encryptedSecret) return null;
   return decryptSecret(this._encryptedSecret);
 };
 
 // ── Circuit Breaker Logic ────────────────────────────
-const FAILURE_THRESHOLD  = 5;  // Open after 5 consecutive failures
-const SUCCESS_THRESHOLD  = 2;  // Close after 2 successes in half-open
-const OPEN_DURATION_MS   = 60 * 60 * 1000; // Stay open for 1 hour
+const FAILURE_THRESHOLD = 5;  // Open after 5 consecutive failures
+const SUCCESS_THRESHOLD = 2;  // Close after 2 successes in half-open
+const OPEN_DURATION_MS = 60 * 60 * 1000; // Stay open for 1 hour
 
-WebhookSchema.methods.canDeliver = function() {
+WebhookSchema.methods.canDeliver = function () {
   const cb = this.circuitBreaker;
   if (cb.state === 'closed') return true;
 
@@ -116,7 +116,7 @@ WebhookSchema.methods.canDeliver = function() {
   return true; // half-open: allow through
 };
 
-WebhookSchema.methods.recordSuccess = async function() {
+WebhookSchema.methods.recordSuccess = async function () {
   const cb = this.circuitBreaker;
 
   if (cb.state === 'half-open') {
@@ -140,7 +140,7 @@ WebhookSchema.methods.recordSuccess = async function() {
   await this.save();
 };
 
-WebhookSchema.methods.recordFailure = async function() {
+WebhookSchema.methods.recordFailure = async function () {
   const cb = this.circuitBreaker;
   cb.failureCount += 1;
 
