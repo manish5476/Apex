@@ -109,6 +109,13 @@ class EmiService {
           transactionMode: 'auto',
           remarks:    `Down payment for EMI — Invoice ${invoice.invoiceNumber}`,
           status:     'completed',
+          allocatedTo: [{
+            type: 'invoice',
+            documentId: invoice._id,
+            amount: Number(downPayment),
+            allocatedAt: new Date()
+          }],
+          allocationStatus: 'fully_allocated',
           createdBy,
         }], { session, ordered: true });
 
@@ -198,6 +205,15 @@ class EmiService {
         remarks,
         transactionMode: 'auto',
         status:          'completed',
+        allocatedTo: [{
+          type: 'emi',
+          documentId: emi.invoiceId,
+          emiId: emi._id,
+          installmentNumber: Number(installmentNumber),
+          amount: Number(amount),
+          allocatedAt: new Date()
+        }],
+        allocationStatus: 'fully_allocated',
         createdBy,
       }], { session, ordered: true });
 
@@ -260,6 +276,7 @@ class EmiService {
       // Apply to installments (oldest first)
       let remaining = Number(amount);
       const applied = [];
+      const allocations = [];
 
       for (const inst of emi.installments.sort((a, b) => a.installmentNumber - b.installmentNumber)) {
         if (remaining <= 0) break;
@@ -275,13 +292,27 @@ class EmiService {
 
         if (!inst.paymentId) inst.paymentId = payment._id;
         applied.push({ installmentNumber: inst.installmentNumber, appliedAmount: toApply });
+        allocations.push({
+          type: 'emi',
+          documentId: invoiceId,
+          emiId: emi._id,
+          installmentNumber: inst.installmentNumber,
+          amount: toApply,
+          allocatedAt: new Date()
+        });
       }
 
       // Handle excess as advance balance
       if (remaining > 0) {
         emi.advanceBalance = (emi.advanceBalance || 0) + remaining;
         applied.push({ type: 'advance', amount: remaining });
+        allocations.push({ type: 'advance', amount: remaining, allocatedAt: new Date() });
       }
+
+      // Update payment document with allocations
+      payment.allocatedTo = allocations;
+      payment.allocationStatus = allocations.length > 0 ? 'fully_allocated' : 'unallocated';
+      await payment.save({ session });
 
       // EMI status auto-derived by pre-save hook
       await emi.save({ session });
