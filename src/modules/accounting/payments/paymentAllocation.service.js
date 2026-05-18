@@ -180,6 +180,15 @@ class PaymentAllocationService {
       status: 'active'
     }).populate('invoiceId');
 
+    // Prioritize the EMI that matches the payment reference, if any
+    if (payment.invoiceId) {
+      emis.sort((a, b) => {
+        if (a.invoiceId && a.invoiceId._id.toString() === payment.invoiceId.toString()) return -1;
+        if (b.invoiceId && b.invoiceId._id.toString() === payment.invoiceId.toString()) return 1;
+        return 0;
+      });
+    }
+
     // 3. Allocate to EMI installments first (oldest due first)
     for (const emi of emis) {
       if (remainingAmount <= 0) break;
@@ -258,6 +267,15 @@ class PaymentAllocationService {
         status: { $in: ['issued', 'partially_paid'] },
         _id: { $nin: emis.map(e => e.invoiceId) }
       }).sort({ dueDate: 1 });
+
+      // Prioritize the invoice that matches the payment reference, if any
+      if (payment.invoiceId) {
+        nonEMIInvoices.sort((a, b) => {
+          if (a._id.toString() === payment.invoiceId.toString()) return -1;
+          if (b._id.toString() === payment.invoiceId.toString()) return 1;
+          return 0;
+        });
+      }
 
       for (const invoice of nonEMIInvoices) {
         if (remainingAmount <= 0) break;

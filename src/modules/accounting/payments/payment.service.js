@@ -78,13 +78,6 @@ class PaymentService {
       // Update customer/supplier balance — floor at 0 to prevent negative values.
       // $inc alone can go negative on overpayments; we use an aggregation-pipeline
       // update to clamp the result to 0.
-      if (type === 'inflow' && customerId) {
-        await Customer.findByIdAndUpdate(
-          customerId,
-          [{ $set: { outstandingBalance: { $max: [0, { $subtract: ['$outstandingBalance', amount] }] } } }],
-          { session }
-        );
-      }
       if (type === 'outflow' && supplierId) {
         await Supplier.findByIdAndUpdate(
           supplierId,
@@ -93,17 +86,8 @@ class PaymentService {
         );
       }
 
-      // Update invoice
-      if (type === 'inflow' && invoiceId) {
-        const invoice = await Invoice.findById(invoiceId).session(session);
-        if (invoice) {
-          invoice.paidAmount = (invoice.paidAmount || 0) + amount;
-          invoice.balanceAmount = Math.max(0, invoice.grandTotal - invoice.paidAmount);
-          invoice.paymentStatus = invoice.balanceAmount <= 0 ? 'paid' : 'partial';
-          if (invoice.balanceAmount <= 0) invoice.status = 'paid';
-          await invoice.save({ session });
-        }
-      }
+      // NOTE: For 'inflow', invoice and customer balances are handled completely by
+      // autoAllocatePayment outside this transaction. This ensures EMI schedules are updated!
 
       // Update purchase
       if (type === 'outflow' && purchaseId) {
@@ -120,6 +104,26 @@ class PaymentService {
 
     await invalidateOpeningBalance(user.organizationId);
     webhookService.triggerEvent('payment.completed', payment, user.organizationId);
+
+    // Auto-allocate inflow payments to handle EMIs and invoices seamlessly
+    if (type === 'inflow') {
+      try {
+        // If customerId is missing but invoiceId is present, we must resolve customerId
+        if (!payment.customerId && payment.invoiceId) {
+          const invoice = await Invoice.findById(payment.invoiceId);
+          if (invoice && invoice.customerId) {
+            payment.customerId = invoice.customerId;
+            await payment.save();
+          }
+        }
+        
+        if (payment.customerId) {
+          await paymentAllocationService.autoAllocatePayment(payment._id, user.organizationId);
+        }
+      } catch (err) {
+        console.error('[PAYMENT] Auto-allocation failed after createPayment:', err.message);
+      }
+    }
 
     return payment;
   }
