@@ -21,6 +21,8 @@ router.use(authController.protect);
 router.use(checkPermission(PERMISSIONS.RECONCILIATION.MANAGE));
 
 // These routes now safely have access to both req.user and the verified permission
+router.get('/mismatches', reconciliationController.topMismatches);
+router.get('/mismatches/detail', reconciliationController.detail);
 router.get('/pending', reconciliationController.getPendingReconciliations);
 router.post('/manual', reconciliationController.manualReconcilePayment);
 router.get('/summary', reconciliationController.getReconciliationSummary);
