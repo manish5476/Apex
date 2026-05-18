@@ -143,9 +143,17 @@ class PaymentService {
     await runInTransaction(async (session) => {
       await this._reversePayment(payment, session);
       payment.status = 'cancelled';
+      payment.allocatedTo = [];
+      payment.allocationStatus = 'unallocated';
       payment.updatedBy = user._id;
       await payment.save({ session });
     }, 3, { action: 'CANCEL_PAYMENT', userId: user._id });
+
+    if (payment.type === 'inflow' && payment.customerId) {
+      try {
+        await paymentAllocationService.recalculateCustomerBalance(payment.customerId, user.organizationId);
+      } catch (err) {}
+    }
   }
 
   /* ============================================================
@@ -161,9 +169,17 @@ class PaymentService {
       await this._reversePayment(payment, session);
       payment.isDeleted = true;
       payment.status = 'cancelled';
+      payment.allocatedTo = [];
+      payment.allocationStatus = 'unallocated';
       payment.updatedBy = user._id;
       await payment.save({ session });
     }, 3, { action: 'DELETE_PAYMENT', userId: user._id });
+
+    if (payment.type === 'inflow' && payment.customerId) {
+      try {
+        await paymentAllocationService.recalculateCustomerBalance(payment.customerId, user.organizationId);
+      } catch (err) {}
+    }
   }
 
   /* ============================================================
@@ -287,14 +303,8 @@ class PaymentService {
     // 1. Reverse ledger
     await this._postPaymentLedger({ payment, session, reverse: true });
 
-    // 2. Reverse customer/supplier balance
-    if (payment.type === 'inflow' && payment.customerId) {
-      await Customer.findByIdAndUpdate(
-        payment.customerId,
-        { $inc: { outstandingBalance: payment.amount } },
-        { session }
-      );
-    } else if (payment.type === 'outflow' && payment.supplierId) {
+    // 2. Reverse supplier balance (customer balance is handled by recalculateCustomerBalance after TX)
+    if (payment.type === 'outflow' && payment.supplierId) {
       await Supplier.findByIdAndUpdate(
         payment.supplierId,
         { $inc: { outstandingBalance: payment.amount } },
@@ -344,6 +354,18 @@ class PaymentService {
             inst.paymentId = null;
             inst.paidAt = null; // FIX #3: clear paidAt on reversal
             await emi.save({ session });
+          }
+          
+          // FIX: Also reverse the associated invoice amount!
+          if (emi.invoiceId) {
+            const invoice = await Invoice.findById(emi.invoiceId).session(session);
+            if (invoice) {
+              invoice.paidAmount = Math.max(0, (invoice.paidAmount || 0) - target.amount);
+              invoice.balanceAmount = invoice.grandTotal - invoice.paidAmount;
+              invoice.paymentStatus = invoice.paidAmount === 0 ? 'unpaid' : 'partial';
+              if (invoice.status === 'paid') invoice.status = 'issued';
+              await invoice.save({ session });
+            }
           }
         }
       } else if (target.type === 'advance' && payment.customerId) {
