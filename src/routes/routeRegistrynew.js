@@ -52,6 +52,9 @@ const registerRoutes = (app) => {
   app.use(`${v1Prefix}/customeranalytics`, routes.customerAnalytics);
   app.use(`${v1Prefix}/customer-analytics`, routes.customerAnalytics);
   app.use(`${v1Prefix}/dashboard`, routes.dashboard);
+  app.use(`${v1Prefix}/admin`, routes.adminRouter);
+  app.use(`${v1Prefix}/admin/platform`, routes.adminPlatformRoutes);
+  app.use(`${v1Prefix}/internal/platform`, routes.internalPlatformRoutes);
   app.use(`${v1Prefix}/ai-agent`, routes.aiAgent);
   app.use(`${v1Prefix}/webhooks`, routes.webhookRoutes);
   app.use(`${v1Prefix}/assets`, routes.assetsRoutes);

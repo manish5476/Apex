@@ -36,6 +36,8 @@ module.exports = {
   analyticsRoutes: require('../routes/v1/analytics.routes.js'),
   chartRoutes: require('../routes/v1/chart.routes.js'),
   adminRouter: require('../routes/v1/admin.routes.js'),
+  adminPlatformRoutes: require('../modules/adminPlatform/routes/platform.routes.js'),
+  internalPlatformRoutes: require('../modules/adminPlatform/routes/internal.routes.js'),
   customerAnalytics: require('../routes/v1/customer.analytics.routes.js'),
   logRoutes: require('../routes/v1/log.routes.js'),
 

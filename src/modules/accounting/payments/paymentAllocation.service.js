@@ -360,13 +360,13 @@ class PaymentAllocationService {
       for (const alloc of allocations) {
         switch (alloc.type) {
           case 'emi':
-            await this.allocateToEMI(alloc, session);
+            await this.allocateToEMI(alloc, payment, session);
             break;
           case 'invoice':
-            await this.allocateToInvoice(alloc, session);
+            await this.allocateToInvoice(alloc, payment, session);
             break;
           case 'advance':
-            await this.allocateToAdvance(alloc, session);
+            await this.allocateToAdvance(alloc, payment, session);
             break;
         }
         
@@ -403,6 +403,60 @@ class PaymentAllocationService {
     } finally {
       session.endSession();
     }
+  }
+
+  async allocateToEMI(alloc, payment, session) {
+    const emi = await EMI.findById(alloc.emiId).session(session);
+    if (!emi) throw new AppError('EMI not found', 404);
+    
+    const inst = emi.installments.find(i => i.installmentNumber === alloc.installmentNumber);
+    if (!inst) throw new AppError('Installment not found', 404);
+
+    inst.paidAmount += alloc.amount;
+    if (inst.paidAmount >= inst.totalAmount) {
+      inst.paymentStatus = 'paid';
+    } else if (inst.paidAmount > 0) {
+      inst.paymentStatus = 'partial';
+    }
+    
+    const allPaid = emi.installments.every(i => i.paymentStatus === 'paid');
+    if (allPaid) emi.status = 'completed';
+    
+    await emi.save({ session });
+
+    // Update invoice
+    if (emi.invoiceId) {
+      const invoice = await Invoice.findById(emi.invoiceId).session(session);
+      if (invoice) {
+        invoice.paidAmount += alloc.amount;
+        invoice.balanceAmount = Math.max(0, invoice.grandTotal - invoice.paidAmount);
+        invoice.paymentStatus = invoice.balanceAmount <= 0 ? 'paid' : 'partial';
+        if (invoice.balanceAmount <= 0) invoice.status = 'paid';
+        await invoice.save({ session });
+      }
+    }
+  }
+
+  async allocateToInvoice(alloc, payment, session) {
+    const invoice = await Invoice.findById(alloc.documentId).session(session);
+    if (!invoice) throw new AppError('Invoice not found', 404);
+
+    invoice.paidAmount += alloc.amount;
+    invoice.balanceAmount = Math.max(0, invoice.grandTotal - invoice.paidAmount);
+    invoice.paymentStatus = invoice.balanceAmount <= 0 ? 'paid' : 'partial';
+    if (invoice.balanceAmount <= 0) invoice.status = 'paid';
+    await invoice.save({ session });
+  }
+
+  async allocateToAdvance(alloc, payment, session) {
+    const customerId = payment.customerId || (payment.customerId && payment.customerId._id);
+    if (!customerId) throw new AppError('Customer not found for advance allocation', 404);
+    
+    await Customer.findByIdAndUpdate(
+      customerId,
+      { $inc: { advanceBalance: alloc.amount } },
+      { session }
+    );
   }
 
   /**
