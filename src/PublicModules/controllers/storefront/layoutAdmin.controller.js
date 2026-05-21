@@ -13,6 +13,8 @@
 'use strict';
 
 const LayoutService    = require('../../services/storefront/layout.service');
+const StorefrontCache  = require('../../services/storefront/cacheInvalidation.service');
+const PageSnapshotService = require('../../services/storefront/pageSnapshot.service');
 const SectionValidator = require('../../middleware/validation/section.validator');
 const AppError         = require('../../../core/utils/api/appError');
 
@@ -78,6 +80,7 @@ class LayoutAdminController {
       }
 
       const layout = await LayoutService.updateLayout(organizationId, updateData);
+      await PageSnapshotService.buildAllForStore(organizationId);
 
       res.status(200).json({
         status:  'success',
@@ -99,10 +102,12 @@ class LayoutAdminController {
       const { organizationId } = req.user;
 
       // Force re-creation by deleting then re-creating default
-      const StorefrontLayout = require('../models/storefrontLayout.model');
+      const StorefrontLayout = require('../../models/storefront/storefrontLayout.model');
       await StorefrontLayout.deleteOne({ organizationId });
 
       const layout = await LayoutService.createDefaultLayout(organizationId);
+      await StorefrontCache.invalidateStore(organizationId);
+      await PageSnapshotService.buildAllForStore(organizationId);
 
       res.status(200).json({
         status:  'success',

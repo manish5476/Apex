@@ -30,6 +30,14 @@ const PERMISSIONS_LIST = [
   p("automation:workflow", "System", "Create and edit internal automation workflows"),
   p("ai:chat", "System", "Interact with the AI assistant for data queries"),
 
+  // Storefront & Website Builder
+  p("storefront:read", "Storefront", "View storefront pages, layout, themes, and builder settings"),
+  p("storefront:page_manage", "Storefront", "Create, edit, duplicate, and delete storefront pages"),
+  p("storefront:publish", "Storefront", "Publish, unpublish, and assign storefront homepages"),
+  p("storefront:layout_manage", "Storefront", "Manage storefront header, footer, and global settings"),
+  p("storefront:theme_manage", "Storefront", "Manage storefront themes and design tokens"),
+  p("storefront:rule_manage", "Storefront", "Manage storefront smart rules and dynamic merchandising"),
+
   // ── Security & Settings ───────────────────────────────────────────
   p("auth:manage_sessions", "Security", "View and terminate active login sessions"),
   p("asset:read", "Settings", "View Media Gallery & Storage Statistics"),

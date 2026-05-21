@@ -12,9 +12,10 @@
 
 'use strict';
 
-const { StorefrontPage }    = require('../../models/storefront/index');
+const { StorefrontPage, StorefrontPageSnapshot } = require('../../models/storefront/index');
 const Organization          = require('../../../modules/organization/core/organization.model');
 const LayoutService         = require('../../services/storefront/layout.service');
+const PageSnapshotService   = require('../../services/storefront/pageSnapshot.service');
 const DataHydrationService  = require('../../services/storefront/dataHydration.service');
 const redisUtils            = require('../../../config/redis');
 const AppError              = require('../../../core/utils/api/appError');
@@ -81,7 +82,7 @@ class StorefrontPublicController {
       // -----------------------------------------------------------------------
       // Layout (cached internally by LayoutService)
       // -----------------------------------------------------------------------
-      const layoutData = await LayoutService.getLayout(org._id);
+      const layoutData = pageData.layout ?? await LayoutService.getLayout(org._id);
       const currency   = layoutData.globalSettings?.commerce?.currency ?? 'INR';
 
       // -----------------------------------------------------------------------
@@ -94,7 +95,7 @@ class StorefrontPublicController {
       ]);
 
       // Async view increment — fire and forget
-      this._incrementViewCount(pageData._id);
+      this._incrementViewCount(pageData.pageId ?? pageData._id);
 
       // -----------------------------------------------------------------------
       // Assemble response
@@ -111,7 +112,7 @@ class StorefrontPublicController {
           footer: hydratedFooter
         },
         page: {
-          id:       pageData._id,
+          id:       pageData.pageId ?? pageData._id,
           name:     pageData.name,
           slug:     pageData.slug,
           type:     pageData.pageType,
@@ -124,7 +125,7 @@ class StorefrontPublicController {
             noIndex:     pageData.seo?.noIndex     ?? false
           },
           themeOverride: pageData.themeOverride ?? {},
-          updatedAt:     pageData.updatedAt
+          updatedAt:     pageData.sourceUpdatedAt ?? pageData.updatedAt
         }
       };
 
@@ -148,21 +149,31 @@ class StorefrontPublicController {
       const org = await this._resolveOrg(req.params.organizationSlug);
       if (!org) return next(new AppError('Store not found', 404));
 
-      const pages = await StorefrontPage.find({
+      let pages = await StorefrontPageSnapshot.find({
         organizationId: org._id,
-        isPublished:    true,
-        status:         'published',
         'seo.noIndex':  { $ne: true }
       })
-      .select('slug pageType seo.title updatedAt')
+      .select('slug pageType seo.title sourceUpdatedAt updatedAt')
       .sort('slug')
       .lean();
+
+      if (pages.length === 0) {
+        pages = await StorefrontPage.find({
+          organizationId: org._id,
+          isPublished:    true,
+          status:         'published',
+          'seo.noIndex':  { $ne: true }
+        })
+        .select('slug pageType seo.title updatedAt')
+        .sort('slug')
+        .lean();
+      }
 
       const sitemap = pages.map(p => ({
         url:          `/store/${req.params.organizationSlug}/${p.slug}`,
         pageType:     p.pageType,
         title:        p.seo?.title ?? p.slug,
-        lastModified: p.updatedAt
+        lastModified: p.sourceUpdatedAt ?? p.updatedAt
       }));
 
       res.status(200).json({
@@ -192,6 +203,9 @@ class StorefrontPublicController {
   }
 
   async _resolvePage(organizationId, slug) {
+    const snapshot = await PageSnapshotService.resolvePublishedPage(organizationId, slug);
+    if (snapshot) return snapshot;
+
     const query = { organizationId, isPublished: true, status: 'published' };
 
     if (!slug || slug === 'home') {

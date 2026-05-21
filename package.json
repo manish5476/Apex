@@ -8,6 +8,7 @@
     "seed-coa": "node src/scripts/seedDefaultCoa.js",
     "seed-electronics-master": "node src/scripts/seedElectronicsMasterData.js",
     "seed-home": "node src/PublicModules/scripts/create-home-page.js",
+    "rebuild-storefront-snapshots": "node src/PublicModules/scripts/rebuild-storefront-snapshots.js",
     "create-indexes": "node src/scripts/createIndexes.js",
     "seed-permissions": "node src/scripts/seedPermissions.js",
     "db-reset": "node scripts/resetDatabase.js",
