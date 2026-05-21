@@ -40,7 +40,7 @@ exports.seedDefaultStorefront = async (organizationId, organizationName, session
       { id: generateId(), type: 'video_hero', position: 8, isActive: true, config: { videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4', title: 'Behind the Design', subtitle: 'See how we craft perfection.', height: 'medium', showControls: false, autoPlay: true, overlayOpacity: 30 } },
       { id: generateId(), type: 'testimonial_slider', position: 9, isActive: true, config: { title: 'What Our Customers Say', items: [{ name: 'Sarah Jenkins', role: 'Verified Buyer', rating: 5, text: 'Absolutely love the quality. Shipping was lightning fast!' }, { name: 'Michael Chen', role: 'Verified Buyer', rating: 5, text: 'The customer service is unmatched.' }] } },
       { id: generateId(), type: 'instagram_feed', position: 10, isActive: true, config: { title: 'Join Our Community', username: 'apexinfinity', limit: 6 } },
-      { id: generateId(), type: 'recent_blog_posts', position: 11, isActive: true, config: { title: 'Latest News', layout: 'grid', limit: 3 }, manualData: [{ id: generateId(), title: 'Our New Fall Collection', excerpt: 'Discover what is new this season.', image: 'https://images.unsplash.com/photo-1445205170230-053b83016050', slug: 'fall-collection' }] }
+      { id: generateId(), type: 'blog_feed', position: 11, isActive: true, config: { title: 'Latest News', layout: 'grid', limit: 3 }, manualData: [{ id: generateId(), title: 'Our New Fall Collection', excerpt: 'Discover what is new this season.', image: 'https://images.unsplash.com/photo-1445205170230-053b83016050', slug: 'fall-collection' }] }
     ]
   };
 
@@ -53,13 +53,11 @@ exports.seedDefaultStorefront = async (organizationId, organizationName, session
     slug: 'about',
     pageType: 'custom',
     sections: [
-      { id: generateId(), type: 'page_header', position: 0, isActive: true, config: { title: 'About Us', subtitle: 'Our journey, mission, and values.', alignment: 'center', showBreadcrumbs: true, backgroundImage: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2000' } },
+      { id: generateId(), type: 'hero_banner', position: 0, isActive: true, config: { title: 'About Us', subtitle: 'Our journey, mission, and values.', alignment: 'center', backgroundImage: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2000' } },
       { id: generateId(), type: 'split_image_text', position: 1, isActive: true, config: { title: 'Crafted with Precision', content: 'Every product in our catalog is meticulously sourced and tested to ensure the highest quality standards. We believe that true luxury lies in the details.', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1000', imagePosition: 'left' } },
       { id: generateId(), type: 'stats_counter', position: 2, isActive: true, config: { items: [{ value: 50, suffix: 'k+', label: 'Happy Customers', icon: 'pi pi-users' }, { value: 99, suffix: '%', label: 'Satisfaction Rate', icon: 'pi pi-heart' }, { value: 10, suffix: 'M+', label: 'Products Delivered', icon: 'pi pi-box' }] } },
-      { id: generateId(), type: 'team_slider', position: 3, isActive: true, config: { title: 'Meet The Team', items: [{ name: 'Jane Doe', role: 'CEO & Founder', image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=500' }, { name: 'John Smith', role: 'Head of Design', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=500' }] } },
-      { id: generateId(), type: 'text_content', position: 4, isActive: true, config: { content: '<h2>Our Vision</h2><p>To redefine enterprise commerce through flawless design and unparalleled customer experiences.</p>', containerWidth: 'medium', textAlign: 'center' } },
-      { id: generateId(), type: 'image_gallery', position: 5, isActive: true, config: { title: 'Our Workspace', layout: 'masonry', columns: 3 }, manualData: [{ id: generateId(), url: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=800' }, { id: generateId(), url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=800' }] },
-      { id: generateId(), type: 'pricing_table', position: 6, isActive: true, config: { title: 'Partner Programs', showToggle: true, plans: [{ name: 'Retailer', price: '$99', interval: 'month', features: ['Wholesale pricing', 'Dedicated support'], isPopular: false, buttonText: 'Apply Now' }, { name: 'Enterprise', price: '$299', interval: 'month', features: ['Volume discounts', 'API Access', '24/7 SLA'], isPopular: true, buttonText: 'Contact Sales' }] } }
+      { id: generateId(), type: 'text_content', position: 3, isActive: true, config: { content: '<h2>Our Vision</h2><p>To redefine enterprise commerce through flawless design and unparalleled customer experiences.</p>', containerWidth: 'medium', textAlign: 'center' } },
+      { id: generateId(), type: 'pricing_table', position: 4, isActive: true, config: { title: 'Partner Programs', showToggle: true, plans: [{ name: 'Retailer', price: '$99', interval: 'month', features: ['Wholesale pricing', 'Dedicated support'], isPopular: false, buttonText: 'Apply Now' }, { name: 'Enterprise', price: '$299', interval: 'month', features: ['Volume discounts', 'API Access', '24/7 SLA'], isPopular: true, buttonText: 'Contact Sales' }] } }
     ]
   };
 
@@ -72,7 +70,7 @@ exports.seedDefaultStorefront = async (organizationId, organizationName, session
     slug: 'contact',
     pageType: 'custom',
     sections: [
-      { id: generateId(), type: 'page_header', position: 0, isActive: true, config: { title: 'Contact Us', subtitle: 'We would love to hear from you.', alignment: 'left', showBreadcrumbs: true } },
+      { id: generateId(), type: 'hero_banner', position: 0, isActive: true, config: { title: 'Contact Us', subtitle: 'We would love to hear from you.', alignment: 'left' } },
       { id: generateId(), type: 'contact_form', position: 1, isActive: true, config: { title: 'Send us a Message', subtitle: 'Our team will get back to you within 24 hours.', showPhoneField: true, submitButtonText: 'Send Message', successMessage: 'Thank you! Your message has been received.' } },
       { id: generateId(), type: 'map_locations', position: 2, isActive: true, manualData: [{ _id: generateId(), name: 'New York Flagship', address: { city: 'New York', state: 'NY' }, location: { lat: 40.7128, lng: -74.0060 }, isMainBranch: true, phoneNumber: '+1 212-555-1234', features: ['In-Store Pickup', 'Personal Styling'] }], config: { title: 'Our Global Presence', mapStyle: 'dark', zoom: 3 } },
       { id: generateId(), type: 'faq_accordion', position: 3, isActive: true, config: { title: 'Frequently Asked Questions', items: [{ question: 'Do you ship internationally?', answer: 'Yes, we ship to over 100 countries worldwide.' }, { question: 'What is your return policy?', answer: 'We offer a 30-day no-questions-asked return policy.' }] } },
@@ -93,6 +91,9 @@ exports.seedDefaultStorefront = async (organizationId, organizationName, session
     ]
   };
 
-  // Ensure documents are saved as part of the transaction
-  await StorefrontPage.insertMany([homePage, aboutPage, contactPage, productsPage], { session });
+  // Ensure documents are saved as part of the transaction sequentially
+  await new StorefrontPage(homePage).save({ session });
+  await new StorefrontPage(aboutPage).save({ session });
+  await new StorefrontPage(contactPage).save({ session });
+  await new StorefrontPage(productsPage).save({ session });
 };
