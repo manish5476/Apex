@@ -9,6 +9,7 @@ const { PERMISSIONS } = require('../../../config/permissions');
 const storefrontAdminController = require('../../controllers/storefront/storefrontAdmin.controller');
 const layoutAdminController     = require('../../controllers/storefront/layoutAdmin.controller');
 const smartRuleController       = require('../../controllers/storefront/smartRule.controller');
+const storefrontCustomerController = require('../../controllers/storefront/storefrontCustomer.controller');
 
 router.use(auth.protect);
 
@@ -60,6 +61,14 @@ router.post('/pages/:pageId/unpublish',    checkPermission(PERMISSIONS.STOREFRON
 router.post('/pages/:pageId/set-homepage', checkPermission(PERMISSIONS.STOREFRONT.PUBLISH), storefrontAdminController.setHomepage);
 router.post('/pages/:pageId/duplicate',    checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.duplicatePage);
 router.get('/pages/:pageId/analytics',     canReadStorefront, storefrontAdminController.getPageAnalytics);
+
+// ============================================================
+// STOREFRONT COMMERCE CUSTOMERS
+// Separate from ERP/CRM customers. Conversion is explicit/manual.
+// ============================================================
+router.get('/customers', canReadStorefront, storefrontCustomerController.adminList);
+router.get('/customers/:customerId', canReadStorefront, storefrontCustomerController.adminDetail);
+router.post('/customers/:customerId/convert-to-crm', checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontCustomerController.convertToCrm);
 
 // ============================================================
 // SMART RULES

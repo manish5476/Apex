@@ -5,5 +5,6 @@ module.exports = {
   SmartRuleController:        require('./smartRule.controller'),
   StorefrontPublicController: require('./storefrontPublic.controller'),
   ProductPublicController:    require('./productPublic.controller'),
-  CartController:             require('./cart.controller')
+  CartController:             require('./cart.controller'),
+  StorefrontCustomerController: require('./storefrontCustomer.controller')
 };

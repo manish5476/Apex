@@ -1,0 +1,196 @@
+'use strict';
+
+const StorefrontCustomer = require('../../models/storefront/storefrontCustomer.model');
+const StorefrontCustomerAddress = require('../../models/storefront/storefrontCustomerAddress.model');
+const StorefrontWishlist = require('../../models/storefront/storefrontWishlist.model');
+const StorefrontOrder = require('../../models/storefront/storefrontOrder.model');
+const StorefrontCart = require('../../models/storefront/storefrontCart.model');
+const Customer = require('../../../modules/organization/core/customer.model');
+const AppError = require('../../../core/utils/api/appError');
+
+class StorefrontCustomerService {
+  async getOrCreateGuest(organizationId, sessionId, payload = {}) {
+    const email = payload.email?.toLowerCase?.() || null;
+    const phone = payload.phone || null;
+
+    let customer = null;
+    if (email || phone) {
+      customer = await StorefrontCustomer.findOne({
+        organizationId,
+        $or: [
+          ...(email ? [{ email }] : []),
+          ...(phone ? [{ phone }] : [])
+        ]
+      });
+    }
+
+    if (!customer) {
+      customer = await StorefrontCustomer.create({
+        organizationId,
+        email,
+        phone,
+        firstName: payload.firstName ?? '',
+        lastName: payload.lastName ?? '',
+        guestAccount: true,
+        authProvider: 'guest',
+        marketingOptIn: !!payload.marketingOptIn,
+        metadata: { firstSessionId: sessionId }
+      });
+    } else {
+      customer.lastSeenAt = new Date();
+      if (payload.firstName && !customer.firstName) customer.firstName = payload.firstName;
+      if (payload.lastName && !customer.lastName) customer.lastName = payload.lastName;
+      if (phone && !customer.phone) customer.phone = phone;
+      await customer.save();
+    }
+
+    return customer;
+  }
+
+  async register(organizationId, payload) {
+    if (!payload.email) throw new AppError('Email is required', 400);
+    if (!payload.password || payload.password.length < 8) {
+      throw new AppError('Password must be at least 8 characters', 400);
+    }
+
+    const existing = await StorefrontCustomer.findOne({ organizationId, email: payload.email.toLowerCase() });
+    if (existing && !existing.guestAccount) throw new AppError('A storefront account already exists for this email', 409);
+
+    const customer = existing ?? new StorefrontCustomer({ organizationId, email: payload.email.toLowerCase() });
+    customer.firstName = payload.firstName ?? customer.firstName;
+    customer.lastName = payload.lastName ?? customer.lastName;
+    customer.phone = payload.phone ?? customer.phone;
+    customer.marketingOptIn = !!payload.marketingOptIn;
+    await customer.setPassword(payload.password);
+    await customer.save();
+    return customer;
+  }
+
+  async login(organizationId, email, password) {
+    const customer = await StorefrontCustomer.findOne({ organizationId, email: email?.toLowerCase(), status: 'active' }).select('+passwordHash');
+    if (!customer || !(await customer.comparePassword(password))) {
+      throw new AppError('Invalid storefront credentials', 401);
+    }
+    customer.lastSeenAt = new Date();
+    await customer.save();
+    return customer;
+  }
+
+  async addAddress(organizationId, customerId, payload) {
+    const count = await StorefrontCustomerAddress.countDocuments({ organizationId, customerId });
+    const isDefault = payload.isDefault === true || count === 0;
+
+    if (isDefault) {
+      await StorefrontCustomerAddress.updateMany({ organizationId, customerId }, { $set: { isDefault: false } });
+    }
+
+    const address = await StorefrontCustomerAddress.create({
+      organizationId,
+      customerId,
+      ...payload,
+      isDefault
+    });
+
+    if (isDefault) {
+      await StorefrontCustomer.findOneAndUpdate({ _id: customerId, organizationId }, { defaultAddressId: address._id });
+    }
+
+    return address;
+  }
+
+  async getDashboard(organizationId, customerId) {
+    const [customer, addresses, orders, wishlist, carts] = await Promise.all([
+      StorefrontCustomer.findOne({ _id: customerId, organizationId }).lean(),
+      StorefrontCustomerAddress.find({ customerId, organizationId }).sort({ isDefault: -1, updatedAt: -1 }).lean(),
+      StorefrontOrder.find({ customerId, organizationId }).sort({ createdAt: -1 }).limit(20).lean(),
+      StorefrontWishlist.find({ customerId, organizationId }).populate('productId', 'name slug images sellingPrice discountedPrice').lean(),
+      StorefrontCart.find({ customerId, organizationId, status: { $in: ['active', 'abandoned'] } }).sort({ updatedAt: -1 }).limit(5).lean()
+    ]);
+
+    if (!customer) throw new AppError('Storefront customer not found', 404);
+    return { customer, addresses, orders, wishlist, carts };
+  }
+
+  async listAdmin(organizationId, params = {}) {
+    const query = { organizationId };
+    if (params.status) query.status = params.status;
+    if (params.converted !== undefined) query.convertedToMainCustomer = params.converted === 'true';
+    if (params.guest !== undefined) query.guestAccount = params.guest === 'true';
+    if (params.search) {
+      const rx = new RegExp(params.search, 'i');
+      query.$or = [{ email: rx }, { phone: rx }, { firstName: rx }, { lastName: rx }];
+    }
+
+    const page = Math.max(Number(params.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(params.limit) || 25, 1), 100);
+    const [data, total] = await Promise.all([
+      StorefrontCustomer.find(query).sort({ updatedAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      StorefrontCustomer.countDocuments(query)
+    ]);
+
+    return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
+  }
+
+  async detailAdmin(organizationId, customerId) {
+    const data = await this.getDashboard(organizationId, customerId);
+    const abandonedCarts = await StorefrontCart.find({ organizationId, customerId, status: 'abandoned' }).sort({ updatedAt: -1 }).lean();
+    return { ...data, abandonedCarts };
+  }
+
+  async convertToCrmCustomer(organizationId, storefrontCustomerId, actorId = null) {
+    const customer = await StorefrontCustomer.findOne({ _id: storefrontCustomerId, organizationId });
+    if (!customer) throw new AppError('Storefront customer not found', 404);
+    if (customer.convertedToMainCustomer && customer.linkedCustomerId) {
+      return { storefrontCustomer: customer, crmCustomerId: customer.linkedCustomerId, alreadyConverted: true };
+    }
+
+    const defaultAddress = customer.defaultAddressId
+      ? await StorefrontCustomerAddress.findOne({ _id: customer.defaultAddressId, organizationId }).lean()
+      : await StorefrontCustomerAddress.findOne({ customerId: customer._id, organizationId }).sort({ isDefault: -1, updatedAt: -1 }).lean();
+
+    const name = customer.fullName || customer.email || customer.phone || 'Storefront Customer';
+    const phone = customer.phone || defaultAddress?.phone;
+    if (!phone) throw new AppError('A phone number is required before converting to CRM customer', 400);
+
+    const crmCustomer = await Customer.create({
+      organizationId,
+      type: 'individual',
+      name,
+      avatar: customer.avatar,
+      email: customer.email,
+      phone,
+      billingAddress: defaultAddress ? this.mapAddress(defaultAddress) : undefined,
+      shippingAddress: defaultAddress ? this.mapAddress(defaultAddress) : undefined,
+      tags: [...new Set([...(customer.tags ?? []), 'storefront-converted'])],
+      notes: [
+        customer.notes,
+        `Converted from storefront customer ${customer._id}`
+      ].filter(Boolean).join('\n'),
+      createdBy: actorId,
+      updatedBy: actorId
+    });
+
+    customer.convertedToMainCustomer = true;
+    customer.linkedCustomerId = crmCustomer._id;
+    await customer.save();
+
+    await StorefrontOrder.updateMany(
+      { organizationId, customerId: customer._id },
+      { $set: { 'metadata.linkedCustomerId': crmCustomer._id } }
+    );
+
+    return { storefrontCustomer: customer, crmCustomerId: crmCustomer._id, alreadyConverted: false };
+  }
+
+  mapAddress(address) {
+    return {
+      street: [address.addressLine1, address.addressLine2, address.landmark].filter(Boolean).join(', '),
+      city: address.city,
+      state: address.state,
+      zipCode: address.postalCode,
+      country: address.country
+    };
+  }
+}
+
+module.exports = new StorefrontCustomerService();

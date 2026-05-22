@@ -69,8 +69,9 @@ const {
   SmartRuleController,
   StorefrontPublicController,
   ProductPublicController,
-  CartController
-} = require('../controllers');
+  CartController,
+  StorefrontCustomerController
+} = require('../../controllers/storefront');
 
 // Auth middleware (swap for your actual middleware)
 // protect     → verifies JWT, attaches req.user
@@ -112,6 +113,10 @@ adminRouter.post('/pages/:pageId/unpublish',    StorefrontAdminController.unpubl
 adminRouter.post('/pages/:pageId/set-homepage', StorefrontAdminController.setHomepage);
 adminRouter.post('/pages/:pageId/duplicate',    StorefrontAdminController.duplicatePage);
 adminRouter.get('/pages/:pageId/analytics',     StorefrontAdminController.getPageAnalytics);
+
+adminRouter.get('/customers', StorefrontCustomerController.adminList);
+adminRouter.get('/customers/:customerId', StorefrontCustomerController.adminDetail);
+adminRouter.post('/customers/:customerId/convert-to-crm', StorefrontCustomerController.convertToCrm);
 
 // --- Smart Rules -------------------------------------------------------------
 // NOTE: /preview must be registered BEFORE /:ruleId so it isn't treated as an id
@@ -156,9 +161,18 @@ publicRouter.patch ('/:organizationSlug/cart/items/:cartItemId',  CartController
 publicRouter.delete('/:organizationSlug/cart/items/:cartItemId',  CartController.removeItem);
 publicRouter.delete('/:organizationSlug/cart',                    CartController.clearCart);
 publicRouter.get   ('/:organizationSlug/cart/validate',           CartController.validateCart);
+publicRouter.post  ('/:organizationSlug/cart/coupons',            CartController.applyCoupon);
+publicRouter.post  ('/:organizationSlug/cart/shipping-estimate',  CartController.estimateShipping);
 
-// Cart merge requires auth
-publicRouter.post('/:organizationSlug/cart/merge', protect, CartController.mergeCart);
+publicRouter.post('/:organizationSlug/cart/merge', CartController.mergeCart);
+
+publicRouter.post('/:organizationSlug/account/register', StorefrontCustomerController.register);
+publicRouter.post('/:organizationSlug/account/login',    StorefrontCustomerController.login);
+publicRouter.post('/:organizationSlug/account/logout',   StorefrontCustomerController.logout);
+publicRouter.get ('/:organizationSlug/account/me',       StorefrontCustomerController.me);
+publicRouter.post('/:organizationSlug/account/addresses', StorefrontCustomerController.addAddress);
+publicRouter.post('/:organizationSlug/checkout',          StorefrontCustomerController.checkout);
+publicRouter.get ('/:organizationSlug/orders/:orderNumber', StorefrontCustomerController.trackOrder);
 
 // --- Page renderer (catch-all — MUST be last) --------------------------------
 publicRouter.get('/:organizationSlug/:pageSlug', StorefrontPublicController.getPublicPage);
