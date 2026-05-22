@@ -64,4 +64,5 @@ module.exports = {
   storefrontPublicRoutes: require('../PublicModules/routes/storefront/public.routes.js'),
   storefrontAdminRoutes: require('../PublicModules/routes/storefront/admin.routes.js'),
   smartRuleRoutes: require('../PublicModules/routes/storefront/smartRule.routes.js'),
+  storefrontFormRoutes: require('../PublicModules/routes/storefrontForm.routes.js')
 };

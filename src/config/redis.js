@@ -112,9 +112,23 @@ const safeCache = {
         try {
             const redis = await getRedis();
             if (!redis) return 0;
-            const keys = await redis.keys(pattern);
-            if (keys.length > 0) await redis.del(...keys);
-            return keys.length;
+            let cursor = "0";
+            let deleted = 0;
+            do {
+                const [nextCursor, keys] = await redis.scan(
+                    cursor,
+                    "MATCH",
+                    pattern,
+                    "COUNT",
+                    250
+                );
+                cursor = nextCursor;
+                if (keys.length > 0) {
+                    deleted += keys.length;
+                    await redis.del(...keys);
+                }
+            } while (cursor !== "0");
+            return deleted;
         } catch (err) {
             return 0;
         }

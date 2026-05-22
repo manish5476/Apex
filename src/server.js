@@ -14,6 +14,11 @@ if (!DB_URI) {
   process.exit(1);
 }
 
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+  console.error("Missing JWT_SECRET in production environment");
+  process.exit(1);
+}
+
 let server;
 
 // =====================================================

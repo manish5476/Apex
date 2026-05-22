@@ -2,7 +2,13 @@ const jwt = require("jsonwebtoken");
 const User = require("../../modules/auth/core/user.model");
 const Organization = require("../../modules/organization/core/organization.model");
 
-const JWT_SECRET = process.env.JWT_SECRET || "change_this_secret";
+const getJwtSecret = () => {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET is required in production");
+  }
+  return "change_this_secret";
+};
 
 exports.protect = async (req, res, next) => {
   try {
@@ -18,7 +24,7 @@ exports.protect = async (req, res, next) => {
 
     // 2. Verify token
     const decoded = await new Promise((resolve, reject) =>
-      jwt.verify(token, JWT_SECRET, (err, payload) =>
+      jwt.verify(token, getJwtSecret(), (err, payload) =>
         err ? reject(err) : resolve(payload)
       )
     );

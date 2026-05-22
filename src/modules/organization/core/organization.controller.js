@@ -14,6 +14,7 @@ const LeaveBalance = require('../../HRMS/models/leaveBalance.model');
 const Department = require('../../HRMS/models/department.model');
 const Designation = require('../../HRMS/models/designation.model');
 const { emitToOrg, emitToUser } = require('../../../socketHandlers/socket');
+const { seedDefaultStorefront } = require('../../../PublicModules/services/storefront-onboarding.service');
 
 /* ---------------------------------------------------------------
  * Utility: Generate Unique Shop ID
@@ -46,13 +47,13 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
 
   try {
     // Pre-generate all IDs so cross-references work before any save
-    const orgId   = new mongoose.Types.ObjectId();
+    const orgId = new mongoose.Types.ObjectId();
     const branchId = new mongoose.Types.ObjectId();
-    const roleId   = new mongoose.Types.ObjectId();
-    const ownerId  = new mongoose.Types.ObjectId();
-    const shiftId  = new mongoose.Types.ObjectId();
-    const deptId   = new mongoose.Types.ObjectId();
-    const desigId  = new mongoose.Types.ObjectId();
+    const roleId = new mongoose.Types.ObjectId();
+    const ownerId = new mongoose.Types.ObjectId();
+    const shiftId = new mongoose.Types.ObjectId();
+    const deptId = new mongoose.Types.ObjectId();
+    const desigId = new mongoose.Types.ObjectId();
 
     const newOrg = new Organization({
       _id: orgId,
@@ -149,7 +150,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       organizationId: orgId,
       financialYear: getFinancialYear(),
       casualLeave: { total: 12, used: 0 },
-      sickLeave:   { total: 10, used: 0 },
+      sickLeave: { total: 10, used: 0 },
       earnedLeave: { total: 15, used: 0 },
     });
 
@@ -163,12 +164,15 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
     await newOwner.save({ session });
     await leaveBalance.save({ session });
 
+    // Seed Default Storefront for this new organization
+    await seedDefaultStorefront(orgId, organizationName, session);
+
     await session.commitTransaction();
 
     // Strip password before sending
-    const accessToken  = signAccessToken(newOwner);
+    const accessToken = signAccessToken(newOwner);
     const refreshToken = signRefreshToken(newOwner);
-    newOwner.password  = undefined;
+    newOwner.password = undefined;
 
     res.status(201).json({
       status: 'success',
@@ -179,10 +183,10 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
         organization: newOrg,
         owner: newOwner,
         setup: {
-          branch:      newBranch.name,
-          role:        newRole.name,
-          shift:       defaultShift.name,
-          department:  defaultDept.name,
+          branch: newBranch.name,
+          role: newRole.name,
+          shift: defaultShift.name,
+          department: defaultDept.name,
           designation: defaultDesig.name,
         },
       },
@@ -254,12 +258,12 @@ exports.approveMember = catchAsync(async (req, res, next) => {
     Branch.findOne({ _id: branchId, organizationId: req.user.organizationId }),
   ]);
 
-  if (!role)   return next(new AppError('Invalid role ID.', 400));
+  if (!role) return next(new AppError('Invalid role ID.', 400));
   if (!branch) return next(new AppError('Invalid branch ID.', 400));
 
   // Simple update — no transaction needed (single document save)
-  user.status   = 'approved';
-  user.role     = roleId;
+  user.status = 'approved';
+  user.role = roleId;
   user.branchId = branchId;
   await user.save();
 
@@ -511,7 +515,7 @@ exports.getMyOrganization = catchAsync(async (req, res, next) => {
     .select('name email role status avatar phone')
     .populate('role', 'name');
 
-  const orgData  = org.toObject();
+  const orgData = org.toObject();
   orgData.members = staffList;
 
   res.status(200).json({ status: 'success', data: orgData });
@@ -531,7 +535,7 @@ exports.getOrganization = catchAsync(async (req, res, next) => {
   const staffList = await User.find({ organizationId: org._id })
     .select('name email role status phone');
 
-  const orgData  = org.toObject();
+  const orgData = org.toObject();
   orgData.members = staffList;
 
   res.status(200).json({ status: 'success', data: orgData });
@@ -541,8 +545,8 @@ exports.getOrganization = catchAsync(async (req, res, next) => {
  * Platform-admin CRUD (factory delegates)
 --------------------------------------------------------------- */
 exports.getAllOrganizations = factory.getAll(Organization);
-exports.updateOrganization  = factory.updateOne(Organization);
-exports.deleteOrganization  = factory.deleteOne(Organization);
+exports.updateOrganization = factory.updateOne(Organization);
+exports.deleteOrganization = factory.deleteOne(Organization);
 
 
 
@@ -762,9 +766,9 @@ exports.deleteOrganization  = factory.deleteOne(Organization);
 //     //   status: 'success',
 //     //   message: 'Organization set up successfully!',
 //     //   token,
-//     //   data: { 
-//     //     organization: newOrg, 
-//     //     owner: newOwner, 
+//     //   data: {
+//     //     organization: newOrg,
+//     //     owner: newOwner,
 //     //     setup: {
 //     //       branch: newBranch.name,
 //     //       role: newRole.name,
@@ -858,7 +862,7 @@ exports.deleteOrganization  = factory.deleteOne(Organization);
 //     user.role = roleId;
 //     user.branchId = branchId;
 
-//     // ❌ REMOVED: org.members.push(...). 
+//     // ❌ REMOVED: org.members.push(...).
 //     // The user is already linked via `organizationId`, so we just save the user.
 
 //     await user.save({ session });
@@ -1153,7 +1157,7 @@ exports.deleteOrganization  = factory.deleteOne(Organization);
 //   });
 // });
 
-// /* ------------------------------------------------------------- 
+// /* -------------------------------------------------------------
 //   Platform Admin: Get Any Organization
 // ------------------------------------------------------------- */
 // exports.getOrganization = catchAsync(async (req, res, next) => {

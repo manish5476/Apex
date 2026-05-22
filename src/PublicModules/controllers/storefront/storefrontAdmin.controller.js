@@ -24,6 +24,8 @@
 
 const { StorefrontPage, SectionTemplate } = require('../../models/storefront/index');
 const SectionRegistry  = require('../../services/storefront/sectionRegistry.service');
+const StorefrontCache  = require('../../services/storefront/cacheInvalidation.service');
+const PageSnapshotService = require('../../services/storefront/pageSnapshot.service');
 const SectionValidator = require('../../middleware/validation/section.validator');
 const AppError         = require('../../../core/utils/api/appError');
 const { THEME_LIST }   = require('../../utils/constants/storefront/themes.constants');
@@ -144,6 +146,8 @@ class StorefrontAdminController {
         createdBy:    req.user._id
       });
 
+      await StorefrontCache.invalidateStore(organizationId);
+
       res.status(201).json({
         status:  'success',
         message: 'Page created',
@@ -207,6 +211,12 @@ class StorefrontAdminController {
 
       if (!page) return next(new AppError('Page not found', 404));
 
+      if (page.isPublished && page.status === 'published') {
+        await PageSnapshotService.buildForPage(organizationId, page._id);
+      } else {
+        await StorefrontCache.invalidateStore(organizationId);
+      }
+
       res.status(200).json({
         status:  'success',
         message: 'Page saved',
@@ -249,6 +259,7 @@ class StorefrontAdminController {
       }
 
       await page.deleteOne();
+      await PageSnapshotService.deleteForPage(organizationId, pageId);
 
       res.status(200).json({ status: 'success', message: 'Page deleted' });
     } catch (err) {
@@ -273,6 +284,8 @@ class StorefrontAdminController {
       );
       if (!page) return next(new AppError('Page not found', 404));
 
+      await PageSnapshotService.buildForPage(organizationId, page._id);
+
       res.status(200).json({ status: 'success', message: 'Page is now live', data: page });
     } catch (err) {
       next(err);
@@ -295,6 +308,8 @@ class StorefrontAdminController {
         { new: true }
       );
       if (!page) return next(new AppError('Page not found', 404));
+
+      await PageSnapshotService.deleteForPage(organizationId, page._id);
 
       res.status(200).json({ status: 'success', message: 'Page unpublished', data: page });
     } catch (err) {
@@ -322,6 +337,7 @@ class StorefrontAdminController {
       // The pre-save hook on StorefrontPage handles clearing isHomepage on others
       page.isHomepage = true;
       await page.save();
+      await PageSnapshotService.buildForPage(organizationId, page._id);
 
       res.status(200).json({ status: 'success', message: 'Homepage updated', data: page });
     } catch (err) {
@@ -362,6 +378,8 @@ class StorefrontAdminController {
         version:     1,
         createdBy:   req.user._id
       });
+
+      await StorefrontCache.invalidateStore(organizationId);
 
       res.status(201).json({ status: 'success', message: 'Page duplicated', data: newPage });
     } catch (err) {

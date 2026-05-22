@@ -14,6 +14,7 @@
 
 const StorefrontLayout = require('../../models/storefront/storefrontLayout.model');
 const redisUtils       = require('../../../config/redis');
+const StorefrontCache  = require('./cacheInvalidation.service');
 const { nanoid }       = require('nanoid');
 
 const CACHE_TTL = 3600; // 1 hour
@@ -61,8 +62,8 @@ class LayoutService {
       { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
     ).lean();
 
-    // Flush immediately — next read will rebuild from DB
-    await redisUtils.safeCache.delete(this._key(organizationId));
+    // Layout is embedded in every public page response, so flush page structures too.
+    await StorefrontCache.invalidateStore(organizationId);
 
     return layout;
   }
@@ -159,4 +160,4 @@ class LayoutService {
   }
 }
 
-module.exports = new LayoutService();
+module.exports = new LayoutService();
