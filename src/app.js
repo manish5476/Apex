@@ -62,6 +62,9 @@ const corsOptions = {
         "https://apex-infinity.vercel.app",
         "https://apex-infinity-vert.vercel.app"
       ];
+    const allowVercelPreviewOrigins = process.env.ALLOW_VERCEL_PREVIEW_ORIGINS !== "false";
+    const isVercelPreviewOrigin =
+      allowVercelPreviewOrigins && /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
 
     // In development, allow all origins to accommodate dynamic local IPs
     if (process.env.NODE_ENV === "development" || !origin) {
@@ -69,7 +72,7 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('exp://')) {
+    if (allowedOrigins.indexOf(origin) !== -1 || isVercelPreviewOrigin || origin.startsWith('exp://')) {
       console.log(`✅ CORS: Allowed specific origin ${origin}`);
       callback(null, true);
     } else {
