@@ -433,7 +433,7 @@ class ProductPublicController {
 
       const baseMatch = { organizationId: org._id, isActive: true, isDeleted: { $ne: true } };
 
-      const [allMasters, productStats, tagStats] = await Promise.all([
+      const [allMasters, productStats, tagStats, allProducts] = await Promise.all([
         Master.find({
           organizationId: org._id,
           isActive: true,
@@ -458,7 +458,12 @@ class ProductPublicController {
           { $group: { _id: '$tags', count: { $sum: 1 } } },
           { $sort: { count: -1 } },
           { $limit: 30 }
-        ])
+        ]),
+
+        Product.find(baseMatch)
+          .select('name slug images')
+          .sort({ name: 1 })
+          .lean()
       ]);
 
       const catCounts   = new Map(productStats[0].byCategory.map(x => [x._id?.toString(), x.count]));
@@ -484,7 +489,8 @@ class ProductPublicController {
             brands:      allMasters.filter(m => m.type === 'brand').map(format),
             departments: allMasters.filter(m => m.type === 'department').map(format),
             units:       allMasters.filter(m => m.type === 'unit').map(m => ({ id: m._id, name: m.name })),
-            tags:        tagStats.map(t => t._id)
+            tags:        tagStats.map(t => t._id),
+            products:    allProducts.map(p => ({ id: p._id, name: p.name, slug: p.slug, image: p.images?.[0] ?? null }))
           },
           filters: {
             price: { min: priceInfo.min, max: priceInfo.max }
