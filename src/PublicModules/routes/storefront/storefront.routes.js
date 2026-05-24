@@ -69,8 +69,9 @@ const {
   SmartRuleController,
   StorefrontPublicController,
   ProductPublicController,
-  CartController
-} = require('../controllers');
+  CartController,
+  StorefrontCustomerController
+} = require('../../controllers/storefront');
 
 // Auth middleware (swap for your actual middleware)
 // protect     → verifies JWT, attaches req.user
@@ -90,40 +91,44 @@ const adminRouter = express.Router();
 adminRouter.use(protect);
 
 // --- Layout -----------------------------------------------------------------
-adminRouter.get('/layout',       LayoutAdminController.getLayout);
-adminRouter.put('/layout',       LayoutAdminController.updateLayout);
+adminRouter.get('/layout', LayoutAdminController.getLayout);
+adminRouter.put('/layout', LayoutAdminController.updateLayout);
 adminRouter.delete('/layout/reset', LayoutAdminController.resetLayout);
 
 // --- Builder catalogue -------------------------------------------------------
 adminRouter.get('/section-types', StorefrontAdminController.getSectionTypes);
-adminRouter.get('/templates',     StorefrontAdminController.getTemplates);
-adminRouter.get('/themes',        StorefrontAdminController.getAvailableThemes);
+adminRouter.get('/templates', StorefrontAdminController.getTemplates);
+adminRouter.get('/themes', StorefrontAdminController.getAvailableThemes);
 
 // --- Pages -------------------------------------------------------------------
-adminRouter.get('/pages',     StorefrontAdminController.getPages);
-adminRouter.post('/pages',    StorefrontAdminController.createPage);
+adminRouter.get('/pages', StorefrontAdminController.getPages);
+adminRouter.post('/pages', StorefrontAdminController.createPage);
 
-adminRouter.get('/pages/:pageId',    StorefrontAdminController.getPageById);
-adminRouter.put('/pages/:pageId',    StorefrontAdminController.updatePage);
+adminRouter.get('/pages/:pageId', StorefrontAdminController.getPageById);
+adminRouter.put('/pages/:pageId', StorefrontAdminController.updatePage);
 adminRouter.delete('/pages/:pageId', StorefrontAdminController.deletePage);
 
-adminRouter.post('/pages/:pageId/publish',      StorefrontAdminController.publishPage);
-adminRouter.post('/pages/:pageId/unpublish',    StorefrontAdminController.unpublishPage);
+adminRouter.post('/pages/:pageId/publish', StorefrontAdminController.publishPage);
+adminRouter.post('/pages/:pageId/unpublish', StorefrontAdminController.unpublishPage);
 adminRouter.post('/pages/:pageId/set-homepage', StorefrontAdminController.setHomepage);
-adminRouter.post('/pages/:pageId/duplicate',    StorefrontAdminController.duplicatePage);
-adminRouter.get('/pages/:pageId/analytics',     StorefrontAdminController.getPageAnalytics);
+adminRouter.post('/pages/:pageId/duplicate', StorefrontAdminController.duplicatePage);
+adminRouter.get('/pages/:pageId/analytics', StorefrontAdminController.getPageAnalytics);
+
+adminRouter.get('/customers', StorefrontCustomerController.adminList);
+adminRouter.get('/customers/:customerId', StorefrontCustomerController.adminDetail);
+adminRouter.post('/customers/:customerId/convert-to-crm', StorefrontCustomerController.convertToCrm);
 
 // --- Smart Rules -------------------------------------------------------------
 // NOTE: /preview must be registered BEFORE /:ruleId so it isn't treated as an id
-adminRouter.get('/rules',         SmartRuleController.getAllRules);
-adminRouter.post('/rules',        SmartRuleController.createRule);
+adminRouter.get('/rules', SmartRuleController.getAllRules);
+adminRouter.post('/rules', SmartRuleController.createRule);
 adminRouter.post('/rules/preview', SmartRuleController.previewRule);
 
-adminRouter.get('/rules/:ruleId',    SmartRuleController.getRuleById);
-adminRouter.put('/rules/:ruleId',    SmartRuleController.updateRule);
+adminRouter.get('/rules/:ruleId', SmartRuleController.getRuleById);
+adminRouter.put('/rules/:ruleId', SmartRuleController.updateRule);
 adminRouter.delete('/rules/:ruleId', SmartRuleController.deleteRule);
 
-adminRouter.post('/rules/:ruleId/execute',     SmartRuleController.executeRule);
+adminRouter.post('/rules/:ruleId/execute', SmartRuleController.executeRule);
 adminRouter.post('/rules/:ruleId/clear-cache', SmartRuleController.clearCache);
 
 // ============================================================================
@@ -135,30 +140,40 @@ const publicRouter = express.Router();
 publicRouter.use(publicRateLimit);
 
 // --- Per org (parameterised by slug) -----------------------------------------
-publicRouter.get('/:organizationSlug',         StorefrontPublicController.getOrganizationInfo);
+publicRouter.get('/:organizationSlug', StorefrontPublicController.getOrganizationInfo);
 publicRouter.get('/:organizationSlug/sitemap', StorefrontPublicController.getSitemap);
-publicRouter.get('/:organizationSlug/meta',    ProductPublicController.getStoreMetadata);
+publicRouter.get('/:organizationSlug/meta', ProductPublicController.getStoreMetadata);
 publicRouter.get('/:organizationSlug/filters', ProductPublicController.getShopFilters);
-publicRouter.get('/:organizationSlug/search',  ProductPublicController.searchProducts);
+publicRouter.get('/:organizationSlug/search', ProductPublicController.searchProducts);
 publicRouter.get('/:organizationSlug/categories', ProductPublicController.getCategories);
-publicRouter.get('/:organizationSlug/brands',     ProductPublicController.getBrands);
-publicRouter.get('/:organizationSlug/tags',        ProductPublicController.getTags);
+publicRouter.get('/:organizationSlug/brands', ProductPublicController.getBrands);
+publicRouter.get('/:organizationSlug/tags', ProductPublicController.getTags);
 
 // Products
-publicRouter.get('/:organizationSlug/products',             ProductPublicController.getProducts);
+publicRouter.get('/:organizationSlug/products', ProductPublicController.getProducts);
 publicRouter.get('/:organizationSlug/products/:productSlug', ProductPublicController.getProductBySlug);
 
 // Cart — optionally authenticated (protect is optional here; CartController
 // handles both authed and guest flows via cookie fallback)
-publicRouter.get   ('/:organizationSlug/cart',                    CartController.getCart);
-publicRouter.post  ('/:organizationSlug/cart/items',              CartController.addItem);
-publicRouter.patch ('/:organizationSlug/cart/items/:cartItemId',  CartController.updateItemQuantity);
-publicRouter.delete('/:organizationSlug/cart/items/:cartItemId',  CartController.removeItem);
-publicRouter.delete('/:organizationSlug/cart',                    CartController.clearCart);
-publicRouter.get   ('/:organizationSlug/cart/validate',           CartController.validateCart);
+publicRouter.get('/:organizationSlug/cart', CartController.getCart);
+publicRouter.post('/:organizationSlug/cart/items', CartController.addItem);
+publicRouter.patch('/:organizationSlug/cart/items/:cartItemId', CartController.updateItemQuantity);
+publicRouter.delete('/:organizationSlug/cart/items/:cartItemId', CartController.removeItem);
+publicRouter.delete('/:organizationSlug/cart', CartController.clearCart);
+publicRouter.get('/:organizationSlug/cart/validate', CartController.validateCart);
+publicRouter.post('/:organizationSlug/cart/coupons', CartController.applyCoupon);
+publicRouter.post('/:organizationSlug/cart/shipping-estimate', CartController.estimateShipping);
 
-// Cart merge requires auth
-publicRouter.post('/:organizationSlug/cart/merge', protect, CartController.mergeCart);
+publicRouter.post('/:organizationSlug/cart/merge', CartController.mergeCart);
+
+publicRouter.post('/:organizationSlug/account/register', StorefrontCustomerController.register);
+publicRouter.post('/:organizationSlug/account/login', StorefrontCustomerController.login);
+publicRouter.post('/:organizationSlug/account/logout', StorefrontCustomerController.logout);
+publicRouter.get('/:organizationSlug/account/me', StorefrontCustomerController.me);
+publicRouter.get('/:organizationSlug/account/orders', StorefrontCustomerController.getOrders);
+publicRouter.post('/:organizationSlug/account/addresses', StorefrontCustomerController.addAddress);
+publicRouter.post('/:organizationSlug/checkout', StorefrontCustomerController.checkout);
+publicRouter.get('/:organizationSlug/orders/:orderNumber', StorefrontCustomerController.trackOrder);
 
 // --- Page renderer (catch-all — MUST be last) --------------------------------
 publicRouter.get('/:organizationSlug/:pageSlug', StorefrontPublicController.getPublicPage);
@@ -170,6 +185,6 @@ publicRouter.get('/:organizationSlug/:pageSlug', StorefrontPublicController.getP
 const storefrontRouter = express.Router();
 
 storefrontRouter.use('/admin/storefront', adminRouter);
-storefrontRouter.use('/store',            publicRouter);
+storefrontRouter.use('/store', publicRouter);
 
 module.exports = storefrontRouter;

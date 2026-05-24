@@ -1,63 +1,51 @@
-// src/storefront/models/storefrontCart.model.js
+'use strict';
+
 const mongoose = require('mongoose');
 
-const cartItemSchema = new mongoose.Schema({
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true
-  },
-  // Snapshot at time of add — prevents price drift
-  snapshot: {
-    name:           { type: String, required: true },
-    slug:           { type: String, required: true },
-    image:          { type: String },
-    sku:            { type: String },
-    sellingPrice:   { type: Number, required: true },
-    discountedPrice:{ type: Number },
-    taxRate:        { type: Number, default: 0 },
-    isTaxInclusive: { type: Boolean, default: false }
-  },
-  quantity:  { type: Number, required: true, min: 1, default: 1 },
-  // Branchid for multi-branch stock reservation
-  branchId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' }
-}, { _id: true, timestamps: false });
+const amountBreakdownSchema = new mongoose.Schema({
+  subtotal: { type: Number, default: 0 },
+  total: { type: Number, default: 0 },
+  currency: { type: String, default: 'INR' }
+}, { _id: false });
 
-// Virtual: line total using discounted price if available
-cartItemSchema.virtual('lineTotal').get(function () {
-  const price = this.snapshot.discountedPrice || this.snapshot.sellingPrice;
-  return parseFloat((price * this.quantity).toFixed(2));
-});
+const appliedCouponSchema = new mongoose.Schema({
+  code: { type: String, trim: true, uppercase: true, required: true },
+  discountType: { type: String, enum: ['fixed', 'percentage', 'shipping'], default: 'fixed' },
+  amount: { type: Number, default: 0 },
+  metadata: { type: mongoose.Schema.Types.Mixed, default: {} }
+}, { _id: false });
 
-const cartSchema = new mongoose.Schema({
-  organizationId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Organization',
-    required: true,
-    index: true
-  },
-  // One of these will be set — guest or logged-in customer
-  customerId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', default: null, index: true },
-  sessionToken:{ type: String, index: true }, // For guest carts
+const storefrontCartSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
+  storefrontId: { type: mongoose.Schema.Types.ObjectId, default: null, index: true },
 
-  items: { type: [cartItemSchema], default: [] },
+  customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontCustomer', default: null, index: true },
+  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontSession', default: null, index: true },
+  sessionToken: { type: String, select: false }, // Legacy compatibility only; use StorefrontSession for ownership.
 
-  // Applied promo/coupon (placeholder for future)
-  couponCode:    { type: String, trim: true, uppercase: true, default: null },
-  discountAmount:{ type: Number, default: 0 },
+  currency: { type: String, default: 'INR' },
+  totals: { type: amountBreakdownSchema, default: () => ({}) },
+  discountTotals: { type: amountBreakdownSchema, default: () => ({}) },
+  shippingTotals: { type: amountBreakdownSchema, default: () => ({}) },
+  taxTotals: { type: amountBreakdownSchema, default: () => ({}) },
 
-  // Cart-level metadata
-  notes:     { type: String, trim: true },
-  expiresAt: {
-    type: Date,
-    // Guest carts expire in 7 days, customer carts in 30
-    default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-  },
+  cartItems: [{ type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontCartItem' }],
+  appliedCoupons: { type: [appliedCouponSchema], default: [] },
+
   status: {
     type: String,
-    enum: ['active', 'merged', 'converted', 'abandoned'],
+    enum: ['active', 'merged', 'converted', 'abandoned', 'expired'],
     default: 'active',
     index: true
+  },
+  abandonedAt: { type: Date, default: null },
+  recoverySentAt: { type: Date, default: null },
+  notes: { type: String, trim: true, default: '' },
+  metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
+  expiresAt: {
+    type: Date,
+    default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    index: false
   }
 }, {
   timestamps: true,
@@ -65,18 +53,9 @@ const cartSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// TTL index — MongoDB auto-deletes expired carts
-cartSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-cartSchema.index({ organizationId: 1, status: 1 });
+storefrontCartSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+storefrontCartSchema.index({ organizationId: 1, status: 1, updatedAt: -1 });
+storefrontCartSchema.index({ organizationId: 1, customerId: 1, status: 1 });
+storefrontCartSchema.index({ organizationId: 1, sessionId: 1, status: 1 });
 
-// Virtual: subtotal before discount
-cartSchema.virtual('subtotal').get(function () {
-  return parseFloat(
-    this.items.reduce((sum, item) => {
-      const price = item.snapshot.discountedPrice || item.snapshot.sellingPrice;
-      return sum + price * item.quantity;
-    }, 0).toFixed(2)
-  );
-});
-
-module.exports = mongoose.model('StorefrontCart', cartSchema);
+module.exports = mongoose.model('StorefrontCart', storefrontCartSchema);

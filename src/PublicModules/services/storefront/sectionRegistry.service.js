@@ -120,8 +120,15 @@ class SectionRegistry {
     for (const [key, rule] of Object.entries(schema)) {
       if (!rule || typeof rule !== 'object') continue;
 
-      const val = config[key];
-      const missing = val === undefined || val === null || val === '';
+      let val = config[key];
+      let missing = val === undefined || val === null || val === '';
+
+      // Inject defaults if missing
+      if (missing && rule.default !== undefined) {
+        val = rule.default;
+        config[key] = val; // Mutate the config payload
+        missing = false;
+      }
 
       // Required
       if (rule.required && missing) {

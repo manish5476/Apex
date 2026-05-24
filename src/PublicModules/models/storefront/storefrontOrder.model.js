@@ -1,109 +1,113 @@
-// src/storefront/models/storefrontOrder.model.js
+'use strict';
+
 const mongoose = require('mongoose');
 const { nanoid } = require('nanoid');
 
-const orderItemSchema = new mongoose.Schema({
-  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-  snapshot: {
-    name:           { type: String, required: true },
-    slug:           { type: String },
-    sku:            { type: String },
-    image:          { type: String },
-    sellingPrice:   { type: Number, required: true },
-    discountedPrice:{ type: Number },
-    taxRate:        { type: Number, default: 0 },
-    isTaxInclusive: { type: Boolean, default: false },
-    hsnCode:        { type: String } // GST compliance
-  },
-  quantity:    { type: Number, required: true, min: 1 },
-  unitPrice:   { type: Number, required: true }, // actual price charged
-  taxAmount:   { type: Number, default: 0 },
-  lineTotal:   { type: Number, required: true }  // unitPrice * qty
-}, { _id: true });
-
 const addressSchema = new mongoose.Schema({
-  name:    { type: String },
-  phone:   { type: String },
-  street:  { type: String },
-  city:    { type: String },
-  state:   { type: String },
-  zipCode: { type: String },
-  country: { type: String, default: 'India' }
+  fullName: { type: String, trim: true },
+  phone: { type: String, trim: true },
+  country: { type: String, trim: true, default: 'India' },
+  state: { type: String, trim: true },
+  city: { type: String, trim: true },
+  postalCode: { type: String, trim: true },
+  addressLine1: { type: String, trim: true },
+  addressLine2: { type: String, trim: true },
+  landmark: { type: String, trim: true }
 }, { _id: false });
 
-const orderSchema = new mongoose.Schema({
-  organizationId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Organization',
-    required: true,
-    index: true
+const orderItemSchema = new mongoose.Schema({
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  variantId: { type: mongoose.Schema.Types.ObjectId, default: null },
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null },
+  snapshot: {
+    name: { type: String, required: true },
+    slug: { type: String },
+    sku: { type: String },
+    image: { type: String },
+    variantTitle: { type: String },
+    sellingPrice: { type: Number, required: true },
+    discountedPrice: { type: Number },
+    taxRate: { type: Number, default: 0 },
+    isTaxInclusive: { type: Boolean, default: false },
+    hsnCode: { type: String }
   },
-  // Human-readable order number
-  orderNumber: {
-    type: String,
-    unique: true
-  },
-  // Customer: may be a registered Customer doc or a guest
-  customerId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', default: null },
-  guestEmail:    { type: String, trim: true, lowercase: true },
-  guestPhone:    { type: String, trim: true },
-
-  // Source cart (for auditing)
-  cartId:        { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontCart' },
-
-  items: { type: [orderItemSchema], required: true },
-
-  shippingAddress: { type: addressSchema },
-  billingAddress:  { type: addressSchema },
-
-  // Financials — all stored explicitly for audit trail
-  subtotal:       { type: Number, required: true },
+  quantity: { type: Number, required: true, min: 1 },
+  unitPrice: { type: Number, required: true },
   discountAmount: { type: Number, default: 0 },
-  taxAmount:      { type: Number, default: 0 },
-  shippingAmount: { type: Number, default: 0 },
-  grandTotal:     { type: Number, required: true },
-  currency:       { type: String, default: 'INR' },
+  taxAmount: { type: Number, default: 0 },
+  lineTotal: { type: Number, required: true }
+}, { _id: true });
 
-  couponCode: { type: String },
+const timelineSchema = new mongoose.Schema({
+  type: { type: String, required: true },
+  message: { type: String, required: true },
+  at: { type: Date, default: Date.now },
+  actorId: { type: mongoose.Schema.Types.ObjectId, default: null },
+  metadata: { type: mongoose.Schema.Types.Mixed, default: {} }
+}, { _id: false });
 
-  // Lifecycle
-  status: {
+const totalsSchema = new mongoose.Schema({
+  subtotal: { type: Number, default: 0 },
+  discount: { type: Number, default: 0 },
+  shipping: { type: Number, default: 0 },
+  tax: { type: Number, default: 0 },
+  grandTotal: { type: Number, default: 0 },
+  currency: { type: String, default: 'INR' }
+}, { _id: false });
+
+const storefrontOrderSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
+  storefrontId: { type: mongoose.Schema.Types.ObjectId, default: null, index: true },
+  customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontCustomer', required: true, index: true },
+  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontSession', default: null, index: true },
+  guestOrder: { type: Boolean, default: false, index: true },
+  orderNumber: { type: String, unique: true, index: true },
+  cartId: { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontCart', default: null },
+
+  billingAddress: { type: addressSchema, required: true },
+  shippingAddress: { type: addressSchema, required: true },
+  items: { type: [orderItemSchema], required: true },
+  totals: { type: totalsSchema, required: true },
+  appliedCoupons: { type: [String], default: [] },
+
+  paymentStatus: {
     type: String,
-    enum: ['pending','confirmed','processing','shipped','delivered','cancelled','refunded'],
+    enum: ['pending', 'authorized', 'paid', 'failed', 'partially_refunded', 'refunded'],
     default: 'pending',
     index: true
   },
-  paymentStatus: {
+  fulfillmentStatus: {
     type: String,
-    enum: ['unpaid','paid','partial','refunded'],
-    default: 'unpaid'
+    enum: ['unfulfilled', 'partial', 'fulfilled', 'shipped', 'delivered', 'returned'],
+    default: 'unfulfilled',
+    index: true
   },
-  paymentMethod:  { type: String },
-  paymentRef:     { type: String }, // External payment gateway ref
+  orderStatus: {
+    type: String,
+    enum: ['draft', 'placed', 'confirmed', 'processing', 'cancelled', 'closed'],
+    default: 'placed',
+    index: true
+  },
 
-  notes:          { type: String },
-  internalNotes:  { type: String },
-  cancelReason:   { type: String },
-
-  confirmedAt: Date,
-  shippedAt:   Date,
-  deliveredAt: Date,
-  cancelledAt: Date
+  timeline: { type: [timelineSchema], default: [] },
+  notes: { type: String, trim: true, default: '' },
+  internalNotes: { type: String, trim: true, default: '' },
+  metadata: { type: mongoose.Schema.Types.Mixed, default: {} }
 }, { timestamps: true });
 
-// Indexes
-orderSchema.index({ organizationId: 1, status: 1 });
-orderSchema.index({ organizationId: 1, customerId: 1 });
-orderSchema.index({ organizationId: 1, createdAt: -1 });
+storefrontOrderSchema.index({ organizationId: 1, orderStatus: 1, createdAt: -1 });
+storefrontOrderSchema.index({ organizationId: 1, customerId: 1, createdAt: -1 });
+storefrontOrderSchema.index({ organizationId: 1, guestOrder: 1, createdAt: -1 });
 
-// Auto-generate order number before insert
-orderSchema.pre('save', async function (next) {
+storefrontOrderSchema.pre('save', function (next) {
   if (this.isNew && !this.orderNumber) {
-    // Format: ORD-{YYYYMMDD}-{6-char nanoid}
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    this.orderNumber = `ORD-${date}-${nanoid(6).toUpperCase()}`;
+    this.orderNumber = `SF-${date}-${nanoid(7).toUpperCase()}`;
+  }
+  if (this.isNew && (!this.timeline || this.timeline.length === 0)) {
+    this.timeline = [{ type: 'order_placed', message: 'Order placed' }];
   }
   next();
 });
 
-module.exports = mongoose.model('StorefrontOrder', orderSchema);
+module.exports = mongoose.model('StorefrontOrder', storefrontOrderSchema);

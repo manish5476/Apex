@@ -1,314 +1,229 @@
-/**
- * CartService
- *
- * Manages the full shopping cart lifecycle:
- *   - Add / update / remove items
- *   - Guest carts (sessionToken) and customer carts (customerId)
- *   - Cart merge: guest cart → customer cart on login
- *   - Stock validation on add and on checkout
- *   - Price snapshots — cart stores the price at time of add
- *
- * The cart never holds live prices — the snapshot is what the customer agreed to.
- * Re-validation happens at checkout to catch price changes.
- */
-
 'use strict';
 
 const mongoose = require('mongoose');
 const StorefrontCart = require('../../models/storefront/storefrontCart.model');
+const StorefrontCartItem = require('../../models/storefront/storefrontCartItem.model');
 const Product = require('../../../modules/inventory/core/model/product.model');
 const AppError = require('../../../core/utils/api/appError');
 
-// Guest carts expire in 7 days, customer carts in 30
 const GUEST_CART_TTL = 7 * 24 * 60 * 60 * 1000;
 const CUSTOMER_CART_TTL = 30 * 24 * 60 * 60 * 1000;
 
 class CartService {
-
-  // ---------------------------------------------------------------------------
-  // Public: get or create a cart
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Resolves the active cart for a session or customer.
-   * Creates one if none exists.
-   *
-   * @param {string}  organizationId
-   * @param {Object}  identity        { sessionToken? } or { customerId? }
-   * @returns {Object}  Cart document (lean)
-   */
-  async getOrCreate(organizationId, identity) {
+  async getOrCreate(organizationId, identity, options = {}) {
     this._validateIdentity(identity);
-
     let cart = await this._findActiveCart(organizationId, identity);
 
     if (!cart) {
-      const isCustomer = !!identity.customerId;
-      const ttl = isCustomer ? CUSTOMER_CART_TTL : GUEST_CART_TTL;
-
       cart = await StorefrontCart.create({
         organizationId,
+        storefrontId: options.storefrontId ?? null,
         customerId: identity.customerId ?? null,
-        sessionToken: identity.sessionToken ?? null,
-        expiresAt: new Date(Date.now() + ttl),
-        status: 'active',
-        items: []
+        sessionId: identity.sessionId ?? null,
+        currency: options.currency ?? 'INR',
+        expiresAt: new Date(Date.now() + (identity.customerId ? CUSTOMER_CART_TTL : GUEST_CART_TTL))
       });
     }
 
     return this._toDTO(cart);
   }
 
-  // ---------------------------------------------------------------------------
-  // Public: add an item (or increment quantity if already in cart)
-  // ---------------------------------------------------------------------------
+  async addItem(organizationId, identity, productId, quantity = 1, branchId = null, variantId = null) {
+    if (!mongoose.isValidObjectId(productId)) throw new AppError('Invalid product ID', 400);
+    if (quantity < 1 || !Number.isInteger(quantity)) throw new AppError('Quantity must be a positive integer', 400);
 
-  /**
-   * @param {string}  organizationId
-   * @param {Object}  identity        { sessionToken } or { customerId }
-   * @param {string}  productId
-   * @param {number}  quantity        How many to add (default 1)
-   * @param {string}  [branchId]      For branch-specific stock checks
-   */
-  async addItem(organizationId, identity, productId, quantity = 1, branchId = null) {
-    if (!mongoose.isValidObjectId(productId)) {
-      throw new AppError('Invalid product ID', 400);
-    }
-    if (quantity < 1 || !Number.isInteger(quantity)) {
-      throw new AppError('Quantity must be a positive integer', 400);
-    }
-
-    // Fetch product and validate it belongs to this org
     const product = await Product.findOne({
       _id: productId,
       organizationId,
       isActive: true,
       isDeleted: { $ne: true }
     }).lean();
-
     if (!product) throw new AppError('Product not found or unavailable', 404);
 
-    // Stock check
     const availableStock = this._getStock(product, branchId);
     if (availableStock < quantity) {
-      throw new AppError(
-        `Only ${availableStock} unit(s) available for "${product.name}"`,
-        400
-      );
+      throw new AppError(`Only ${availableStock} unit(s) available for "${product.name}"`, 400);
     }
 
-    const cart = await this._findActiveCart(organizationId, identity);
-    if (!cart) throw new AppError('Cart not found', 404);
+    const cart = await this._findActiveCart(organizationId, identity)
+      ?? await StorefrontCart.create({
+        organizationId,
+        customerId: identity.customerId ?? null,
+        sessionId: identity.sessionId ?? null,
+        expiresAt: new Date(Date.now() + (identity.customerId ? CUSTOMER_CART_TTL : GUEST_CART_TTL))
+      });
 
-    // Check if item already exists in cart
-    const existingIdx = cart.items.findIndex(
-      i => i.productId.toString() === productId
-    );
+    const existing = await StorefrontCartItem.findOne({
+      organizationId,
+      cartId: cart._id,
+      productId,
+      variantId: variantId ?? null,
+      branchId: branchId ?? null
+    });
 
-    if (existingIdx >= 0) {
-      const newQty = cart.items[existingIdx].quantity + quantity;
-
-      // Re-validate combined quantity against stock
+    if (existing) {
+      const newQty = existing.quantity + quantity;
       if (availableStock < newQty) {
-        throw new AppError(
-          `Cannot add ${quantity} more — only ${availableStock - cart.items[existingIdx].quantity} unit(s) left`,
-          400
-        );
+        throw new AppError(`Cannot add ${quantity} more; only ${availableStock - existing.quantity} unit(s) left`, 400);
       }
-      cart.items[existingIdx].quantity = newQty;
+      existing.quantity = newQty;
+      await existing.save();
     } else {
-      // Build snapshot — this is the price frozen at add-time
-      const snapshot = {
-        name: product.name,
-        slug: product.slug,
-        image: product.images?.[0] ?? null,
-        sku: product.sku ?? null,
-        sellingPrice: product.sellingPrice,
-        discountedPrice: product.discountedPrice ?? null,
-        taxRate: product.taxRate ?? 0,
-        isTaxInclusive: product.isTaxInclusive ?? false
-      };
-
-      cart.items.push({ productId, snapshot, quantity, branchId: branchId ?? undefined });
+      const item = await StorefrontCartItem.create({
+        organizationId,
+        storefrontId: cart.storefrontId,
+        cartId: cart._id,
+        customerId: cart.customerId,
+        sessionId: cart.sessionId,
+        productId,
+        variantId,
+        branchId,
+        quantity,
+        snapshot: this._snapshot(product, variantId)
+      });
+      cart.cartItems.push(item._id);
     }
 
-    // Extend expiry on activity
-    const isCustomer = !!cart.customerId;
-    cart.expiresAt = new Date(Date.now() + (isCustomer ? CUSTOMER_CART_TTL : GUEST_CART_TTL));
-
-    await cart.save();
+    await this._touchAndRecalculate(cart);
     return this._toDTO(cart);
   }
 
-  // ---------------------------------------------------------------------------
-  // Public: update quantity of a specific cart item
-  // ---------------------------------------------------------------------------
-
   async updateItemQuantity(organizationId, identity, cartItemId, quantity) {
-    if (quantity < 1 || !Number.isInteger(quantity)) {
-      throw new AppError('Quantity must be a positive integer', 400);
-    }
-
+    if (quantity < 1 || !Number.isInteger(quantity)) throw new AppError('Quantity must be a positive integer', 400);
     const cart = await this._findActiveCart(organizationId, identity);
     if (!cart) throw new AppError('Cart not found', 404);
 
-    const item = cart.items.id(cartItemId);
+    const item = await StorefrontCartItem.findOne({ _id: cartItemId, organizationId, cartId: cart._id });
     if (!item) throw new AppError('Cart item not found', 404);
 
-    // Re-validate stock
-    const product = await Product.findOne({
-      _id: item.productId, organizationId, isActive: true, isDeleted: { $ne: true }
-    }).lean();
-
+    const product = await Product.findOne({ _id: item.productId, organizationId, isActive: true, isDeleted: { $ne: true } }).lean();
     if (!product) {
-      // Product was deactivated since it was added
-      cart.items.pull({ _id: cartItemId });
-      await cart.save();
+      await StorefrontCartItem.deleteOne({ _id: item._id });
+      cart.cartItems.pull(item._id);
+      await this._touchAndRecalculate(cart);
       throw new AppError('This product is no longer available and has been removed from your cart', 410);
     }
 
     const availableStock = this._getStock(product, item.branchId?.toString());
-    if (availableStock < quantity) {
-      throw new AppError(`Only ${availableStock} unit(s) available`, 400);
-    }
+    if (availableStock < quantity) throw new AppError(`Only ${availableStock} unit(s) available`, 400);
 
     item.quantity = quantity;
-    await cart.save();
+    await item.save();
+    await this._touchAndRecalculate(cart);
     return this._toDTO(cart);
   }
-
-  // ---------------------------------------------------------------------------
-  // Public: remove a specific item
-  // ---------------------------------------------------------------------------
 
   async removeItem(organizationId, identity, cartItemId) {
     const cart = await this._findActiveCart(organizationId, identity);
     if (!cart) throw new AppError('Cart not found', 404);
 
-    const before = cart.items.length;
-    cart.items.pull({ _id: cartItemId });
+    const removed = await StorefrontCartItem.findOneAndDelete({ _id: cartItemId, organizationId, cartId: cart._id });
+    if (!removed) throw new AppError('Cart item not found', 404);
 
-    if (cart.items.length === before) {
-      throw new AppError('Cart item not found', 404);
-    }
-
-    await cart.save();
+    cart.cartItems.pull(removed._id);
+    await this._touchAndRecalculate(cart);
     return this._toDTO(cart);
   }
-
-  // ---------------------------------------------------------------------------
-  // Public: clear all items
-  // ---------------------------------------------------------------------------
 
   async clearCart(organizationId, identity) {
     const cart = await this._findActiveCart(organizationId, identity);
     if (!cart) throw new AppError('Cart not found', 404);
 
-    cart.items = [];
-    await cart.save();
+    await StorefrontCartItem.deleteMany({ organizationId, cartId: cart._id });
+    cart.cartItems = [];
+    await this._touchAndRecalculate(cart);
     return this._toDTO(cart);
   }
 
-  // ---------------------------------------------------------------------------
-  // Public: merge guest cart into customer cart on login
-  // ---------------------------------------------------------------------------
+  async applyCoupon(organizationId, identity, couponCode) {
+    const cart = await this._findActiveCart(organizationId, identity);
+    if (!cart) throw new AppError('Cart not found', 404);
+    if (!couponCode) throw new AppError('Coupon code is required', 400);
 
-  /**
-   * Merges items from a guest sessionToken cart into a customerId cart.
-   * Guest items are added; if an item already exists the higher quantity wins.
-   * Guest cart is marked as 'merged' and retired.
-   *
-   * @param {string} organizationId
-   * @param {string} sessionToken    The guest cart token
-   * @param {string} customerId      The newly authenticated customer
-   */
-  async mergeGuestCart(organizationId, sessionToken, customerId) {
+    // Foundation only: stores coupon for later rules engine integration.
+    const normalized = String(couponCode).trim().toUpperCase();
+    if (!cart.appliedCoupons.some(c => c.code === normalized)) {
+      cart.appliedCoupons.push({ code: normalized, discountType: 'fixed', amount: 0 });
+    }
+    await this._touchAndRecalculate(cart);
+    return this._toDTO(cart);
+  }
+
+  async estimateShipping(organizationId, identity, estimate = {}) {
+    const cart = await this._findActiveCart(organizationId, identity);
+    if (!cart) throw new AppError('Cart not found', 404);
+    cart.shippingTotals = { subtotal: 0, total: Number(estimate.amount ?? 0), currency: cart.currency };
+    cart.metadata.shippingEstimate = estimate;
+    await this._touchAndRecalculate(cart);
+    return this._toDTO(cart);
+  }
+
+  async mergeGuestCart(organizationId, sessionId, customerId) {
     const [guestCart, customerCart] = await Promise.all([
-      StorefrontCart.findOne({ organizationId, sessionToken, status: 'active' }),
-      this._findActiveCart(organizationId, { customerId })
+      StorefrontCart.findOne({ organizationId, sessionId, status: 'active' }),
+      StorefrontCart.findOne({ organizationId, customerId, status: 'active' })
     ]);
 
-    if (!guestCart || guestCart.items.length === 0) return; // Nothing to merge
+    if (!guestCart) return customerCart ? this._toDTO(customerCart) : null;
 
-    let target = customerCart;
-    if (!target) {
-      // Customer has no cart yet — just reassign the guest cart
+    if (!customerCart) {
       guestCart.customerId = customerId;
-      guestCart.sessionToken = null;
+      guestCart.sessionId = null;
       guestCart.expiresAt = new Date(Date.now() + CUSTOMER_CART_TTL);
-      guestCart.status = 'active';
-      await guestCart.save();
+      await StorefrontCartItem.updateMany({ cartId: guestCart._id, organizationId }, { $set: { customerId, sessionId: null } });
+      await this._touchAndRecalculate(guestCart);
       return this._toDTO(guestCart);
     }
 
-    // Merge items
-    for (const guestItem of guestCart.items) {
-      const existingIdx = target.items.findIndex(
-        i => i.productId.toString() === guestItem.productId.toString()
-      );
-      if (existingIdx >= 0) {
-        // Take the larger quantity
-        target.items[existingIdx].quantity = Math.max(
-          target.items[existingIdx].quantity,
-          guestItem.quantity
-        );
+    const guestItems = await StorefrontCartItem.find({ organizationId, cartId: guestCart._id });
+    for (const guestItem of guestItems) {
+      const existing = await StorefrontCartItem.findOne({
+        organizationId,
+        cartId: customerCart._id,
+        productId: guestItem.productId,
+        variantId: guestItem.variantId,
+        branchId: guestItem.branchId
+      });
+      if (existing) {
+        existing.quantity = Math.max(existing.quantity, guestItem.quantity);
+        await existing.save();
+        await guestItem.deleteOne();
       } else {
-        target.items.push({
-          productId: guestItem.productId,
-          snapshot: guestItem.snapshot,
-          quantity: guestItem.quantity,
-          branchId: guestItem.branchId
-        });
+        guestItem.cartId = customerCart._id;
+        guestItem.customerId = customerId;
+        guestItem.sessionId = null;
+        await guestItem.save();
+        customerCart.cartItems.push(guestItem._id);
       }
     }
 
-    target.expiresAt = new Date(Date.now() + CUSTOMER_CART_TTL);
-
-    // Retire guest cart
     guestCart.status = 'merged';
-
-    await Promise.all([target.save(), guestCart.save()]);
-    return this._toDTO(target);
+    await Promise.all([guestCart.save(), this._touchAndRecalculate(customerCart)]);
+    return this._toDTO(customerCart);
   }
 
-  // ---------------------------------------------------------------------------
-  // Public: validate cart stock before checkout (returns issues array)
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Re-checks every cart item against live stock.
-   * Returns { valid: boolean, issues: [{ itemId, productName, requested, available }] }
-   */
   async validateForCheckout(organizationId, identity) {
     const cart = await this._findActiveCart(organizationId, identity);
-    if (!cart || cart.items.length === 0) {
-      throw new AppError('Cart is empty', 400);
-    }
+    if (!cart) throw new AppError('Cart not found', 404);
 
-    const productIds = cart.items.map(i => i.productId);
+    const items = await StorefrontCartItem.find({ organizationId, cartId: cart._id }).lean();
+    if (items.length === 0) throw new AppError('Cart is empty', 400);
+
     const products = await Product.find({
-      _id: { $in: productIds },
+      _id: { $in: items.map(i => i.productId) },
       organizationId,
       isActive: true,
       isDeleted: { $ne: true }
     }).lean();
 
-    const productMap = new Map(products.map(p => [p._id.toString(), p]));
+    const productMap = new Map(products.map(product => [product._id.toString(), product]));
     const issues = [];
-
-    for (const item of cart.items) {
+    for (const item of items) {
       const product = productMap.get(item.productId.toString());
       if (!product) {
-        issues.push({
-          itemId: item._id,
-          productName: item.snapshot.name,
-          issue: 'unavailable',
-          requested: item.quantity,
-          available: 0
-        });
+        issues.push({ itemId: item._id, productName: item.snapshot.name, issue: 'unavailable', requested: item.quantity, available: 0 });
         continue;
       }
-
       const available = this._getStock(product, item.branchId?.toString());
       if (available < item.quantity) {
         issues.push({
@@ -324,80 +239,88 @@ class CartService {
     return { valid: issues.length === 0, issues };
   }
 
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
-
   async _findActiveCart(organizationId, identity) {
+    this._validateIdentity(identity);
     const query = { organizationId, status: 'active' };
-
-    if (identity.customerId) {
-      query.customerId = identity.customerId;
-    } else if (identity.sessionToken) {
-      query.sessionToken = identity.sessionToken;
-    } else {
-      throw new AppError('Cart identity (customerId or sessionToken) is required', 400);
-    }
-
+    if (identity.customerId) query.customerId = identity.customerId;
+    else query.sessionId = identity.sessionId;
     return StorefrontCart.findOne(query);
   }
 
   _validateIdentity(identity) {
-    if (!identity || (!identity.customerId && !identity.sessionToken)) {
-      throw new AppError('Cart identity required: provide customerId or sessionToken', 400);
+    if (!identity || (!identity.customerId && !identity.sessionId)) {
+      throw new AppError('Storefront cart identity required', 400);
     }
   }
 
-  /**
-   * Get available stock for a product.
-   * If branchId provided, returns branch-specific stock; otherwise total stock.
-   */
+  _snapshot(product, variantId = null) {
+    const variant = variantId && Array.isArray(product.variants)
+      ? product.variants.find(v => v._id?.toString() === variantId?.toString())
+      : null;
+    return {
+      name: product.name,
+      slug: product.slug,
+      image: product.images?.[0] ?? null,
+      sku: variant?.sku ?? product.sku ?? null,
+      variantTitle: variant?.title ?? null,
+      sellingPrice: variant?.sellingPrice ?? product.sellingPrice,
+      discountedPrice: variant?.discountedPrice ?? product.discountedPrice ?? null,
+      taxRate: product.taxRate ?? 0,
+      isTaxInclusive: product.isTaxInclusive ?? false,
+      currency: product.currency ?? 'INR'
+    };
+  }
+
   _getStock(product, branchId) {
     if (!Array.isArray(product.inventory) || product.inventory.length === 0) return 0;
-
     if (branchId) {
       const entry = product.inventory.find(i => i.branchId?.toString() === branchId);
       return entry?.quantity ?? 0;
     }
-
-    return product.inventory.reduce((sum, i) => sum + (i.quantity || 0), 0);
+    return product.inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
   }
 
-  /**
-   * Convert Mongoose document to a clean DTO for API responses.
-   * Computes totals here so controllers don't have to.
-   */
-  _toDTO(cart) {
+  async _touchAndRecalculate(cart) {
+    const items = await StorefrontCartItem.find({ organizationId: cart.organizationId, cartId: cart._id }).lean();
+    const subtotal = items.reduce((sum, item) => sum + ((item.snapshot.discountedPrice ?? item.snapshot.sellingPrice) * item.quantity), 0);
+    const discount = cart.appliedCoupons.reduce((sum, coupon) => sum + (coupon.amount || 0), 0);
+    const shipping = cart.shippingTotals?.total ?? 0;
+    const tax = 0;
+    cart.totals = { subtotal: Number(subtotal.toFixed(2)), total: Number(Math.max(0, subtotal - discount + shipping + tax).toFixed(2)), currency: cart.currency };
+    cart.discountTotals = { subtotal: discount, total: discount, currency: cart.currency };
+    cart.taxTotals = { subtotal: tax, total: tax, currency: cart.currency };
+    cart.expiresAt = new Date(Date.now() + (cart.customerId ? CUSTOMER_CART_TTL : GUEST_CART_TTL));
+    await cart.save();
+  }
+
+  async _toDTO(cart) {
     const doc = cart.toObject ? cart.toObject({ virtuals: true }) : cart;
-
-    const subtotal = doc.items.reduce((sum, item) => {
-      const price = item.snapshot.discountedPrice ?? item.snapshot.sellingPrice;
-      return sum + price * item.quantity;
-    }, 0);
-
-    const grandTotal = Math.max(0, subtotal - (doc.discountAmount ?? 0));
-
+    const items = await StorefrontCartItem.find({ organizationId: doc.organizationId, cartId: doc._id }).lean();
     return {
       id: doc._id,
       organizationId: doc.organizationId,
+      storefrontId: doc.storefrontId ?? null,
       customerId: doc.customerId ?? null,
-      sessionToken: doc.sessionToken ?? null,
+      sessionId: doc.sessionId ?? null,
       status: doc.status,
-      items: doc.items.map(item => ({
+      currency: doc.currency,
+      items: items.map(item => ({
         id: item._id,
         productId: item.productId,
+        variantId: item.variantId ?? null,
+        branchId: item.branchId ?? null,
         quantity: item.quantity,
         snapshot: item.snapshot,
-        branchId: item.branchId ?? null,
-        lineTotal: parseFloat(
-          ((item.snapshot.discountedPrice ?? item.snapshot.sellingPrice) * item.quantity).toFixed(2)
-        )
+        lineTotal: Number(((item.snapshot.discountedPrice ?? item.snapshot.sellingPrice) * item.quantity).toFixed(2))
       })),
-      couponCode: doc.couponCode ?? null,
-      discountAmount: doc.discountAmount ?? 0,
-      subtotal: parseFloat(subtotal.toFixed(2)),
-      grandTotal: parseFloat(grandTotal.toFixed(2)),
-      itemCount: doc.items.reduce((n, i) => n + i.quantity, 0),
+      appliedCoupons: doc.appliedCoupons ?? [],
+      totals: doc.totals ?? { subtotal: 0, total: 0, currency: doc.currency },
+      discountTotals: doc.discountTotals ?? { subtotal: 0, total: 0, currency: doc.currency },
+      shippingTotals: doc.shippingTotals ?? { subtotal: 0, total: 0, currency: doc.currency },
+      taxTotals: doc.taxTotals ?? { subtotal: 0, total: 0, currency: doc.currency },
+      subtotal: doc.totals?.subtotal ?? 0,
+      grandTotal: doc.totals?.total ?? 0,
+      itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
       expiresAt: doc.expiresAt,
       updatedAt: doc.updatedAt
     };

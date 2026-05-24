@@ -83,9 +83,15 @@ async function startServer() {
               "https://apex-infinity.vercel.app",
               "https://apex-infinity-vert.vercel.app"
             ];
+          const allowVercelPreviewOrigins = process.env.ALLOW_VERCEL_PREVIEW_ORIGINS !== "false";
+          const isVercelPreviewOrigin =
+            allowVercelPreviewOrigins && /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
 
           // Allow Expo Go or whitelisted origins
-          const isAllowed = allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('exp://');
+          const isAllowed =
+            allowedOrigins.indexOf(origin) !== -1 ||
+            isVercelPreviewOrigin ||
+            origin.startsWith('exp://');
 
           if (isAllowed) {
             callback(null, true);
