@@ -60,6 +60,17 @@ class StorefrontCustomerController {
     }
   };
 
+  getOrders = async (req, res, next) => {
+    try {
+      const { organizationId, identity } = await this._resolvePublicContext(req, res);
+      if (!identity.customerId) return next(new AppError('Storefront customer authentication required', 401));
+      const orders = await OrderService.listForCustomer(organizationId, identity.customerId);
+      res.status(200).json({ status: 'success', data: orders });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   addAddress = async (req, res, next) => {
     try {
       const { organizationId, identity } = await this._resolvePublicContext(req, res);

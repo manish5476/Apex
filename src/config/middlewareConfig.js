@@ -19,7 +19,15 @@ const middlewareConfig = {
       ? process.env.CORS_ORIGIN.split(",")
       : ["http://localhost:4200", "https://apex-infinity.vercel.app"],
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id", "X-API-Key"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Request-Id",
+      "X-API-Key",
+      "X-Storefront-Request",
+      "X-Storefront-Session",
+      "X-Customer-Token"
+    ],
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     exposedHeaders: ["X-Request-Id", "X-RateLimit-Limit", "X-RateLimit-Remaining"],
   }),

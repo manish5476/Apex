@@ -25,23 +25,45 @@ class StorefrontCustomerService {
     }
 
     if (!customer) {
-      customer = await StorefrontCustomer.create({
-        organizationId,
-        email,
-        phone,
-        firstName: payload.firstName ?? '',
-        lastName: payload.lastName ?? '',
-        guestAccount: true,
-        authProvider: 'guest',
-        marketingOptIn: !!payload.marketingOptIn,
-        metadata: { firstSessionId: sessionId }
-      });
+      try {
+        customer = await StorefrontCustomer.create({
+          organizationId,
+          email,
+          phone,
+          firstName: payload.firstName ?? '',
+          lastName: payload.lastName ?? '',
+          guestAccount: true,
+          authProvider: 'guest',
+          marketingOptIn: !!payload.marketingOptIn,
+          metadata: { firstSessionId: sessionId }
+        });
+      } catch (err) {
+        if (err.code === 11000) {
+          customer = await StorefrontCustomer.findOne({
+            organizationId,
+            $or: [
+              ...(email ? [{ email }] : []),
+              ...(phone ? [{ phone }] : [])
+            ]
+          });
+        } else {
+          throw err;
+        }
+      }
     } else {
       customer.lastSeenAt = new Date();
       if (payload.firstName && !customer.firstName) customer.firstName = payload.firstName;
       if (payload.lastName && !customer.lastName) customer.lastName = payload.lastName;
       if (phone && !customer.phone) customer.phone = phone;
-      await customer.save();
+      try {
+        await customer.save();
+      } catch (err) {
+        if (err.code === 11000) {
+          console.warn('[StorefrontCustomerService] Ignoring duplicate key on update for guest customer:', err.message);
+        } else {
+          throw err;
+        }
+      }
     }
 
     return customer;
@@ -62,7 +84,19 @@ class StorefrontCustomerService {
     customer.phone = payload.phone ?? customer.phone;
     customer.marketingOptIn = !!payload.marketingOptIn;
     await customer.setPassword(payload.password);
-    await customer.save();
+    
+    try {
+      await customer.save();
+    } catch (err) {
+      if (err.code === 11000) {
+        if (err.message.includes('phone_1')) {
+          throw new AppError('A storefront account already exists with this phone number', 409);
+        }
+        throw new AppError('A storefront account already exists with these details', 409);
+      }
+      throw err;
+    }
+
     return customer;
   }
 

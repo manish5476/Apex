@@ -1,4 +1,4 @@
-const routes = require('../Indexes/routesIndex');
+const routes = require('../indexes/routesIndex');
 
 /**
  * Registers all application routes to the Express app.
