@@ -13,66 +13,59 @@ const slugify = (value) =>
 //  Sub-Schema: Branch Inventory
 // ─────────────────────────────────────────────
 const inventorySchema = new mongoose.Schema({
-  branchId:     { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
-  quantity:     { type: Number, required: true, default: 0, min: 0 },
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+  quantity: { type: Number, required: true, default: 0, min: 0 },
+  reservedQuantity: { type: Number, default: 0, min: 0 },
   reorderLevel: { type: Number, default: 10, min: 0 },
   rackLocation: { type: String, trim: true },
 }, { _id: false });
-
 // ─────────────────────────────────────────────
 //  Main Product Schema
 // ─────────────────────────────────────────────
 const productSchema = new mongoose.Schema({
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
-
   // Basic Info
-  name:        { type: String, required: [true, 'Product name is required'], trim: true },
-  slug:        { type: String, trim: true, lowercase: true },
+  name: { type: String, required: [true, 'Product name is required'], trim: true },
+  slug: { type: String, trim: true, lowercase: true },
   description: { type: String, trim: true },
-
   // Identification
-  sku:     { type: String, trim: true, uppercase: true },
+  sku: { type: String, trim: true, uppercase: true },
   barcode: { type: String, trim: true },
   hsnCode: { type: String, trim: true },
-
   // Categorization
-  categoryId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Master', index: true },
+  categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Master', index: true },
   subCategoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Master' },
-  brandId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Master', index: true },
-  unitId:        { type: mongoose.Schema.Types.ObjectId, ref: 'Master' },
-  departmentId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Master', index: true },
-
+  brandId: { type: mongoose.Schema.Types.ObjectId, ref: 'Master', index: true },
+  unitId: { type: mongoose.Schema.Types.ObjectId, ref: 'Master' },
+  departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Master', index: true },
   // Pricing & Tax
-  purchasePrice:   { type: Number, default: 0, min: 0 },
-  sellingPrice:    { type: Number, required: [true, 'Selling price is required'], min: 0 },
-  mrp:             { type: Number, min: 0 },
+  purchasePrice: { type: Number, default: 0, min: 0 },
+  sellingPrice: { type: Number, required: [true, 'Selling price is required'], min: 0 },
+  mrp: { type: Number, min: 0 },
   discountedPrice: { type: Number, min: 0 },
-  taxRate:         { type: Number, default: 0, min: 0 },
-  isTaxInclusive:  { type: Boolean, default: false },
-
+  taxRate: { type: Number, default: 0, min: 0 },
+  isTaxInclusive: { type: Boolean, default: false },
   // Inventory & Logistics
   inventory: [inventorySchema],
   dimensions: {
     length: { type: Number, min: 0 },
-    width:  { type: Number, min: 0 },
+    width: { type: Number, min: 0 },
     height: { type: Number, min: 0 },
     weight: { type: Number, min: 0 },
   },
 
   // Media
-  images:      [{ type: String }],
+  images: [{ type: String }],
   imageAssets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Asset' }],
-
   defaultSupplierId: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
   tags: [{ type: String, trim: true }],
-
-  isActive:  { type: Boolean, default: true },
+  isActive: { type: Boolean, default: true },
   isDeleted: { type: Boolean, default: false },
-  lastSold:  { type: Date },
+  lastSold: { type: Date },
 
 }, {
   timestamps: true,
-  toJSON:   { virtuals: true },
+  toJSON: { virtuals: true },
   toObject: { virtuals: true },
 });
 
@@ -96,6 +89,10 @@ productSchema.index({ organizationId: 1, isActive: 1, isDeleted: 1 });
 // ─────────────────────────────────────────────
 productSchema.virtual('totalStock').get(function () {
   return this.inventory?.reduce((acc, i) => acc + i.quantity, 0) || 0;
+});
+
+productSchema.virtual('availableStock').get(function () {
+  return this.inventory?.reduce((acc, i) => acc + (i.quantity - (i.reservedQuantity || 0)), 0) || 0;
 });
 
 // ─────────────────────────────────────────────

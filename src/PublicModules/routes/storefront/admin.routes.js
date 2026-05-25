@@ -65,6 +65,7 @@ router.get('/pages/:pageId/analytics',     canReadStorefront, storefrontAdminCon
 // ORDERS
 // ============================================================
 router.get('/orders', canReadStorefront, storefrontAdminController.getAllOrders);
+router.put('/orders/:orderId/status', checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.updateOrderStatus);
 
 // ============================================================
 // STOREFRONT COMMERCE CUSTOMERS
