@@ -22,7 +22,7 @@
 
 'use strict';
 
-const { StorefrontPage, SectionTemplate } = require('../../models/storefront/index');
+const { StorefrontPage, SectionTemplate, StorefrontOrder } = require('../../models/storefront/index');
 const SectionRegistry  = require('../../services/storefront/sectionRegistry.service');
 const StorefrontCache  = require('../../services/storefront/cacheInvalidation.service');
 const PageSnapshotService = require('../../services/storefront/pageSnapshot.service');
@@ -484,6 +484,45 @@ class StorefrontAdminController {
           }
           // Wire to real analytics service here when available
         }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ALL ORDERS
+  // GET /admin/storefront/orders
+  // ---------------------------------------------------------------------------
+
+  getAllOrders = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { status, paymentStatus, search, page = 1, limit = 20 } = req.query;
+
+      const query = { organizationId };
+      if (status) query.orderStatus = status;
+      if (paymentStatus) query.paymentStatus = paymentStatus;
+      
+      if (search) {
+        query.orderNumber = { $regex: search, $options: 'i' };
+      }
+
+      const skip = (Math.max(parseInt(page), 1) - 1) * Math.min(parseInt(limit), 50);
+      const total = await StorefrontOrder.countDocuments(query);
+
+      const orders = await StorefrontOrder.find(query)
+        .populate('customerId', 'firstName lastName email phone avatar')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Math.min(parseInt(limit), 50))
+        .lean();
+
+      res.status(200).json({
+        status: 'success',
+        results: orders.length,
+        total,
+        data: orders
       });
     } catch (err) {
       next(err);

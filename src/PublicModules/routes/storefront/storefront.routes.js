@@ -148,13 +148,8 @@ publicRouter.get('/:organizationSlug/search', ProductPublicController.searchProd
 publicRouter.get('/:organizationSlug/categories', ProductPublicController.getCategories);
 publicRouter.get('/:organizationSlug/brands', ProductPublicController.getBrands);
 publicRouter.get('/:organizationSlug/tags', ProductPublicController.getTags);
-
-// Products
 publicRouter.get('/:organizationSlug/products', ProductPublicController.getProducts);
 publicRouter.get('/:organizationSlug/products/:productSlug', ProductPublicController.getProductBySlug);
-
-// Cart — optionally authenticated (protect is optional here; CartController
-// handles both authed and guest flows via cookie fallback)
 publicRouter.get('/:organizationSlug/cart', CartController.getCart);
 publicRouter.post('/:organizationSlug/cart/items', CartController.addItem);
 publicRouter.patch('/:organizationSlug/cart/items/:cartItemId', CartController.updateItemQuantity);
@@ -163,9 +158,7 @@ publicRouter.delete('/:organizationSlug/cart', CartController.clearCart);
 publicRouter.get('/:organizationSlug/cart/validate', CartController.validateCart);
 publicRouter.post('/:organizationSlug/cart/coupons', CartController.applyCoupon);
 publicRouter.post('/:organizationSlug/cart/shipping-estimate', CartController.estimateShipping);
-
 publicRouter.post('/:organizationSlug/cart/merge', CartController.mergeCart);
-
 publicRouter.post('/:organizationSlug/account/register', StorefrontCustomerController.register);
 publicRouter.post('/:organizationSlug/account/login', StorefrontCustomerController.login);
 publicRouter.post('/:organizationSlug/account/logout', StorefrontCustomerController.logout);
@@ -174,8 +167,6 @@ publicRouter.get('/:organizationSlug/account/orders', StorefrontCustomerControll
 publicRouter.post('/:organizationSlug/account/addresses', StorefrontCustomerController.addAddress);
 publicRouter.post('/:organizationSlug/checkout', StorefrontCustomerController.checkout);
 publicRouter.get('/:organizationSlug/orders/:orderNumber', StorefrontCustomerController.trackOrder);
-
-// --- Page renderer (catch-all — MUST be last) --------------------------------
 publicRouter.get('/:organizationSlug/:pageSlug', StorefrontPublicController.getPublicPage);
 
 // ============================================================================
@@ -183,8 +174,6 @@ publicRouter.get('/:organizationSlug/:pageSlug', StorefrontPublicController.getP
 // ============================================================================
 
 const storefrontRouter = express.Router();
-
 storefrontRouter.use('/admin/storefront', adminRouter);
 storefrontRouter.use('/store', publicRouter);
-
 module.exports = storefrontRouter;
