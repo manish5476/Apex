@@ -71,6 +71,19 @@ class StorefrontCustomerController {
     }
   };
 
+  toggleWishlist = async (req, res, next) => {
+    try {
+      const { organizationId, identity } = await this._resolvePublicContext(req, res);
+      if (!identity.customerId) return next(new AppError('Storefront customer authentication required', 401));
+      const { productId } = req.body;
+      if (!productId) return next(new AppError('productId is required', 400));
+      const result = await CustomerService.toggleWishlist(organizationId, identity.customerId, productId);
+      res.status(200).json({ status: 'success', data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   addAddress = async (req, res, next) => {
     try {
       const { organizationId, identity } = await this._resolvePublicContext(req, res);

@@ -132,6 +132,16 @@ class StorefrontCustomerService {
     return address;
   }
 
+  async toggleWishlist(organizationId, customerId, productId) {
+    const existing = await StorefrontWishlist.findOne({ organizationId, customerId, productId });
+    if (existing) {
+      await existing.deleteOne();
+      return { action: 'removed', productId };
+    }
+    await StorefrontWishlist.create({ organizationId, customerId, productId });
+    return { action: 'added', productId };
+  }
+
   async getDashboard(organizationId, customerId) {
     const [customer, addresses, orders, wishlist, carts] = await Promise.all([
       StorefrontCustomer.findOne({ _id: customerId, organizationId }).lean(),
