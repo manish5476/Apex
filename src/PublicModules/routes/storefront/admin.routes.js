@@ -68,6 +68,18 @@ router.get('/orders', canReadStorefront, storefrontAdminController.getAllOrders)
 router.put('/orders/:orderId/status', checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.updateOrderStatus);
 
 // ============================================================
+// COUPONS
+// ============================================================
+router.route('/coupons')
+  .get(canReadStorefront, storefrontAdminController.getCoupons)
+  .post(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.createCoupon);
+
+router.route('/coupons/:couponId')
+  .get(canReadStorefront, storefrontAdminController.getCouponById)
+  .put(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.updateCoupon)
+  .delete(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.deleteCoupon);
+
+// ============================================================
 // STOREFRONT COMMERCE CUSTOMERS
 // Separate from ERP/CRM customers. Conversion is explicit/manual.
 // ============================================================

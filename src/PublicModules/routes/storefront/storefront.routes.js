@@ -131,6 +131,14 @@ adminRouter.delete('/rules/:ruleId', SmartRuleController.deleteRule);
 adminRouter.post('/rules/:ruleId/execute', SmartRuleController.executeRule);
 adminRouter.post('/rules/:ruleId/clear-cache', SmartRuleController.clearCache);
 
+// --- Coupons -------------------------------------------------------------
+adminRouter.get('/coupons', StorefrontAdminController.getCoupons);
+adminRouter.post('/coupons', StorefrontAdminController.createCoupon);
+adminRouter.get('/coupons/:couponId', StorefrontAdminController.getCouponById);
+adminRouter.put('/coupons/:couponId', StorefrontAdminController.updateCoupon);
+adminRouter.delete('/coupons/:couponId', StorefrontAdminController.deleteCoupon);
+
+
 // ============================================================================
 // PUBLIC ROUTER
 // ============================================================================

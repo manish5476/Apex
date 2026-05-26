@@ -644,6 +644,129 @@ class StorefrontAdminController {
     }
     return slug;
   }
+
+  // ---------------------------------------------------------------------------
+  // COUPON ADMINISTRATION
+  // ---------------------------------------------------------------------------
+
+  getCoupons = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { search, page = 1, limit = 20 } = req.query;
+
+      const query = { organizationId };
+      if (search) {
+        query.code = { $regex: search, $options: 'i' };
+      }
+
+      const skip = (Math.max(parseInt(page), 1) - 1) * Math.min(parseInt(limit), 50);
+      const Coupon = require('../../models/storefront/storefrontCoupon.model');
+      const total = await Coupon.countDocuments(query);
+      const coupons = await Coupon.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Math.min(parseInt(limit), 50))
+        .lean();
+
+      res.status(200).json({
+        status: 'success',
+        results: coupons.length,
+        total,
+        data: coupons
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  createCoupon = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { code, discountType, amount, maxDiscount, minPurchaseAmount, startDate, endDate, usageLimit, isActive } = req.body;
+
+      if (!code || amount === undefined) {
+        return next(new AppError('code and amount are required', 400));
+      }
+
+      const normalized = String(code).trim().toUpperCase();
+      const Coupon = require('../../models/storefront/storefrontCoupon.model');
+      const exists = await Coupon.findOne({ organizationId, code: normalized });
+      if (exists) {
+        return next(new AppError(`Coupon with code "${normalized}" already exists`, 409));
+      }
+
+      const coupon = await Coupon.create({
+        organizationId,
+        code: normalized,
+        discountType,
+        amount,
+        maxDiscount,
+        minPurchaseAmount,
+        startDate,
+        endDate,
+        usageLimit,
+        isActive
+      });
+
+      res.status(201).json({ status: 'success', message: 'Coupon created', data: coupon });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  getCouponById = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { couponId } = req.params;
+
+      const Coupon = require('../../models/storefront/storefrontCoupon.model');
+      const coupon = await Coupon.findOne({ _id: couponId, organizationId });
+      if (!coupon) return next(new AppError('Coupon not found', 404));
+
+      res.status(200).json({ status: 'success', data: coupon });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  updateCoupon = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { couponId } = req.params;
+      const updateData = { ...req.body };
+
+      delete updateData.organizationId;
+      delete updateData.code;
+
+      const Coupon = require('../../models/storefront/storefrontCoupon.model');
+      const coupon = await Coupon.findOneAndUpdate(
+        { _id: couponId, organizationId },
+        { $set: updateData },
+        { new: true, runValidators: true }
+      );
+
+      if (!coupon) return next(new AppError('Coupon not found', 404));
+
+      res.status(200).json({ status: 'success', message: 'Coupon updated', data: coupon });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  deleteCoupon = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { couponId } = req.params;
+
+      const Coupon = require('../../models/storefront/storefrontCoupon.model');
+      const coupon = await Coupon.findOneAndDelete({ _id: couponId, organizationId });
+      if (!coupon) return next(new AppError('Coupon not found', 404));
+
+      res.status(200).json({ status: 'success', message: 'Coupon deleted' });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new StorefrontAdminController();

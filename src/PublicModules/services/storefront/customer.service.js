@@ -179,9 +179,9 @@ class StorefrontCustomerService {
     }
 
     const address = await StorefrontCustomerAddress.create({
+      ...payload,
       organizationId,
       customerId,
-      ...payload,
       isDefault
     });
 
@@ -202,7 +202,17 @@ class StorefrontCustomerService {
       await StorefrontCustomerAddress.updateMany({ organizationId, customerId }, { $set: { isDefault: false } });
     }
 
-    Object.assign(address, payload, { isDefault });
+    const allowedFields = [
+      'fullName', 'phone', 'country', 'state', 'city',
+      'postalCode', 'addressLine1', 'addressLine2', 'landmark', 'addressType'
+    ];
+
+    allowedFields.forEach(field => {
+      if (payload[field] !== undefined) {
+        address[field] = payload[field];
+      }
+    });
+    address.isDefault = isDefault;
     await address.save();
 
     if (isDefault) {

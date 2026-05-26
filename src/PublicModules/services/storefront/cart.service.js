@@ -140,11 +140,62 @@ class CartService {
     if (!cart) throw new AppError('Cart not found', 404);
     if (!couponCode) throw new AppError('Coupon code is required', 400);
 
-    // Foundation only: stores coupon for later rules engine integration.
     const normalized = String(couponCode).trim().toUpperCase();
-    if (!cart.appliedCoupons.some(c => c.code === normalized)) {
-      cart.appliedCoupons.push({ code: normalized, discountType: 'fixed', amount: 0 });
+
+    // 1. Fetch Coupon from the database
+    const StorefrontCoupon = mongoose.model('StorefrontCoupon');
+    const coupon = await StorefrontCoupon.findOne({
+      organizationId,
+      code: normalized,
+      isActive: true
+    });
+
+    if (!coupon) {
+      throw new AppError('Invalid coupon code.', 404);
     }
+
+    // 2. Validate usage dates
+    const now = new Date();
+    if (coupon.startDate && now < coupon.startDate) {
+      throw new AppError('This coupon is not active yet.', 400);
+    }
+    if (coupon.endDate && now > coupon.endDate) {
+      throw new AppError('This coupon has expired.', 400);
+    }
+
+    // 3. Validate usage limit
+    if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
+      throw new AppError('This coupon has reached its usage limit.', 400);
+    }
+
+    // 4. Validate minimum purchase subtotal
+    const items = await StorefrontCartItem.find({ organizationId, cartId: cart._id }).lean();
+    const subtotal = items.reduce((sum, item) => sum + ((item.snapshot.discountedPrice ?? item.snapshot.sellingPrice) * item.quantity), 0);
+    if (subtotal < coupon.minPurchaseAmount) {
+      throw new AppError(`This coupon requires a minimum purchase amount of ${coupon.minPurchaseAmount}.`, 400);
+    }
+
+    // 5. Apply the coupon to the cart
+    if (!cart.appliedCoupons.some(c => c.code === normalized)) {
+      // Calculate active discount amount
+      let discountAmount = 0;
+      if (coupon.discountType === 'fixed') {
+        discountAmount = Math.min(subtotal, coupon.amount);
+      } else if (coupon.discountType === 'percentage') {
+        discountAmount = Number((subtotal * (coupon.amount / 100)).toFixed(2));
+        if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
+          discountAmount = coupon.maxDiscount;
+        }
+      }
+      cart.appliedCoupons.push({ 
+        code: normalized, 
+        discountType: coupon.discountType, 
+        amount: discountAmount 
+      });
+    } else {
+      throw new AppError('This coupon is already applied to your cart.', 400);
+    }
+
     await this._touchAndRecalculate(cart);
     return this._toDTO(cart);
   }
@@ -283,6 +334,35 @@ class CartService {
   async _touchAndRecalculate(cart) {
     const items = await StorefrontCartItem.find({ organizationId: cart.organizationId, cartId: cart._id }).lean();
     const subtotal = items.reduce((sum, item) => sum + ((item.snapshot.discountedPrice ?? item.snapshot.sellingPrice) * item.quantity), 0);
+
+    // Dynamically recalculate all applied coupons
+    const StorefrontCoupon = mongoose.model('StorefrontCoupon');
+    const validCoupons = [];
+    for (const applied of cart.appliedCoupons) {
+      const coupon = await StorefrontCoupon.findOne({
+        organizationId: cart.organizationId,
+        code: applied.code,
+        isActive: true
+      });
+      
+      // If the coupon still exists and subtotal satisfies minimum requirement
+      if (coupon && subtotal >= coupon.minPurchaseAmount) {
+        let discountAmount = 0;
+        if (coupon.discountType === 'fixed') {
+          discountAmount = Math.min(subtotal, coupon.amount);
+        } else if (coupon.discountType === 'percentage') {
+          discountAmount = Number((subtotal * (coupon.amount / 100)).toFixed(2));
+          if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
+            discountAmount = coupon.maxDiscount;
+          }
+        }
+        applied.amount = discountAmount;
+        applied.discountType = coupon.discountType;
+        validCoupons.push(applied);
+      }
+    }
+    cart.appliedCoupons = validCoupons;
+
     const discount = cart.appliedCoupons.reduce((sum, coupon) => sum + (coupon.amount || 0), 0);
     const shipping = cart.shippingTotals?.total ?? 0;
     const tax = 0;

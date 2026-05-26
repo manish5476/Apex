@@ -101,8 +101,17 @@ class StorefrontOrderService {
       }
     });
 
+    const couponPromises = (cart.appliedCoupons ?? []).map(async (c) => {
+      const StorefrontCoupon = mongoose.model('StorefrontCoupon');
+      await StorefrontCoupon.updateOne(
+        { organizationId, code: c.code },
+        { $inc: { usedCount: 1 } }
+      );
+    });
+
     await Promise.all([
       ...lockPromises,
+      ...couponPromises,
       StorefrontCart.updateOne({ _id: cart._id }, { $set: { status: 'converted' } }),
       StorefrontCustomer.updateOne(
         { _id: customerId, organizationId },

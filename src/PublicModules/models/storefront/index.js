@@ -11,5 +11,6 @@ module.exports = {
   StorefrontWishlist:     require('./storefrontWishlist.model'),
   StorefrontOrder:        require('./storefrontOrder.model'),
   SmartRule:              require('./smartRule.model'),
-  SectionTemplate:        require('./sectionTemplate.model')
+  SectionTemplate:        require('./sectionTemplate.model'),
+  StorefrontCoupon:       require('./storefrontCoupon.model')
 };
