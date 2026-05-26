@@ -215,14 +215,23 @@ class StorefrontCustomerService {
     return address;
   }
 
-  async toggleWishlist(organizationId, customerId, productId) {
-    const existing = await StorefrontWishlist.findOne({ organizationId, customerId, productId });
+  async toggleWishlist(organizationId, customerId, productId, variantId = null) {
+    const query = { organizationId, customerId, productId, variantId };
+    const existing = await StorefrontWishlist.findOne(query);
     if (existing) {
       await existing.deleteOne();
-      return { action: 'removed', productId };
+      return { action: 'removed', productId, variantId };
     }
-    await StorefrontWishlist.create({ organizationId, customerId, productId });
-    return { action: 'added', productId };
+    
+    try {
+      await StorefrontWishlist.create(query);
+      return { action: 'added', productId, variantId };
+    } catch (error) {
+      if (error.code === 11000) {
+        return { action: 'added', productId, variantId };
+      }
+      throw error;
+    }
   }
 
   async getDashboard(organizationId, customerId) {

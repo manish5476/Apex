@@ -108,9 +108,9 @@ class StorefrontCustomerController {
     try {
       const { organizationId, identity } = await this._resolvePublicContext(req, res);
       if (!identity.customerId) return next(new AppError('Storefront customer authentication required', 401));
-      const { productId } = req.body;
+      const { productId, variantId } = req.body;
       if (!productId) return next(new AppError('productId is required', 400));
-      const result = await CustomerService.toggleWishlist(organizationId, identity.customerId, productId);
+      const result = await CustomerService.toggleWishlist(organizationId, identity.customerId, productId, variantId);
       res.status(200).json({ status: 'success', data: result });
     } catch (err) {
       next(err);
