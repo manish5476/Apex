@@ -66,6 +66,19 @@ router.get('/pages/:pageId/analytics',     canReadStorefront, storefrontAdminCon
 // ============================================================
 router.get('/orders', canReadStorefront, storefrontAdminController.getAllOrders);
 router.put('/orders/:orderId/status', checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.updateOrderStatus);
+router.patch('/orders/:orderId/assign-agent', checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.assignDeliveryAgent);
+
+// ============================================================
+// DELIVERY AGENTS
+// ============================================================
+router.route('/delivery-agents')
+  .get(canReadStorefront, storefrontAdminController.getDeliveryAgents)
+  .post(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.createDeliveryAgent);
+
+router.route('/delivery-agents/:agentId')
+  .get(canReadStorefront, storefrontAdminController.getDeliveryAgentById)
+  .put(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.updateDeliveryAgent)
+  .delete(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.deleteDeliveryAgent);
 
 // ============================================================
 // COUPONS

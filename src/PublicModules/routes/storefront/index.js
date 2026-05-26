@@ -48,10 +48,12 @@
 
 const adminRoutes  = require('./admin.routes');
 const publicRoutes = require('./public.routes');
+const deliveryRoutes = require('./delivery.routes');
 
 module.exports = function mountStorefrontRoutes(app) {
   app.use('/api/v1/admin/storefront', adminRoutes);
   app.use('/api/v1/store',            publicRoutes);
+  app.use('/api/v1/delivery-agent',   deliveryRoutes);
 };
 
 

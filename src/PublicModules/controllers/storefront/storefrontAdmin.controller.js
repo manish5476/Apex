@@ -545,8 +545,24 @@ class StorefrontAdminController {
       const oldOrderStatus = order.orderStatus;
       const oldFulfillmentStatus = order.fulfillmentStatus;
 
-      if (orderStatus) order.orderStatus = orderStatus;
-      if (fulfillmentStatus) order.fulfillmentStatus = fulfillmentStatus;
+      if (orderStatus && orderStatus !== oldOrderStatus) {
+        order.orderStatus = orderStatus;
+        order.timeline.push({
+          type: 'status_update',
+          message: `Order status changed to ${orderStatus}`,
+          actorId: req.user._id
+        });
+      }
+      
+      if (fulfillmentStatus && fulfillmentStatus !== oldFulfillmentStatus) {
+        order.fulfillmentStatus = fulfillmentStatus;
+        order.timeline.push({
+          type: 'fulfillment_update',
+          message: `Fulfillment status changed to ${fulfillmentStatus}`,
+          actorId: req.user._id
+        });
+      }
+
       if (paymentStatus) order.paymentStatus = paymentStatus;
 
       // Handle Cancellation
@@ -763,6 +779,187 @@ class StorefrontAdminController {
       if (!coupon) return next(new AppError('Coupon not found', 404));
 
       res.status(200).json({ status: 'success', message: 'Coupon deleted' });
+    } catch (err) {
+      next(err);
+    }
+  }
+  // ---------------------------------------------------------------------------
+  // DELIVERY AGENT ADMINISTRATION
+  // ---------------------------------------------------------------------------
+
+  getDeliveryAgents = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { search, page = 1, limit = 20 } = req.query;
+
+      const query = { organizationId };
+      if (search) {
+        query.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      const skip = (Math.max(parseInt(page), 1) - 1) * Math.min(parseInt(limit), 50);
+      const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+      const total = await Agent.countDocuments(query);
+      const agents = await Agent.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Math.min(parseInt(limit), 50))
+        .populate('staffId', 'firstName lastName email')
+        .lean();
+
+      res.status(200).json({
+        status: 'success',
+        results: agents.length,
+        total,
+        data: agents
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  createDeliveryAgent = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { name, phone, email, password, staffId, vehicleType, vehicleRegistrationNumber, isActive } = req.body;
+
+      if (!name || !phone || !password) {
+        return next(new AppError('name, phone, and password are required', 400));
+      }
+
+      const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+      const exists = await Agent.findOne({ organizationId, phone });
+      if (exists) {
+        return next(new AppError(`Delivery Agent with phone "${phone}" already exists`, 409));
+      }
+
+      const agent = await Agent.create({
+        organizationId,
+        name,
+        phone,
+        email,
+        password,
+        staffId: staffId || null,
+        vehicleType,
+        vehicleRegistrationNumber,
+        isActive
+      });
+
+      agent.password = undefined; // hide password in response
+
+      res.status(201).json({ status: 'success', message: 'Delivery Agent created', data: agent });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  getDeliveryAgentById = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { agentId } = req.params;
+
+      const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+      const agent = await Agent.findOne({ _id: agentId, organizationId }).populate('staffId', 'firstName lastName email');
+      if (!agent) return next(new AppError('Delivery Agent not found', 404));
+
+      res.status(200).json({ status: 'success', data: agent });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  updateDeliveryAgent = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { agentId } = req.params;
+      const updateData = { ...req.body };
+
+      delete updateData.organizationId;
+      
+      const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+      
+      if (updateData.password) {
+         // Need to save so pre-save hook hashes the password
+         const agent = await Agent.findOne({ _id: agentId, organizationId });
+         if (!agent) return next(new AppError('Delivery Agent not found', 404));
+         
+         Object.assign(agent, updateData);
+         await agent.save();
+         agent.password = undefined;
+         return res.status(200).json({ status: 'success', message: 'Delivery Agent updated', data: agent });
+      } else {
+        const agent = await Agent.findOneAndUpdate(
+          { _id: agentId, organizationId },
+          { $set: updateData },
+          { new: true, runValidators: true }
+        );
+        if (!agent) return next(new AppError('Delivery Agent not found', 404));
+        res.status(200).json({ status: 'success', message: 'Delivery Agent updated', data: agent });
+      }
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  deleteDeliveryAgent = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { agentId } = req.params;
+
+      const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+      const agent = await Agent.findOneAndDelete({ _id: agentId, organizationId });
+      if (!agent) return next(new AppError('Delivery Agent not found', 404));
+
+      res.status(200).json({ status: 'success', message: 'Delivery Agent deleted' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  assignDeliveryAgent = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { orderId } = req.params;
+      const { deliveryAgent, carrierName, trackingNumber, estimatedDeliveryDate, deliveryNotes } = req.body;
+
+      const order = await StorefrontOrder.findOne({ _id: orderId, organizationId });
+      if (!order) return next(new AppError('Order not found', 404));
+
+      if (deliveryAgent !== undefined) order.deliveryAgent = deliveryAgent || null;
+      if (carrierName !== undefined) order.carrierName = carrierName;
+      if (trackingNumber !== undefined) order.trackingNumber = trackingNumber;
+      if (estimatedDeliveryDate !== undefined) order.estimatedDeliveryDate = estimatedDeliveryDate;
+      if (deliveryNotes !== undefined) order.deliveryNotes = deliveryNotes;
+
+      let msg = 'Delivery details updated';
+      if (deliveryAgent) {
+        const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+        const agent = await Agent.findById(deliveryAgent);
+        if (agent) {
+          msg = `Assigned to delivery agent: ${agent.name}`;
+          // Also add order to agent's assignedOrders
+          if (!agent.assignedOrders.includes(order._id)) {
+            agent.assignedOrders.push(order._id);
+            await agent.save();
+          }
+        }
+      } else if (carrierName) {
+        msg = `Assigned to carrier: ${carrierName}`;
+        if (trackingNumber) msg += ` (Tracking: ${trackingNumber})`;
+      }
+
+      order.timeline.push({
+        type: 'delivery_assigned',
+        message: msg,
+        actorId: req.user._id
+      });
+
+      await order.save();
+
+      res.status(200).json({ status: 'success', message: 'Delivery agent assigned', data: order });
     } catch (err) {
       next(err);
     }

@@ -88,6 +88,11 @@ const storefrontOrderSchema = new mongoose.Schema({
     default: 'placed',
     index: true
   },
+  deliveryAgent: { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontDeliveryAgent', default: null, index: true },
+  trackingNumber: { type: String, trim: true, default: '' },
+  carrierName: { type: String, trim: true, default: '' },
+  deliveryNotes: { type: String, trim: true, default: '' },
+  estimatedDeliveryDate: { type: Date, default: null },
 
   timeline: { type: [timelineSchema], default: [] },
   notes: { type: String, trim: true, default: '' },

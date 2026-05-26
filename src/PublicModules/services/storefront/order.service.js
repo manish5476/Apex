@@ -130,7 +130,10 @@ class StorefrontOrderService {
   }
 
   async trackOrder(organizationId, orderNumber, emailOrPhone) {
-    const order = await StorefrontOrder.findOne({ organizationId, orderNumber }).populate('customerId', 'email phone firstName lastName').lean();
+    const order = await StorefrontOrder.findOne({ organizationId, orderNumber })
+      .populate('customerId', 'email phone firstName lastName')
+      .populate('deliveryAgent', 'name phone')
+      .lean();
     if (!order) throw new AppError('Order not found', 404);
     const email = order.customerId?.email;
     const phone = order.customerId?.phone;
