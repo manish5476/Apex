@@ -4,6 +4,7 @@ const StorefrontCart = require('../../models/storefront/storefrontCart.model');
 const StorefrontCartItem = require('../../models/storefront/storefrontCartItem.model');
 const StorefrontOrder = require('../../models/storefront/storefrontOrder.model');
 const StorefrontCustomer = require('../../models/storefront/storefrontCustomer.model');
+const Product = require('../../../modules/inventory/core/model/product.model');
 const CustomerService = require('./customer.service');
 const CartService = require('./cart.service');
 const AppError = require('../../../core/utils/api/appError');
@@ -88,7 +89,20 @@ class StorefrontOrderService {
       }
     });
 
+    // Lock Inventory (Reserve Stock)
+    const lockPromises = orderItems.map(async (item) => {
+      if (!item.productId) return;
+      const product = await Product.findOne({ _id: item.productId, organizationId });
+      if (product && product.inventory && product.inventory.length > 0) {
+        let inv = product.inventory.find(i => i.branchId.toString() === item.branchId?.toString());
+        if (!inv) inv = product.inventory[0]; // fallback to first branch if not specified
+        inv.reservedQuantity = (inv.reservedQuantity || 0) + item.quantity;
+        await product.save();
+      }
+    });
+
     await Promise.all([
+      ...lockPromises,
       StorefrontCart.updateOne({ _id: cart._id }, { $set: { status: 'converted' } }),
       StorefrontCustomer.updateOne(
         { _id: customerId, organizationId },

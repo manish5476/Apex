@@ -2,6 +2,7 @@
 
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const recentlyViewedSchema = new mongoose.Schema({
   productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
@@ -25,6 +26,8 @@ const storefrontCustomerSchema = new mongoose.Schema({
     index: true
   },
   passwordHash: { type: String, select: false },
+  passwordResetToken: { type: String, select: false },
+  passwordResetExpires: { type: Date, select: false },
   guestAccount: { type: Boolean, default: true, index: true },
   marketingOptIn: { type: Boolean, default: false },
 
@@ -75,6 +78,19 @@ storefrontCustomerSchema.methods.setPassword = async function (plainPassword) {
 storefrontCustomerSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.passwordHash) return false;
   return bcrypt.compare(candidatePassword, this.passwordHash);
+};
+
+storefrontCustomerSchema.methods.createPasswordResetToken = function () {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+
+  return resetToken;
 };
 
 storefrontCustomerSchema.pre('save', function (next) {

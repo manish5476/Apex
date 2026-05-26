@@ -49,6 +49,39 @@ class StorefrontCustomerController {
     }
   };
 
+  forgotPassword = async (req, res, next) => {
+    try {
+      const { organizationId } = await this._resolvePublicContext(req, res);
+      const result = await CustomerService.forgotPassword(organizationId, req.body.email);
+      res.status(200).json({ status: 'success', ...result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  resetPassword = async (req, res, next) => {
+    try {
+      const { organizationId } = await this._resolvePublicContext(req, res);
+      await CustomerService.resetPassword(organizationId, req.body.token, req.body.password);
+      res.status(200).json({ status: 'success', message: 'Password reset successfully' });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  updatePassword = async (req, res, next) => {
+    try {
+      const { organizationId, identity } = await this._resolvePublicContext(req, res);
+      if (!identity.customerId) return next(new AppError('Storefront customer authentication required', 401));
+      
+      await CustomerService.updatePassword(organizationId, identity.customerId, req.body.currentPassword, req.body.newPassword);
+      
+      res.status(200).json({ status: 'success', message: 'Password updated successfully' });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   me = async (req, res, next) => {
     try {
       const { organizationId, identity } = await this._resolvePublicContext(req, res);
@@ -71,12 +104,36 @@ class StorefrontCustomerController {
     }
   };
 
+  toggleWishlist = async (req, res, next) => {
+    try {
+      const { organizationId, identity } = await this._resolvePublicContext(req, res);
+      if (!identity.customerId) return next(new AppError('Storefront customer authentication required', 401));
+      const { productId, variantId } = req.body;
+      if (!productId) return next(new AppError('productId is required', 400));
+      const result = await CustomerService.toggleWishlist(organizationId, identity.customerId, productId, variantId);
+      res.status(200).json({ status: 'success', data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   addAddress = async (req, res, next) => {
     try {
       const { organizationId, identity } = await this._resolvePublicContext(req, res);
       if (!identity.customerId) return next(new AppError('Storefront customer authentication required', 401));
       const address = await CustomerService.addAddress(organizationId, identity.customerId, req.body);
       res.status(201).json({ status: 'success', data: address });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  updateAddress = async (req, res, next) => {
+    try {
+      const { organizationId, identity } = await this._resolvePublicContext(req, res);
+      if (!identity.customerId) return next(new AppError('Storefront customer authentication required', 401));
+      const address = await CustomerService.updateAddress(organizationId, identity.customerId, req.params.addressId, req.body);
+      res.status(200).json({ status: 'success', data: address });
     } catch (err) {
       next(err);
     }

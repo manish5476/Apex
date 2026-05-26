@@ -7,6 +7,7 @@ const StorefrontOrder = require('../../models/storefront/storefrontOrder.model')
 const StorefrontCart = require('../../models/storefront/storefrontCart.model');
 const Customer = require('../../../modules/organization/core/customer.model');
 const AppError = require('../../../core/utils/api/appError');
+const crypto = require('crypto');
 
 class StorefrontCustomerService {
   async getOrCreateGuest(organizationId, sessionId, payload = {}) {
@@ -110,6 +111,65 @@ class StorefrontCustomerService {
     return customer;
   }
 
+  async forgotPassword(organizationId, email) {
+    if (!email) throw new AppError('Email is required', 400);
+    const customer = await StorefrontCustomer.findOne({ organizationId, email: email.toLowerCase(), status: 'active' });
+    if (!customer) {
+      // Return a generic message to prevent email enumeration
+      return { message: 'If an account exists with that email, a password reset link has been sent.' };
+    }
+
+    const resetToken = customer.createPasswordResetToken();
+    await customer.save({ validateBeforeSave: false });
+
+    // In a production environment, send an email here.
+    // For now, logging the reset token to console.
+    console.log(`[Storefront Password Reset] Use this token to reset password: ${resetToken}`);
+
+    return { message: 'Password reset link sent to email.' };
+  }
+
+  async resetPassword(organizationId, token, newPassword) {
+    if (!token || !newPassword) throw new AppError('Token and new password are required', 400);
+    if (newPassword.length < 8) throw new AppError('Password must be at least 8 characters', 400);
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const customer = await StorefrontCustomer.findOne({
+      organizationId,
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+      status: 'active'
+    });
+
+    if (!customer) {
+      throw new AppError('Token is invalid or has expired', 400);
+    }
+
+    await customer.setPassword(newPassword);
+    customer.passwordResetToken = undefined;
+    customer.passwordResetExpires = undefined;
+    await customer.save();
+
+    return customer;
+  }
+
+  async updatePassword(organizationId, customerId, currentPassword, newPassword) {
+    if (!currentPassword || !newPassword) throw new AppError('Current and new password are required', 400);
+    if (newPassword.length < 8) throw new AppError('Password must be at least 8 characters', 400);
+
+    const customer = await StorefrontCustomer.findOne({ _id: customerId, organizationId, status: 'active' }).select('+passwordHash');
+    if (!customer) throw new AppError('Customer not found', 404);
+
+    if (!(await customer.comparePassword(currentPassword))) {
+      throw new AppError('Current password is incorrect', 401);
+    }
+
+    await customer.setPassword(newPassword);
+    await customer.save();
+    return customer;
+  }
+
   async addAddress(organizationId, customerId, payload) {
     const count = await StorefrontCustomerAddress.countDocuments({ organizationId, customerId });
     const isDefault = payload.isDefault === true || count === 0;
@@ -130,6 +190,48 @@ class StorefrontCustomerService {
     }
 
     return address;
+  }
+
+  async updateAddress(organizationId, customerId, addressId, payload) {
+    const address = await StorefrontCustomerAddress.findOne({ _id: addressId, organizationId, customerId });
+    if (!address) throw new AppError('Address not found', 404);
+
+    const isDefault = payload.isDefault === true;
+
+    if (isDefault) {
+      await StorefrontCustomerAddress.updateMany({ organizationId, customerId }, { $set: { isDefault: false } });
+    }
+
+    Object.assign(address, payload, { isDefault });
+    await address.save();
+
+    if (isDefault) {
+      await StorefrontCustomer.findOneAndUpdate({ _id: customerId, organizationId }, { defaultAddressId: address._id });
+    } else if (address.isDefault && !isDefault) {
+      // If we are un-defaulting this address, clear defaultAddressId if it matches this one
+      await StorefrontCustomer.findOneAndUpdate({ _id: customerId, organizationId, defaultAddressId: address._id }, { $unset: { defaultAddressId: 1 } });
+    }
+
+    return address;
+  }
+
+  async toggleWishlist(organizationId, customerId, productId, variantId = null) {
+    const query = { organizationId, customerId, productId, variantId };
+    const existing = await StorefrontWishlist.findOne(query);
+    if (existing) {
+      await existing.deleteOne();
+      return { action: 'removed', productId, variantId };
+    }
+    
+    try {
+      await StorefrontWishlist.create(query);
+      return { action: 'added', productId, variantId };
+    } catch (error) {
+      if (error.code === 11000) {
+        return { action: 'added', productId, variantId };
+      }
+      throw error;
+    }
   }
 
   async getDashboard(organizationId, customerId) {
