@@ -7,7 +7,7 @@ const storefrontDeliveryAgentSchema = new mongoose.Schema({
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
   
   // Link to CRM staff member, if this agent is an internal staff
-  staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null },
+  staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
   name: { type: String, required: true, trim: true },
   phone: { type: String, required: true, trim: true },
