@@ -89,6 +89,8 @@ const storefrontOrderSchema = new mongoose.Schema({
     index: true
   },
   deliveryAgent: { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontDeliveryAgent', default: null, index: true },
+  platformDeliveryAgent: { type: mongoose.Schema.Types.ObjectId, ref: 'PlatformDeliveryAgent', default: null, index: true },
+  fulfilledBy: { type: String, enum: ['merchant', 'platform'], default: 'merchant', index: true },
   trackingNumber: { type: String, trim: true, default: '' },
   carrierName: { type: String, trim: true, default: '' },
   deliveryNotes: { type: String, trim: true, default: '' },

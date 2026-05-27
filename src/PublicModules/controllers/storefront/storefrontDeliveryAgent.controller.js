@@ -13,15 +13,26 @@ class StorefrontDeliveryAgentController {
   // ---------------------------------------------------------------------------
   login = async (req, res, next) => {
     try {
-      const { phone, password } = req.body;
+      const { phone, password, orgSlug } = req.body;
       
-      if (!phone || !password) {
-        return next(new AppError('Phone and password are required', 400));
+      if (!phone || !password || !orgSlug) {
+        return next(new AppError('Phone, password, and organization slug are required', 400));
       }
 
-      const agent = await StorefrontDeliveryAgent.findOne({ phone }).select('+password');
+      // Lookup Organization using uniqueShopId which corresponds to orgSlug
+      const Organization = require('../../../modules/organization/core/organization.model');
+      const org = await Organization.findOne({
+        uniqueShopId: new RegExp(`^${orgSlug}$`, 'i'),
+        isActive: true
+      });
+
+      if (!org) {
+        return next(new AppError('Organization not found or inactive', 404));
+      }
+
+      const agent = await StorefrontDeliveryAgent.findOne({ phone, organizationId: org._id }).select('+password');
       if (!agent) {
-        return next(new AppError('Invalid phone number or password', 401));
+        return next(new AppError('Invalid phone number or password for this organization', 401));
       }
 
       if (!agent.isActive) {
@@ -55,8 +66,42 @@ class StorefrontDeliveryAgentController {
   }
 
   // ---------------------------------------------------------------------------
-  // DASHBOARD
+  // UPDATE PASSWORD
+  // PATCH /delivery-agent/update-password
+  // ---------------------------------------------------------------------------
+  updatePassword = async (req, res, next) => {
+    try {
+      const { oldPassword, newPassword } = req.body;
+      if (!oldPassword || !newPassword) {
+        return next(new AppError('Please provide both old and new password', 400));
+      }
+
+      const agent = await StorefrontDeliveryAgent.findById(req.user.id).select('+password');
+      if (!agent) {
+        return next(new AppError('Delivery agent not found', 404));
+      }
+
+      const isMatch = await agent.matchPassword(oldPassword);
+      if (!isMatch) {
+        return next(new AppError('Incorrect old password', 401));
+      }
+
+      agent.password = newPassword;
+      await agent.save();
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Password updated successfully'
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // DASHBOARD & SCANNING
   // GET /delivery-agent/orders
+  // GET /delivery-agent/scan/:identifier
   // ---------------------------------------------------------------------------
   getAssignedOrders = async (req, res, next) => {
     try {
@@ -75,6 +120,45 @@ class StorefrontDeliveryAgentController {
         status: 'success',
         results: orders.length,
         data: orders
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  scanOrder = async (req, res, next) => {
+    try {
+      const agentId = req.user.id;
+      const organizationId = req.user.organizationId;
+      const { identifier } = req.params;
+
+      let order = await StorefrontOrder.findOne({
+        $or: [
+          { trackingNumber: identifier },
+          { orderNumber: identifier }
+        ],
+        organizationId
+      }).lean();
+
+      if (!order && identifier.length === 24) {
+        // Fallback for _id if it's a valid object ID length
+         const orderById = await StorefrontOrder.findOne({ _id: identifier, organizationId }).lean();
+         if (orderById) {
+             order = orderById;
+         }
+      }
+
+      if (!order) {
+        return next(new AppError('Order not found', 404));
+      }
+
+      if (order.deliveryAgent?.toString() !== agentId.toString()) {
+        return next(new AppError('This order is not assigned to you', 403));
+      }
+
+      res.status(200).json({
+        status: 'success',
+        data: order
       });
     } catch (err) {
       next(err);
@@ -113,7 +197,17 @@ class StorefrontDeliveryAgentController {
       if (status === 'shipped' && oldFulfillmentStatus !== 'shipped') {
          msg = 'Order picked up and is out for delivery';
       } else if (status === 'delivered' && oldFulfillmentStatus !== 'delivered') {
-         msg = 'Order delivered successfully';
+         // COD Validation
+         if (order.paymentMethod === 'COD' && order.paymentStatus !== 'paid') {
+           const { paymentCollected } = req.body;
+           if (!paymentCollected) {
+             return next(new AppError('You must confirm cash collection for Cash on Delivery orders', 400));
+           }
+           order.paymentStatus = 'paid';
+           msg = 'Order delivered and payment collected';
+         } else {
+           msg = 'Order delivered successfully';
+         }
       }
 
       if (msg) {

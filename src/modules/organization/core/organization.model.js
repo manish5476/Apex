@@ -43,6 +43,7 @@ const organizationSchema = new mongoose.Schema({
 
   // --- Features & Wallet ---
   features:        { whatsappEnabled: { type: Boolean, default: true } },
+  platformDelivery: { enabled: { type: Boolean, default: false } },
   whatsappWallet:  { credits: { type: Number, default: 0 } },
   superAdminRole:  { type: String, default: 'superadmin' },
   isActive:        { type: Boolean, default: true },

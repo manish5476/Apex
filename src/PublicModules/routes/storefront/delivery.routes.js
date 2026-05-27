@@ -23,7 +23,9 @@ router.use((req, res, next) => {
   return res.status(403).json({ status: 'fail', message: 'You do not have permission to perform this action' });
 });
 
+router.patch('/update-password', deliveryAgentController.updatePassword);
 router.get('/orders', deliveryAgentController.getAssignedOrders);
+router.get('/scan/:identifier', deliveryAgentController.scanOrder);
 router.patch('/orders/:orderId/status', deliveryAgentController.updateOrderStatus);
 
 module.exports = router;
