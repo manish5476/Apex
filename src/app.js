@@ -48,52 +48,97 @@ app.use(assignRequestId);
 // );
 // app.options("*", cors());
 
+// const corsOptions = {
+//   origin: function (origin, callback) {
+//     if (!origin) {
+//       return callback(null, true);
+//     }
+
+//     const allowedOrigins = process.env.CORS_ORIGIN
+//       ? process.env.CORS_ORIGIN.split(",")
+//       : [
+//         "http://localhost:4200",
+//         "http://localhost:8081",
+//         "https://apex-infinity.vercel.app",
+//         "https://apex-infinity-vert.vercel.app"
+//       ];
+//     const allowVercelPreviewOrigins = process.env.ALLOW_VERCEL_PREVIEW_ORIGINS !== "false";
+//     const isVercelPreviewOrigin =
+//       allowVercelPreviewOrigins && /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+
+//     // In development, allow all origins to accommodate dynamic local IPs
+//     if (process.env.NODE_ENV === "development" || !origin) {
+//       console.log(`✅ CORS: Accepted origin ${origin || 'Local/No Origin'} [${process.env.NODE_ENV}]`);
+//       return callback(null, true);
+//     }
+
+//     if (allowedOrigins.indexOf(origin) !== -1 || isVercelPreviewOrigin || origin.startsWith('exp://')) {
+//       console.log(`✅ CORS: Allowed specific origin ${origin}`);
+//       callback(null, true);
+//     } else {
+//       console.warn(`❌ CORS: Rejected origin ${origin}`);
+//       callback(new Error('Not allowed by CORS'));
+//     }
+//   },
+//   credentials: true,
+//   allowedHeaders: [
+//     "Content-Type",
+//     "Authorization",
+//     "X-Request-Id",
+//     "X-Storefront-Request",
+//     "X-Storefront-Session",
+//     "X-Customer-Token"
+//   ],
+//   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+//   exposedHeaders: ["X-Request-Id"],
+// };
+
+// app.use(cors(corsOptions));
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) {
+    // 1. Allow mobile/no-origin (often stripped by mobile/postman)
+    if (!origin || origin.startsWith('exp://') || origin.startsWith('capacitor://')) {
       return callback(null, true);
     }
 
-    const allowedOrigins = process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(",")
-      : [
-        "http://localhost:4200",
-        "http://localhost:8081",
-        "https://apex-infinity.vercel.app",
-        "https://apex-infinity-vert.vercel.app"
-      ];
-    const allowVercelPreviewOrigins = process.env.ALLOW_VERCEL_PREVIEW_ORIGINS !== "false";
-    const isVercelPreviewOrigin =
-      allowVercelPreviewOrigins && /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+    // 2. Define strict whitelist
+    const allowedOrigins = [
+      "http://localhost:4200",
+      "http://localhost:8081",
+      "https://apex-infinity.vercel.app",
+      "https://apex-infinity-vert.vercel.app"
+    ];
 
-    // In development, allow all origins to accommodate dynamic local IPs
-    if (process.env.NODE_ENV === "development" || !origin) {
-      console.log(`✅ CORS: Accepted origin ${origin || 'Local/No Origin'} [${process.env.NODE_ENV}]`);
+    // 3. Vercel Preview Regex
+    const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+
+    if (allowedOrigins.includes(origin) || isVercelPreview) {
       return callback(null, true);
     }
-
-    if (allowedOrigins.indexOf(origin) !== -1 || isVercelPreviewOrigin || origin.startsWith('exp://')) {
-      console.log(`✅ CORS: Allowed specific origin ${origin}`);
-      callback(null, true);
-    } else {
-      console.warn(`❌ CORS: Rejected origin ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
+    
+    // Log failures but don't crash the request with a thrown Error object
+    console.warn(`❌ CORS Rejected: ${origin}`);
+    callback(new Error('CORS Not Allowed'));
   },
-  credentials: true,
+  credentials: true, // REQUIRED for cookies/auth
   allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Request-Id",
-    "X-Storefront-Request",
-    "X-Storefront-Session",
+    "Content-Type", 
+    "Authorization", 
+    "X-Request-Id", 
+    "X-Storefront-Request", 
+    "X-Storefront-Session", 
     "X-Customer-Token"
   ],
+  exposedHeaders: ["X-Request-Id", "Authorization"], 
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-  exposedHeaders: ["X-Request-Id"],
+  optionsSuccessStatus: 204 // Some browsers/proxies hate 200 for OPTIONS
 };
 
+// Use the options
 app.use(cors(corsOptions));
+
+// Ensure OPTIONS requests are always handled correctly
+app.options("*", cors(corsOptions));
 
 
 app.use((req, res, next) => {
