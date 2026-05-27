@@ -1,6 +1,6 @@
-const PlatformDeliveryAgent = require('../../models/platformDeliveryAgent.model');
-const StorefrontOrder = require('../../models/storefront/storefrontOrder.model');
-const AppError = require('../../../../core/utils/appError');
+const PlatformDeliveryAgent = require('../models/platformDeliveryAgent.model');
+const StorefrontOrder = require('../models/storefront/storefrontOrder.model');
+const AppError = require('../../core/utils/api/appError');
 const jwt = require('jsonwebtoken');
 
 const signToken = (id) => {
@@ -120,8 +120,8 @@ exports.getAvailableOrders = async (req, res, next) => {
       fulfilledBy: 'platform',
       $or: [
         { platformDeliveryAgent: agentId },
-        { 
-          platformDeliveryAgent: null, 
+        {
+          platformDeliveryAgent: null,
           'shippingAddress.city': { $regex: new RegExp(`^${agent.city}$`, 'i') },
           fulfillmentStatus: { $in: ['unfulfilled', 'partial'] },
           orderStatus: { $nin: ['cancelled', 'closed'] }
@@ -141,7 +141,7 @@ exports.getAvailableOrders = async (req, res, next) => {
 
 exports.scanOrder = async (req, res, next) => {
   try {
-    const { identifier } = req.params; 
+    const { identifier } = req.params;
     const agentId = req.user.id;
 
     // Find the order by orderNumber or trackingNumber
@@ -179,7 +179,7 @@ exports.updateOrderStatus = async (req, res, next) => {
     const agentId = req.user.id;
 
     const order = await StorefrontOrder.findOne({ _id: orderId, platformDeliveryAgent: agentId, fulfilledBy: 'platform' }).populate('organizationId', 'name address');
-    
+
     if (!order) {
       return next(new AppError('Order not found or not assigned to you', 404));
     }
@@ -194,10 +194,10 @@ exports.updateOrderStatus = async (req, res, next) => {
     if (status === 'delivered') {
       if (order.paymentStatus !== 'paid') {
         if (order.paymentMethod === 'COD' && paymentCollected) {
-           order.paymentStatus = 'paid';
-           order.timeline.push({ type: 'payment_collected', message: 'Payment collected by delivery partner', actorId: agentId });
+          order.paymentStatus = 'paid';
+          order.timeline.push({ type: 'payment_collected', message: 'Payment collected by delivery partner', actorId: agentId });
         } else {
-           return next(new AppError('Payment must be collected for COD orders before marking as delivered', 400));
+          return next(new AppError('Payment must be collected for COD orders before marking as delivered', 400));
         }
       }
       order.timeline.push({ type: 'delivered', message: 'Order delivered by Apex Partner', actorId: agentId });

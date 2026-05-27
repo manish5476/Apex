@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 
-const auth = require('../../../core/middleware/auth.middleware');
-const platformDeliveryController = require('../../controllers/platformDelivery.controller');
+const auth = require('../../core/middleware/auth.middleware');
+const platformDeliveryController = require('../controllers/platformDelivery.controller');
 
 // Public routes
 router.post('/register', platformDeliveryController.register);
