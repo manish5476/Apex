@@ -64,6 +64,7 @@ router.get('/pages/:pageId/analytics',     canReadStorefront, storefrontAdminCon
 // ============================================================
 // ORDERS
 // ============================================================
+router.get('/command-center', canReadStorefront, storefrontAdminController.getCommandCenter);
 router.get('/orders', canReadStorefront, storefrontAdminController.getAllOrders);
 router.put('/orders/:orderId/status', checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.updateOrderStatus);
 router.patch('/orders/:orderId/assign-agent', checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.assignDeliveryAgent);

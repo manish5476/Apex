@@ -298,23 +298,52 @@ class StorefrontCustomerService {
     const phone = customer.phone || defaultAddress?.phone;
     if (!phone) throw new AppError('A phone number is required before converting to CRM customer', 400);
 
-    const crmCustomer = await Customer.create({
+    const existingQuery = {
       organizationId,
-      type: 'individual',
-      name,
-      avatar: customer.avatar,
-      email: customer.email,
-      phone,
-      billingAddress: defaultAddress ? this.mapAddress(defaultAddress) : undefined,
-      shippingAddress: defaultAddress ? this.mapAddress(defaultAddress) : undefined,
-      tags: [...new Set([...(customer.tags ?? []), 'storefront-converted'])],
-      notes: [
-        customer.notes,
-        `Converted from storefront customer ${customer._id}`
-      ].filter(Boolean).join('\n'),
-      createdBy: actorId,
-      updatedBy: actorId
-    });
+      isDeleted: { $ne: true },
+      $or: [
+        { phone },
+        ...(customer.email ? [{ email: customer.email }] : [])
+      ]
+    };
+
+    let crmCustomer = await Customer.findOne(existingQuery);
+    if (!crmCustomer) {
+      crmCustomer = await Customer.create({
+        organizationId,
+        type: 'individual',
+        name,
+        avatar: customer.avatar,
+        email: customer.email,
+        phone,
+        billingAddress: defaultAddress ? this.mapAddress(defaultAddress) : undefined,
+        shippingAddress: defaultAddress ? this.mapAddress(defaultAddress) : undefined,
+        tags: [...new Set([...(customer.tags ?? []), 'storefront-converted'])],
+        notes: [
+          customer.notes,
+          `Converted from storefront customer ${customer._id}`
+        ].filter(Boolean).join('\n'),
+        createdBy: actorId,
+        updatedBy: actorId
+      });
+    } else {
+      const tags = new Set([...(crmCustomer.tags || []), 'storefront-converted']);
+      crmCustomer.tags = Array.from(tags);
+      crmCustomer.email = crmCustomer.email || customer.email;
+      crmCustomer.avatar = crmCustomer.avatar || customer.avatar;
+      if (defaultAddress && !crmCustomer.shippingAddress?.street) {
+        crmCustomer.shippingAddress = this.mapAddress(defaultAddress);
+      }
+      if (defaultAddress && !crmCustomer.billingAddress?.street) {
+        crmCustomer.billingAddress = this.mapAddress(defaultAddress);
+      }
+      crmCustomer.notes = [
+        crmCustomer.notes,
+        `Linked from storefront customer ${customer._id}`
+      ].filter(Boolean).join('\n');
+      crmCustomer.updatedBy = actorId;
+      await crmCustomer.save();
+    }
 
     customer.convertedToMainCustomer = true;
     customer.linkedCustomerId = crmCustomer._id;

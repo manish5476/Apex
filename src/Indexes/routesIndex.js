@@ -30,6 +30,7 @@ module.exports = {
   inventoryRoutes: require('../routes/v1/inventory.routes.js'),
   stockRoutes: require('../routes/v1/stock.routes.js'),
   assetsRoutes: require('../routes/v1/asset.routes.js'),
+  logisticsRoutes: require('../modules/logistics/routes/logistics.routes.js'),
 
   // --- Analytics & Admin ---
   dashboard: require('../routes/v1/dashboard.routes.js'),

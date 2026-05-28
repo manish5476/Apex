@@ -29,8 +29,177 @@ const PageSnapshotService = require('../../services/storefront/pageSnapshot.serv
 const SectionValidator = require('../../middleware/validation/section.validator');
 const AppError = require('../../../core/utils/api/appError');
 const { THEME_LIST } = require('../../utils/constants/storefront/themes.constants');
+const CustomerService = require('../../services/storefront/customer.service');
 
 class StorefrontAdminController {
+
+  // ---------------------------------------------------------------------------
+  // COMMAND CENTER
+  // GET /admin/storefront/command-center
+  // ---------------------------------------------------------------------------
+
+  getCommandCenter = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const StorefrontCustomer = require('../../models/storefront/storefrontCustomer.model');
+      const StorefrontCart = require('../../models/storefront/storefrontCart.model');
+      const Invoice = require('../../../modules/accounting/billing/invoice.model');
+
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const query = { organizationId };
+      const deliveredQuery = { organizationId, fulfillmentStatus: 'delivered' };
+
+      const [
+        totals,
+        revenue,
+        byStatus,
+        byPayment,
+        recentOrders,
+        customers,
+        abandonedCarts,
+        deliveredWithoutLinkedCustomer,
+        deliveredWithoutInvoice,
+        unfulfilledAccepted,
+        pages
+      ] = await Promise.all([
+        StorefrontOrder.countDocuments(query),
+        StorefrontOrder.aggregate([
+          { $match: { organizationId, createdAt: { $gte: since }, orderStatus: { $ne: 'cancelled' } } },
+          {
+            $group: {
+              _id: null,
+              grossRevenue: { $sum: '$totals.grandTotal' },
+              shippingRevenue: { $sum: '$totals.shipping' },
+              averageOrderValue: { $avg: '$totals.grandTotal' },
+              orders: { $sum: 1 }
+            }
+          }
+        ]),
+        StorefrontOrder.aggregate([
+          { $match: query },
+          { $group: { _id: '$orderStatus', count: { $sum: 1 }, value: { $sum: '$totals.grandTotal' } } },
+          { $sort: { count: -1 } }
+        ]),
+        StorefrontOrder.aggregate([
+          { $match: query },
+          { $group: { _id: '$paymentStatus', count: { $sum: 1 }, value: { $sum: '$totals.grandTotal' } } },
+          { $sort: { count: -1 } }
+        ]),
+        StorefrontOrder.find(query)
+          .populate('customerId', 'firstName lastName email phone convertedToMainCustomer linkedCustomerId guestAccount')
+          .sort({ createdAt: -1 })
+          .limit(8)
+          .lean(),
+        StorefrontCustomer.aggregate([
+          { $match: { organizationId } },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+              guests: { $sum: { $cond: ['$guestAccount', 1, 0] } },
+              converted: { $sum: { $cond: ['$convertedToMainCustomer', 1, 0] } },
+              revenue: { $sum: '$totalSpent' }
+            }
+          }
+        ]),
+        StorefrontCart.countDocuments({ organizationId, status: 'abandoned' }),
+        StorefrontOrder.countDocuments({
+          ...deliveredQuery,
+          $or: [
+            { 'metadata.linkedCustomerId': null },
+            { 'metadata.linkedCustomerId': { $exists: false } }
+          ]
+        }),
+        StorefrontOrder.aggregate([
+          { $match: deliveredQuery },
+          {
+            $lookup: {
+              from: 'invoices',
+              localField: '_id',
+              foreignField: 'saleId',
+              as: 'invoice'
+            }
+          },
+          { $match: { invoice: { $size: 0 } } },
+          { $count: 'count' }
+        ]),
+        StorefrontOrder.countDocuments({
+          organizationId,
+          orderStatus: 'confirmed',
+          fulfillmentStatus: { $in: ['unfulfilled', 'partial'] }
+        }),
+        StorefrontPage.aggregate([
+          { $match: { organizationId } },
+          {
+            $group: {
+              _id: '$status',
+              count: { $sum: 1 },
+              views: { $sum: { $ifNull: ['$viewCount', 0] } }
+            }
+          }
+        ])
+      ]);
+
+      const revenueSummary = revenue[0] || { grossRevenue: 0, shippingRevenue: 0, averageOrderValue: 0, orders: 0 };
+      const customerSummary = customers[0] || { total: 0, guests: 0, converted: 0, revenue: 0 };
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          generatedAt: new Date().toISOString(),
+          period: { label: 'Last 30 days', since },
+          kpis: {
+            totalOrders: totals,
+            grossRevenue: revenueSummary.grossRevenue || 0,
+            averageOrderValue: revenueSummary.averageOrderValue || 0,
+            shippingRevenue: revenueSummary.shippingRevenue || 0,
+            storefrontCustomers: customerSummary.total || 0,
+            convertedCustomers: customerSummary.converted || 0,
+            guestCustomers: customerSummary.guests || 0,
+            abandonedCarts,
+            unfulfilledAccepted,
+            ghostRisk: (deliveredWithoutLinkedCustomer || 0) + (deliveredWithoutInvoice[0]?.count || 0)
+          },
+          byStatus,
+          byPayment,
+          pages,
+          recentOrders,
+          workQueues: [
+            {
+              key: 'pending-dispatch',
+              title: 'Accepted orders pending dispatch',
+              count: unfulfilledAccepted,
+              severity: unfulfilledAccepted > 0 ? 'warning' : 'success',
+              route: '/storefront/orders'
+            },
+            {
+              key: 'ghost-customers',
+              title: 'Delivered orders without CRM customer link',
+              count: deliveredWithoutLinkedCustomer,
+              severity: deliveredWithoutLinkedCustomer > 0 ? 'danger' : 'success',
+              route: '/storefront/customers'
+            },
+            {
+              key: 'missing-invoices',
+              title: 'Delivered orders without invoice',
+              count: deliveredWithoutInvoice[0]?.count || 0,
+              severity: deliveredWithoutInvoice[0]?.count ? 'danger' : 'success',
+              route: '/storefront/orders'
+            },
+            {
+              key: 'abandoned-carts',
+              title: 'Abandoned carts',
+              count: abandonedCarts,
+              severity: abandonedCarts > 0 ? 'info' : 'success',
+              route: '/storefront/abandoned-carts'
+            }
+          ]
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // LIST pages
@@ -583,6 +752,32 @@ class StorefrontAdminController {
       // Handle Delivery (deduct physical stock)
       if (fulfillmentStatus === 'delivered' && oldFulfillmentStatus !== 'delivered') {
         const Product = require('../../../modules/inventory/core/model/product.model');
+        let linkedCustomerId = order.metadata?.linkedCustomerId || null;
+        try {
+          const conversion = await CustomerService.convertToCrmCustomer(
+            organizationId,
+            order.customerId,
+            req.user._id || req.user.id
+          );
+          linkedCustomerId = conversion.crmCustomerId;
+          order.metadata = {
+            ...(order.metadata || {}),
+            linkedCustomerId,
+            crmCustomerAutoConvertedAt: new Date()
+          };
+          order.timeline.push({
+            type: 'customer_linked',
+            message: 'Storefront customer linked to CRM customer',
+            actorId: req.user._id
+          });
+        } catch (conversionErr) {
+          order.timeline.push({
+            type: 'customer_link_failed',
+            message: `CRM customer link failed: ${conversionErr.message}`,
+            actorId: req.user._id
+          });
+        }
+
         for (const item of order.items) {
           if (!item.productId) continue;
           const product = await Product.findOne({ _id: item.productId, organizationId });
@@ -616,9 +811,11 @@ class StorefrontAdminController {
 
           const addressToString = (addr) => addr ? Object.values(addr).filter(v => typeof v === 'string' && v.trim() !== '').join(', ') : '';
 
-          await Invoice.create({
+          const existingInvoice = await Invoice.findOne({ organizationId, saleId: order._id });
+          if (!existingInvoice && linkedCustomerId) {
+            await Invoice.create({
             organizationId,
-            customerId: order.customerId,
+            customerId: linkedCustomerId,
             saleId: order._id,
             invoiceNumber: `INV-${date}-${nanoid(6).toUpperCase()}`,
             invoiceDate: new Date(),
@@ -630,7 +827,19 @@ class StorefrontAdminController {
             grandTotal: order.totals?.grandTotal || 0,
             paymentStatus: order.paymentStatus === 'paid' ? 'paid' : 'unpaid',
             paidAmount: order.paymentStatus === 'paid' ? (order.totals?.grandTotal || 0) : 0
-          });
+            });
+            order.timeline.push({
+              type: 'invoice_created',
+              message: 'CRM invoice created for delivered storefront order',
+              actorId: req.user._id
+            });
+          } else if (!linkedCustomerId) {
+            order.timeline.push({
+              type: 'invoice_skipped',
+              message: 'Invoice skipped because CRM customer link is missing',
+              actorId: req.user._id
+            });
+          }
         } catch (invoiceErr) {
           console.error('[Invoice Generation Error]', invoiceErr.message);
         }
@@ -923,7 +1132,19 @@ class StorefrontAdminController {
     try {
       const { organizationId } = req.user;
       const { orderId } = req.params;
-      const { deliveryAgent, carrierName, trackingNumber, estimatedDeliveryDate, deliveryNotes } = req.body;
+      const {
+        deliveryAgent,
+        carrierName,
+        trackingNumber,
+        estimatedDeliveryDate,
+        deliveryNotes,
+        fulfillmentMode,
+        publicPartnerId,
+        publicPartnerName,
+        dispatchPriority,
+        serviceLevel,
+        deliveryQuote
+      } = req.body;
 
       const order = await StorefrontOrder.findOne({ _id: orderId, organizationId });
       if (!order) return next(new AppError('Order not found', 404));
@@ -933,6 +1154,23 @@ class StorefrontAdminController {
       if (trackingNumber !== undefined) order.trackingNumber = trackingNumber;
       if (estimatedDeliveryDate !== undefined) order.estimatedDeliveryDate = estimatedDeliveryDate;
       if (deliveryNotes !== undefined) order.deliveryNotes = deliveryNotes;
+      if (fulfillmentMode) {
+        order.fulfilledBy = fulfillmentMode === 'public_partner' ? 'platform' : 'merchant';
+        order.metadata = {
+          ...(order.metadata || {}),
+          logistics: {
+            ...((order.metadata || {}).logistics || {}),
+            fulfillmentMode,
+            publicPartnerId: publicPartnerId || null,
+            publicPartnerName: publicPartnerName || '',
+            dispatchPriority: dispatchPriority || 'normal',
+            serviceLevel: serviceLevel || 'standard',
+            deliveryQuote: deliveryQuote || null,
+            plannedAt: new Date(),
+            plannedBy: req.user._id
+          }
+        };
+      }
 
       let msg = 'Delivery details updated';
       if (deliveryAgent) {
@@ -949,6 +1187,9 @@ class StorefrontAdminController {
       } else if (carrierName) {
         msg = `Assigned to carrier: ${carrierName}`;
         if (trackingNumber) msg += ` (Tracking: ${trackingNumber})`;
+      }
+      if (publicPartnerName) {
+        msg = `Routed through Apex partner network: ${publicPartnerName}`;
       }
 
       order.timeline.push({

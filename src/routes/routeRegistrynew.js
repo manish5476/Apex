@@ -27,6 +27,7 @@ const registerRoutes = (app) => {
 
   // --- Inventory & Sales ---
   app.use(`${v1Prefix}/inventory`, routes.inventoryRoutes);
+  app.use(`${v1Prefix}/logistics`, routes.logisticsRoutes);
   app.use(`${v1Prefix}/products`, routes.productRoutes);
   app.use(`${v1Prefix}/purchases`, routes.purchaseRoutes);
   app.use(`${v1Prefix}/sales`, routes.salesRoutes);
