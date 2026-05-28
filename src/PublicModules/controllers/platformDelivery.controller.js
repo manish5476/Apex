@@ -9,6 +9,8 @@ const signToken = (id) => {
   });
 };
 
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 exports.register = async (req, res, next) => {
   try {
     const { name, phone, password, city, state, zipCode, vehicleType, licenseNumber } = req.body;
@@ -110,6 +112,9 @@ exports.getAvailableOrders = async (req, res, next) => {
   try {
     const agentId = req.user.id;
     const agent = await PlatformDeliveryAgent.findById(agentId);
+    if (!agent || agent.isActive === false) {
+      return next(new AppError('Platform delivery agent is inactive or no longer exists', 401));
+    }
 
     // Get orders fulfilled by platform that are either unassigned OR assigned to this agent
     // Also, optionally filter by agent's city/zipCode if they are unassigned.
@@ -122,7 +127,7 @@ exports.getAvailableOrders = async (req, res, next) => {
         { platformDeliveryAgent: agentId },
         {
           platformDeliveryAgent: null,
-          'shippingAddress.city': { $regex: new RegExp(`^${agent.city}$`, 'i') },
+          'shippingAddress.city': { $regex: new RegExp(`^${escapeRegex(agent.city)}$`, 'i') },
           fulfillmentStatus: { $in: ['unfulfilled', 'partial'] },
           orderStatus: { $nin: ['cancelled', 'closed'] }
         }
@@ -184,14 +189,15 @@ exports.updateOrderStatus = async (req, res, next) => {
       return next(new AppError('Order not found or not assigned to you', 404));
     }
 
+    const normalizedStatus = status === 'shipped' ? 'out_for_delivery' : status;
     const validStatuses = ['out_for_delivery', 'delivered', 'failed_attempt'];
-    if (!validStatuses.includes(status)) {
+    if (!validStatuses.includes(normalizedStatus)) {
       return next(new AppError('Invalid delivery status', 400));
     }
 
-    order.fulfillmentStatus = status === 'out_for_delivery' ? 'shipped' : status === 'delivered' ? 'delivered' : order.fulfillmentStatus;
+    order.fulfillmentStatus = normalizedStatus === 'out_for_delivery' ? 'shipped' : normalizedStatus === 'delivered' ? 'delivered' : order.fulfillmentStatus;
 
-    if (status === 'delivered') {
+    if (normalizedStatus === 'delivered') {
       if (order.paymentStatus !== 'paid') {
         if (order.paymentMethod === 'COD' && paymentCollected) {
           order.paymentStatus = 'paid';
@@ -201,9 +207,9 @@ exports.updateOrderStatus = async (req, res, next) => {
         }
       }
       order.timeline.push({ type: 'delivered', message: 'Order delivered by Apex Partner', actorId: agentId });
-    } else if (status === 'out_for_delivery') {
+    } else if (normalizedStatus === 'out_for_delivery') {
       order.timeline.push({ type: 'out_for_delivery', message: 'Out for delivery', actorId: agentId });
-    } else if (status === 'failed_attempt') {
+    } else if (normalizedStatus === 'failed_attempt') {
       order.timeline.push({ type: 'failed_delivery', message: 'Delivery attempt failed', actorId: agentId });
     }
 

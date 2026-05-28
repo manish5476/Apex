@@ -1,5 +1,6 @@
 'use strict';
 
+const mongoose = require('mongoose');
 const StorefrontCart = require('../../models/storefront/storefrontCart.model');
 const StorefrontCartItem = require('../../models/storefront/storefrontCartItem.model');
 const StorefrontOrder = require('../../models/storefront/storefrontOrder.model');
@@ -63,6 +64,8 @@ class StorefrontOrderService {
     const shipping = cart.shippingTotals?.total ?? 0;
     const tax = cart.taxTotals?.total ?? 0;
     const grandTotal = Math.max(0, subtotal - discount + shipping + tax);
+    const paymentMethod = String(payload.paymentMethod || payload.payment?.method || 'COD').toUpperCase();
+    const fulfilledBy = payload.fulfilledBy === 'platform' ? 'platform' : 'merchant';
 
     const order = await StorefrontOrder.create({
       organizationId,
@@ -82,6 +85,10 @@ class StorefrontOrderService {
         grandTotal: Number(grandTotal.toFixed(2)),
         currency: cart.currency
       },
+      totalAmount: Number(grandTotal.toFixed(2)),
+      paymentMethod,
+      deliveryFee: shipping,
+      fulfilledBy,
       appliedCoupons: (cart.appliedCoupons ?? []).map(c => c.code),
       metadata: {
         paymentIntentId: payload.paymentIntentId ?? null,

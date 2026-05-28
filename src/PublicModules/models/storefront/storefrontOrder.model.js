@@ -68,8 +68,15 @@ const storefrontOrderSchema = new mongoose.Schema({
   shippingAddress: { type: addressSchema, required: true },
   items: { type: [orderItemSchema], required: true },
   totals: { type: totalsSchema, required: true },
+  totalAmount: { type: Number, default: 0 },
   appliedCoupons: { type: [String], default: [] },
 
+  paymentMethod: {
+    type: String,
+    enum: ['COD', 'ONLINE', 'CARD', 'UPI', 'WALLET', 'BANK_TRANSFER'],
+    default: 'COD',
+    index: true
+  },
   paymentStatus: {
     type: String,
     enum: ['pending', 'authorized', 'paid', 'failed', 'partially_refunded', 'refunded'],
@@ -91,6 +98,7 @@ const storefrontOrderSchema = new mongoose.Schema({
   deliveryAgent: { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontDeliveryAgent', default: null, index: true },
   platformDeliveryAgent: { type: mongoose.Schema.Types.ObjectId, ref: 'PlatformDeliveryAgent', default: null, index: true },
   fulfilledBy: { type: String, enum: ['merchant', 'platform'], default: 'merchant', index: true },
+  deliveryFee: { type: Number, default: 0 },
   trackingNumber: { type: String, trim: true, default: '' },
   carrierName: { type: String, trim: true, default: '' },
   deliveryNotes: { type: String, trim: true, default: '' },
@@ -107,6 +115,12 @@ storefrontOrderSchema.index({ organizationId: 1, customerId: 1, createdAt: -1 })
 storefrontOrderSchema.index({ organizationId: 1, guestOrder: 1, createdAt: -1 });
 
 storefrontOrderSchema.pre('save', function (next) {
+  if (this.totals?.grandTotal != null) {
+    this.totalAmount = this.totals.grandTotal;
+  }
+  if (this.totals?.shipping != null) {
+    this.deliveryFee = this.totals.shipping;
+  }
   if (this.isNew && !this.orderNumber) {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     this.orderNumber = `SF-${date}-${nanoid(7).toUpperCase()}`;

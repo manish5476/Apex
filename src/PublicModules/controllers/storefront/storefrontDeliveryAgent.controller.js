@@ -1,6 +1,6 @@
 'use strict';
 
-const AppError = require('../../../core/utils/appError');
+const AppError = require('../../../core/utils/api/appError');
 const StorefrontDeliveryAgent = require('../../models/storefront/storefrontDeliveryAgent.model');
 const StorefrontOrder = require('../../models/storefront/storefrontOrder.model');
 const jwt = require('jsonwebtoken');
@@ -48,7 +48,12 @@ class StorefrontDeliveryAgentController {
       await agent.save({ validateBeforeSave: false });
 
       const token = jwt.sign(
-        { id: agent._id, role: 'delivery_agent', organizationId: agent.organizationId },
+        {
+          id: agent._id,
+          type: 'storefront_delivery_agent',
+          role: 'delivery_agent',
+          organizationId: agent.organizationId
+        },
         process.env.JWT_SECRET || 'fallback-secret', // Should use actual JWT_SECRET
         { expiresIn: process.env.JWT_EXPIRES_IN || '90d' }
       );

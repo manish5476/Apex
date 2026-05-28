@@ -18,13 +18,19 @@ class StorefrontSessionService {
   cookieNames = { session: TOKEN_COOKIE, auth: AUTH_COOKIE };
 
   cookieOptions(maxAge = SESSION_TTL) {
+    const isProduction = process.env.NODE_ENV === 'production';
     return {
       httpOnly: true,
-      // FIX: 'none' + secure: true is required for cross-domain production cookies
-      sameSite: 'none', 
-      secure: true, 
+      sameSite: isProduction ? 'none' : 'lax',
+      secure: isProduction,
+      path: '/',
       maxAge
     };
+  }
+
+  clearCookieOptions() {
+    const { maxAge, ...options } = this.cookieOptions();
+    return options;
   }
 
   async resolve(req, res, organizationId, storefrontId = null) {
@@ -84,7 +90,8 @@ class StorefrontSessionService {
   verifyAuthToken(token) {
     if (!token) return null;
     try {
-      return jwt.verify(token, process.env.STOREFRONT_JWT_SECRET || process.env.JWT_SECRET);
+      const payload = jwt.verify(token, process.env.STOREFRONT_JWT_SECRET || process.env.JWT_SECRET);
+      return payload?.type === 'storefront_customer' ? payload : null;
     } catch {
       return null;
     }

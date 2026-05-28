@@ -28,6 +28,9 @@ exports.protect = async (req, res, next) => {
         err ? reject(err) : resolve(payload)
       )
     );
+    if (decoded.type && decoded.type !== "merchant_user") {
+      return res.status(403).json({ status: "fail", message: "Invalid token type for merchant API" });
+    }
 
     // 3. ✅ Parallel DB hit — User + Org in one round-trip instead of two sequential
     const [currentUser, ownerOrg] = await Promise.all([

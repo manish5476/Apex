@@ -76,6 +76,7 @@ const registerRoutes = (app) => {
   app.use(`/api/v1/store`, routes.storefrontPublicRoutes);
   app.use(`/api/v1/admin/storefront`, routes.storefrontAdminRoutes);
   app.use(`/api/v1/admin/storefront/smart-rules`, routes.smartRuleRoutes);
+  app.use(`/api/v1/delivery-agent`, routes.storefrontDeliveryRoutes);
   app.use(`/api/v1/platform-delivery`, routes.platformDeliveryRoutes);
 };
 

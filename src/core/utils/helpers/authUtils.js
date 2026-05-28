@@ -8,6 +8,7 @@ exports.signAccessToken = (user) => {
   const payload = {
     id: userId,
     sub: userId, // Standard Subject claim
+    type: 'merchant_user',
     organizationId: user.organizationId,
     // Safely handle optional fields (prevents 'undefined' in token)
     ...(user.name && { name: user.name }),
