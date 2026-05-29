@@ -1,5 +1,6 @@
 // src/storefront/services/sectionRegistry.service.js
 const { SECTION_TYPES } = require('../../models/storefront/schemas/section.schema');
+const { FONT_FAMILY_OPTIONS } = require('../../utils/storefront/sectionConfigNormalizer');
 
 // ---------------------------------------------------------------------------
 // Shared Fragments
@@ -15,18 +16,18 @@ const coreConfig = {
 
 const designOverrides = {
   customBackground: { type: 'color', label: 'Custom Background Color' },
-  borderRadius: { type: 'string', enum: ['none', 'sm', 'md', 'lg', 'full'], default: 'none', label: 'Corner Radius' },
+  borderRadius: { type: 'string', enum: ['none', 'sm', 'md', 'lg', 'xl', '2xl', 'full'], default: 'none', label: 'Corner Radius' },
   boxShadow: { type: 'string', enum: ['none', 'sm', 'md', 'lg', 'xl'], default: 'none', label: 'Shadow Depth' }
 };
 
 const typographyConfig = {
   headingText: { type: 'string', maxLength: 100, label: 'Heading' },
-  headingFont: { type: 'string', label: 'Heading Font Family' },
+  headingFont: { type: 'font', enum: FONT_FAMILY_OPTIONS, default: 'Poppins', label: 'Heading Font Family' },
   headingColor: { type: 'color', label: 'Heading Color' },
   headingSize: { type: 'string', enum: ['sm', 'md', 'lg', 'xl', '2xl', 'display'], default: 'lg', label: 'Heading Size' },
   
   subText: { type: 'string', maxLength: 300, label: 'Subheading / Body' },
-  bodyFont: { type: 'string', label: 'Body Font Family' },
+  bodyFont: { type: 'font', enum: FONT_FAMILY_OPTIONS, default: 'Inter', label: 'Body Font Family' },
   bodyColor: { type: 'color', label: 'Body Color' },
   
   alignment: { type: 'string', enum: ['left', 'center', 'right'], default: 'left', label: 'Text Alignment' }
@@ -133,7 +134,7 @@ class SectionRegistry {
 
         if (rule.type === 'boolean' && typeof val !== 'boolean') errors.push(`"${fullPath}" must be a boolean`);
         
-        if (['string', 'color', 'image', 'richtext', 'textarea'].includes(rule.type)) {
+        if (['string', 'color', 'font', 'image', 'richtext', 'textarea'].includes(rule.type)) {
           if (typeof val !== 'string') errors.push(`"${fullPath}" must be a string`);
           else if (rule.maxLength && val.length > rule.maxLength) errors.push(`"${fullPath}" exceeds max length`);
         }
@@ -198,9 +199,9 @@ class SectionRegistry {
           ...coreConfig,
           design: { type: 'object', schema: designOverrides },
           primaryTitle: { type: 'string', required: true, label: 'Primary Heading' },
-          primaryFont: { type: 'string', label: 'Primary Font Family' },
+          primaryFont: { type: 'font', enum: FONT_FAMILY_OPTIONS, default: 'Poppins', label: 'Primary Font Family' },
           accentTitle: { type: 'string', label: 'Accent Display Text' },
-          accentFont: { type: 'string', label: 'Accent Font Family' },
+          accentFont: { type: 'font', enum: FONT_FAMILY_OPTIONS, default: 'Playfair Display', label: 'Accent Font Family' },
           accentPosition: { type: 'string', enum: ['above_title', 'below_title', 'floating_overlap'], default: 'above_title' },
           mainImage: { type: 'image', required: true, label: 'Primary Image' },
           secondaryImage: { type: 'image', label: 'Offset Secondary Image' },
@@ -262,7 +263,7 @@ class SectionRegistry {
         schema: {
           ...coreConfig,
           maskText: { type: 'string', required: true, maxLength: 30, label: 'Headline' },
-          maskFont: { type: 'string', label: 'Font Family' },
+          maskFont: { type: 'font', enum: FONT_FAMILY_OPTIONS, default: 'Poppins', label: 'Font Family' },
           videoUrl: { type: 'string', required: true, label: 'Video URL' },
           canvasBgColor: { type: 'color', default: '#000000', label: 'Surrounding Color' }
         }

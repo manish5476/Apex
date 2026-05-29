@@ -20,6 +20,7 @@ const SmartRuleEngine   = require('./smartRuleEngine.service');
 const Master            = require('../../../modules/master/core/model/master.model');
 const Branch            = require('../../../modules/organization/core/branch.model');
 const StorefrontLayout = require('../../models/storefront/storefrontLayout.model');
+const { normalizeSection } = require('../../utils/storefront/sectionConfigNormalizer');
 
 // Section types that require live data injection
 const PRODUCT_SECTION_TYPES  = new Set(['product_slider', 'product_grid', 'product_listing']);
@@ -67,8 +68,8 @@ class DataHydrationService {
     // Inactive sections are excluded from the rendered page
     if (section.isActive === false) return null;
 
-    // Clone — never mutate the original (may be a cached object)
-    const hydrated = { ...section };
+    // Clone and normalize — never mutate the original (may be a cached object)
+    const hydrated = normalizeSection(section);
 
     try {
       // ----------------------------------------------------------------

@@ -74,8 +74,8 @@ class SmartRuleEngine {
    * @param {string} [currency]
    */
   async executeAdHoc(config, organizationId, currency) {
-    // ✅ FIX: Sort keys before hashing so key order doesn't create duplicate cache entries
-    const stableJson  = JSON.stringify(config, Object.keys(config).sort());
+    // Sort nested keys before hashing so identical configs always share cache entries.
+    const stableJson  = stableStringify(config ?? {});
     const configHash  = Buffer.from(stableJson).toString('base64url');
     const cacheKey    = `${this.CACHE_PREFIX}:adhoc:${organizationId}:${configHash}`;
 
@@ -175,8 +175,8 @@ class SmartRuleEngine {
         (acc, inv) => acc + (inv.quantity || 0), 0
       ) ?? 0;
 
-      const originalPrice = p.sellingPrice;
-      const salePrice     = p.discountedPrice;
+      const originalPrice = Number(p.sellingPrice) || 0;
+      const salePrice     = Number(p.discountedPrice) || 0;
       const hasDiscount   = !!(salePrice && salePrice < originalPrice);
       const discountPct   = hasDiscount
         ? Math.round(((originalPrice - salePrice) / originalPrice) * 100)
@@ -236,6 +236,14 @@ class SmartRuleEngine {
 }
 
 module.exports = new SmartRuleEngine();
+
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
 
 // const Product = require('../../../modules/inventory/core/product.model');
 // const SmartRule = require('../../models/storefront/smartRule.model');
