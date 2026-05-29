@@ -594,6 +594,9 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   const userId = decoded.id || decoded._id || decoded.sub;
   if (!userId) return next(new AppError('Invalid token payload.', 401));
+  if (decoded.type && decoded.type !== 'merchant_user') {
+    return next(new AppError('Invalid token type for merchant API.', 403));
+  }
 
   const user = await User.findById(userId).populate({
     path: 'role',
@@ -705,6 +708,9 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
   if (!token) return next(new AppError('No token provided', 401));
 
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  if (decoded.type && decoded.type !== 'merchant_user') {
+    return next(new AppError('Invalid token type for merchant API.', 403));
+  }
 
   const user = await User.findById(decoded.id)
     .populate('role')

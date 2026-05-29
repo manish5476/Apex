@@ -29,8 +29,177 @@ const PageSnapshotService = require('../../services/storefront/pageSnapshot.serv
 const SectionValidator = require('../../middleware/validation/section.validator');
 const AppError = require('../../../core/utils/api/appError');
 const { THEME_LIST } = require('../../utils/constants/storefront/themes.constants');
+const CustomerService = require('../../services/storefront/customer.service');
 
 class StorefrontAdminController {
+
+  // ---------------------------------------------------------------------------
+  // COMMAND CENTER
+  // GET /admin/storefront/command-center
+  // ---------------------------------------------------------------------------
+
+  getCommandCenter = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const StorefrontCustomer = require('../../models/storefront/storefrontCustomer.model');
+      const StorefrontCart = require('../../models/storefront/storefrontCart.model');
+      const Invoice = require('../../../modules/accounting/billing/invoice.model');
+
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const query = { organizationId };
+      const deliveredQuery = { organizationId, fulfillmentStatus: 'delivered' };
+
+      const [
+        totals,
+        revenue,
+        byStatus,
+        byPayment,
+        recentOrders,
+        customers,
+        abandonedCarts,
+        deliveredWithoutLinkedCustomer,
+        deliveredWithoutInvoice,
+        unfulfilledAccepted,
+        pages
+      ] = await Promise.all([
+        StorefrontOrder.countDocuments(query),
+        StorefrontOrder.aggregate([
+          { $match: { organizationId, createdAt: { $gte: since }, orderStatus: { $ne: 'cancelled' } } },
+          {
+            $group: {
+              _id: null,
+              grossRevenue: { $sum: '$totals.grandTotal' },
+              shippingRevenue: { $sum: '$totals.shipping' },
+              averageOrderValue: { $avg: '$totals.grandTotal' },
+              orders: { $sum: 1 }
+            }
+          }
+        ]),
+        StorefrontOrder.aggregate([
+          { $match: query },
+          { $group: { _id: '$orderStatus', count: { $sum: 1 }, value: { $sum: '$totals.grandTotal' } } },
+          { $sort: { count: -1 } }
+        ]),
+        StorefrontOrder.aggregate([
+          { $match: query },
+          { $group: { _id: '$paymentStatus', count: { $sum: 1 }, value: { $sum: '$totals.grandTotal' } } },
+          { $sort: { count: -1 } }
+        ]),
+        StorefrontOrder.find(query)
+          .populate('customerId', 'firstName lastName email phone convertedToMainCustomer linkedCustomerId guestAccount')
+          .sort({ createdAt: -1 })
+          .limit(8)
+          .lean(),
+        StorefrontCustomer.aggregate([
+          { $match: { organizationId } },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+              guests: { $sum: { $cond: ['$guestAccount', 1, 0] } },
+              converted: { $sum: { $cond: ['$convertedToMainCustomer', 1, 0] } },
+              revenue: { $sum: '$totalSpent' }
+            }
+          }
+        ]),
+        StorefrontCart.countDocuments({ organizationId, status: 'abandoned' }),
+        StorefrontOrder.countDocuments({
+          ...deliveredQuery,
+          $or: [
+            { 'metadata.linkedCustomerId': null },
+            { 'metadata.linkedCustomerId': { $exists: false } }
+          ]
+        }),
+        StorefrontOrder.aggregate([
+          { $match: deliveredQuery },
+          {
+            $lookup: {
+              from: 'invoices',
+              localField: '_id',
+              foreignField: 'saleId',
+              as: 'invoice'
+            }
+          },
+          { $match: { invoice: { $size: 0 } } },
+          { $count: 'count' }
+        ]),
+        StorefrontOrder.countDocuments({
+          organizationId,
+          orderStatus: 'confirmed',
+          fulfillmentStatus: { $in: ['unfulfilled', 'partial'] }
+        }),
+        StorefrontPage.aggregate([
+          { $match: { organizationId } },
+          {
+            $group: {
+              _id: '$status',
+              count: { $sum: 1 },
+              views: { $sum: { $ifNull: ['$viewCount', 0] } }
+            }
+          }
+        ])
+      ]);
+
+      const revenueSummary = revenue[0] || { grossRevenue: 0, shippingRevenue: 0, averageOrderValue: 0, orders: 0 };
+      const customerSummary = customers[0] || { total: 0, guests: 0, converted: 0, revenue: 0 };
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          generatedAt: new Date().toISOString(),
+          period: { label: 'Last 30 days', since },
+          kpis: {
+            totalOrders: totals,
+            grossRevenue: revenueSummary.grossRevenue || 0,
+            averageOrderValue: revenueSummary.averageOrderValue || 0,
+            shippingRevenue: revenueSummary.shippingRevenue || 0,
+            storefrontCustomers: customerSummary.total || 0,
+            convertedCustomers: customerSummary.converted || 0,
+            guestCustomers: customerSummary.guests || 0,
+            abandonedCarts,
+            unfulfilledAccepted,
+            ghostRisk: (deliveredWithoutLinkedCustomer || 0) + (deliveredWithoutInvoice[0]?.count || 0)
+          },
+          byStatus,
+          byPayment,
+          pages,
+          recentOrders,
+          workQueues: [
+            {
+              key: 'pending-dispatch',
+              title: 'Accepted orders pending dispatch',
+              count: unfulfilledAccepted,
+              severity: unfulfilledAccepted > 0 ? 'warning' : 'success',
+              route: '/storefront/orders'
+            },
+            {
+              key: 'ghost-customers',
+              title: 'Delivered orders without CRM customer link',
+              count: deliveredWithoutLinkedCustomer,
+              severity: deliveredWithoutLinkedCustomer > 0 ? 'danger' : 'success',
+              route: '/storefront/customers'
+            },
+            {
+              key: 'missing-invoices',
+              title: 'Delivered orders without invoice',
+              count: deliveredWithoutInvoice[0]?.count || 0,
+              severity: deliveredWithoutInvoice[0]?.count ? 'danger' : 'success',
+              route: '/storefront/orders'
+            },
+            {
+              key: 'abandoned-carts',
+              title: 'Abandoned carts',
+              count: abandonedCarts,
+              severity: abandonedCarts > 0 ? 'info' : 'success',
+              route: '/storefront/abandoned-carts'
+            }
+          ]
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // LIST pages
@@ -545,8 +714,24 @@ class StorefrontAdminController {
       const oldOrderStatus = order.orderStatus;
       const oldFulfillmentStatus = order.fulfillmentStatus;
 
-      if (orderStatus) order.orderStatus = orderStatus;
-      if (fulfillmentStatus) order.fulfillmentStatus = fulfillmentStatus;
+      if (orderStatus && orderStatus !== oldOrderStatus) {
+        order.orderStatus = orderStatus;
+        order.timeline.push({
+          type: 'status_update',
+          message: `Order status changed to ${orderStatus}`,
+          actorId: req.user._id
+        });
+      }
+      
+      if (fulfillmentStatus && fulfillmentStatus !== oldFulfillmentStatus) {
+        order.fulfillmentStatus = fulfillmentStatus;
+        order.timeline.push({
+          type: 'fulfillment_update',
+          message: `Fulfillment status changed to ${fulfillmentStatus}`,
+          actorId: req.user._id
+        });
+      }
+
       if (paymentStatus) order.paymentStatus = paymentStatus;
 
       // Handle Cancellation
@@ -567,6 +752,32 @@ class StorefrontAdminController {
       // Handle Delivery (deduct physical stock)
       if (fulfillmentStatus === 'delivered' && oldFulfillmentStatus !== 'delivered') {
         const Product = require('../../../modules/inventory/core/model/product.model');
+        let linkedCustomerId = order.metadata?.linkedCustomerId || null;
+        try {
+          const conversion = await CustomerService.convertToCrmCustomer(
+            organizationId,
+            order.customerId,
+            req.user._id || req.user.id
+          );
+          linkedCustomerId = conversion.crmCustomerId;
+          order.metadata = {
+            ...(order.metadata || {}),
+            linkedCustomerId,
+            crmCustomerAutoConvertedAt: new Date()
+          };
+          order.timeline.push({
+            type: 'customer_linked',
+            message: 'Storefront customer linked to CRM customer',
+            actorId: req.user._id
+          });
+        } catch (conversionErr) {
+          order.timeline.push({
+            type: 'customer_link_failed',
+            message: `CRM customer link failed: ${conversionErr.message}`,
+            actorId: req.user._id
+          });
+        }
+
         for (const item of order.items) {
           if (!item.productId) continue;
           const product = await Product.findOne({ _id: item.productId, organizationId });
@@ -600,9 +811,11 @@ class StorefrontAdminController {
 
           const addressToString = (addr) => addr ? Object.values(addr).filter(v => typeof v === 'string' && v.trim() !== '').join(', ') : '';
 
-          await Invoice.create({
+          const existingInvoice = await Invoice.findOne({ organizationId, saleId: order._id });
+          if (!existingInvoice && linkedCustomerId) {
+            await Invoice.create({
             organizationId,
-            customerId: order.customerId,
+            customerId: linkedCustomerId,
             saleId: order._id,
             invoiceNumber: `INV-${date}-${nanoid(6).toUpperCase()}`,
             invoiceDate: new Date(),
@@ -614,7 +827,19 @@ class StorefrontAdminController {
             grandTotal: order.totals?.grandTotal || 0,
             paymentStatus: order.paymentStatus === 'paid' ? 'paid' : 'unpaid',
             paidAmount: order.paymentStatus === 'paid' ? (order.totals?.grandTotal || 0) : 0
-          });
+            });
+            order.timeline.push({
+              type: 'invoice_created',
+              message: 'CRM invoice created for delivered storefront order',
+              actorId: req.user._id
+            });
+          } else if (!linkedCustomerId) {
+            order.timeline.push({
+              type: 'invoice_skipped',
+              message: 'Invoice skipped because CRM customer link is missing',
+              actorId: req.user._id
+            });
+          }
         } catch (invoiceErr) {
           console.error('[Invoice Generation Error]', invoiceErr.message);
         }
@@ -643,6 +868,342 @@ class StorefrontAdminController {
       slug = `${base}-${attempt}`;
     }
     return slug;
+  }
+
+  // ---------------------------------------------------------------------------
+  // COUPON ADMINISTRATION
+  // ---------------------------------------------------------------------------
+
+  getCoupons = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { search, page = 1, limit = 20 } = req.query;
+
+      const query = { organizationId };
+      if (search) {
+        query.code = { $regex: search, $options: 'i' };
+      }
+
+      const skip = (Math.max(parseInt(page), 1) - 1) * Math.min(parseInt(limit), 50);
+      const Coupon = require('../../models/storefront/storefrontCoupon.model');
+      const total = await Coupon.countDocuments(query);
+      const coupons = await Coupon.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Math.min(parseInt(limit), 50))
+        .lean();
+
+      res.status(200).json({
+        status: 'success',
+        results: coupons.length,
+        total,
+        data: coupons
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  createCoupon = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { code, discountType, amount, maxDiscount, minPurchaseAmount, startDate, endDate, usageLimit, isActive } = req.body;
+
+      if (!code || amount === undefined) {
+        return next(new AppError('code and amount are required', 400));
+      }
+
+      const normalized = String(code).trim().toUpperCase();
+      const Coupon = require('../../models/storefront/storefrontCoupon.model');
+      const exists = await Coupon.findOne({ organizationId, code: normalized });
+      if (exists) {
+        return next(new AppError(`Coupon with code "${normalized}" already exists`, 409));
+      }
+
+      const coupon = await Coupon.create({
+        organizationId,
+        code: normalized,
+        discountType,
+        amount,
+        maxDiscount,
+        minPurchaseAmount,
+        startDate,
+        endDate,
+        usageLimit,
+        isActive
+      });
+
+      res.status(201).json({ status: 'success', message: 'Coupon created', data: coupon });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  getCouponById = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { couponId } = req.params;
+
+      const Coupon = require('../../models/storefront/storefrontCoupon.model');
+      const coupon = await Coupon.findOne({ _id: couponId, organizationId });
+      if (!coupon) return next(new AppError('Coupon not found', 404));
+
+      res.status(200).json({ status: 'success', data: coupon });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  updateCoupon = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { couponId } = req.params;
+      const updateData = { ...req.body };
+
+      delete updateData.organizationId;
+      delete updateData.code;
+
+      const Coupon = require('../../models/storefront/storefrontCoupon.model');
+      const coupon = await Coupon.findOneAndUpdate(
+        { _id: couponId, organizationId },
+        { $set: updateData },
+        { new: true, runValidators: true }
+      );
+
+      if (!coupon) return next(new AppError('Coupon not found', 404));
+
+      res.status(200).json({ status: 'success', message: 'Coupon updated', data: coupon });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  deleteCoupon = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { couponId } = req.params;
+
+      const Coupon = require('../../models/storefront/storefrontCoupon.model');
+      const coupon = await Coupon.findOneAndDelete({ _id: couponId, organizationId });
+      if (!coupon) return next(new AppError('Coupon not found', 404));
+
+      res.status(200).json({ status: 'success', message: 'Coupon deleted' });
+    } catch (err) {
+      next(err);
+    }
+  }
+  // ---------------------------------------------------------------------------
+  // DELIVERY AGENT ADMINISTRATION
+  // ---------------------------------------------------------------------------
+
+  getDeliveryAgents = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { search, page = 1, limit = 20 } = req.query;
+
+      const query = { organizationId };
+      if (search) {
+        query.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      const skip = (Math.max(parseInt(page), 1) - 1) * Math.min(parseInt(limit), 50);
+      const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+      const total = await Agent.countDocuments(query);
+      const agents = await Agent.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Math.min(parseInt(limit), 50))
+        .populate('staffId', 'firstName lastName email')
+        .lean();
+
+      res.status(200).json({
+        status: 'success',
+        results: agents.length,
+        total,
+        data: agents
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  createDeliveryAgent = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { name, phone, email, password, staffId, vehicleType, vehicleRegistrationNumber, isActive } = req.body;
+
+      if (!name || !phone || !password) {
+        return next(new AppError('name, phone, and password are required', 400));
+      }
+
+      const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+      const exists = await Agent.findOne({ organizationId, phone });
+      if (exists) {
+        return next(new AppError(`Delivery Agent with phone "${phone}" already exists`, 409));
+      }
+
+      const agent = await Agent.create({
+        organizationId,
+        name,
+        phone,
+        email,
+        password,
+        staffId: staffId || null,
+        vehicleType,
+        vehicleRegistrationNumber,
+        isActive
+      });
+
+      agent.password = undefined; // hide password in response
+
+      res.status(201).json({ status: 'success', message: 'Delivery Agent created', data: agent });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  getDeliveryAgentById = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { agentId } = req.params;
+
+      const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+      const agent = await Agent.findOne({ _id: agentId, organizationId }).populate('staffId', 'firstName lastName email');
+      if (!agent) return next(new AppError('Delivery Agent not found', 404));
+
+      res.status(200).json({ status: 'success', data: agent });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  updateDeliveryAgent = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { agentId } = req.params;
+      const updateData = { ...req.body };
+
+      delete updateData.organizationId;
+      
+      const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+      
+      if (updateData.password) {
+         // Need to save so pre-save hook hashes the password
+         const agent = await Agent.findOne({ _id: agentId, organizationId });
+         if (!agent) return next(new AppError('Delivery Agent not found', 404));
+         
+         Object.assign(agent, updateData);
+         await agent.save();
+         agent.password = undefined;
+         return res.status(200).json({ status: 'success', message: 'Delivery Agent updated', data: agent });
+      } else {
+        const agent = await Agent.findOneAndUpdate(
+          { _id: agentId, organizationId },
+          { $set: updateData },
+          { new: true, runValidators: true }
+        );
+        if (!agent) return next(new AppError('Delivery Agent not found', 404));
+        res.status(200).json({ status: 'success', message: 'Delivery Agent updated', data: agent });
+      }
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  deleteDeliveryAgent = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { agentId } = req.params;
+
+      const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+      const agent = await Agent.findOneAndDelete({ _id: agentId, organizationId });
+      if (!agent) return next(new AppError('Delivery Agent not found', 404));
+
+      res.status(200).json({ status: 'success', message: 'Delivery Agent deleted' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  assignDeliveryAgent = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { orderId } = req.params;
+      const {
+        deliveryAgent,
+        carrierName,
+        trackingNumber,
+        estimatedDeliveryDate,
+        deliveryNotes,
+        fulfillmentMode,
+        publicPartnerId,
+        publicPartnerName,
+        dispatchPriority,
+        serviceLevel,
+        deliveryQuote
+      } = req.body;
+
+      const order = await StorefrontOrder.findOne({ _id: orderId, organizationId });
+      if (!order) return next(new AppError('Order not found', 404));
+
+      if (deliveryAgent !== undefined) order.deliveryAgent = deliveryAgent || null;
+      if (carrierName !== undefined) order.carrierName = carrierName;
+      if (trackingNumber !== undefined) order.trackingNumber = trackingNumber;
+      if (estimatedDeliveryDate !== undefined) order.estimatedDeliveryDate = estimatedDeliveryDate;
+      if (deliveryNotes !== undefined) order.deliveryNotes = deliveryNotes;
+      if (fulfillmentMode) {
+        order.fulfilledBy = fulfillmentMode === 'public_partner' ? 'platform' : 'merchant';
+        order.metadata = {
+          ...(order.metadata || {}),
+          logistics: {
+            ...((order.metadata || {}).logistics || {}),
+            fulfillmentMode,
+            publicPartnerId: publicPartnerId || null,
+            publicPartnerName: publicPartnerName || '',
+            dispatchPriority: dispatchPriority || 'normal',
+            serviceLevel: serviceLevel || 'standard',
+            deliveryQuote: deliveryQuote || null,
+            plannedAt: new Date(),
+            plannedBy: req.user._id
+          }
+        };
+      }
+
+      let msg = 'Delivery details updated';
+      if (deliveryAgent) {
+        const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+        const agent = await Agent.findById(deliveryAgent);
+        if (agent) {
+          msg = `Assigned to delivery agent: ${agent.name}`;
+          // Also add order to agent's assignedOrders
+          if (!agent.assignedOrders.includes(order._id)) {
+            agent.assignedOrders.push(order._id);
+            await agent.save();
+          }
+        }
+      } else if (carrierName) {
+        msg = `Assigned to carrier: ${carrierName}`;
+        if (trackingNumber) msg += ` (Tracking: ${trackingNumber})`;
+      }
+      if (publicPartnerName) {
+        msg = `Routed through Apex partner network: ${publicPartnerName}`;
+      }
+
+      order.timeline.push({
+        type: 'delivery_assigned',
+        message: msg,
+        actorId: req.user._id
+      });
+
+      await order.save();
+
+      res.status(200).json({ status: 'success', message: 'Delivery agent assigned', data: order });
+    } catch (err) {
+      next(err);
+    }
   }
 }
 

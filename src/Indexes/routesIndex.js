@@ -30,6 +30,7 @@ module.exports = {
   inventoryRoutes: require('../routes/v1/inventory.routes.js'),
   stockRoutes: require('../routes/v1/stock.routes.js'),
   assetsRoutes: require('../routes/v1/asset.routes.js'),
+  logisticsRoutes: require('../modules/logistics/routes/logistics.routes.js'),
 
   // --- Analytics & Admin ---
   dashboard: require('../routes/v1/dashboard.routes.js'),
@@ -64,5 +65,7 @@ module.exports = {
   storefrontPublicRoutes: require('../PublicModules/routes/storefront/public.routes.js'),
   storefrontAdminRoutes: require('../PublicModules/routes/storefront/admin.routes.js'),
   smartRuleRoutes: require('../PublicModules/routes/storefront/smartRule.routes.js'),
-  storefrontFormRoutes: require('../PublicModules/routes/storefrontForm.routes.js')
+  storefrontFormRoutes: require('../PublicModules/routes/storefrontForm.routes.js'),
+  storefrontDeliveryRoutes: require('../PublicModules/routes/storefront/delivery.routes.js'),
+  platformDeliveryRoutes: require('../PublicModules/routes/platformDelivery.routes.js')
 };

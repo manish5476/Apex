@@ -1,6 +1,6 @@
 // src/routes/storefront/smartRule.routes.js
 const express = require('express');
-const router  = express.Router();
+const router = express.Router();
 
 const auth = require('../../../core/middleware/auth.middleware');
 const { checkAnyPermission, checkPermission } = require('../../../core/middleware/permission.middleware');
@@ -9,9 +9,8 @@ const smartRuleController = require('../../controllers/storefront/smartRule.cont
 
 router.use(auth.protect);
 
-const canReadOrManageRules = checkAnyPermission([
-  PERMISSIONS.STOREFRONT.READ,
-  PERMISSIONS.STOREFRONT.RULE_MANAGE
+const canReadOrManageRules = checkAnyPermission([PERMISSIONS.STOREFRONT.READ,
+PERMISSIONS.STOREFRONT.RULE_MANAGE
 ]);
 
 router.route('/')
@@ -25,8 +24,8 @@ router.route('/:ruleId')
   .put(checkPermission(PERMISSIONS.STOREFRONT.RULE_MANAGE), smartRuleController.updateRule)
   .delete(checkPermission(PERMISSIONS.STOREFRONT.RULE_MANAGE), smartRuleController.deleteRule);
 
-router.post  ('/:ruleId/execute',     canReadOrManageRules, smartRuleController.executeRule);
-router.post  ('/:ruleId/clear-cache', checkPermission(PERMISSIONS.STOREFRONT.RULE_MANAGE), smartRuleController.clearCache);
-router.delete('/:ruleId/cache',       checkPermission(PERMISSIONS.STOREFRONT.RULE_MANAGE), smartRuleController.clearCache);
+router.post('/:ruleId/execute', canReadOrManageRules, smartRuleController.executeRule);
+router.post('/:ruleId/clear-cache', checkPermission(PERMISSIONS.STOREFRONT.RULE_MANAGE), smartRuleController.clearCache);
+router.delete('/:ruleId/cache', checkPermission(PERMISSIONS.STOREFRONT.RULE_MANAGE), smartRuleController.clearCache);
 
 module.exports = router;

@@ -61,6 +61,7 @@ router.get('/:organizationSlug/account/me', storefrontCustomerController.me);
 router.post('/:organizationSlug/account/addresses', storefrontCustomerController.addAddress);
 router.put('/:organizationSlug/account/addresses/:addressId', storefrontCustomerController.updateAddress);
 router.post('/:organizationSlug/account/wishlist/toggle', storefrontCustomerController.toggleWishlist);
+router.get('/:organizationSlug/account/orders', storefrontCustomerController.getOrders);
 router.post('/:organizationSlug/checkout', storefrontCustomerController.checkout);
 router.get('/:organizationSlug/orders/:orderNumber', storefrontCustomerController.trackOrder);
 

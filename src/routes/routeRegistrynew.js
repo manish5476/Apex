@@ -1,4 +1,4 @@
-const routes = require('../indexes/routesIndex');
+const routes = require('../Indexes/routesIndex');
 
 /**
  * Registers all application routes to the Express app.
@@ -27,6 +27,7 @@ const registerRoutes = (app) => {
 
   // --- Inventory & Sales ---
   app.use(`${v1Prefix}/inventory`, routes.inventoryRoutes);
+  app.use(`${v1Prefix}/logistics`, routes.logisticsRoutes);
   app.use(`${v1Prefix}/products`, routes.productRoutes);
   app.use(`${v1Prefix}/purchases`, routes.purchaseRoutes);
   app.use(`${v1Prefix}/sales`, routes.salesRoutes);
@@ -76,6 +77,8 @@ const registerRoutes = (app) => {
   app.use(`/api/v1/store`, routes.storefrontPublicRoutes);
   app.use(`/api/v1/admin/storefront`, routes.storefrontAdminRoutes);
   app.use(`/api/v1/admin/storefront/smart-rules`, routes.smartRuleRoutes);
+  app.use(`/api/v1/delivery-agent`, routes.storefrontDeliveryRoutes);
+  app.use(`/api/v1/platform-delivery`, routes.platformDeliveryRoutes);
 };
 
 module.exports = registerRoutes;

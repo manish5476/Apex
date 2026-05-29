@@ -1,5 +1,6 @@
 'use strict';
 
+const mongoose = require('mongoose');
 const StorefrontCart = require('../../models/storefront/storefrontCart.model');
 const StorefrontCartItem = require('../../models/storefront/storefrontCartItem.model');
 const StorefrontOrder = require('../../models/storefront/storefrontOrder.model');
@@ -63,6 +64,8 @@ class StorefrontOrderService {
     const shipping = cart.shippingTotals?.total ?? 0;
     const tax = cart.taxTotals?.total ?? 0;
     const grandTotal = Math.max(0, subtotal - discount + shipping + tax);
+    const paymentMethod = String(payload.paymentMethod || payload.payment?.method || 'COD').toUpperCase();
+    const fulfilledBy = payload.fulfilledBy === 'platform' ? 'platform' : 'merchant';
 
     const order = await StorefrontOrder.create({
       organizationId,
@@ -82,6 +85,10 @@ class StorefrontOrderService {
         grandTotal: Number(grandTotal.toFixed(2)),
         currency: cart.currency
       },
+      totalAmount: Number(grandTotal.toFixed(2)),
+      paymentMethod,
+      deliveryFee: shipping,
+      fulfilledBy,
       appliedCoupons: (cart.appliedCoupons ?? []).map(c => c.code),
       metadata: {
         paymentIntentId: payload.paymentIntentId ?? null,
@@ -101,8 +108,17 @@ class StorefrontOrderService {
       }
     });
 
+    const couponPromises = (cart.appliedCoupons ?? []).map(async (c) => {
+      const StorefrontCoupon = mongoose.model('StorefrontCoupon');
+      await StorefrontCoupon.updateOne(
+        { organizationId, code: c.code },
+        { $inc: { usedCount: 1 } }
+      );
+    });
+
     await Promise.all([
       ...lockPromises,
+      ...couponPromises,
       StorefrontCart.updateOne({ _id: cart._id }, { $set: { status: 'converted' } }),
       StorefrontCustomer.updateOne(
         { _id: customerId, organizationId },
@@ -121,7 +137,10 @@ class StorefrontOrderService {
   }
 
   async trackOrder(organizationId, orderNumber, emailOrPhone) {
-    const order = await StorefrontOrder.findOne({ organizationId, orderNumber }).populate('customerId', 'email phone firstName lastName').lean();
+    const order = await StorefrontOrder.findOne({ organizationId, orderNumber })
+      .populate('customerId', 'email phone firstName lastName')
+      .populate('deliveryAgent', 'name phone')
+      .lean();
     if (!order) throw new AppError('Order not found', 404);
     const email = order.customerId?.email;
     const phone = order.customerId?.phone;

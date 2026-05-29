@@ -64,8 +64,34 @@ router.get('/pages/:pageId/analytics',     canReadStorefront, storefrontAdminCon
 // ============================================================
 // ORDERS
 // ============================================================
+router.get('/command-center', canReadStorefront, storefrontAdminController.getCommandCenter);
 router.get('/orders', canReadStorefront, storefrontAdminController.getAllOrders);
 router.put('/orders/:orderId/status', checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.updateOrderStatus);
+router.patch('/orders/:orderId/assign-agent', checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.assignDeliveryAgent);
+
+// ============================================================
+// DELIVERY AGENTS
+// ============================================================
+router.route('/delivery-agents')
+  .get(canReadStorefront, storefrontAdminController.getDeliveryAgents)
+  .post(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.createDeliveryAgent);
+
+router.route('/delivery-agents/:agentId')
+  .get(canReadStorefront, storefrontAdminController.getDeliveryAgentById)
+  .put(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.updateDeliveryAgent)
+  .delete(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.deleteDeliveryAgent);
+
+// ============================================================
+// COUPONS
+// ============================================================
+router.route('/coupons')
+  .get(canReadStorefront, storefrontAdminController.getCoupons)
+  .post(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.createCoupon);
+
+router.route('/coupons/:couponId')
+  .get(canReadStorefront, storefrontAdminController.getCouponById)
+  .put(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.updateCoupon)
+  .delete(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.deleteCoupon);
 
 // ============================================================
 // STOREFRONT COMMERCE CUSTOMERS

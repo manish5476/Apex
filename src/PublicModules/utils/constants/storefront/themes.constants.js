@@ -8,8 +8,8 @@ const THEME_LIST = [
   {
     name: "Auto",
     id: "auto-theme",
-    color: "#2563eb",
-    gradient: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)",
+    color: "var(--accent-primary)",
+    gradient: "linear-gradient(135deg, var(--accent-primary) 0%, #0ea5e9 100%)",
     category: "core",
     description: "Auto-detects system preference"
   },

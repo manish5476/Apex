@@ -42,7 +42,7 @@ class StorefrontCustomerController {
 
   logout = async (req, res, next) => {
     try {
-      res.clearCookie(SessionService.cookieNames.auth);
+      res.clearCookie(SessionService.cookieNames.auth, SessionService.clearCookieOptions());
       res.status(200).json({ status: 'success', message: 'Logged out' });
     } catch (err) {
       next(err);
