@@ -25,6 +25,10 @@ const typographyConfig = {
   headingFont: { type: 'font', enum: FONT_FAMILY_OPTIONS, default: 'Poppins', label: 'Heading Font Family' },
   headingColor: { type: 'color', label: 'Heading Color' },
   headingSize: { type: 'string', enum: ['sm', 'md', 'lg', 'xl', '2xl', 'display'], default: 'lg', label: 'Heading Size' },
+  fontWeight: { type: 'string', enum: ['100', '200', '300', '400', '500', '600', '700', '800', '900', 'normal', 'bold', 'bolder', 'lighter'], default: 'bold', label: 'Heading Weight' },
+  letterSpacing: { type: 'string', label: 'Letter Spacing (e.g., normal, 1px, 0.05em)' },
+  lineHeight: { type: 'string', label: 'Line Height (e.g., normal, 1.5, 120%)' },
+  textTransform: { type: 'string', enum: ['none', 'capitalize', 'uppercase', 'lowercase'], default: 'none', label: 'Text Transform' },
   
   subText: { type: 'string', maxLength: 300, label: 'Subheading / Body' },
   bodyFont: { type: 'font', enum: FONT_FAMILY_OPTIONS, default: 'Inter', label: 'Body Font Family' },
@@ -216,6 +220,7 @@ class SectionRegistry {
         description: 'Cards lock in place and stack while scrolling.',
         schema: {
           ...coreConfig,
+          typography: { type: 'object', schema: typographyConfig },
           cardWidth: { type: 'string', enum: ['md', 'lg', 'xl'], default: 'lg', label: 'Container Size' },
           cards: {
             type: 'array',
@@ -225,6 +230,10 @@ class SectionRegistry {
               title: { type: 'string', required: true, label: 'Title' },
               content: { type: 'textarea', label: 'Description' },
               image: { type: 'image', label: 'Visual' },
+              imageFit: { type: 'string', enum: ['cover', 'contain'], default: 'cover', label: 'Image Fit' },
+              imageBgColor: { type: 'color', label: 'Image Box Background' },
+              imageRotation: { type: 'number', min: -360, max: 360, default: 0, label: 'Image Rotation (deg)' },
+              imageScale: { type: 'number', min: 0.1, max: 5, step: 0.1, default: 1, label: 'Image Scale' },
               badge: { type: 'string', label: 'Tag Text' }
             }
           }
@@ -235,21 +244,41 @@ class SectionRegistry {
         name: 'Asymmetric Layered Canvas',
         category: 'layout',
         icon: 'pi pi-external-link',
-        description: 'Freeform overlapping content blocks.',
+        description: 'Freeform overlapping content blocks with rich per-layer controls.',
         schema: {
           ...coreConfig,
-          canvasHeight: { type: 'string', enum: ['sm', 'md', 'lg', 'xl'], default: 'md', label: 'Height' },
+          typography: { type: 'object', schema: typographyConfig },
+          canvasHeight: { type: 'string', enum: ['sm', 'md', 'lg', 'xl', 'auto'], default: 'md', label: 'Canvas Height' },
           layers: {
             type: 'array',
             label: 'Layers',
             itemSchema: {
-              elementType: { type: 'string', enum: ['media_frame', 'text_card'], required: true },
-              image: { type: 'image', label: 'Image' },
-              title: { type: 'string', label: 'Title' },
-              body: { type: 'textarea', label: 'Body' },
-              horizontalAlignment: { type: 'string', enum: ['left', 'center', 'right'], default: 'left' },
-              verticalAlignment: { type: 'string', enum: ['top', 'center', 'bottom'], default: 'center' },
-              layerDepth: { type: 'number', min: 1, max: 10, default: 1, label: 'Z-Index' }
+              elementType: { type: 'string', enum: ['media_frame', 'text_card'], required: true, label: 'Layer Type' },
+              // Positioning
+              horizontalAlignment: { type: 'string', enum: ['left', 'center', 'right'], default: 'left', label: 'Horizontal' },
+              verticalAlignment:   { type: 'string', enum: ['top', 'center', 'bottom'], default: 'center', label: 'Vertical' },
+              layerDepth:          { type: 'number', min: 1, max: 20, default: 1, label: 'Z-Index (Depth)' },
+              // Size
+              widthPercent:        { type: 'number', min: 10, max: 100, default: 40, label: 'Width (%)' },
+              aspectRatio:         { type: 'string', enum: ['auto', '1/1', '4/3', '3/4', '16/9', '9/16', '3/2', '2/3'], default: 'auto', label: 'Aspect Ratio' },
+              // Offset nudge (% from alignment edge)
+              offsetX:             { type: 'number', min: -30, max: 30, default: 0, label: 'Offset X (%)' },
+              offsetY:             { type: 'number', min: -30, max: 30, default: 0, label: 'Offset Y (%)' },
+              // Image fields
+              image:               { type: 'image', label: 'Image URL' },
+              imageFit:            { type: 'string', enum: ['cover', 'contain'], default: 'cover', label: 'Image Fit' },
+              imageRotation:       { type: 'number', min: -360, max: 360, default: 0, label: 'Image Rotation (deg)' },
+              imageScale:          { type: 'number', min: 0.1, max: 3, step: 0.05, default: 1, label: 'Image Scale' },
+              imageBgColor:        { type: 'color', label: 'Image Box Background' },
+              overlayColor:        { type: 'color', label: 'Image Overlay Color' },
+              overlayOpacity:      { type: 'number', min: 0, max: 100, default: 0, label: 'Overlay Opacity (%)' },
+              borderRadius:        { type: 'string', enum: ['none', 'sm', 'md', 'lg', 'xl', '2xl', 'full'], default: 'lg', label: 'Corner Radius' },
+              // Text card fields
+              title:               { type: 'string', label: 'Heading' },
+              body:                { type: 'textarea', label: 'Body Text' },
+              bgColor:             { type: 'color', label: 'Card Background' },
+              textColor:           { type: 'color', label: 'Text Color' },
+              glassEffect:         { type: 'boolean', default: false, label: 'Glassmorphism' }
             }
           }
         }

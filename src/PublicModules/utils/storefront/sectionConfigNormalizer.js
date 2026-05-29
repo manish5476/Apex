@@ -8,7 +8,8 @@ const FONT_FAMILY_OPTIONS = [
   'Inter', 'Poppins', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Nunito Sans',
   'Manrope', 'DM Sans', 'Source Sans 3', 'Work Sans', 'Raleway', 'Playfair Display',
   'Merriweather', 'Oswald', 'Ubuntu', 'Rubik', 'Plus Jakarta Sans', 'Noto Sans',
-  'Arial', 'Helvetica', 'Georgia', 'Times New Roman', 'system-ui', 'serif', 'sans-serif'
+  'Arial', 'Helvetica', 'Georgia', 'Times New Roman', 'system-ui', 'serif', 'sans-serif',
+  'Space Grotesk', 'Syne', 'Outfit', 'Clash Display', 'Cormorant Garamond', 'Cinzel'
 ];
 const FONT_FAMILY_SET = new Set(FONT_FAMILY_OPTIONS.map(font => font.toLowerCase()));
 
