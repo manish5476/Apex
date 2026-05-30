@@ -30,6 +30,7 @@ const SectionValidator = require('../../middleware/validation/section.validator'
 const AppError = require('../../../core/utils/api/appError');
 const { THEME_LIST } = require('../../utils/constants/storefront/themes.constants');
 const CustomerService = require('../../services/storefront/customer.service');
+const { normalizeSection } = require('../../utils/storefront/sectionConfigNormalizer');
 
 class StorefrontAdminController {
 
@@ -283,6 +284,10 @@ class StorefrontAdminController {
         return next(new AppError('"name" and "slug" are required', 400));
       }
 
+      if (!Array.isArray(sections)) {
+        return next(new AppError('"sections" must be an array', 400));
+      }
+
       // Slug format check
       if (!/^[a-z0-9-]+$/.test(slug)) {
         return next(new AppError('Slug may only contain lowercase letters, numbers, and hyphens', 400));
@@ -294,9 +299,13 @@ class StorefrontAdminController {
         return next(new AppError(`A page with slug "${slug}" already exists`, 409));
       }
 
+      const normalizedSections = Array.isArray(sections)
+        ? sections.map(section => normalizeSection(section))
+        : sections;
+
       // Validate sections if provided
-      if (sections.length > 0) {
-        const result = SectionValidator.validateSections(sections);
+      if (normalizedSections.length > 0) {
+        const result = SectionValidator.validateSections(normalizedSections);
         if (!result.valid) {
           return next(new AppError(`Section validation failed:\n${result.errors.join('\n')}`, 400));
         }
@@ -307,7 +316,7 @@ class StorefrontAdminController {
         name,
         slug: slug.toLowerCase(),
         pageType,
-        sections,
+        sections: normalizedSections,
         seo,
         themeOverride,
         isHomepage,
@@ -350,6 +359,7 @@ class StorefrontAdminController {
         if (!Array.isArray(updateData.sections)) {
           return next(new AppError('"sections" must be an array', 400));
         }
+        updateData.sections = updateData.sections.map(section => normalizeSection(section));
         const result = SectionValidator.validateSections(updateData.sections);
         if (!result.valid) {
           return next(new AppError(`Section validation failed:\n${result.errors.join('\n')}`, 400));

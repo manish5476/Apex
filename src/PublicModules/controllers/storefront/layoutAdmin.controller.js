@@ -17,6 +17,7 @@ const StorefrontCache  = require('../../services/storefront/cacheInvalidation.se
 const PageSnapshotService = require('../../services/storefront/pageSnapshot.service');
 const SectionValidator = require('../../middleware/validation/section.validator');
 const AppError         = require('../../../core/utils/api/appError');
+const { normalizeSection } = require('../../utils/storefront/sectionConfigNormalizer');
 
 class LayoutAdminController {
 
@@ -48,11 +49,15 @@ class LayoutAdminController {
       const { header, footer, globalSettings } = req.body;
 
       // Validate header sections if provided
+      let normalizedHeader = header;
+      let normalizedFooter = footer;
+
       if (header !== undefined) {
         if (!Array.isArray(header)) {
           return next(new AppError('"header" must be an array of sections', 400));
         }
-        const result = SectionValidator.validateSections(header);
+        normalizedHeader = header.map(section => normalizeSection(section));
+        const result = SectionValidator.validateSections(normalizedHeader);
         if (!result.valid) {
           return next(new AppError(`Header validation failed:\n${result.errors.join('\n')}`, 400));
         }
@@ -63,7 +68,8 @@ class LayoutAdminController {
         if (!Array.isArray(footer)) {
           return next(new AppError('"footer" must be an array of sections', 400));
         }
-        const result = SectionValidator.validateSections(footer);
+        normalizedFooter = footer.map(section => normalizeSection(section));
+        const result = SectionValidator.validateSections(normalizedFooter);
         if (!result.valid) {
           return next(new AppError(`Footer validation failed:\n${result.errors.join('\n')}`, 400));
         }
@@ -71,8 +77,8 @@ class LayoutAdminController {
 
       // Build update payload — only include keys that were actually sent
       const updateData = {};
-      if (header        !== undefined) updateData.header        = header;
-      if (footer        !== undefined) updateData.footer        = footer;
+      if (header        !== undefined) updateData.header        = normalizedHeader;
+      if (footer        !== undefined) updateData.footer        = normalizedFooter;
       if (globalSettings !== undefined) updateData.globalSettings = globalSettings;
 
       if (Object.keys(updateData).length === 0) {

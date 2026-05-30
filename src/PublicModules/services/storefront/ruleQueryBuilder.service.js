@@ -59,7 +59,7 @@ class RuleQueryBuilder {
     // Rule-specific additions go into a separate object, then merged safely
     const ruleMatch = {};
     let sortStage   = { createdAt: -1 };
-    let limit       = Math.min(rule.limit || 12, 50);
+    let limit       = Math.max(0, Math.min(Number(rule.limit) || 12, 50));
 
     // ------------------------------------------------------------------
     // Rule strategies
@@ -79,8 +79,7 @@ class RuleQueryBuilder {
       }
 
       case 'best_sellers': {
-        sortStage = { salesCount: -1, lastSold: -1 };
-        ruleMatch.salesCount = { $gt: 0 };
+        sortStage = { salesCount: -1, createdAt: -1 };
         break;
       }
 
@@ -114,7 +113,7 @@ class RuleQueryBuilder {
       }
 
       case 'category_based': {
-        const catId = this._toObjectId(rule.categoryId ?? rule.categoryId?.value);
+        const catId = this._toObjectId(rule.categoryId?.value ?? rule.categoryId);
         if (catId) ruleMatch.categoryId = catId;
         break;
       }
@@ -206,7 +205,11 @@ class RuleQueryBuilder {
     }
 
     switch (operator) {
-      case 'equals':       match[dbField] = value; break;
+      case 'equals': {
+        const coerced = this._coerceFieldValue(field, value);
+        if (coerced !== null) match[dbField] = coerced;
+        break;
+      }
       case 'not_equals':   match[dbField] = { $ne: value }; break;
       case 'contains':     match[dbField] = { $regex: value, $options: 'i' }; break;
       case 'greater_than': match[dbField] = { $gt:  Number(value) }; break;
@@ -215,7 +218,7 @@ class RuleQueryBuilder {
         match[dbField] = { $gte: Number(value), $lte: Number(value2) };
         break;
       case 'in':
-        match[dbField] = { $in: Array.isArray(value) ? value : [value] };
+        match[dbField] = { $in: (Array.isArray(value) ? value : [value]).map(item => this._coerceFieldValue(field, item)).filter(item => item !== null) };
         break;
     }
   }
@@ -236,6 +239,13 @@ class RuleQueryBuilder {
     if (value instanceof mongoose.Types.ObjectId) return value;
     if (mongoose.isValidObjectId(value)) return new mongoose.Types.ObjectId(value);
     return null;
+  }
+
+  _coerceFieldValue(field, value) {
+    if (field === 'category' || field === 'brand') {
+      return this._toObjectId(typeof value === 'object' && value?.value ? value.value : value);
+    }
+    return value;
   }
 }
 

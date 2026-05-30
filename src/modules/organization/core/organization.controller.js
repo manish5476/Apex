@@ -456,6 +456,14 @@ exports.updateMyOrganization = catchAsync(async (req, res, next) => {
     });
   }
 
+  // Nested: platformDelivery
+  if (req.body.platformDelivery && typeof req.body.platformDelivery === 'object') {
+    if (req.body.platformDelivery.enabled !== undefined) {
+      updates['platformDelivery.enabled'] = req.body.platformDelivery.enabled;
+    }
+  }
+
+
   if (Object.keys(updates).length === 0)
     return next(new AppError('No valid fields provided for update.', 400));
 
