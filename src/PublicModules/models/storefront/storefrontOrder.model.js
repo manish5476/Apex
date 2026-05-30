@@ -64,6 +64,20 @@ const storefrontOrderSchema = new mongoose.Schema({
   orderNumber: { type: String, unique: true, index: true },
   cartId: { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontCart', default: null },
 
+  // ─── CRM Integration ───────────────────────────────────────────────
+  // Links to the CRM records created at order placement.
+  // These are set by StorefrontCRMBridgeService and should NOT be manually edited.
+  crmInvoiceId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice',  default: null, index: true },
+  crmSaleId:     { type: mongoose.Schema.Types.ObjectId, ref: 'Sales',    default: null, index: true },
+  crmCustomerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', default: null, index: true },
+  crmSyncStatus: {
+    type: String,
+    enum: ['pending', 'synced', 'failed', 'pending_phone'],
+    default: 'pending',
+    index: true
+  },
+  crmSyncError:  { type: String, default: null },
+
   billingAddress: { type: addressSchema, required: true },
   shippingAddress: { type: addressSchema, required: true },
   items: { type: [orderItemSchema], required: true },
@@ -109,6 +123,7 @@ const storefrontOrderSchema = new mongoose.Schema({
   internalNotes: { type: String, trim: true, default: '' },
   metadata: { type: mongoose.Schema.Types.Mixed, default: {} }
 }, { timestamps: true });
+
 
 storefrontOrderSchema.index({ organizationId: 1, orderStatus: 1, createdAt: -1 });
 storefrontOrderSchema.index({ organizationId: 1, customerId: 1, createdAt: -1 });

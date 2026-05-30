@@ -33,6 +33,17 @@ const invoiceSchema = new mongoose.Schema(
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", index: true },
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: "Customer", index: true },
     saleId: { type: mongoose.Schema.Types.ObjectId, ref: "Sales" },
+
+    // ─── Channel Source ───────────────────────────────────────────────
+    // Use source to filter by channel in analytics (crm / storefront / pos).
+    // Never create separate datasets per channel — use this field instead.
+    source: {
+      type: String,
+      enum: ["crm", "storefront", "pos"],
+      default: "crm",
+      index: true,
+    },
+    storefrontOrderId: { type: mongoose.Schema.Types.ObjectId, ref: "StorefrontOrder", default: null, index: true },
     invoiceNumber: { type: String, required: true, trim: true, uppercase: true, index: true },
     invoiceDate: { type: Date, default: Date.now },
     dueDate: { type: Date },

@@ -57,6 +57,17 @@ const SalesSchema = new Schema({
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   meta: { type: Schema.Types.Mixed },
 
+  // ─── Channel Source ───────────────────────────────────────────────
+  // Use source to filter by channel in analytics (crm / storefront / pos).
+  // Never create separate datasets per channel — use this field instead.
+  source: {
+    type: String,
+    enum: ['crm', 'storefront', 'pos'],
+    default: 'crm',
+    index: true,
+  },
+  storefrontOrderId: { type: Schema.Types.ObjectId, ref: 'StorefrontOrder', default: null, index: true },
+
 }, { timestamps: true });
 
 // ─────────────────────────────────────────────

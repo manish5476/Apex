@@ -47,6 +47,7 @@ const storefrontCustomerSchema = new mongoose.Schema({
 
   convertedToMainCustomer: { type: Boolean, default: false, index: true },
   linkedCustomerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', default: null, index: true },
+  crmSyncedAt: { type: Date, default: null },
   defaultAddressId: { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontCustomerAddress', default: null },
 
   wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],

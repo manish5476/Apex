@@ -54,6 +54,23 @@ const customerSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
   isDeleted: { type: Boolean, default: false },
 
+  // ─── Storefront Integration ──────────────────────────────────────
+  // source: where this customer record was created.
+  // customerType: retail (walk-in), online (storefront), wholesale (B2B).
+  // storefrontId: back-reference to the StorefrontCustomer document.
+  source: {
+    type: String,
+    enum: ['crm', 'storefront', 'pos', 'import'],
+    default: 'crm',
+    index: true
+  },
+  customerType: {
+    type: String,
+    enum: ['retail', 'online', 'wholesale'],
+    default: 'retail',
+  },
+  storefrontId: { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontCustomer', default: null, index: true },
+
   tags: [{ type: String, trim: true }],
   notes: { type: String, trim: true },
 
