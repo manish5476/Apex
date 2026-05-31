@@ -1088,6 +1088,43 @@ class StorefrontAdminController {
     }
   }
 
+  sendDeliveryAgentInvite = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { agentId } = req.params;
+
+      const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+      const agent = await Agent.findOne({ _id: agentId, organizationId });
+      if (!agent) return next(new AppError('Delivery Agent not found', 404));
+
+      if (!agent.email) {
+        return next(new AppError('Delivery Agent has no email address', 400));
+      }
+
+      const Organization = require('../../../modules/organization/core/organization.model');
+      const org = await Organization.findById(organizationId);
+      if (!org) return next(new AppError('Organization not found', 404));
+
+      const loginLink = `${process.env.FRONTEND_URL}/store/${org.uniqueShopId}/delivery/login`;
+
+      const sendEmail = require('../../../core/infra/email');
+      const emailResult = await sendEmail({
+        email: agent.email,
+        subject: `Delivery Agent Invitation for ${org.name}`,
+        message: `Hello ${agent.name},\n\nYou have been added as a delivery agent for ${org.name}.\n\nYou can log in to your dashboard here:\n${loginLink}\n\nYour Phone Number: ${agent.phone}\n\nThank you!`,
+        html: `<p>Hello <b>${agent.name}</b>,</p><p>You have been added as a delivery agent for <b>${org.name}</b>.</p><p>You can log in to your dashboard here:</p><p><a href="${loginLink}">${loginLink}</a></p><p>Your Phone Number: <b>${agent.phone}</b></p><p>Thank you!</p>`
+      });
+
+      if (!emailResult.success) {
+         return next(new AppError('Failed to send email invite. ' + (emailResult.error || ''), 500));
+      }
+
+      res.status(200).json({ status: 'success', message: 'Invite sent successfully' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   assignDeliveryAgent = async (req, res, next) => {
     try {
       const { organizationId } = req.user;
