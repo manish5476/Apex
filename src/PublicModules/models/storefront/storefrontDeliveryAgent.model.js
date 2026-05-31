@@ -11,13 +11,18 @@ const storefrontDeliveryAgentSchema = new mongoose.Schema({
 
   name: { type: String, required: true, trim: true },
   phone: { type: String, required: true, trim: true },
-  email: { type: String, trim: true, lowercase: true, default: null },
+  email: { type: String, required: true, trim: true, lowercase: true },
   
   // Login credentials for the standalone /delivery portal
   password: { type: String, required: true, select: false },
+  passwordResetToken: { type: String, select: false },
+  passwordResetExpires: { type: Date, select: false },
+  passwordChangedAt: { type: Date, select: false },
 
   vehicleType: { type: String, trim: true, default: 'Bike' },
   vehicleRegistrationNumber: { type: String, trim: true, default: '' },
+  
+  alternatePhone: { type: String, trim: true, default: '' },
   
   isActive: { type: Boolean, default: true },
 

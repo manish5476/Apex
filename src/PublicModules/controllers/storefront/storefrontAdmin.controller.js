@@ -993,16 +993,21 @@ class StorefrontAdminController {
   createDeliveryAgent = async (req, res, next) => {
     try {
       const { organizationId } = req.user;
-      const { name, phone, email, password, staffId, vehicleType, vehicleRegistrationNumber, isActive } = req.body;
+      const { name, phone, email, password, staffId, vehicleType, vehicleRegistrationNumber, alternatePhone, isActive } = req.body;
 
-      if (!name || !phone || !password) {
-        return next(new AppError('name, phone, and password are required', 400));
+      if (!name || !phone || !email || !password) {
+        return next(new AppError('name, phone, email, and password are required', 400));
       }
 
       const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
-      const exists = await Agent.findOne({ organizationId, phone });
-      if (exists) {
+      const phoneExists = await Agent.findOne({ organizationId, phone });
+      if (phoneExists) {
         return next(new AppError(`Delivery Agent with phone "${phone}" already exists`, 409));
+      }
+      
+      const emailExists = await Agent.findOne({ organizationId, email });
+      if (emailExists) {
+        return next(new AppError(`Delivery Agent with email "${email}" already exists`, 409));
       }
 
       const agent = await Agent.create({
@@ -1014,6 +1019,7 @@ class StorefrontAdminController {
         staffId: staffId || null,
         vehicleType,
         vehicleRegistrationNumber,
+        alternatePhone: alternatePhone || '',
         isActive
       });
 
@@ -1049,6 +1055,20 @@ class StorefrontAdminController {
       delete updateData.organizationId;
 
       const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+
+      if (updateData.phone) {
+        const phoneExists = await Agent.findOne({ organizationId, phone: updateData.phone, _id: { $ne: agentId } });
+        if (phoneExists) {
+          return next(new AppError(`Delivery Agent with phone "${updateData.phone}" already exists`, 409));
+        }
+      }
+
+      if (updateData.email) {
+        const emailExists = await Agent.findOne({ organizationId, email: updateData.email, _id: { $ne: agentId } });
+        if (emailExists) {
+          return next(new AppError(`Delivery Agent with email "${updateData.email}" already exists`, 409));
+        }
+      }
 
       if (updateData.password) {
         // Need to save so pre-save hook hashes the password
