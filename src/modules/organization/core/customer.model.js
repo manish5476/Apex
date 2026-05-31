@@ -8,6 +8,17 @@ const addressSchema = new mongoose.Schema({
   country: { type: String, trim: true, default: 'India' },
 }, { _id: false });
 
+// ─── Guarantor Entry Sub-Schema ──────────────────────────────────────────────
+// Each entry in the guarantors array represents one customer who has agreed
+// to vouch for / take responsibility for this customer.
+// Historical records are kept even if the guarantor is later deactivated.
+const guarantorEntrySchema = new mongoose.Schema({
+  customerId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+  notes:       { type: String, trim: true, default: null },   // e.g. "Family relation", "Business partner"
+  addedAt:     { type: Date, default: Date.now },
+  addedBy:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+}, { _id: false });
+
 const customerSchema = new mongoose.Schema({
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
 
@@ -43,6 +54,14 @@ const customerSchema = new mongoose.Schema({
 
   creditLimit: { type: Number, default: 0 },
   paymentTerms: { type: String, trim: true },
+
+  // ─── Guarantors ──────────────────────────────────────────────────────────────
+  // Array of other customers (same org) who vouch for this customer.
+  // Used for credit risk assessment and security reference.
+  // Records are kept even if a guarantor is later deactivated (shown as such via populate).
+  // ⚠️  WARNING: If creditLimit > 0 and this array is empty, the API returns a
+  //    cautionary flag so the operator can decide — no hard block.
+  guarantors: { type: [guarantorEntrySchema], default: [] },
 
   // Denormalized stats — same caveat as outstandingBalance above.
   // Must be updated by invoice/payment hooks to stay accurate.
@@ -93,6 +112,9 @@ customerSchema.index({ organizationId: 1, gstNumber: 1 }, { unique: true, partia
 customerSchema.index({ organizationId: 1, panNumber: 1 }, { unique: true, partialFilterExpression: { panNumber: { $gt: '' } } });
 customerSchema.index({ organizationId: 1, email: 1 }, { unique: true, partialFilterExpression: { email: { $gt: '' } } });
 customerSchema.index({ organizationId: 1, altPhone: 1 }, { unique: true, partialFilterExpression: { altPhone: { $gt: '' } } });
+
+// Supports reverse-lookup: "who is this customer guaranteeing?"
+customerSchema.index({ organizationId: 1, 'guarantors.customerId': 1 }, { sparse: true });
 
 // ─────────────────────────────────────────────
 //  Virtuals

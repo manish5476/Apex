@@ -58,8 +58,42 @@ router.patch('/:id/restore', validateIds('id'), checkPermission(PERMISSIONS.CUST
  * PATCH /:id/credit-limit
  * @params { id }
  * @payload { creditLimit }
+ * ⚠️  Returns a `warning` if creditLimit > 0 and no guarantors are on record.
  */
 router.patch('/:id/credit-limit', validateIds('id'), checkPermission(PERMISSIONS.CUSTOMER.CREDIT_LIMIT), customerController.updateCreditLimit);
+
+// ── Guarantor routes ─────────────────────────────────────────────────────────
+
+/**
+ * GET /:id/guaranteed-customers
+ * @params { id } — the guarantor customer's ID
+ * Returns all customers for whom this customer is acting as guarantor,
+ * with their purchase history, outstanding balance, credit limit, and status.
+ */
+router.get('/:id/guaranteed-customers', validateIds('id'), checkPermission(PERMISSIONS.CUSTOMER.READ), customerController.getGuaranteedCustomers);
+
+/**
+ * GET /:id/with-guarantors
+ * @params { id }
+ * Returns a single customer with every guarantor's name, phone, isActive populated.
+ * If creditLimit > 0 and no guarantors exist, a cautionary `warning` field is included.
+ */
+router.get('/:id/with-guarantors', validateIds('id'), checkPermission(PERMISSIONS.CUSTOMER.READ), customerController.getCustomerWithGuarantors);
+
+/**
+ * POST /:id/guarantors
+ * @params { id }
+ * @payload { guarantorId (ObjectId, required), notes (string, optional) }
+ * Adds a guarantor to this customer. Blocks: self-reference, cross-org, duplicates.
+ */
+router.post('/:id/guarantors', validateIds('id'), checkPermission(PERMISSIONS.CUSTOMER.UPDATE), customerController.addGuarantor);
+
+/**
+ * DELETE /:id/guarantors/:guarantorId
+ * @params { id, guarantorId }
+ * Removes the specified guarantor entry from this customer's guarantors array.
+ */
+router.delete('/:id/guarantors/:guarantorId', validateIds('id', 'guarantorId'), checkPermission(PERMISSIONS.CUSTOMER.UPDATE), customerController.removeGuarantor);
 
 // ── Core CRUD ────────────────────────────────────────────────────────────────
 router.route('/')
