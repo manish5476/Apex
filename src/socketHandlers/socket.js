@@ -844,13 +844,13 @@ function init(server, options = {}) {
       try {
         const updated = await User.findByIdAndUpdate(
           socket.user._id,
-          { "preferences.themeId": sanitize(String(themeId), 50) },
+          { themeId: sanitize(String(themeId), 50) },
           { new: true }
-        ).select("preferences.themeId").lean();
+        ).select("themeId").lean();
 
         if (updated) {
           for (const sId of getSocketIdsForUser(userId)) {
-            io.to(sId).emit("themeChanged", { themeId: updated.preferences.themeId });
+            io.to(sId).emit("themeChanged", { themeId: updated.themeId });
           }
         }
       } catch (e) {

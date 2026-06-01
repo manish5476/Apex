@@ -24,8 +24,183 @@ exports.updateCreditLimit = catchAsync(async (req, res, next) => {
   );
   if (!customer) return next(new AppError('Customer not found', 404));
 
-  res.status(200).json({ status: 'success', data: { customer } });
+  // ⚠️  Cautionary flag — not a block. Operator may proceed.
+  const noGuarantorWarning =
+    creditLimit > 0 && (!customer.guarantors || customer.guarantors.length === 0);
+
+  res.status(200).json({
+    status: 'success',
+    ...(noGuarantorWarning && {
+      warning: 'This customer has a credit limit but no guarantors on record. Consider adding a guarantor for security.',
+    }),
+    data: { customer },
+  });
 });
+
+// ======================================================
+// GET CUSTOMERS GUARANTEED BY THIS CUSTOMER
+// GET /customers/:id/guaranteed-customers
+// Returns all customers for whom this customer is a guarantor,
+// along with their purchase history, outstanding balance, and status.
+// Guarantor's own isActive status is also included so stale/deactivated
+// guarantors are clearly visible in the response.
+// ======================================================
+exports.getGuaranteedCustomers = catchAsync(async (req, res, next) => {
+  const orgId = req.user.organizationId;
+  const guarantorId = req.params.id;
+
+  // Verify the guarantor customer actually belongs to this org
+  const guarantorExists = await Customer.exists({ _id: guarantorId, organizationId: orgId });
+  if (!guarantorExists) return next(new AppError('Guarantor customer not found', 404));
+
+  // Find all customers in this org who list this customer as one of their guarantors
+  const guaranteedCustomers = await Customer.find({
+    organizationId: orgId,
+    isDeleted: false,
+    'guarantors.customerId': guarantorId,
+  })
+    .select(
+      'name phone email type avatar ' +
+      'outstandingBalance creditLimit totalPurchases invoiceCount ' +
+      'lastPurchaseDate lastInvoiceAmount isActive tags guarantors'
+    )
+    .lean();
+
+  // Slim down the guarantors array to only the entry for this specific guarantor
+  // (a customer can have multiple guarantors; we surface just the relevant one)
+  const result = guaranteedCustomers.map(c => {
+    const entry = c.guarantors.find(
+      g => String(g.customerId) === String(guarantorId)
+    );
+    return {
+      ...c,
+      guarantorEntry: entry || null, // notes + addedAt for this specific guarantor
+      guarantors: undefined,         // strip full array from payload
+    };
+  });
+
+  res.status(200).json({
+    status: 'success',
+    results: result.length,
+    data: { guaranteedCustomers: result },
+  });
+});
+
+// ======================================================
+// GET SINGLE CUSTOMER WITH POPULATED GUARANTORS
+// GET /customers/:id/with-guarantors
+// Same as getOne but also populates name, phone, isActive
+// for every guarantor so the UI can show deactivated badges.
+// ======================================================
+exports.getCustomerWithGuarantors = catchAsync(async (req, res, next) => {
+  const customer = await Customer.findOne({
+    _id: req.params.id,
+    organizationId: req.user.organizationId,
+  })
+    .populate({
+      path: 'guarantors.customerId',
+      select: 'name phone email avatar isActive isDeleted',
+    })
+    .populate('createdBy', 'name')
+    .lean();
+
+  if (!customer) return next(new AppError('Customer not found', 404));
+
+  // Emit warning if credit limit > 0 but no guarantors set
+  const noGuarantorWarning =
+    (customer.creditLimit || 0) > 0 &&
+    (!customer.guarantors || customer.guarantors.length === 0);
+
+  res.status(200).json({
+    status: 'success',
+    ...(noGuarantorWarning && {
+      warning: 'This customer has a credit limit but no guarantors on record. Consider adding a guarantor for security.',
+    }),
+    data: { customer },
+  });
+});
+
+// ======================================================
+// ADD A GUARANTOR
+// POST /customers/:id/guarantors
+// Body: { guarantorId, notes }
+// ======================================================
+exports.addGuarantor = catchAsync(async (req, res, next) => {
+  const { guarantorId, notes } = req.body;
+  const orgId = req.user.organizationId;
+  const customerId = req.params.id;
+
+  if (!guarantorId)
+    return next(new AppError('guarantorId is required', 400));
+
+  // Guard: cannot guarantee yourself
+  if (String(guarantorId) === String(customerId))
+    return next(new AppError('A customer cannot be their own guarantor', 400));
+
+  // Guard: guarantor must exist in the same org
+  const guarantor = await Customer.findOne({
+    _id: guarantorId,
+    organizationId: orgId,
+    isDeleted: false,
+  }).select('name isActive');
+
+  if (!guarantor)
+    return next(new AppError('Guarantor customer not found in this organisation', 404));
+
+  // Guard: prevent duplicate entries
+  const customer = await Customer.findOne({ _id: customerId, organizationId: orgId });
+  if (!customer) return next(new AppError('Customer not found', 404));
+
+  const alreadyAdded = customer.guarantors.some(
+    g => String(g.customerId) === String(guarantorId)
+  );
+  if (alreadyAdded)
+    return next(new AppError('This customer is already listed as a guarantor', 409));
+
+  customer.guarantors.push({
+    customerId: guarantorId,
+    notes: notes || null,
+    addedAt: new Date(),
+    addedBy: req.user._id,
+  });
+
+  await customer.save();
+
+  res.status(200).json({
+    status: 'success',
+    message: `${guarantor.name} has been added as a guarantor.`,
+    data: { customer },
+  });
+});
+
+// ======================================================
+// REMOVE A GUARANTOR
+// DELETE /customers/:id/guarantors/:guarantorId
+// ======================================================
+exports.removeGuarantor = catchAsync(async (req, res, next) => {
+  const orgId = req.user.organizationId;
+  const { id: customerId, guarantorId } = req.params;
+
+  const customer = await Customer.findOne({ _id: customerId, organizationId: orgId });
+  if (!customer) return next(new AppError('Customer not found', 404));
+
+  const before = customer.guarantors.length;
+  customer.guarantors = customer.guarantors.filter(
+    g => String(g.customerId) !== String(guarantorId)
+  );
+
+  if (customer.guarantors.length === before)
+    return next(new AppError('Guarantor not found on this customer', 404));
+
+  await customer.save();
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Guarantor removed successfully.',
+    data: { customer },
+  });
+});
+
 
 // ======================================================
 // DELETE CUSTOMER (safeguarded soft delete)

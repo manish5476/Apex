@@ -104,6 +104,171 @@ class StorefrontDeliveryAgentController {
   }
 
   // ---------------------------------------------------------------------------
+  // FORGOT / RESET PASSWORD
+  // ---------------------------------------------------------------------------
+  forgotPassword = async (req, res, next) => {
+    try {
+      const { email, phone, orgSlug } = req.body;
+      if (!orgSlug) return next(new AppError('Organization slug is required', 400));
+      if (!email && !phone) return next(new AppError('Please provide an email or phone number', 400));
+
+      const Organization = require('../../../modules/organization/core/organization.model');
+      const org = await Organization.findOne({ uniqueShopId: new RegExp(`^${orgSlug}$`, 'i'), isActive: true });
+      if (!org) return next(new AppError('Organization not found', 404));
+
+      const query = { organizationId: org._id };
+      if (email) query.email = email;
+      else query.phone = phone;
+
+      const agent = await StorefrontDeliveryAgent.findOne(query);
+      if (!agent) {
+        return next(new AppError('No account found with that information in this organization', 404));
+      }
+
+      // Generate token
+      const crypto = require('crypto');
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      
+      // Hash and store
+      agent.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+      agent.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+      await agent.save({ validateBeforeSave: false });
+
+      // Send email if they have one
+      if (agent.email) {
+        const resetURL = `${process.env.FRONTEND_URL || 'http://localhost:4200'}/store/${orgSlug}/delivery/reset-password/${resetToken}`;
+        const sendEmail = require('../../../core/infra/email');
+        
+        try {
+          await sendEmail({
+            email: agent.email,
+            subject: `Password Reset Request - ${org.name} Delivery`,
+            message: `Forgot your password? Reset it here: ${resetURL}\nIf you didn't forget your password, please ignore this email.`,
+            html: `<p>Forgot your password? Reset it here: <a href="${resetURL}">${resetURL}</a></p><p>If you didn't forget your password, please ignore this email.</p>`
+          });
+          
+          res.status(200).json({
+            status: 'success',
+            message: 'Token sent to email!'
+          });
+        } catch (err) {
+          agent.passwordResetToken = undefined;
+          agent.passwordResetExpires = undefined;
+          await agent.save({ validateBeforeSave: false });
+          return next(new AppError('There was an error sending the email. Try again later!', 500));
+        }
+      } else {
+        // Fallback for SMS-less environments when no email exists
+        res.status(200).json({
+          status: 'success',
+          message: 'Secure reset link generated. Please contact your store administrator to receive it.',
+          resetToken // Included for testing/dev environments
+        });
+      }
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  resetPassword = async (req, res, next) => {
+    try {
+      const crypto = require('crypto');
+      const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+      const agent = await StorefrontDeliveryAgent.findOne({
+        passwordResetToken: hashedToken,
+        passwordResetExpires: { $gt: Date.now() }
+      }).select('+password');
+
+      if (!agent) {
+        return next(new AppError('Token is invalid or has expired', 400));
+      }
+
+      if (!req.body.password) {
+         return next(new AppError('Please provide a new password', 400));
+      }
+
+      agent.password = req.body.password;
+      agent.passwordResetToken = undefined;
+      agent.passwordResetExpires = undefined;
+      agent.passwordChangedAt = Date.now();
+      await agent.save();
+
+      const token = jwt.sign(
+        {
+          id: agent._id,
+          type: 'storefront_delivery_agent',
+          role: 'delivery_agent',
+          organizationId: agent.organizationId
+        },
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: process.env.JWT_EXPIRES_IN || '90d' }
+      );
+
+      res.status(200).json({
+        status: 'success',
+        token,
+        message: 'Password successfully reset'
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // PROFILE
+  // ---------------------------------------------------------------------------
+  getProfile = async (req, res, next) => {
+    try {
+      const agent = await StorefrontDeliveryAgent.findById(req.user.id);
+      if (!agent) return next(new AppError('Delivery agent not found', 404));
+      
+      res.status(200).json({
+        status: 'success',
+        data: agent
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  updateProfile = async (req, res, next) => {
+    try {
+      const allowedUpdates = ['name', 'email', 'alternatePhone', 'vehicleType', 'vehicleRegistrationNumber'];
+      const updateData = {};
+      for (const key of allowedUpdates) {
+        if (req.body[key] !== undefined) {
+          updateData[key] = req.body[key];
+        }
+      }
+
+      // If email is being changed, check if it already exists
+      if (updateData.email) {
+        const existingEmail = await StorefrontDeliveryAgent.findOne({
+          organizationId: req.user.organizationId,
+          email: updateData.email,
+          _id: { $ne: req.user.id }
+        });
+        if (existingEmail) {
+          return next(new AppError('This email is already in use by another agent', 409));
+        }
+      }
+
+      const agent = await StorefrontDeliveryAgent.findByIdAndUpdate(req.user.id, updateData, {
+        new: true,
+        runValidators: true
+      });
+
+      res.status(200).json({
+        status: 'success',
+        data: agent
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // DASHBOARD & SCANNING
   // GET /delivery-agent/orders
   // GET /delivery-agent/scan/:identifier
@@ -250,6 +415,186 @@ class StorefrontDeliveryAgentController {
         status: 'success',
         message: msg || 'Status was already up to date',
         data: order
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // FORGOT PASSWORD
+  // POST /delivery-agent/forgot-password
+  // ---------------------------------------------------------------------------
+  forgotPassword = async (req, res, next) => {
+    try {
+      const { phoneOrEmail, orgSlug } = req.body;
+      
+      if (!phoneOrEmail || !orgSlug) {
+        return next(new AppError('Phone/Email and organization slug are required', 400));
+      }
+
+      // Lookup Organization
+      const Organization = require('../../../modules/organization/core/organization.model');
+      const org = await Organization.findOne({
+        uniqueShopId: new RegExp(`^${orgSlug}$`, 'i'),
+        isActive: true
+      });
+
+      if (!org) {
+        return next(new AppError('Organization not found', 404));
+      }
+
+      // Find agent by phone or email
+      const agent = await StorefrontDeliveryAgent.findOne({
+        organizationId: org._id,
+        $or: [
+          { phone: phoneOrEmail },
+          { email: phoneOrEmail.toLowerCase() }
+        ]
+      });
+
+      if (!agent) {
+        // Return success to prevent enumeration, or we can just error out for internal tool
+        return next(new AppError('No active delivery agent found with this detail in this organization.', 404));
+      }
+
+      if (!agent.isActive) {
+        return next(new AppError('Your account has been deactivated', 403));
+      }
+
+      if (!agent.email) {
+        return next(new AppError('You do not have an email address associated with your account. Please contact your store administrator to reset your password.', 400));
+      }
+
+      const crypto = require('crypto');
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      
+      agent.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+      agent.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 min
+
+      await agent.save({ validateBeforeSave: false });
+
+      // Build Reset URL
+      const resetURL = `${process.env.FRONTEND_URL}/store/${orgSlug}/delivery/reset-password/${resetToken}`;
+
+      try {
+        const sendEmail = require('../../../core/infra/email');
+        await sendEmail({
+          email: agent.email,
+          subject: 'Delivery Agent Password Reset Request',
+          html: `
+            <h2>Password Reset Request</h2>
+            <p>Hello ${agent.name},</p>
+            <p>Click the link below to reset your delivery agent password:</p>
+            <p><a href="${resetURL}" style="padding:10px 20px;background:#4F46E5;color:white;text-decoration:none;border-radius:5px;">Reset Password</a></p>
+            <p>Or copy this link: ${resetURL}</p>
+            <p>This link will expire in 10 minutes.</p>
+            <p>If you didn't request this, please ignore this email.</p>
+          `,
+        });
+      } catch (err) {
+        agent.passwordResetToken = undefined;
+        agent.passwordResetExpires = undefined;
+        await agent.save({ validateBeforeSave: false });
+        return next(new AppError('Failed to send reset email. Please try again later.', 500));
+      }
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Password reset link sent to your email.'
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // RESET PASSWORD
+  // PATCH /delivery-agent/reset-password/:token
+  // ---------------------------------------------------------------------------
+  resetPassword = async (req, res, next) => {
+    try {
+      const { token } = req.params;
+      const { password, orgSlug } = req.body;
+
+      if (!password) {
+        return next(new AppError('Please provide a new password', 400));
+      }
+
+      const crypto = require('crypto');
+      const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+      const agent = await StorefrontDeliveryAgent.findOne({
+        passwordResetToken: hashedToken,
+        passwordResetExpires: { $gt: Date.now() }
+      }).select('+password');
+
+      if (!agent) {
+        return next(new AppError('Token is invalid or has expired', 400));
+      }
+
+      // In real life we could check organization slug matches agent.organizationId,
+      // but the token is cryptographically secure enough.
+      
+      agent.password = password;
+      agent.passwordResetToken = undefined;
+      agent.passwordResetExpires = undefined;
+      agent.passwordChangedAt = Date.now();
+
+      await agent.save();
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Password reset successfully. You can now login.'
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // PROFILE
+  // GET /delivery-agent/profile
+  // PATCH /delivery-agent/profile
+  // ---------------------------------------------------------------------------
+  getProfile = async (req, res, next) => {
+    try {
+      const agent = await StorefrontDeliveryAgent.findById(req.user.id);
+      if (!agent) {
+        return next(new AppError('Delivery agent not found', 404));
+      }
+      res.status(200).json({
+        status: 'success',
+        data: agent
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  updateProfile = async (req, res, next) => {
+    try {
+      const { email, alternatePhone, vehicleType, vehicleRegistrationNumber } = req.body;
+      const updateData = {};
+
+      if (email !== undefined) updateData.email = email;
+      if (alternatePhone !== undefined) updateData.alternatePhone = alternatePhone;
+      if (vehicleType !== undefined) updateData.vehicleType = vehicleType;
+      if (vehicleRegistrationNumber !== undefined) updateData.vehicleRegistrationNumber = vehicleRegistrationNumber;
+
+      const agent = await StorefrontDeliveryAgent.findByIdAndUpdate(
+        req.user.id,
+        updateData,
+        { new: true, runValidators: true }
+      );
+
+      if (!agent) {
+        return next(new AppError('Delivery agent not found', 404));
+      }
+
+      res.status(200).json({
+        status: 'success',
+        data: agent
       });
     } catch (err) {
       next(err);

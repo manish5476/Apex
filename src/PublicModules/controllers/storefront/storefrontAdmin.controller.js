@@ -31,6 +31,9 @@ const AppError = require('../../../core/utils/api/appError');
 const { THEME_LIST } = require('../../utils/constants/storefront/themes.constants');
 const CustomerService = require('../../services/storefront/customer.service');
 const { normalizeSection } = require('../../utils/storefront/sectionConfigNormalizer');
+const OrderService = require('../../services/storefront/order.service');
+const CRMBridge = require('../../services/storefront/crmBridge.service');
+const StorefrontCustomer = require('../../models/storefront/storefrontCustomer.model');
 
 class StorefrontAdminController {
 
@@ -677,11 +680,12 @@ class StorefrontAdminController {
   getAllOrders = async (req, res, next) => {
     try {
       const { organizationId } = req.user;
-      const { status, paymentStatus, search, page = 1, limit = 20 } = req.query;
+      const { status, paymentStatus, search, crmSyncStatus, page = 1, limit = 20 } = req.query;
 
       const query = { organizationId };
       if (status) query.orderStatus = status;
       if (paymentStatus) query.paymentStatus = paymentStatus;
+      if (crmSyncStatus) query.crmSyncStatus = crmSyncStatus;
 
       if (search) {
         query.orderNumber = { $regex: search, $options: 'i' };
@@ -715,152 +719,98 @@ class StorefrontAdminController {
   updateOrderStatus = async (req, res, next) => {
     try {
       const { organizationId } = req.user;
-      const { orderId } = req.params;
+      const { orderId }        = req.params;
       const { orderStatus, fulfillmentStatus, paymentStatus } = req.body;
 
       const order = await StorefrontOrder.findOne({ _id: orderId, organizationId });
       if (!order) return next(new AppError('Order not found', 404));
 
-      const oldOrderStatus = order.orderStatus;
+      const oldOrderStatus       = order.orderStatus;
       const oldFulfillmentStatus = order.fulfillmentStatus;
 
+      // ── Cancellation: delegate to OrderService (reverses CRM + stock) ──────
+      if (orderStatus === 'cancelled' && oldOrderStatus !== 'cancelled') {
+        const cancelled = await OrderService.cancelOrder(organizationId, orderId, req.user);
+        return res.status(200).json({ status: 'success', data: cancelled });
+      }
+
+      // ── Status updates ──────────────────────────────────────────────────────
       if (orderStatus && orderStatus !== oldOrderStatus) {
         order.orderStatus = orderStatus;
         order.timeline.push({
-          type: 'status_update',
+          type:    'status_update',
           message: `Order status changed to ${orderStatus}`,
-          actorId: req.user._id
+          actorId: req.user._id,
         });
       }
-      
+
       if (fulfillmentStatus && fulfillmentStatus !== oldFulfillmentStatus) {
         order.fulfillmentStatus = fulfillmentStatus;
         order.timeline.push({
-          type: 'fulfillment_update',
+          type:    'fulfillment_update',
           message: `Fulfillment status changed to ${fulfillmentStatus}`,
-          actorId: req.user._id
+          actorId: req.user._id,
         });
       }
 
       if (paymentStatus) order.paymentStatus = paymentStatus;
 
-      // Handle Cancellation
-      if (orderStatus === 'cancelled' && oldOrderStatus !== 'cancelled') {
-        const Product = require('../../../modules/inventory/core/model/product.model');
-        for (const item of order.items) {
-          if (!item.productId) continue;
-          const product = await Product.findOne({ _id: item.productId, organizationId });
-          if (product && product.inventory && product.inventory.length > 0) {
-            let inv = product.inventory.find(i => i.branchId?.toString() === item.branchId?.toString());
-            if (!inv) inv = product.inventory[0];
-            inv.reservedQuantity = Math.max(0, (inv.reservedQuantity || 0) - item.quantity);
-            await product.save();
-          }
-        }
-      }
-
-      // Handle Delivery (deduct physical stock)
+      // ── On Delivery: verify CRM sync, attempt recovery if missing ──────────
+      // CRM records should already exist from order placement (createFromCart).
+      // This block is a safety net for pre-refactor orders.
       if (fulfillmentStatus === 'delivered' && oldFulfillmentStatus !== 'delivered') {
-        const Product = require('../../../modules/inventory/core/model/product.model');
-        let linkedCustomerId = order.metadata?.linkedCustomerId || null;
-        try {
-          const conversion = await CustomerService.convertToCrmCustomer(
-            organizationId,
-            order.customerId,
-            req.user._id || req.user.id
-          );
-          linkedCustomerId = conversion.crmCustomerId;
-          order.metadata = {
-            ...(order.metadata || {}),
-            linkedCustomerId,
-            crmCustomerAutoConvertedAt: new Date()
-          };
-          order.timeline.push({
-            type: 'customer_linked',
-            message: 'Storefront customer linked to CRM customer',
-            actorId: req.user._id
-          });
-        } catch (conversionErr) {
-          order.timeline.push({
-            type: 'customer_link_failed',
-            message: `CRM customer link failed: ${conversionErr.message}`,
-            actorId: req.user._id
-          });
-        }
-
-        for (const item of order.items) {
-          if (!item.productId) continue;
-          const product = await Product.findOne({ _id: item.productId, organizationId });
-          if (product && product.inventory && product.inventory.length > 0) {
-            let inv = product.inventory.find(i => i.branchId?.toString() === item.branchId?.toString());
-            if (!inv) inv = product.inventory[0];
-            inv.quantity = Math.max(0, inv.quantity - item.quantity);
-            inv.reservedQuantity = Math.max(0, (inv.reservedQuantity || 0) - item.quantity);
-            await product.save();
-          }
-        }
-
-        // Generate Invoice
-        try {
-          const Invoice = require('../../../modules/accounting/billing/invoice.model');
-          const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-          const { nanoid } = require('nanoid');
-
-          const invoiceItems = order.items.map(i => ({
-            productId: i.productId,
-            name: i.snapshot?.name || 'Product',
-            quantity: i.quantity,
-            originalQuantity: i.quantity,
-            unit: 'pcs',
-            purchasePriceAtSale: 0,
-            price: i.unitPrice,
-            discount: i.discountAmount,
-            taxRate: i.snapshot?.taxRate || 0,
-            hsnCode: i.snapshot?.hsnCode
-          }));
-
-          const addressToString = (addr) => addr ? Object.values(addr).filter(v => typeof v === 'string' && v.trim() !== '').join(', ') : '';
-
-          const existingInvoice = await Invoice.findOne({ organizationId, saleId: order._id });
-          if (!existingInvoice && linkedCustomerId) {
-            await Invoice.create({
-            organizationId,
-            customerId: linkedCustomerId,
-            saleId: order._id,
-            invoiceNumber: `INV-${date}-${nanoid(6).toUpperCase()}`,
-            invoiceDate: new Date(),
-            status: 'issued',
-            billingAddress: addressToString(order.billingAddress),
-            shippingAddress: addressToString(order.shippingAddress),
-            items: invoiceItems,
-            shippingCharges: order.totals?.shipping || 0,
-            grandTotal: order.totals?.grandTotal || 0,
-            paymentStatus: order.paymentStatus === 'paid' ? 'paid' : 'unpaid',
-            paidAmount: order.paymentStatus === 'paid' ? (order.totals?.grandTotal || 0) : 0
-            });
+        if (!order.crmInvoiceId) {
+          try {
+            const sfCustomer = await StorefrontCustomer.findById(order.customerId).lean();
+            if (sfCustomer) {
+              const crmResult = await CRMBridge.ensureCRMCustomer(organizationId, sfCustomer, {
+                shippingAddress: order.shippingAddress,
+              });
+              if (crmResult) {
+                const { invoice, sale } = await CRMBridge.createOrderCRMRecords(
+                  order, crmResult.crmCustomer, req.user
+                );
+                await CRMBridge.syncStorefrontCustomerLink(sfCustomer._id, crmResult.crmCustomer);
+                order.crmInvoiceId  = invoice._id;
+                order.crmSaleId     = sale._id;
+                order.crmCustomerId = crmResult.crmCustomer._id;
+                order.crmSyncStatus = 'synced';
+                order.crmSyncError  = null;
+                order.timeline.push({
+                  type:    'crm_records_created',
+                  message: `CRM Invoice ${invoice.invoiceNumber} created on delivery (recovery sync)`,
+                  actorId: req.user._id,
+                });
+              } else {
+                order.timeline.push({
+                  type:    'crm_sync_skipped',
+                  message: 'CRM sync skipped: customer phone number is required',
+                  actorId: req.user._id,
+                });
+              }
+            }
+          } catch (crmErr) {
+            console.error('[CRMBridge] Recovery sync failed on delivery:', crmErr.message);
+            order.crmSyncError  = crmErr.message?.substring(0, 500);
+            order.crmSyncStatus = 'failed';
             order.timeline.push({
-              type: 'invoice_created',
-              message: 'CRM invoice created for delivered storefront order',
-              actorId: req.user._id
-            });
-          } else if (!linkedCustomerId) {
-            order.timeline.push({
-              type: 'invoice_skipped',
-              message: 'Invoice skipped because CRM customer link is missing',
-              actorId: req.user._id
+              type:    'crm_sync_failed',
+              message: `CRM sync failed: ${crmErr.message}`,
+              actorId: req.user._id,
             });
           }
-        } catch (invoiceErr) {
-          console.error('[Invoice Generation Error]', invoiceErr.message);
+        } else {
+          order.timeline.push({
+            type:    'delivered',
+            message: `Order delivered. CRM Invoice already linked (${order.crmInvoiceId})`,
+            actorId: req.user._id,
+          });
         }
       }
 
       await order.save();
 
-      res.status(200).json({
-        status: 'success',
-        data: order
-      });
+      res.status(200).json({ status: 'success', data: order });
     } catch (err) {
       next(err);
     }
@@ -1043,16 +993,21 @@ class StorefrontAdminController {
   createDeliveryAgent = async (req, res, next) => {
     try {
       const { organizationId } = req.user;
-      const { name, phone, email, password, staffId, vehicleType, vehicleRegistrationNumber, isActive } = req.body;
+      const { name, phone, email, password, staffId, vehicleType, vehicleRegistrationNumber, alternatePhone, isActive } = req.body;
 
-      if (!name || !phone || !password) {
-        return next(new AppError('name, phone, and password are required', 400));
+      if (!name || !phone || !email || !password) {
+        return next(new AppError('name, phone, email, and password are required', 400));
       }
 
       const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
-      const exists = await Agent.findOne({ organizationId, phone });
-      if (exists) {
+      const phoneExists = await Agent.findOne({ organizationId, phone });
+      if (phoneExists) {
         return next(new AppError(`Delivery Agent with phone "${phone}" already exists`, 409));
+      }
+      
+      const emailExists = await Agent.findOne({ organizationId, email });
+      if (emailExists) {
+        return next(new AppError(`Delivery Agent with email "${email}" already exists`, 409));
       }
 
       const agent = await Agent.create({
@@ -1064,6 +1019,7 @@ class StorefrontAdminController {
         staffId: staffId || null,
         vehicleType,
         vehicleRegistrationNumber,
+        alternatePhone: alternatePhone || '',
         isActive
       });
 
@@ -1097,18 +1053,32 @@ class StorefrontAdminController {
       const updateData = { ...req.body };
 
       delete updateData.organizationId;
-      
+
       const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
-      
+
+      if (updateData.phone) {
+        const phoneExists = await Agent.findOne({ organizationId, phone: updateData.phone, _id: { $ne: agentId } });
+        if (phoneExists) {
+          return next(new AppError(`Delivery Agent with phone "${updateData.phone}" already exists`, 409));
+        }
+      }
+
+      if (updateData.email) {
+        const emailExists = await Agent.findOne({ organizationId, email: updateData.email, _id: { $ne: agentId } });
+        if (emailExists) {
+          return next(new AppError(`Delivery Agent with email "${updateData.email}" already exists`, 409));
+        }
+      }
+
       if (updateData.password) {
-         // Need to save so pre-save hook hashes the password
-         const agent = await Agent.findOne({ _id: agentId, organizationId });
-         if (!agent) return next(new AppError('Delivery Agent not found', 404));
-         
-         Object.assign(agent, updateData);
-         await agent.save();
-         agent.password = undefined;
-         return res.status(200).json({ status: 'success', message: 'Delivery Agent updated', data: agent });
+        // Need to save so pre-save hook hashes the password
+        const agent = await Agent.findOne({ _id: agentId, organizationId });
+        if (!agent) return next(new AppError('Delivery Agent not found', 404));
+
+        Object.assign(agent, updateData);
+        await agent.save();
+        agent.password = undefined;
+        return res.status(200).json({ status: 'success', message: 'Delivery Agent updated', data: agent });
       } else {
         const agent = await Agent.findOneAndUpdate(
           { _id: agentId, organizationId },
@@ -1133,6 +1103,43 @@ class StorefrontAdminController {
       if (!agent) return next(new AppError('Delivery Agent not found', 404));
 
       res.status(200).json({ status: 'success', message: 'Delivery Agent deleted' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  sendDeliveryAgentInvite = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { agentId } = req.params;
+
+      const Agent = require('../../models/storefront/storefrontDeliveryAgent.model');
+      const agent = await Agent.findOne({ _id: agentId, organizationId });
+      if (!agent) return next(new AppError('Delivery Agent not found', 404));
+
+      if (!agent.email) {
+        return next(new AppError('Delivery Agent has no email address', 400));
+      }
+
+      const Organization = require('../../../modules/organization/core/organization.model');
+      const org = await Organization.findById(organizationId);
+      if (!org) return next(new AppError('Organization not found', 404));
+
+      const loginLink = `${process.env.FRONTEND_URL}/store/${org.uniqueShopId}/delivery/login`;
+
+      const sendEmail = require('../../../core/infra/email');
+      const emailResult = await sendEmail({
+        email: agent.email,
+        subject: `Delivery Agent Invitation for ${org.name}`,
+        message: `Hello ${agent.name},\n\nYou have been added as a delivery agent for ${org.name}.\n\nYou can log in to your dashboard here:\n${loginLink}\n\nYour Phone Number: ${agent.phone}\n\nThank you!`,
+        html: `<p>Hello <b>${agent.name}</b>,</p><p>You have been added as a delivery agent for <b>${org.name}</b>.</p><p>You can log in to your dashboard here:</p><p><a href="${loginLink}">${loginLink}</a></p><p>Your Phone Number: <b>${agent.phone}</b></p><p>Thank you!</p>`
+      });
+
+      if (!emailResult.success) {
+         return next(new AppError('Failed to send email invite. ' + (emailResult.error || ''), 500));
+      }
+
+      res.status(200).json({ status: 'success', message: 'Invite sent successfully' });
     } catch (err) {
       next(err);
     }

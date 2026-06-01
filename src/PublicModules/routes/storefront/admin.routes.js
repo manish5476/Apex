@@ -81,6 +81,8 @@ router.route('/delivery-agents/:agentId')
   .put(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.updateDeliveryAgent)
   .delete(checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.deleteDeliveryAgent);
 
+router.post('/delivery-agents/:agentId/send-invite', checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.sendDeliveryAgentInvite);
+
 // ============================================================
 // COUPONS
 // ============================================================
