@@ -161,36 +161,21 @@ class DataHydrationService {
     );
 
     // Priority 2: explicit manual product picks from the builder.
-    // Without this, the default ruleType ('new_arrivals') wins and the
-    // selected products are silently ignored.
-    if (cfg.ruleType === 'manual_selection') {
-      if (!manualProductIds.length) return [];
+    // Always override ruleType if manual products are present.
+    if (manualProductIds.length > 0) {
       return SmartRuleEngine.executeAdHoc(
         {
           ...cfg,
           ruleType: 'manual_selection',
           manualProductIds,
-          limit: cfg.limit ?? manualProductIds.length
+          limit: manualProductIds.length // Show all manually selected products
         },
         organizationId,
         currency
       );
     }
 
-    // Priority 3: legacy manualData product IDs when no inline rule was set
-    if (!cfg.ruleType && manualProductIds.length) {
-      return SmartRuleEngine.executeAdHoc(
-        {
-          ruleType: 'manual_selection',
-          manualProductIds,
-          limit: manualProductIds.length
-        },
-        organizationId,
-        currency
-      );
-    }
-
-    // Priority 4: inline config with a ruleType
+    // Priority 3: inline config with a ruleType
     if (cfg.ruleType) {
       return SmartRuleEngine.executeAdHoc(cfg, organizationId, currency);
     }
