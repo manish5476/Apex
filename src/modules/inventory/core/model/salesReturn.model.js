@@ -75,6 +75,36 @@ const salesReturnSchema = new mongoose.Schema({
     index: true,
   },
 
+  // ── Source (who initiated the return) ─────────────────────────
+  // 'crm'                → initiated by a CRM user / staff
+  // 'storefront_request' → customer-initiated via portal
+  source: {
+    type: String,
+    enum: ['crm', 'storefront_request'],
+    default: 'crm',
+    index: true,
+  },
+
+  // ── Storefront-specific context (set only when source='storefront_request') ──
+  storefront: {
+    returnReason:   { type: String, trim: true, default: null },
+    evidenceImages: { type: [String], default: [] }, // URLs to uploaded photos
+  },
+
+  // ── Refund Method (set by CRM staff on approval) ──────────────
+  refundMethod: {
+    type: String,
+    enum: ['credit_note', 'cash', 'upi', 'bank_transfer'],
+    default: null,
+  },
+  refundDetails: {
+    accountName: { type: String, trim: true, default: null },
+    accountNo:   { type: String, trim: true, default: null },
+    ifsc:        { type: String, trim: true, uppercase: true, default: null },
+    upiId:       { type: String, trim: true, default: null },
+    notes:       { type: String, trim: true, default: null },
+  },
+
   // ── Audit ─────────────────────────────────────────────────────
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 

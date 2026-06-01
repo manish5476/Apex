@@ -29,7 +29,7 @@ async function resolvePrimaryBranchId(storefrontOrder, session = null) {
   }
 
   // 2. Fallback — query for the organization's first active branch
-  const Branch = require('../../modules/organization/core/branch.model');
+  const Branch = require('../../../modules/organization/core/branch.model');
   const query = Branch.findOne({
     organizationId: storefrontOrder.organizationId,
     isActive: { $ne: false },

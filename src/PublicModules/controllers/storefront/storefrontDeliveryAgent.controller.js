@@ -391,21 +391,19 @@ class StorefrontDeliveryAgentController {
           actorId: agentId
         });
 
-        // Deduct physical stock if status is delivered
-        if (status === 'delivered' && oldFulfillmentStatus !== 'delivered') {
-          const Product = require('../../../modules/inventory/core/model/product.model');
-          for (const item of order.items) {
-            if (!item.productId) continue;
-            const product = await Product.findOne({ _id: item.productId, organizationId });
-            if (product && product.inventory && product.inventory.length > 0) {
-              let inv = product.inventory.find(i => i.branchId?.toString() === item.branchId?.toString());
-              if (!inv) inv = product.inventory[0];
-              inv.quantity = Math.max(0, inv.quantity - item.quantity);
-              inv.reservedQuantity = Math.max(0, (inv.reservedQuantity || 0) - item.quantity);
-              await product.save();
-            }
+        // Payment sync
+        if (order.paymentStatus === 'paid' && order.crmInvoiceId) {
+          try {
+            const CRMBridge = require('../../services/storefront/crmBridge.service');
+            await CRMBridge.syncPaymentToCRM(order, null);
+            order.timeline.push({
+              type: 'crm_sync_payment',
+              message: 'CRM Payment synchronized successfully.',
+              actorId: agentId,
+            });
+          } catch (err) {
+            console.error('[CRMBridge] Failed to sync payment to CRM via Delivery Agent:', err.message);
           }
-          // Note: In real life, might also generate Invoice here if not done yet.
         }
 
         await order.save();
