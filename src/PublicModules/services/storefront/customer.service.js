@@ -196,6 +196,7 @@ class StorefrontCustomerService {
     const address = await StorefrontCustomerAddress.findOne({ _id: addressId, organizationId, customerId });
     if (!address) throw new AppError('Address not found', 404);
 
+    const wasDefault = address.isDefault === true;
     const isDefault = payload.isDefault === true;
 
     if (isDefault) {
@@ -217,7 +218,7 @@ class StorefrontCustomerService {
 
     if (isDefault) {
       await StorefrontCustomer.findOneAndUpdate({ _id: customerId, organizationId }, { defaultAddressId: address._id });
-    } else if (address.isDefault && !isDefault) {
+    } else if (wasDefault) {
       // If we are un-defaulting this address, clear defaultAddressId if it matches this one
       await StorefrontCustomer.findOneAndUpdate({ _id: customerId, organizationId, defaultAddressId: address._id }, { $unset: { defaultAddressId: 1 } });
     }

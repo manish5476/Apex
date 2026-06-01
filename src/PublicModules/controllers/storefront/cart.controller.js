@@ -96,7 +96,9 @@ class CartController {
       const result = await CartService.validateForCheckout(organizationId, identity);
       res.status(result.valid ? 200 : 409).json({
         status: result.valid ? 'success' : 'conflict',
-        message: result.valid ? 'Cart is valid for checkout' : 'Some items have stock issues',
+        message: result.valid
+          ? 'Cart is valid for checkout'
+          : (result.issues?.[0]?.message || 'Some cart items need attention before checkout'),
         data: result
       });
     } catch (err) {

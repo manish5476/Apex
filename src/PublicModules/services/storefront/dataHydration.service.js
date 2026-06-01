@@ -92,7 +92,7 @@ class DataHydrationService {
       // Featured product (single product spotlight)
       // ----------------------------------------------------------------
       if (hydrated.type === 'featured_product') {
-        hydrated.data = await this._hydrateFeaturedProduct(hydrated.config ?? {}, organizationId, currency);
+        hydrated.data = await this._hydrateFeaturedProduct(hydrated, organizationId, currency);
         return hydrated;
       }
 
@@ -145,7 +145,7 @@ class DataHydrationService {
 
   // ---------------------------------------------------------------------------
   // Private: product section hydration
-  // Priority: saved SmartRule ID > inline ruleType config > empty
+  // Priority: saved SmartRule ID > manual selection > inline ruleType config > empty
   // ---------------------------------------------------------------------------
 
   async _hydrateProductSection(section, organizationId, currency) {
@@ -154,20 +154,45 @@ class DataHydrationService {
       return SmartRuleEngine.executeRule(section.smartRuleId, organizationId, { currency });
     }
 
-    // Priority 2: inline config with a ruleType
     const cfg = section.config ?? {};
-    if (cfg.ruleType) {
-      return SmartRuleEngine.executeAdHoc(cfg, organizationId, currency);
+    const manualProductIds = this._collectProductIds(
+      cfg.manualProductIds,
+      section.manualData?.productIds
+    );
+
+    // Priority 2: explicit manual product picks from the builder.
+    // Without this, the default ruleType ('new_arrivals') wins and the
+    // selected products are silently ignored.
+    if (cfg.ruleType === 'manual_selection') {
+      if (!manualProductIds.length) return [];
+      return SmartRuleEngine.executeAdHoc(
+        {
+          ...cfg,
+          ruleType: 'manual_selection',
+          manualProductIds,
+          limit: cfg.limit ?? manualProductIds.length
+        },
+        organizationId,
+        currency
+      );
     }
 
-    // Priority 3: manual product IDs in manualData
-    if (section.manualData?.productIds?.length) {
-      const adHocConfig = {
-        ruleType:         'manual_selection',
-        manualProductIds: section.manualData.productIds,
-        limit:            section.manualData.productIds.length
-      };
-      return SmartRuleEngine.executeAdHoc(adHocConfig, organizationId, currency);
+    // Priority 3: legacy manualData product IDs when no inline rule was set
+    if (!cfg.ruleType && manualProductIds.length) {
+      return SmartRuleEngine.executeAdHoc(
+        {
+          ruleType: 'manual_selection',
+          manualProductIds,
+          limit: manualProductIds.length
+        },
+        organizationId,
+        currency
+      );
+    }
+
+    // Priority 4: inline config with a ruleType
+    if (cfg.ruleType) {
+      return SmartRuleEngine.executeAdHoc(cfg, organizationId, currency);
     }
 
     return [];
@@ -214,17 +239,31 @@ class DataHydrationService {
   // Private: featured single product
   // ---------------------------------------------------------------------------
 
-  async _hydrateFeaturedProduct(config, organizationId, currency) {
-    if (!config.productId) return null;
-    if (!mongoose.isValidObjectId(config.productId)) return null;
+  async _hydrateFeaturedProduct(section, organizationId, currency) {
+    const cfg = section.config ?? {};
+    const productIds = this._collectProductIds(
+      cfg.productId,
+      cfg.manualProductIds,
+      section.manualData?.productIds
+    );
+
+    const productId = productIds[0];
+    if (!productId) return null;
 
     // Delegate to SmartRuleEngine's manual_selection with limit 1
     const results = await SmartRuleEngine.executeAdHoc(
-      { ruleType: 'manual_selection', manualProductIds: [config.productId], limit: 1 },
+      { ruleType: 'manual_selection', manualProductIds: [productId], limit: 1 },
       organizationId,
       currency
     );
     return results[0] ?? null;
+  }
+
+  _collectProductIds(...sources) {
+    return sources
+      .flatMap(source => Array.isArray(source) ? source : [source])
+      .map(id => String(id ?? '').trim())
+      .filter(id => mongoose.isValidObjectId(id));
   }
 
   // ---------------------------------------------------------------------------
