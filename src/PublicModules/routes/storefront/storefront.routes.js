@@ -70,7 +70,8 @@ const {
   StorefrontPublicController,
   ProductPublicController,
   CartController,
-  StorefrontCustomerController
+  StorefrontCustomerController,
+  CustomerPortalController
 } = require('../../controllers/storefront');
 
 // Auth middleware (swap for your actual middleware)
@@ -178,6 +179,33 @@ publicRouter.get('/:organizationSlug/account/orders', StorefrontCustomerControll
 publicRouter.post('/:organizationSlug/account/addresses', StorefrontCustomerController.addAddress);
 publicRouter.post('/:organizationSlug/checkout', StorefrontCustomerController.checkout);
 publicRouter.get('/:organizationSlug/orders/:orderNumber', StorefrontCustomerController.trackOrder);
+
+// ─── Customer Self-Service Portal (/portal/*) ────────────────────────────
+// Public auth endpoints (no portal JWT required)
+publicRouter.post('/:organizationSlug/portal/register',       CustomerPortalController.register);
+publicRouter.post('/:organizationSlug/portal/login',          CustomerPortalController.login);
+publicRouter.post('/:organizationSlug/portal/logout',         CustomerPortalController.logout);
+publicRouter.post('/:organizationSlug/portal/forgot-password', CustomerPortalController.forgotPassword);
+publicRouter.post('/:organizationSlug/portal/reset-password',  CustomerPortalController.resetPassword);
+
+// Protected portal endpoints — require portal JWT
+publicRouter.use('/:organizationSlug/portal', CustomerPortalController.requirePortalAuth);
+
+publicRouter.get('/:organizationSlug/portal/me',                                 CustomerPortalController.getMe);
+publicRouter.put('/:organizationSlug/portal/me',                                 CustomerPortalController.updateMe);
+publicRouter.post('/:organizationSlug/portal/me/change-password',                CustomerPortalController.changePassword);
+
+publicRouter.get('/:organizationSlug/portal/orders',                             CustomerPortalController.listOrders);
+publicRouter.get('/:organizationSlug/portal/orders/:saleId',                     CustomerPortalController.getOrderDetail);
+
+publicRouter.get('/:organizationSlug/portal/invoices/:invoiceId',                CustomerPortalController.getInvoice);
+publicRouter.get('/:organizationSlug/portal/invoices/:invoiceId/pdf',            CustomerPortalController.downloadInvoicePdf);
+
+publicRouter.get('/:organizationSlug/portal/returns',                            CustomerPortalController.listReturns);
+publicRouter.post('/:organizationSlug/portal/returns',                           CustomerPortalController.submitReturn);
+publicRouter.get('/:organizationSlug/portal/returns/:returnId',                  CustomerPortalController.getReturnDetail);
+
+// ─── Catch-all page render (MUST be last) ────────────────────────────────
 publicRouter.get('/:organizationSlug/:pageSlug', StorefrontPublicController.getPublicPage);
 
 // ============================================================================

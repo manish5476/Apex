@@ -13,6 +13,8 @@ const FONT_FAMILY_OPTIONS = [
 ];
 const FONT_FAMILY_SET = new Set(FONT_FAMILY_OPTIONS.map(font => font.toLowerCase()));
 
+const isValidObjectId = (id) => typeof id === 'string' && /^[a-fA-F0-9]{24}$/.test(id);
+
 function normalizeSection(section = {}) {
   const config = isRecord(section.config) ? { ...section.config } : {};
   const styles = isRecord(section.styles) ? section.styles : {};
@@ -29,6 +31,15 @@ function normalizeSection(section = {}) {
       design: normalizeDesign(config)
     }
   };
+
+  if (normalized.manualData) {
+    if (Array.isArray(normalized.manualData.productIds)) {
+      normalized.manualData.productIds = normalized.manualData.productIds.filter(isValidObjectId);
+    }
+    if (Array.isArray(normalized.manualData.categoryIds)) {
+      normalized.manualData.categoryIds = normalized.manualData.categoryIds.filter(isValidObjectId);
+    }
+  }
 
   delete normalized.styles;
   return normalized;

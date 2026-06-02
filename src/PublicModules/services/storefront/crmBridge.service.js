@@ -22,22 +22,22 @@ const mongoose = require('mongoose');
 
 // ─── CRM Models ──────────────────────────────────────────────────────────────
 const Customer = require('../../../modules/organization/core/customer.model');
-const Invoice  = require('../../../modules/accounting/billing/invoice.model');
-const Sales    = require('../../../modules/inventory/core/model/sales.model');
-const Product  = require('../../../modules/inventory/core/model/product.model');
+const Invoice = require('../../../modules/accounting/billing/invoice.model');
+const Sales = require('../../../modules/inventory/core/model/sales.model');
+const Product = require('../../../modules/inventory/core/model/product.model');
 // Note: Counter.model has a space before .js in the original filename
-const Counter  = require('../../../modules/inventory/core/model/Counter.model .js');
+const Counter = require('../../../modules/inventory/core/model/Counter.model .js');
 
 // ─── CRM Services ─────────────────────────────────────────────────────────────
-const StockService        = require('../../../modules/inventory/core/service/stock.service');
-const JournalService      = require('../../../modules/inventory/core/service/Journal.service');
+const StockService = require('../../../modules/inventory/core/service/stock.service');
+const JournalService = require('../../../modules/inventory/core/service/Journal.service');
 const salesJournalService = require('../../../modules/inventory/core/service/salesJournal.service');
-const Payment             = require('../../../modules/accounting/payments/payment.model');
-const Account             = require('../../../modules/accounting/core/model/account.model');
-const AccountEntry        = require('../../../modules/accounting/core/model/accountEntry.model');
+const Payment = require('../../../modules/accounting/payments/payment.model');
+const Account = require('../../../modules/accounting/core/model/account.model');
+const AccountEntry = require('../../../modules/accounting/core/model/accountEntry.model');
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
-const AppError             = require('../../../core/utils/api/appError');
+const AppError = require('../../../core/utils/api/appError');
 const { runInTransaction } = require('../../../core/utils/db/runInTransaction');
 const { resolvePrimaryBranchId, groupItemsByBranch } = require('../../utils/storefront/branchResolver');
 
@@ -46,11 +46,11 @@ const StorefrontCustomer = require('../../models/storefront/storefrontCustomer.m
 
 // Payment method mapping: Storefront enum → CRM enum
 const PAYMENT_METHOD_MAP = {
-  COD:           'cash',
-  ONLINE:        'upi',
-  CARD:          'card',
-  UPI:           'upi',
-  WALLET:        'upi',
+  COD: 'cash',
+  ONLINE: 'upi',
+  CARD: 'card',
+  UPI: 'upi',
+  WALLET: 'upi',
   BANK_TRANSFER: 'bank',
 };
 
@@ -116,31 +116,31 @@ class StorefrontCRMBridgeService {
     if (options.shippingAddress) {
       const a = options.shippingAddress;
       const mapped = {
-        street:  [a.addressLine1, a.addressLine2, a.landmark].filter(Boolean).join(', '),
-        city:    a.city    || '',
-        state:   a.state   || '',
+        street: [a.addressLine1, a.addressLine2, a.landmark].filter(Boolean).join(', '),
+        city: a.city || '',
+        state: a.state || '',
         zipCode: a.postalCode || '',
         country: a.country || 'India',
       };
-      billingAddress  = mapped;
+      billingAddress = mapped;
       shippingAddress = mapped;
     }
 
     try {
       crmCustomer = await Customer.create({
         organizationId,
-        type:          'individual',
-        name:          fullName,
-        email:         email || null,
+        type: 'individual',
+        name: fullName,
+        email: email || null,
         phone,
-        avatar:        sfCustomer.avatar || null,
+        avatar: sfCustomer.avatar || null,
         billingAddress,
         shippingAddress,
-        source:        'storefront',
-        customerType:  'online',
-        storefrontId:  sfCustomer._id,
-        tags:          ['storefront'],
-        notes:         `Auto-created from storefront order. SF Customer ID: ${sfCustomer._id}`,
+        source: 'storefront',
+        customerType: 'online',
+        storefrontId: sfCustomer._id,
+        tags: ['storefront'],
+        notes: `Auto-created from storefront order. SF Customer ID: ${sfCustomer._id}`,
       });
       return { crmCustomer, created: true };
 
@@ -175,7 +175,7 @@ class StorefrontCRMBridgeService {
    * @param {Object|null}     actor           - { _id } or null for system
    * @returns {Promise<{ invoice: Object, sale: Object }>}
    * ============================================================ */
-  async createOrderCRMRecords(storefrontOrder, crmCustomer, actor = null) {
+  async createOrderCRMRecords(storefrontOrder, crmCustomer, actor = null, options = {}) {
     // Idempotency: already synced
     if (storefrontOrder.crmInvoiceId) {
       const existing = await Invoice.findById(storefrontOrder.crmInvoiceId).lean();
@@ -188,7 +188,7 @@ class StorefrontCRMBridgeService {
     }
 
     const organizationId = storefrontOrder.organizationId;
-    const actorId        = actor?._id || null;
+    const actorId = actor?._id || null;
 
     // Resolve primary branch for accounting records
     const primaryBranchId = await resolvePrimaryBranchId(storefrontOrder);
@@ -196,21 +196,21 @@ class StorefrontCRMBridgeService {
     // Enrich items with purchasePriceAtSale from Product catalog
     // This is critical — NEVER hardcode 0, it corrupts profit analytics
     const productIds = storefrontOrder.items.map(i => i.productId).filter(Boolean);
-    const products   = await Product.find({ _id: { $in: productIds }, organizationId })
+    const products = await Product.find({ _id: { $in: productIds }, organizationId })
       .select('name sku purchasePrice inventory hsnCode');
     const productMap = new Map(products.map(p => [p._id.toString(), p]));
 
     const totalOrderDiscount = storefrontOrder.totals?.discount || 0;
-    const orderSubtotal      = storefrontOrder.totals?.subtotal || 1; // avoid div by 0
-    let remainingDiscount    = totalOrderDiscount;
+    const orderSubtotal = storefrontOrder.totals?.subtotal || 1; // avoid div by 0
+    let remainingDiscount = totalOrderDiscount;
 
     // Build CRM invoice items and distribute global discount proportionally
     const invoiceItems = storefrontOrder.items.map((item, index) => {
       const product = productMap.get(item.productId?.toString());
-      
+
       const lineTotal = item.unitPrice * item.quantity;
       let lineDiscount = 0;
-      
+
       if (totalOrderDiscount > 0) {
         if (index === storefrontOrder.items.length - 1) {
           lineDiscount = remainingDiscount; // Assign remainder to last item
@@ -222,24 +222,24 @@ class StorefrontCRMBridgeService {
       }
 
       return {
-        productId:          item.productId,
-        name:               item.snapshot?.name || product?.name || 'Product',
-        hsnCode:            item.snapshot?.hsnCode || product?.hsnCode || '',
-        quantity:           item.quantity,
-        originalQuantity:   item.quantity,
-        unit:               'pcs',
-        price:              item.unitPrice,
-        discount:           lineDiscount,
+        productId: item.productId,
+        name: item.snapshot?.name || product?.name || 'Product',
+        hsnCode: item.snapshot?.hsnCode || product?.hsnCode || '',
+        quantity: item.quantity,
+        originalQuantity: item.quantity,
+        unit: 'pcs',
+        price: item.unitPrice,
+        discount: lineDiscount,
         // Storefront cart forces tax=0 currently. We must match it to prevent grandTotal mismatch.
-        taxRate:            0, 
+        taxRate: 0,
         // Sourced from product catalog — never hardcoded. Null = cost unknown.
         purchasePriceAtSale: product?.purchasePrice ?? null,
       };
     });
 
     const crmPaymentMethod = PAYMENT_METHOD_MAP[storefrontOrder.paymentMethod] || 'cash';
-    const grandTotal  = storefrontOrder.totals?.grandTotal || 0;
-    const paidAmount  = storefrontOrder.paymentStatus === 'paid' ? grandTotal : 0;
+    const grandTotal = storefrontOrder.totals?.grandTotal || 0;
+    const paidAmount = storefrontOrder.paymentStatus === 'paid' ? grandTotal : 0;
     const addressToStr = (addr) => addr
       ? Object.values(addr).filter(v => typeof v === 'string' && v.trim()).join(', ')
       : '';
@@ -263,75 +263,77 @@ class StorefrontCRMBridgeService {
       // ── Step 2: Create CRM Invoice ───────────────────────────────────
       const [invoice] = await Invoice.create([{
         organizationId,
-        branchId:         primaryBranchId,
-        customerId:       crmCustomer._id,
+        branchId: primaryBranchId,
+        customerId: crmCustomer._id,
         invoiceNumber,
-        invoiceDate:      storefrontOrder.createdAt || new Date(),
-        status:           invoiceStatus,
-        source:           'storefront',
+        invoiceDate: storefrontOrder.createdAt || new Date(),
+        status: invoiceStatus,
+        source: 'storefront',
         storefrontOrderId: storefrontOrder._id,
-        billingAddress:   addressToStr(storefrontOrder.billingAddress),
-        shippingAddress:  addressToStr(storefrontOrder.shippingAddress),
-        items:            invoiceItems,
-        shippingCharges:  storefrontOrder.totals?.shipping || 0,
+        billingAddress: addressToStr(storefrontOrder.billingAddress),
+        shippingAddress: addressToStr(storefrontOrder.shippingAddress),
+        items: invoiceItems,
+        shippingCharges: storefrontOrder.totals?.shipping || 0,
         paidAmount,
-        paymentMethod:    crmPaymentMethod,
-        notes:            `Storefront Order: ${storefrontOrder.orderNumber}`,
-        createdBy:        actorId,
+        paymentMethod: crmPaymentMethod,
+        notes: `Storefront Order: ${storefrontOrder.orderNumber}`,
+        createdBy: actorId,
       }], { session, ordered: true });
 
       // ── Step 3: Stock deduction per branch ─────────────────────────
       // Each product is deducted from its own branch, not a single combined branch
-      const branchGroups = groupItemsByBranch(storefrontOrder.items, primaryBranchId);
-      for (const [branchId, items] of branchGroups) {
-        await StockService.decrement(items, branchId, organizationId, session);
+      if (!options.skipStockDeduction) {
+        const branchGroups = groupItemsByBranch(storefrontOrder.items, primaryBranchId);
+        for (const [branchId, items] of branchGroups) {
+          await StockService.decrement(items, branchId, organizationId, session);
+        }
       }
 
       // ── Step 4: Build Sales items with COGS data ───────────────────
       const salesItems = invoiceItems.map(i => {
-        const qty      = i.quantity;
-        const rate     = i.price;
+        const qty = i.quantity;
+        const rate = i.price;
         const discount = i.discount || 0;
-        const taxRate  = i.taxRate  || 0;
-        const lineTax  = (taxRate / 100) * (qty * rate - discount);
+        const taxRate = i.taxRate || 0;
+        const lineTax = (taxRate / 100) * (qty * rate - discount);
         const lineTotal = parseFloat((qty * rate - discount + lineTax).toFixed(2));
         return {
-          productId:          i.productId,
-          name:               i.name,
-          sku:                i.hsnCode || '',
+          productId: i.productId,
+          name: i.name,
+          sku: i.hsnCode || '',
           qty,
-          originalQty:        qty,
+          originalQty: qty,
           rate,
           discount,
           purchasePriceAtSale: i.purchasePriceAtSale,
-          tax:                lineTax,
-          lineTotal:          isNaN(lineTotal) ? 0 : lineTotal,
+          tax: lineTax,
+          lineTotal: isNaN(lineTotal) ? 0 : lineTotal,
         };
       });
 
       // ── Step 5: Create CRM Sales record ────────────────────────────
       const [sale] = await Sales.create([{
         organizationId,
-        branchId:         primaryBranchId,
-        invoiceId:        invoice._id,
+        branchId: primaryBranchId,
+        invoiceId: invoice._id,
         invoiceNumber,
-        customerId:       crmCustomer._id,
-        items:            salesItems,
-        subTotal:         invoice.subTotal    || 0,
-        taxTotal:         invoice.totalTax    || 0,
-        discountTotal:    invoice.totalDiscount || 0,
-        totalAmount:      invoice.grandTotal  || 0,
+        customerId: crmCustomer._id,
+        items: salesItems,
+        subTotal: invoice.subTotal || 0,
+        taxTotal: invoice.totalTax || 0,
+        discountTotal: invoice.totalDiscount || 0,
+        totalAmount: invoice.grandTotal || 0,
         paidAmount,
-        dueAmount:        (invoice.grandTotal || 0) - paidAmount,
+        dueAmount: (invoice.grandTotal || 0) - paidAmount,
         paymentStatus,
-        status:           'active',
-        source:           'storefront',
+        status: 'active',
+        source: 'storefront',
         storefrontOrderId: storefrontOrder._id,
-        createdBy:        actorId,
+        createdBy: actorId,
         meta: {
-          source:      'storefront',
+          source: 'storefront',
           orderNumber: storefrontOrder.orderNumber,
-          orderRef:    storefrontOrder._id,
+          orderRef: storefrontOrder._id,
         },
       }], { session, ordered: true });
 
@@ -340,12 +342,12 @@ class StorefrontCRMBridgeService {
 
       // ── Step 6: Revenue journal (Debit AR / Credit Sales / Credit Tax) ──
       await salesJournalService.postInvoiceJournal({
-        orgId:      organizationId,
-        branchId:   primaryBranchId,
+        orgId: organizationId,
+        branchId: primaryBranchId,
         invoice,
         customerId: crmCustomer._id,
-        items:      invoiceItems,
-        userId:     actorId,
+        items: invoiceItems,
+        userId: actorId,
         session,
       });
 
@@ -363,11 +365,11 @@ class StorefrontCRMBridgeService {
       }
       if (totalCogs > 0) {
         await JournalService.postCOGSJournal({
-          orgId:     organizationId,
-          branchId:  primaryBranchId,
+          orgId: organizationId,
+          branchId: primaryBranchId,
           sale,
           totalCogs,
-          userId:    actorId,
+          userId: actorId,
           session,
         });
       }
@@ -375,24 +377,24 @@ class StorefrontCRMBridgeService {
       // ── Step 8: Payment record (if already paid online) ──────────
       if (paidAmount > 0) {
         const assetAcc = await JournalService.getPaymentAssetAccount(organizationId, crmPaymentMethod, session);
-        const arAcc    = await JournalService.getOrInitAccount(organizationId, 'asset', 'Accounts Receivable', '1200', session);
+        const arAcc = await JournalService.getOrInitAccount(organizationId, 'asset', 'Accounts Receivable', '1200', session);
 
         const [payment] = await Payment.create([{
           organizationId,
-          branchId:        primaryBranchId,
-          type:            'inflow',
-          customerId:      crmCustomer._id,
-          invoiceId:       invoice._id,
-          paymentDate:     new Date(),
-          amount:          paidAmount,
-          paymentMethod:   crmPaymentMethod,
+          branchId: primaryBranchId,
+          type: 'inflow',
+          customerId: crmCustomer._id,
+          invoiceId: invoice._id,
+          paymentDate: new Date(),
+          amount: paidAmount,
+          paymentMethod: crmPaymentMethod,
           transactionMode: 'auto',
-          remarks:         `Online payment for storefront order ${storefrontOrder.orderNumber}`,
-          status:          'completed',
+          remarks: `Online payment for storefront order ${storefrontOrder.orderNumber}`,
+          status: 'completed',
           allocationStatus: 'fully_allocated',
           remainingAmount: 0,
-          allocatedTo:     [{ type: 'invoice', documentId: invoice._id, amount: paidAmount, allocatedAt: new Date() }],
-          createdBy:       actorId,
+          allocatedTo: [{ type: 'invoice', documentId: invoice._id, amount: paidAmount, allocatedAt: new Date() }],
+          createdBy: actorId,
         }], { session, ordered: true });
 
         // Payment journal: Debit Asset / Credit AR
@@ -420,14 +422,18 @@ class StorefrontCRMBridgeService {
       await Customer.findByIdAndUpdate(
         crmCustomer._id,
         {
-          $inc: { totalPurchases: invoice.grandTotal, outstandingBalance: (invoice.grandTotal - paidAmount) },
+          $inc: {
+            totalPurchases: invoice.grandTotal,
+            outstandingBalance: (invoice.grandTotal - paidAmount),
+            invoiceCount: 1
+          },
           $set: { lastPurchaseDate: new Date() },
         },
         { session }
       );
 
       finalInvoice = invoice;
-      finalSale    = sale;
+      finalSale = sale;
     }, 3, { action: 'SF_CREATE_CRM_RECORDS', orderNumber: storefrontOrder.orderNumber });
 
     return { invoice: finalInvoice, sale: finalSale };
@@ -454,7 +460,7 @@ class StorefrontCRMBridgeService {
     if (!crmInvoiceId) return; // Nothing to cancel
 
     const organizationId = storefrontOrder.organizationId;
-    const actorId        = actor?._id || null;
+    const actorId = actor?._id || null;
 
     await runInTransaction(async (session) => {
       const invoice = await Invoice.findOne({ _id: crmInvoiceId, organizationId }).session(session);
@@ -471,24 +477,24 @@ class StorefrontCRMBridgeService {
       // Use JournalService directly (salesJournalService.reverseInvoiceJournal
       // has a missing import bug in the original file — we bypass it)
       const [arAcc, salesAcc] = await Promise.all([
-        JournalService.getOrInitAccount(organizationId, 'asset',  'Accounts Receivable', '1200', session),
-        JournalService.getOrInitAccount(organizationId, 'income', 'Sales',               '4000', session),
+        JournalService.getOrInitAccount(organizationId, 'asset', 'Accounts Receivable', '1200', session),
+        JournalService.getOrInitAccount(organizationId, 'income', 'Sales', '4000', session),
       ]);
 
       const netRevenue = invoice.grandTotal - (invoice.totalTax || 0);
-      const cnEntries  = [
+      const cnEntries = [
         {
           organizationId, branchId: primaryBranchId,
           accountId: salesAcc._id, date: new Date(),
           debit: netRevenue, credit: 0,
-          description:   `Cancel Revenue: ${invoice.invoiceNumber}`,
+          description: `Cancel Revenue: ${invoice.invoiceNumber}`,
           referenceType: 'credit_note', referenceId: invoice._id, createdBy: actorId,
         },
         {
           organizationId, branchId: primaryBranchId,
           accountId: arAcc._id, date: new Date(),
           debit: 0, credit: invoice.grandTotal,
-          description:   `Cancel AR: ${invoice.invoiceNumber}`,
+          description: `Cancel AR: ${invoice.invoiceNumber}`,
           referenceType: 'credit_note', referenceId: invoice._id, createdBy: actorId,
         },
       ];
@@ -499,7 +505,7 @@ class StorefrontCRMBridgeService {
           organizationId, branchId: primaryBranchId,
           accountId: taxAcc._id, date: new Date(),
           debit: invoice.totalTax, credit: 0,
-          description:   `Cancel Tax: ${invoice.invoiceNumber}`,
+          description: `Cancel Tax: ${invoice.invoiceNumber}`,
           referenceType: 'credit_note', referenceId: invoice._id, createdBy: actorId,
         });
       }
@@ -514,11 +520,11 @@ class StorefrontCRMBridgeService {
         }
         if (totalCogs > 0) {
           await JournalService.reverseCOGSJournal({
-            orgId:    organizationId,
+            orgId: organizationId,
             branchId: primaryBranchId,
             sale,
             totalCogs,
-            userId:   actorId,
+            userId: actorId,
             session,
           });
         }
@@ -532,7 +538,7 @@ class StorefrontCRMBridgeService {
           invoice.customerId,
           {
             $inc: {
-              totalPurchases:    -invoice.grandTotal,
+              totalPurchases: -invoice.grandTotal,
               outstandingBalance: -(invoice.grandTotal - (invoice.paidAmount || 0)),
             },
           },
@@ -542,7 +548,7 @@ class StorefrontCRMBridgeService {
 
       // ── Step 5: Cancel invoice ─────────────────────────────────
       invoice.status = 'cancelled';
-      invoice.notes  = (invoice.notes || '') +
+      invoice.notes = (invoice.notes || '') +
         `\nCancelled via storefront order: ${storefrontOrder.orderNumber}`;
       await invoice.save({ session });
 
@@ -561,11 +567,91 @@ class StorefrontCRMBridgeService {
   async syncStorefrontCustomerLink(sfCustomerId, crmCustomer) {
     await StorefrontCustomer.findByIdAndUpdate(sfCustomerId, {
       $set: {
-        linkedCustomerId:       crmCustomer._id,
+        linkedCustomerId: crmCustomer._id,
         convertedToMainCustomer: true,
-        crmSyncedAt:            new Date(),
+        crmSyncedAt: new Date(),
       },
     });
+  }
+
+  /* ============================================================
+   * 5. SYNC PAYMENT TO CRM
+   *
+   * Called when an existing Storefront Order is marked as 'paid'
+   * after the CRM records were already created (e.g. COD or manual).
+   *
+   * @param {Object} storefrontOrder - StorefrontOrder with crmInvoiceId
+   * @param {Object|null} actor
+   * ============================================================ */
+  async syncPaymentToCRM(storefrontOrder, actor = null) {
+    if (!storefrontOrder.crmInvoiceId || storefrontOrder.paymentStatus !== 'paid') return;
+
+    const organizationId = storefrontOrder.organizationId;
+    const actorId = actor?._id || null;
+    const grandTotal = storefrontOrder.totals?.grandTotal || 0;
+
+    if (grandTotal <= 0) return;
+    const crmPaymentMethod = PAYMENT_METHOD_MAP[storefrontOrder.paymentMethod] || 'cash';
+
+    await runInTransaction(async (session) => {
+      const invoice = await Invoice.findOne({ _id: storefrontOrder.crmInvoiceId, organizationId }).session(session);
+      if (!invoice || invoice.paidAmount >= grandTotal) return; // Already paid in CRM
+
+      const amountToPay = grandTotal - (invoice.paidAmount || 0);
+
+      const assetAcc = await JournalService.getPaymentAssetAccount(organizationId, crmPaymentMethod, session);
+      const arAcc = await JournalService.getOrInitAccount(organizationId, 'asset', 'Accounts Receivable', '1200', session);
+
+      const [payment] = await Payment.create([{
+        organizationId,
+        branchId: invoice.branchId,
+        type: 'inflow',
+        customerId: invoice.customerId,
+        invoiceId: invoice._id,
+        paymentDate: new Date(),
+        amount: amountToPay,
+        paymentMethod: crmPaymentMethod,
+        transactionMode: 'auto',
+        remarks: `Late payment collected for storefront order ${storefrontOrder.orderNumber}`,
+        status: 'completed',
+        allocationStatus: 'fully_allocated',
+        remainingAmount: 0,
+        allocatedTo: [{ type: 'invoice', documentId: invoice._id, amount: amountToPay, allocatedAt: new Date() }],
+        createdBy: actorId,
+      }], { session, ordered: true });
+
+      await AccountEntry.create([
+        {
+          organizationId, branchId: invoice.branchId,
+          accountId: assetAcc._id, date: payment.paymentDate,
+          debit: amountToPay, credit: 0,
+          description: `Payment collected: ${storefrontOrder.orderNumber}`,
+          referenceType: 'payment', referenceId: invoice._id,
+          paymentId: payment._id, createdBy: actorId,
+        },
+        {
+          organizationId, branchId: invoice.branchId,
+          accountId: arAcc._id, date: payment.paymentDate,
+          debit: 0, credit: amountToPay,
+          description: `AR cleared: ${storefrontOrder.orderNumber}`,
+          referenceType: 'payment', referenceId: invoice._id,
+          paymentId: payment._id, createdBy: actorId,
+        },
+      ], { session, ordered: true });
+
+      // Update invoice
+      invoice.paidAmount = grandTotal;
+      invoice.paymentStatus = 'paid';
+      invoice.status = 'paid';
+      await invoice.save({ session });
+      if (invoice.saleId) {
+        await Sales.findByIdAndUpdate(invoice.saleId, { paidAmount: grandTotal, dueAmount: 0, paymentStatus: 'paid' }, { session });
+      }
+      if (invoice.customerId) {
+        await Customer.findByIdAndUpdate(invoice.customerId, { $inc: { outstandingBalance: -amountToPay } }, { session });
+      }
+
+    }, 3, { action: 'SF_SYNC_PAYMENT', orderNumber: storefrontOrder.orderNumber });
   }
 }
 

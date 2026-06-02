@@ -46,8 +46,13 @@ class StorefrontOrderService {
     // ── Step 1: Validate cart ──────────────────────────────────────
     const validation = await CartService.validateForCheckout(organizationId, identity);
     if (!validation.valid) {
-      const err = new AppError('Cart has validation issues', 409);
+      const policyIssue = validation.commercePolicy?.issues?.[0] ?? null;
+      const statusCode = policyIssue
+        ? (policyIssue.issue === 'guest_checkout_disabled' ? 401 : 403)
+        : 409;
+      const err = new AppError(policyIssue?.message || 'Cart has validation issues', statusCode);
       err.issues = validation.issues;
+      if (validation.commercePolicy) err.commercePolicy = validation.commercePolicy;
       throw err;
     }
 
@@ -61,6 +66,12 @@ class StorefrontOrderService {
     const items = await StorefrontCartItem.find({ cartId: cart._id, organizationId }).lean();
     if (items.length === 0) throw new AppError('Cart is empty', 400);
 
+    const cartSubtotal = items.reduce((sum, item) => {
+      const unitPrice = item.snapshot.discountedPrice ?? item.snapshot.sellingPrice;
+      return sum + (unitPrice * item.quantity);
+    }, 0);
+    await CartService.assertCheckoutAllowed(organizationId, identity, cartSubtotal);
+
     // ── Step 2: Resolve or create StorefrontCustomer ───────────────
     let sfCustomerId = identity.customerId;
     let sfCustomer   = null;
@@ -70,12 +81,33 @@ class StorefrontOrderService {
     } else {
       sfCustomer = await StorefrontCustomer.findOne({ _id: sfCustomerId, organizationId }).lean();
     }
+    if (!sfCustomer) {
+      throw new AppError('Storefront customer not found. Please sign in again before checkout.', 401);
+    }
 
     // ── Step 3: Address normalization ──────────────────────────────
     const shippingAddress = this.normalizeAddress(payload.shippingAddress);
     const billingAddress  = this.normalizeAddress(payload.billingAddress ?? payload.shippingAddress);
     if (!shippingAddress || !billingAddress) {
       throw new AppError('Shipping and billing addresses are required', 400);
+    }
+
+    const checkoutPhone = payload.customer?.phone || payload.contact?.phone || shippingAddress.phone || billingAddress.phone;
+    const checkoutEmail = payload.customer?.email || payload.contact?.email || null;
+    if (!sfCustomer.phone && checkoutPhone) {
+      await StorefrontCustomer.updateOne(
+        { _id: sfCustomerId, organizationId },
+        {
+          $set: {
+            phone: checkoutPhone,
+            ...(checkoutEmail && !sfCustomer.email ? { email: checkoutEmail } : {})
+          }
+        }
+      );
+      sfCustomer = { ...sfCustomer, phone: checkoutPhone, ...(checkoutEmail && !sfCustomer.email ? { email: checkoutEmail } : {}) };
+    }
+    if (!sfCustomer.phone) {
+      throw new AppError('A phone number is required before placing an online order.', 400);
     }
 
     // Optionally save address to customer profile
@@ -141,9 +173,8 @@ class StorefrontOrderService {
     });
 
     // ── Step 6: CRM Integration ────────────────────────────────────
-    // Attempt to find/create CRM Customer and create CRM records.
-    // If customer has no phone → crmSyncStatus = 'pending_phone'.
-    // Failure here does NOT block the order — it is logged and retried via backfill.
+    // Storefront orders are only accepted after CRM records and stock movements succeed.
+    // This keeps customer success, inventory, invoices, and analytics in one consistent state.
     let crmSyncStatus = 'failed';
     let crmSyncError  = null;
     let crmUpdates    = {};
@@ -154,8 +185,7 @@ class StorefrontOrderService {
       });
 
       if (!crmResult) {
-        // No phone — cannot create CRM customer yet
-        crmSyncStatus = 'pending_phone';
+        throw new AppError('A phone number is required before placing an online order.', 400);
       } else {
         const { crmCustomer } = crmResult;
 
@@ -163,7 +193,14 @@ class StorefrontOrderService {
         const { invoice, sale } = await CRMBridge.createOrderCRMRecords(order, crmCustomer);
 
         // Sync storefront customer link
-        await CRMBridge.syncStorefrontCustomerLink(sfCustomerId, crmCustomer);
+        try {
+          await CRMBridge.syncStorefrontCustomerLink(sfCustomerId, crmCustomer);
+        } catch (linkErr) {
+          console.warn(
+            `[CRMBridge] CRM records created for ${order.orderNumber}, but customer link update failed:`,
+            linkErr.message
+          );
+        }
 
         crmSyncStatus = 'synced';
         crmUpdates    = {
@@ -173,13 +210,19 @@ class StorefrontOrderService {
         };
       }
     } catch (crmErr) {
-      // CRM sync failure must NOT cancel the order — log and mark for retry
       console.error(
         `[CRMBridge] Failed to sync storefront order ${order.orderNumber} to CRM:`,
         crmErr.message
       );
-      crmSyncStatus = 'failed';
-      crmSyncError  = crmErr.message?.substring(0, 500) || 'Unknown error';
+      await StorefrontOrder.deleteOne({ _id: order._id, organizationId });
+      const err = new AppError(
+        crmErr.statusCode && crmErr.statusCode < 500
+          ? crmErr.message
+          : 'Order could not be finalized. Please try again or contact the store.',
+        crmErr.statusCode && crmErr.statusCode < 500 ? crmErr.statusCode : 500
+      );
+      err.originalError = crmErr.message?.substring(0, 500) || 'Unknown error';
+      throw err;
     }
 
     // Update order with CRM sync result (non-transactional — order already committed)

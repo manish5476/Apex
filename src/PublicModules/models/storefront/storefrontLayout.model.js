@@ -26,6 +26,7 @@ const globalSettingsSchema = new mongoose.Schema({
     linkedin: String,
     youtube: String
   },
+  shopName: { type: String, default: 'My Store' },
   defaultSeo: {
     siteName: { type: String, required: true, default: 'My Store' },
     defaultImage: { type: String },
@@ -38,7 +39,8 @@ const globalSettingsSchema = new mongoose.Schema({
     allowGuestCheckout: { type: Boolean, default: true },
     taxDisplayMode: { type: String, enum: ['inclusive', 'exclusive', 'hidden'], default: 'inclusive' },
     shippingEnabled: { type: Boolean, default: false },
-    minOrderAmount: { type: Number, default: 0 }
+    minOrderAmount: { type: Number, default: 0 },
+    catalogMode: { type: Boolean, default: false }
   }
 }, { _id: false });
 

@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const bcrypt   = require('bcryptjs');
+const crypto   = require('crypto');
 
 const addressSchema = new mongoose.Schema({
   street: { type: String, trim: true },
@@ -90,6 +92,20 @@ const customerSchema = new mongoose.Schema({
   },
   storefrontId: { type: mongoose.Schema.Types.ObjectId, ref: 'StorefrontCustomer', default: null, index: true },
 
+  // ─── Customer Portal Access ──────────────────────────────────────
+  // Enables storefront customers to log into their own self-service portal.
+  // Entirely separate from CRM user accounts — no shared auth.
+  // portalAccess.email is the login identifier (may differ from Customer.email).
+  portalAccess: {
+    enabled:            { type: Boolean, default: false },
+    email:              { type: String, trim: true, lowercase: true, default: null },
+    passwordHash:       { type: String, select: false, default: null },
+    authProvider:       { type: String, enum: ['password', 'google', 'otp'], default: 'password' },
+    resetToken:         { type: String, select: false, default: null },
+    resetExpires:       { type: Date, select: false, default: null },
+    lastLoginAt:        { type: Date, default: null },
+  },
+
   tags: [{ type: String, trim: true }],
   notes: { type: String, trim: true },
 
@@ -112,6 +128,12 @@ customerSchema.index({ organizationId: 1, gstNumber: 1 }, { unique: true, partia
 customerSchema.index({ organizationId: 1, panNumber: 1 }, { unique: true, partialFilterExpression: { panNumber: { $gt: '' } } });
 customerSchema.index({ organizationId: 1, email: 1 }, { unique: true, partialFilterExpression: { email: { $gt: '' } } });
 customerSchema.index({ organizationId: 1, altPhone: 1 }, { unique: true, partialFilterExpression: { altPhone: { $gt: '' } } });
+
+// Sparse unique index on portal email per org (storefront portal login)
+customerSchema.index(
+  { organizationId: 1, 'portalAccess.email': 1 },
+  { unique: true, sparse: true, partialFilterExpression: { 'portalAccess.email': { $type: 'string', $gt: '' } } }
+);
 
 // Supports reverse-lookup: "who is this customer guaranteeing?"
 customerSchema.index({ organizationId: 1, 'guarantors.customerId': 1 }, { sparse: true });
@@ -151,6 +173,31 @@ customerSchema.pre('save', function (next) {
 
   next();
 });
+
+// ─────────────────────────────────────────────
+//  Portal Access Methods
+// ─────────────────────────────────────────────
+
+/** Hash and store portal password, enable portal access */
+customerSchema.methods.setPortalPassword = async function (plainPassword) {
+  this.portalAccess.passwordHash = await bcrypt.hash(plainPassword, 12);
+  this.portalAccess.enabled = true;
+  this.portalAccess.authProvider = 'password';
+};
+
+/** Compare a candidate password against the stored portal hash */
+customerSchema.methods.comparePortalPassword = async function (candidatePassword) {
+  if (!this.portalAccess?.passwordHash) return false;
+  return bcrypt.compare(candidatePassword, this.portalAccess.passwordHash);
+};
+
+/** Generate a secure portal password-reset token (10 min TTL) */
+customerSchema.methods.createPortalResetToken = function () {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  this.portalAccess.resetToken   = crypto.createHash('sha256').update(rawToken).digest('hex');
+  this.portalAccess.resetExpires = new Date(Date.now() + 10 * 60 * 1000);
+  return rawToken;
+};
 
 const Customer = mongoose.model('Customer', customerSchema);
 module.exports = Customer;

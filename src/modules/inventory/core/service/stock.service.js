@@ -29,9 +29,11 @@ class StockService {
   /* ============================================================
    * 2. DECREMENT (Goods OUT — sale, purchase return, write-off)
    * ============================================================ */
-  static async decrement(items, branchId, organizationId, session = null) {
+  static async decrement(items, branchId, organizationId, session = null, options = {}) {
     // Validate ALL items before touching the DB
-    await this.validateAvailability(items, branchId, organizationId, session);
+    if (!options.skipAvailabilityCheck) {
+      await this.validateAvailability(items, branchId, organizationId, session);
+    }
 
     await Promise.all(items.map(item =>
       this._adjustOne(item, branchId, organizationId, 'decrement', session)

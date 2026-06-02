@@ -753,8 +753,27 @@ class StorefrontAdminController {
         });
       }
 
-      if (paymentStatus) order.paymentStatus = paymentStatus;
-
+      const oldPaymentStatus = order.paymentStatus;
+      if (paymentStatus && paymentStatus !== oldPaymentStatus) {
+        order.paymentStatus = paymentStatus;
+        if (paymentStatus === 'paid' && order.crmInvoiceId) {
+          try {
+            await CRMBridge.syncPaymentToCRM(order, req.user);
+            order.timeline.push({
+              type: 'crm_sync_payment',
+              message: 'CRM Payment synchronized successfully.',
+              actorId: req.user._id,
+            });
+          } catch (err) {
+            console.error('[CRMBridge] Failed to sync payment to CRM:', err.message);
+            order.timeline.push({
+              type: 'crm_sync_failed',
+              message: `Failed to sync payment: ${err.message}`,
+              actorId: req.user._id,
+            });
+          }
+        }
+      }
       // ── On Delivery: verify CRM sync, attempt recovery if missing ──────────
       // CRM records should already exist from order placement (createFromCart).
       // This block is a safety net for pre-refactor orders.

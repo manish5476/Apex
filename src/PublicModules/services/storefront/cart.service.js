@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const StorefrontCart = require('../../models/storefront/storefrontCart.model');
 const StorefrontCartItem = require('../../models/storefront/storefrontCartItem.model');
 const Product = require('../../../modules/inventory/core/model/product.model');
+const LayoutService = require('./layout.service');
 const AppError = require('../../../core/utils/api/appError');
 
 const GUEST_CART_TTL = 7 * 24 * 60 * 60 * 1000;
@@ -287,7 +288,66 @@ class CartService {
       }
     }
 
-    return { valid: issues.length === 0, issues };
+    const subtotal = items.reduce((sum, item) => sum + ((item.snapshot.discountedPrice ?? item.snapshot.sellingPrice) * item.quantity), 0);
+    const commercePolicy = await this.getCheckoutPolicy(organizationId, identity, subtotal);
+    if (!commercePolicy.allowed) {
+      issues.push(...commercePolicy.issues);
+    }
+
+    return { valid: issues.length === 0, issues, commercePolicy };
+  }
+
+  async assertCheckoutAllowed(organizationId, identity, subtotal = 0) {
+    const commercePolicy = await this.getCheckoutPolicy(organizationId, identity, subtotal);
+    if (!commercePolicy.allowed) {
+      const issue = commercePolicy.issues[0];
+      const statusCode = issue?.issue === 'guest_checkout_disabled' ? 401 : 403;
+      const err = new AppError(issue?.message || 'Online checkout is currently unavailable', statusCode);
+      err.issues = commercePolicy.issues;
+      err.commercePolicy = commercePolicy;
+      throw err;
+    }
+    return commercePolicy;
+  }
+
+  async getCheckoutPolicy(organizationId, identity = {}, subtotal = 0) {
+    const layout = await LayoutService.getLayout(organizationId);
+    const commerce = layout?.globalSettings?.commerce ?? {};
+    const catalogMode = commerce.catalogMode === true;
+    const allowGuestCheckout = commerce.allowGuestCheckout !== false;
+    const minOrderAmount = Number(commerce.minOrderAmount ?? 0);
+    const issues = [];
+
+    if (catalogMode) {
+      issues.push({
+        issue: 'checkout_disabled',
+        message: 'Online checkout is disabled for this store. Please contact the store or visit in person to purchase.'
+      });
+    }
+
+    if (!allowGuestCheckout && !identity?.customerId) {
+      issues.push({
+        issue: 'guest_checkout_disabled',
+        message: 'Please sign in or create an account before checkout.'
+      });
+    }
+
+    if (minOrderAmount > 0 && Number(subtotal || 0) < minOrderAmount) {
+      issues.push({
+        issue: 'min_order_amount',
+        message: `Minimum order amount is ${minOrderAmount}.`,
+        required: minOrderAmount,
+        current: Number(subtotal || 0)
+      });
+    }
+
+    return {
+      allowed: issues.length === 0,
+      catalogMode,
+      allowGuestCheckout,
+      minOrderAmount,
+      issues
+    };
   }
 
   async _findActiveCart(organizationId, identity) {

@@ -52,6 +52,12 @@ class LayoutService {
     // Guarantee every section has a unique nanoid before persisting
     if (Array.isArray(updateData.header)) this._ensureIds(updateData.header);
     if (Array.isArray(updateData.footer)) this._ensureIds(updateData.footer);
+    if (updateData.globalSettings?.commerce) {
+      updateData.globalSettings = {
+        ...updateData.globalSettings,
+        commerce: this._normalizeCommerce(updateData.globalSettings.commerce)
+      };
+    }
 
     const layout = await StorefrontLayout.findOneAndUpdate(
       { organizationId },
@@ -87,7 +93,10 @@ class LayoutService {
           currency:           'INR',
           currencySymbol:     '₹',
           allowGuestCheckout: true,
-          taxDisplayMode:     'inclusive'
+          taxDisplayMode:     'inclusive',
+          shippingEnabled:    false,
+          minOrderAmount:     0,
+          catalogMode:        false
         }
       },
       header: [
@@ -157,6 +166,17 @@ class LayoutService {
     for (const s of sections) {
       if (!s.id) s.id = nanoid(10);
     }
+  }
+
+  _normalizeCommerce(commerce = {}) {
+    const normalized = { ...commerce };
+    if (normalized.currency) normalized.currency = String(normalized.currency).trim().toUpperCase();
+    if (normalized.currencySymbol) normalized.currencySymbol = String(normalized.currencySymbol).trim();
+    if (normalized.catalogMode !== undefined) normalized.catalogMode = normalized.catalogMode === true || normalized.catalogMode === 'true';
+    if (normalized.allowGuestCheckout !== undefined) normalized.allowGuestCheckout = normalized.allowGuestCheckout === true || normalized.allowGuestCheckout === 'true';
+    if (normalized.shippingEnabled !== undefined) normalized.shippingEnabled = normalized.shippingEnabled === true || normalized.shippingEnabled === 'true';
+    if (normalized.minOrderAmount !== undefined) normalized.minOrderAmount = Math.max(0, Number(normalized.minOrderAmount) || 0);
+    return normalized;
   }
 }
 

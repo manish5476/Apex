@@ -52,6 +52,18 @@ const productDataSourceFields = {
     default: 'new_arrivals',
     label: 'Data Source'
   },
+  manualProductIds: {
+    type: 'reference-multi',
+    ref: 'Product',
+    label: 'Handpicked Products',
+    description: 'Used when Data Source is "Manual Selection"'
+  },
+  categoryId: {
+    type: 'reference',
+    ref: 'Category',
+    label: 'Category',
+    description: 'Used when Data Source is "Category Based"'
+  },
   limit: { type: 'number', min: 1, max: 50, default: 12, label: 'Max Products' }
 };
 
@@ -417,6 +429,12 @@ class SectionRegistry {
         schema: {
           ...coreConfig,
           typography: { type: 'object', schema: typographyConfig },
+          productId: {
+            type: 'reference',
+            ref: 'Product',
+            label: 'Featured Product',
+            description: 'Select the catalog product to showcase in this section'
+          },
           layout: { type: 'string', enum: ['image_left', 'image_right'], default: 'image_left' },
           showDescription: { type: 'boolean', default: true },
           showReviews: { type: 'boolean', default: true }
