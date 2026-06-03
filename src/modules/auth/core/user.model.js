@@ -184,7 +184,7 @@ const userSchema = new mongoose.Schema(
     devices: [deviceSchema],
 
     // ── UI Preferences ──────────────────────────────────────────────────────
-    themeId: { type: String, default: 'theme-glass' },
+    themeId: { type: String, default: 'theme-light' },
     language: { type: String, default: 'en' },
     preferences: {
       theme: {

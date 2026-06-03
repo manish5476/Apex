@@ -103,12 +103,6 @@ exports.getMyProfile = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.user.id)
     .populate('role', 'name permissions isSuperAdmin')
     .populate('branchId', 'name address phone')
-    .populate('employeeProfile.departmentId', 'name')
-    .populate('employeeProfile.designationId', 'title')
-    .populate('employeeProfile.reportingManagerId', 'name avatar')
-    .populate('attendanceConfig.shiftId', 'name startTime endTime')
-    .populate('attendanceConfig.shiftGroupId', 'name')
-    .populate('attendanceConfig.geoFenceId', 'name')
     .select('-password -refreshTokens -loginAttempts -lockUntil');
 
   if (!user) return next(new AppError('User not found.', 404));
@@ -429,22 +423,43 @@ exports.getOrgHierarchy = catchAsync(async (req, res, next) => {
     isActive: true,
     status: 'approved',
   })
-    .select('name avatar email employeeProfile.designationId employeeProfile.departmentId employeeProfile.reportingManagerId')
-    .populate('employeeProfile.designationId', 'title level')
-    .populate('employeeProfile.departmentId', 'name')
+    .select('name avatar email')
     .lean();
+
+  const employees = await Employee.find({
+    organizationId: req.user.organizationId,
+    user: { $in: users.map(u => u._id) }
+  })
+    .populate('designationId', 'title level')
+    .populate('departmentId', 'name')
+    .lean();
+
+  const empMap = {};
+  employees.forEach(e => { empMap[e.user.toString()] = e; });
 
   const userMap = {};
   const roots = [];
 
-  users.forEach(u => { userMap[u._id] = { ...u, reportees: [] }; });
+  users.forEach(u => { 
+    const emp = empMap[u._id.toString()] || {};
+    userMap[u._id.toString()] = { 
+      ...u, 
+      employeeProfile: {
+        designationId: emp.designationId,
+        departmentId: emp.departmentId,
+        reportingManagerId: emp.reportingManagerId
+      },
+      reportees: [] 
+    }; 
+  });
 
   users.forEach(u => {
-    const managerId = u.employeeProfile?.reportingManagerId?.toString();
+    const uId = u._id.toString();
+    const managerId = userMap[uId].employeeProfile.reportingManagerId?.toString();
     if (managerId && userMap[managerId]) {
-      userMap[managerId].reportees.push(userMap[u._id]);
+      userMap[managerId].reportees.push(userMap[uId]);
     } else {
-      roots.push(userMap[u._id]);
+      roots.push(userMap[uId]);
     }
   });
 
@@ -464,16 +479,36 @@ exports.getUsersByDepartment = catchAsync(async (req, res, next) => {
   const department = await Department.findOne({ _id: departmentId, organizationId: req.user.organizationId });
   if (!department) return next(new AppError('Department not found', 404));
 
-  const users = await User.find({
+  const employeesInDept = await Employee.find({
     organizationId: req.user.organizationId,
-    'employeeProfile.departmentId': departmentId,
+    departmentId: departmentId,
+    status: 'active'
+  })
+    .populate('designationId', 'title')
+    .lean();
+
+  const userIds = employeesInDept.map(e => e.user);
+
+  const users = await User.find({
+    _id: { $in: userIds },
     isActive: true,
   })
-    .select('name email phone avatar employeeProfile.designationId employeeProfile.employeeId')
-    .populate('employeeProfile.designationId', 'title')
-    .sort('name');
+    .select('name email phone avatar')
+    .sort('name')
+    .lean();
+    
+  const empMap = {};
+  employeesInDept.forEach(e => { empMap[e.user.toString()] = e; });
 
-  res.status(200).json({ status: 'success', results: users.length, data: { users } });
+  const combinedUsers = users.map(u => ({
+    ...u,
+    employeeProfile: {
+        designationId: empMap[u._id.toString()]?.designationId,
+        employeeId: empMap[u._id.toString()]?.employeeId
+    }
+  }));
+
+  res.status(200).json({ status: 'success', results: combinedUsers.length, data: { users: combinedUsers } });
 });
 
 // ======================================================
@@ -672,9 +707,6 @@ exports.updateUser = catchAsync(async (req, res, next) => {
     { new: true, runValidators: true }
   )
     .populate('role', 'name permissions isSuperAdmin')
-    .populate('employeeProfile.designationId', 'title')
-    .populate('employeeProfile.departmentId', 'name')
-    .populate('attendanceConfig.shiftId', 'name startTime endTime')
     .select('-password -refreshTokens -loginAttempts -lockUntil -permissionOverrides');
 
   await syncEmployeeFromUserPayload({
@@ -1116,15 +1148,43 @@ exports.exportUsers = catchAsync(async (req, res, next) => {
     organizationId: req.user.organizationId,
     isActive: req.query.isActive !== 'false',
   };
-  if (departmentId) query['employeeProfile.departmentId'] = departmentId;
+  
+  if (departmentId) {
+     const emps = await Employee.find({ organizationId: req.user.organizationId, departmentId }).select('user').lean();
+     query._id = { $in: emps.map(e => e.user) };
+  }
 
   const users = await User.find(query)
     .select('-permissionOverrides -loginAttempts -lockUntil -refreshTokens -passwordResetToken -emailVerificationToken -password')
     .populate('role', 'name')
-    .populate('employeeProfile.departmentId', 'name')
-    .populate('employeeProfile.designationId', 'title')
-    .populate('employeeProfile.reportingManagerId', 'name')
     .lean();
+
+  const employees = await Employee.find({
+      organizationId: req.user.organizationId,
+      user: { $in: users.map(u => u._id) }
+  })
+    .populate('departmentId', 'name')
+    .populate('designationId', 'title')
+    .populate('reportingManagerId', 'name')
+    .lean();
+    
+  const empMap = {};
+  employees.forEach(e => { empMap[e.user.toString()] = e; });
+  
+  const combinedUsers = users.map(u => {
+      const emp = empMap[u._id.toString()];
+      return {
+          ...u,
+          employeeProfile: emp ? {
+              departmentId: emp.departmentId,
+              designationId: emp.designationId,
+              reportingManagerId: emp.reportingManagerId,
+              employeeId: emp.employeeId,
+              employmentType: emp.employmentType,
+              dateOfJoining: emp.dateOfJoining
+          } : {}
+      };
+  });
 
   if (format === 'csv') {
     const fields = [
@@ -1140,14 +1200,14 @@ exports.exportUsers = catchAsync(async (req, res, next) => {
     ];
 
     const parser = new Parser({ fields });
-    const csv = parser.parse(users);
+    const csv = parser.parse(combinedUsers);
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=users_export.csv');
     return res.status(200).send(csv);
   }
 
-  res.status(200).json({ status: 'success', results: users.length, data: { users } });
+  res.status(200).json({ status: 'success', results: combinedUsers.length, data: { users: combinedUsers } });
 });
 
 module.exports = exports;
