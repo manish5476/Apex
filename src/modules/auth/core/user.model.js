@@ -102,7 +102,11 @@ const userSchema = new mongoose.Schema(
     // Set to true by admin password reset or createUser — forces reset on first login
     mustChangePassword: { type: Boolean, default: false },
 
-    // ── HRMS Employee Profile ──────────────────────────────────────────────
+    // ── HRMS Employee Profile (DEPRECATED) ─────────────────────────────────
+    // These fields have been completely migrated to the standalone Employee model.
+    // They are commented out instead of deleted for historical reference, but
+    // the application no longer reads or writes these fields on the User model.
+    /*
     employeeProfile: {
       employeeId: { type: String, trim: true },
       departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
@@ -127,10 +131,13 @@ const userSchema = new mongoose.Schema(
       // Sensitive financial fields — excluded from default queries
       bankDetails: { type: bankDetailsSchema, select: false },
     },
+    */
 
     upiId: { type: String, trim: true },
 
-    // ── Attendance Configuration ────────────────────────────────────────────
+    // ── Attendance Configuration (DEPRECATED) ──────────────────────────────
+    // Migrated to the Employee model.
+    /*
     attendanceConfig: {
       machineUserId: { type: String },
       shiftId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shift' },
@@ -143,6 +150,7 @@ const userSchema = new mongoose.Schema(
       geoFenceRadius: { type: Number, default: 100 },
       biometricVerified: { type: Boolean, default: false },
     },
+    */
 
     // ── Security & Login Tracking ───────────────────────────────────────────
     loginAttempts: { type: Number, default: 0, select: false },
@@ -213,13 +221,13 @@ userSchema.index({ organizationId: 1, email: 1 }, { unique: true });
 userSchema.index({ organizationId: 1, phone: 1 }, { unique: true });
 
 // Unique employee ID per org — partial filter allows null/missing IDs
-userSchema.index(
-  { organizationId: 1, 'employeeProfile.employeeId': 1 },
-  {
-    unique: true,
-    partialFilterExpression: { 'employeeProfile.employeeId': { $type: 'string' } },
-  }
-);
+// userSchema.index(
+//   { organizationId: 1, 'employeeProfile.employeeId': 1 },
+//   {
+//     unique: true,
+//     partialFilterExpression: { 'employeeProfile.employeeId': { $type: 'string' } },
+//   }
+// );
 
 // Sparse index on upiId — unique when present, allows multiple nulls
 userSchema.index({ upiId: 1 }, { unique: true, sparse: true });
@@ -229,8 +237,8 @@ userSchema.index({ organizationId: 1, status: 1 });
 userSchema.index({ organizationId: 1, isActive: 1, isDeleted: 1 });
 userSchema.index({ organizationId: 1, isActive: 1, status: 1 }); // getAllUsers filter
 userSchema.index({ organizationId: 1, isLoginBlocked: 1 });
-userSchema.index({ organizationId: 1, 'employeeProfile.reportingManagerId': 1 });
-userSchema.index({ organizationId: 1, 'employeeProfile.departmentId': 1 });
+// userSchema.index({ organizationId: 1, 'employeeProfile.reportingManagerId': 1 });
+// userSchema.index({ organizationId: 1, 'employeeProfile.departmentId': 1 });
 
 // Sparse token indexes — fast lookup during password reset / email verification
 userSchema.index({ passwordResetToken: 1 }, { sparse: true });
@@ -242,6 +250,13 @@ userSchema.index({ emailVerificationToken: 1 }, { sparse: true });
 
 userSchema.virtual('fullProfile').get(function () {
   return `${this.name} (${this.employeeProfile?.employeeId || 'No ID'})`;
+});
+
+userSchema.virtual('employeeRecord', {
+  ref: 'Employee',
+  localField: '_id',
+  foreignField: 'user',
+  justOne: true,
 });
 
 // ======================================================

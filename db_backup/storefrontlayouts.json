@@ -1,0 +1,516 @@
+[
+  {
+    "_id": "6a0f32fd5030423a9743f51e",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "createdAt": "2026-05-21T16:29:48.447Z",
+    "footer": [
+      {
+        "id": "b80saXMDZy",
+        "type": "footer_simple",
+        "config": {
+          "copyright": "© 2026 My Store",
+          "socialLinks": true,
+          "columns": [
+            {
+              "title": "Quick Links",
+              "links": [
+                {
+                  "label": "Home",
+                  "url": "/"
+                },
+                {
+                  "label": "Shop",
+                  "url": "/products"
+                },
+                {
+                  "label": "Contact",
+                  "url": "/contact"
+                }
+              ]
+            }
+          ],
+          "paddingTop": "lg",
+          "paddingBottom": "lg",
+          "themeMode": "auto",
+          "typography": {
+            "headingFont": "Poppins",
+            "bodyFont": "Inter",
+            "headingSize": "lg",
+            "alignment": "left"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "globalSettings": {
+      "logo": {
+        "width": 150
+      },
+      "typography": {
+        "headingFont": "Poppins",
+        "bodyFont": "Inter"
+      },
+      "colors": {
+        "primary": "#6366f1",
+        "secondary": "var(--text-secondary)",
+        "accent": "#6366f1"
+      },
+      "shopName": "Manish Singh",
+      "defaultSeo": {
+        "siteName": "My Store",
+        "titleSuffix": "| My Store"
+      },
+      "commerce": {
+        "currency": "INR",
+        "currencySymbol": "₹",
+        "allowGuestCheckout": true,
+        "taxDisplayMode": "inclusive",
+        "shippingEnabled": false,
+        "minOrderAmount": 0,
+        "catalogMode": true
+      }
+    },
+    "header": [
+      {
+        "id": "sbyx-kfnni",
+        "type": "navbar_simple",
+        "config": {
+          "logoHeight": 40,
+          "sticky": true,
+          "showCart": true,
+          "showSearch": true,
+          "links": [
+            {
+              "label": "Home",
+              "url": "/"
+            },
+            {
+              "label": "Shop",
+              "url": "/products"
+            },
+            {
+              "label": "About",
+              "url": "/about"
+            },
+            {
+              "label": "Contact",
+              "url": "/contact"
+            },
+            {
+              "label": "Manish",
+              "url": "/manish"
+            },
+            {
+              "label": "m12",
+              "url": "/landing-page"
+            },
+            {
+              "label": "hardik",
+              "url": "/hardik"
+            }
+          ],
+          "paddingTop": "none",
+          "paddingBottom": "none",
+          "themeMode": "auto",
+          "typography": {
+            "headingFont": "Poppins",
+            "bodyFont": "Inter",
+            "headingSize": "lg",
+            "alignment": "left"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "updatedAt": "2026-06-03T11:54:29.204Z",
+    "version": 27
+  },
+  {
+    "_id": "6a0f467a5030423a9743f523",
+    "organizationId": "6a0f4649ed7b37844589fa66",
+    "__v": 0,
+    "createdAt": "2026-05-21T17:52:58.198Z",
+    "footer": [
+      {
+        "id": "BSXOfXbGZA",
+        "type": "footer_simple",
+        "config": {
+          "copyright": "© 2026 My Store",
+          "socialLinks": true,
+          "columns": [
+            {
+              "title": "Quick Links",
+              "links": [
+                {
+                  "label": "Home",
+                  "url": "/"
+                },
+                {
+                  "label": "Shop",
+                  "url": "/products"
+                },
+                {
+                  "label": "Contact",
+                  "url": "/contact"
+                }
+              ]
+            }
+          ]
+        },
+        "styles": {
+          "paddingTop": "lg",
+          "paddingBottom": "lg",
+          "themeMode": "auto"
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "globalSettings": {
+      "logo": {
+        "width": 150
+      },
+      "typography": {
+        "headingFont": "Poppins",
+        "bodyFont": "Inter"
+      },
+      "colors": {
+        "primary": "#2563eb",
+        "secondary": "#475569",
+        "accent": "#f59e0b"
+      },
+      "defaultSeo": {
+        "siteName": "My Store",
+        "titleSuffix": "| My Store"
+      },
+      "commerce": {
+        "currency": "INR",
+        "currencySymbol": "₹",
+        "allowGuestCheckout": true,
+        "taxDisplayMode": "inclusive",
+        "shippingEnabled": false,
+        "minOrderAmount": 0
+      }
+    },
+    "header": [
+      {
+        "id": "u8mMPDQqlj",
+        "type": "navbar_simple",
+        "config": {
+          "logoHeight": 40,
+          "sticky": true,
+          "showCart": true,
+          "showSearch": true,
+          "links": [
+            {
+              "label": "Home",
+              "url": "/"
+            },
+            {
+              "label": "Shop",
+              "url": "/products"
+            },
+            {
+              "label": "About",
+              "url": "/about"
+            },
+            {
+              "label": "Contact",
+              "url": "/contact"
+            }
+          ]
+        },
+        "styles": {
+          "paddingTop": "none",
+          "paddingBottom": "none",
+          "themeMode": "auto"
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "updatedAt": "2026-05-21T17:52:58.198Z",
+    "version": 1
+  },
+  {
+    "_id": "6a0f4c1a5030423a9743f524",
+    "organizationId": "6a0f4c038864bb2c1faf9aa8",
+    "__v": 0,
+    "createdAt": "2026-05-21T18:16:58.368Z",
+    "footer": [
+      {
+        "id": "NIux8cHHes",
+        "type": "footer_simple",
+        "config": {
+          "copyright": "© 2026 My Store",
+          "socialLinks": true,
+          "columns": [
+            {
+              "title": "Quick Links",
+              "links": [
+                {
+                  "label": "Home",
+                  "url": "/"
+                },
+                {
+                  "label": "Shop",
+                  "url": "/products"
+                },
+                {
+                  "label": "Contact",
+                  "url": "/contact"
+                }
+              ]
+            }
+          ]
+        },
+        "styles": {
+          "paddingTop": "lg",
+          "paddingBottom": "lg",
+          "themeMode": "auto"
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "globalSettings": {
+      "logo": {
+        "width": 150
+      },
+      "typography": {
+        "headingFont": "Poppins",
+        "bodyFont": "Inter"
+      },
+      "colors": {
+        "primary": "#2563eb",
+        "secondary": "#475569",
+        "accent": "#f59e0b"
+      },
+      "defaultSeo": {
+        "siteName": "My Store",
+        "titleSuffix": "| My Store"
+      },
+      "commerce": {
+        "currency": "INR",
+        "currencySymbol": "₹",
+        "allowGuestCheckout": true,
+        "taxDisplayMode": "inclusive",
+        "shippingEnabled": false,
+        "minOrderAmount": 0
+      }
+    },
+    "header": [
+      {
+        "id": "RQANYlrogL",
+        "type": "navbar_simple",
+        "config": {
+          "logoHeight": 40,
+          "sticky": true,
+          "showCart": true,
+          "showSearch": true,
+          "links": [
+            {
+              "label": "Home",
+              "url": "/"
+            },
+            {
+              "label": "Shop",
+              "url": "/products"
+            },
+            {
+              "label": "About",
+              "url": "/about"
+            },
+            {
+              "label": "Contact",
+              "url": "/contact"
+            }
+          ]
+        },
+        "styles": {
+          "paddingTop": "none",
+          "paddingBottom": "none",
+          "themeMode": "auto"
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "updatedAt": "2026-05-21T18:16:58.368Z",
+    "version": 1
+  },
+  {
+    "_id": "6a156c1204133621c292568b",
+    "organizationId": "6a13ed6958e8aa84a01c7e55",
+    "__v": 0,
+    "createdAt": "2026-05-26T09:46:58.205Z",
+    "footer": [
+      {
+        "id": "dUn7QWLe4p",
+        "type": "footer_simple",
+        "config": {
+          "copyright": "© 2026 My Store",
+          "socialLinks": true,
+          "columns": [
+            {
+              "title": "Quick Links",
+              "links": [
+                {
+                  "label": "Home",
+                  "url": "/"
+                },
+                {
+                  "label": "Shop",
+                  "url": "/products"
+                },
+                {
+                  "label": "Contact",
+                  "url": "/contact"
+                }
+              ]
+            }
+          ]
+        },
+        "styles": {
+          "paddingTop": "lg",
+          "paddingBottom": "lg",
+          "themeMode": "auto"
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "globalSettings": {
+      "logo": {
+        "width": 150
+      },
+      "typography": {
+        "headingFont": "Poppins",
+        "bodyFont": "Inter"
+      },
+      "colors": {
+        "primary": "#2563eb",
+        "secondary": "#475569",
+        "accent": "#f59e0b"
+      },
+      "defaultSeo": {
+        "siteName": "My Store",
+        "titleSuffix": "| My Store"
+      },
+      "commerce": {
+        "currency": "INR",
+        "currencySymbol": "₹",
+        "allowGuestCheckout": true,
+        "taxDisplayMode": "inclusive",
+        "shippingEnabled": false,
+        "minOrderAmount": 0
+      }
+    },
+    "header": [
+      {
+        "id": "n_N8H8N8eL",
+        "type": "navbar_simple",
+        "config": {
+          "logoHeight": 40,
+          "sticky": true,
+          "showCart": true,
+          "showSearch": true,
+          "links": [
+            {
+              "label": "Home",
+              "url": "/"
+            },
+            {
+              "label": "Shop",
+              "url": "/products"
+            },
+            {
+              "label": "About",
+              "url": "/about"
+            },
+            {
+              "label": "Contact",
+              "url": "/contact"
+            }
+          ]
+        },
+        "styles": {
+          "paddingTop": "none",
+          "paddingBottom": "none",
+          "themeMode": "auto"
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "updatedAt": "2026-05-26T09:46:58.205Z",
+    "version": 1
+  }
+]

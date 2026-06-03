@@ -1,0 +1,2874 @@
+[
+  {
+    "_id": "6a0f40cf5030423a9743f521",
+    "pageId": "6a0f30ae34a5455bc633d1d6",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "createdAt": "2026-05-21T17:28:47.096Z",
+    "isHomepage": false,
+    "layout": {
+      "header": [
+        {
+          "id": "sbyx-kfnni",
+          "type": "navbar_simple",
+          "config": {
+            "logoHeight": 40,
+            "sticky": true,
+            "showCart": true,
+            "showSearch": true,
+            "links": [
+              {
+                "label": "Home",
+                "url": "/"
+              },
+              {
+                "label": "Shop",
+                "url": "/products"
+              },
+              {
+                "label": "About",
+                "url": "/about"
+              },
+              {
+                "label": "Contact",
+                "url": "/contact"
+              },
+              {
+                "label": "Manish",
+                "url": "/manish"
+              },
+              {
+                "label": "m12",
+                "url": "/landing-page"
+              },
+              {
+                "label": "hardik",
+                "url": "/hardik"
+              }
+            ],
+            "paddingTop": "none",
+            "paddingBottom": "none",
+            "themeMode": "auto",
+            "typography": {
+              "headingFont": "Poppins",
+              "bodyFont": "Inter",
+              "headingSize": "lg",
+              "alignment": "left"
+            },
+            "design": {
+              "borderRadius": "none",
+              "boxShadow": "none"
+            }
+          },
+          "manualData": {
+            "productIds": [],
+            "categoryIds": [],
+            "imageUrls": []
+          },
+          "smartRuleId": null,
+          "isActive": true,
+          "isHiddenOnMobile": false,
+          "isHiddenOnDesktop": false
+        }
+      ],
+      "footer": [
+        {
+          "id": "b80saXMDZy",
+          "type": "footer_simple",
+          "config": {
+            "copyright": "© 2026 My Store",
+            "socialLinks": true,
+            "columns": [
+              {
+                "title": "Quick Links",
+                "links": [
+                  {
+                    "label": "Home",
+                    "url": "/"
+                  },
+                  {
+                    "label": "Shop",
+                    "url": "/products"
+                  },
+                  {
+                    "label": "Contact",
+                    "url": "/contact"
+                  }
+                ]
+              }
+            ],
+            "paddingTop": "lg",
+            "paddingBottom": "lg",
+            "themeMode": "auto",
+            "typography": {
+              "headingFont": "Poppins",
+              "bodyFont": "Inter",
+              "headingSize": "lg",
+              "alignment": "left"
+            },
+            "design": {
+              "borderRadius": "none",
+              "boxShadow": "none"
+            }
+          },
+          "manualData": {
+            "productIds": [],
+            "categoryIds": [],
+            "imageUrls": []
+          },
+          "smartRuleId": null,
+          "isActive": true,
+          "isHiddenOnMobile": false,
+          "isHiddenOnDesktop": false
+        }
+      ],
+      "globalSettings": {
+        "logo": {
+          "width": 150
+        },
+        "typography": {
+          "headingFont": "Poppins",
+          "bodyFont": "Inter"
+        },
+        "colors": {
+          "primary": "#6366f1",
+          "secondary": "var(--text-secondary)",
+          "accent": "#6366f1"
+        },
+        "shopName": "Manish Singh",
+        "defaultSeo": {
+          "siteName": "My Store",
+          "titleSuffix": "| My Store"
+        },
+        "commerce": {
+          "currency": "INR",
+          "currencySymbol": "₹",
+          "allowGuestCheckout": true,
+          "taxDisplayMode": "inclusive",
+          "shippingEnabled": false,
+          "minOrderAmount": 0,
+          "catalogMode": true
+        }
+      },
+      "version": 27
+    },
+    "layoutVersion": 27,
+    "name": "manish",
+    "pageType": "custom",
+    "pageVersion": 5,
+    "publishedAt": "2026-05-21T17:28:46.935Z",
+    "sections": [
+      {
+        "id": "e0d22529-79d3-4744-8106-5bcc1accd9a7",
+        "type": "hero_banner",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "md",
+          "paddingBottom": "md",
+          "themeMode": "auto",
+          "titleTag": "h2",
+          "alignment": "left",
+          "height": "medium",
+          "overlayOpacity": 20,
+          "contentPosition": "center"
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "5c5a9d9d-b80b-480d-9199-e3324d8fa7c8",
+        "type": "map_locations",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "md",
+          "paddingBottom": "md",
+          "themeMode": "auto",
+          "zoom": 12,
+          "height": "400px"
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "seo": {
+      "keywords": [],
+      "noIndex": false
+    },
+    "slug": "manish",
+    "sourceUpdatedAt": "2026-05-30T16:17:35.805Z",
+    "themeOverride": {
+      "mode": "preset"
+    },
+    "updatedAt": "2026-06-03T11:54:31.823Z"
+  },
+  {
+    "_id": "6a10796c5030423a9743f5bb",
+    "pageId": "6a0f3e617e50cd844826d575",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "createdAt": "2026-05-22T15:42:35.704Z",
+    "isHomepage": true,
+    "layout": {
+      "header": [
+        {
+          "id": "sbyx-kfnni",
+          "type": "navbar_simple",
+          "config": {
+            "logoHeight": 40,
+            "sticky": true,
+            "showCart": true,
+            "showSearch": true,
+            "links": [
+              {
+                "label": "Home",
+                "url": "/"
+              },
+              {
+                "label": "Shop",
+                "url": "/products"
+              },
+              {
+                "label": "About",
+                "url": "/about"
+              },
+              {
+                "label": "Contact",
+                "url": "/contact"
+              },
+              {
+                "label": "Manish",
+                "url": "/manish"
+              },
+              {
+                "label": "m12",
+                "url": "/landing-page"
+              },
+              {
+                "label": "hardik",
+                "url": "/hardik"
+              }
+            ],
+            "paddingTop": "none",
+            "paddingBottom": "none",
+            "themeMode": "auto",
+            "typography": {
+              "headingFont": "Poppins",
+              "bodyFont": "Inter",
+              "headingSize": "lg",
+              "alignment": "left"
+            },
+            "design": {
+              "borderRadius": "none",
+              "boxShadow": "none"
+            }
+          },
+          "manualData": {
+            "productIds": [],
+            "categoryIds": [],
+            "imageUrls": []
+          },
+          "smartRuleId": null,
+          "isActive": true,
+          "isHiddenOnMobile": false,
+          "isHiddenOnDesktop": false
+        }
+      ],
+      "footer": [
+        {
+          "id": "b80saXMDZy",
+          "type": "footer_simple",
+          "config": {
+            "copyright": "© 2026 My Store",
+            "socialLinks": true,
+            "columns": [
+              {
+                "title": "Quick Links",
+                "links": [
+                  {
+                    "label": "Home",
+                    "url": "/"
+                  },
+                  {
+                    "label": "Shop",
+                    "url": "/products"
+                  },
+                  {
+                    "label": "Contact",
+                    "url": "/contact"
+                  }
+                ]
+              }
+            ],
+            "paddingTop": "lg",
+            "paddingBottom": "lg",
+            "themeMode": "auto",
+            "typography": {
+              "headingFont": "Poppins",
+              "bodyFont": "Inter",
+              "headingSize": "lg",
+              "alignment": "left"
+            },
+            "design": {
+              "borderRadius": "none",
+              "boxShadow": "none"
+            }
+          },
+          "manualData": {
+            "productIds": [],
+            "categoryIds": [],
+            "imageUrls": []
+          },
+          "smartRuleId": null,
+          "isActive": true,
+          "isHiddenOnMobile": false,
+          "isHiddenOnDesktop": false
+        }
+      ],
+      "globalSettings": {
+        "logo": {
+          "width": 150
+        },
+        "typography": {
+          "headingFont": "Poppins",
+          "bodyFont": "Inter"
+        },
+        "colors": {
+          "primary": "#6366f1",
+          "secondary": "var(--text-secondary)",
+          "accent": "#6366f1"
+        },
+        "shopName": "Manish Singh",
+        "defaultSeo": {
+          "siteName": "My Store",
+          "titleSuffix": "| My Store"
+        },
+        "commerce": {
+          "currency": "INR",
+          "currencySymbol": "₹",
+          "allowGuestCheckout": true,
+          "taxDisplayMode": "inclusive",
+          "shippingEnabled": false,
+          "minOrderAmount": 0,
+          "catalogMode": true
+        }
+      },
+      "version": 27
+    },
+    "layoutVersion": 27,
+    "name": "Home",
+    "pageType": "home",
+    "pageVersion": 34,
+    "publishedAt": "2026-06-03T11:54:31.039Z",
+    "sections": [
+      {
+        "id": "8d6b512d-8975-44da-a91f-bd48e8ee6cc5",
+        "type": "hero_banner",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "none",
+          "paddingBottom": "none",
+          "themeMode": "dark",
+          "titleTag": "h1",
+          "alignment": "center",
+          "height": "screen",
+          "overlayOpacity": 40,
+          "ctaButtons": [
+            {
+              "text": "Shop Latest Gadgets",
+              "link": "/category/new-arrivals",
+              "variant": "primary",
+              "buttonColor": "#0ea5e9",
+              "icon": null
+            }
+          ],
+          "contentPosition": "center",
+          "title": "Welcome to Shivam Electronics",
+          "backgroundImage": "https://images.unsplash.com/photo-1499088513455-78ed88b7a5b4?q=80&w=1078&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+          "subtitle": "Discover the Future of Technology Today",
+          "overlayColor": "#000000",
+          "typography": {
+            "headingText": "Shivam Electronics",
+            "headingFont": "Inter",
+            "headingColor": "#ffffff",
+            "headingSize": "lg",
+            "fontWeight": "bold",
+            "letterSpacing": null,
+            "lineHeight": null,
+            "textTransform": "none",
+            "subText": "Your premium destination for smartphones, laptops, and smart home devices.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#e2e8f0",
+            "alignment": "center"
+          },
+          "design": {
+            "overlayColor": "#000000",
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "78f9e02e-7a17-4078-921e-f00a9dfae66f",
+        "type": "video_hero",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "none",
+          "paddingBottom": "none",
+          "themeMode": "dark",
+          "titleTag": "h2",
+          "alignment": "center",
+          "overlayOpacity": 30,
+          "ctaButtons": [
+            {
+              "text": "Explore Audio",
+              "link": "/category/audio",
+              "variant": "outline",
+              "buttonColor": "#ffffff"
+            }
+          ],
+          "videoUrl": "https://videos.pexels.com/video-files/3129957/3129957-uhd_2560_1440_25fps.mp4",
+          "title": "Immersive Sound Experiences",
+          "subtitle": "Headphones & Speakers",
+          "typography": {
+            "headingText": "Next-Gen Audio",
+            "headingFont": "Inter",
+            "headingColor": "#ffffff",
+            "headingSize": "2xl",
+            "subText": "Feel every beat.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#f8fafc",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "00ca58a8-0c93-4ae8-b7f0-0544bb78f076",
+        "type": "hero_banner",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "none",
+          "paddingBottom": "none",
+          "themeMode": "dark",
+          "titleTag": "h2",
+          "alignment": "center",
+          "height": "medium",
+          "overlayOpacity": 50,
+          "ctaButtons": [],
+          "contentPosition": "center",
+          "backgroundImage": "https://images.unsplash.com/photo-1499088513455-78ed88b7a5b4?q=80&w=1078&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+          "title": "Upgrade Your Workspace",
+          "overlayColor": "#1e293b",
+          "typography": {
+            "headingText": "Premium Laptops & Accessories",
+            "headingFont": "Inter",
+            "headingColor": "#ffffff",
+            "headingSize": "xl",
+            "fontWeight": "bold",
+            "letterSpacing": null,
+            "lineHeight": null,
+            "textTransform": "none",
+            "subText": "Power your productivity.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#cbd5e1",
+            "alignment": "center"
+          },
+          "design": {
+            "overlayColor": "#1e293b",
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "77409ad6-f2fe-4111-86d5-4a4f7fb98bfc",
+        "type": "product_slider",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "lg",
+          "themeMode": "light",
+          "title": "Best Sellers",
+          "ruleType": "category_based",
+          "limit": 10,
+          "itemsPerView": 5,
+          "showPrice": true,
+          "showAddToCart": true,
+          "autoPlay": true,
+          "manualProductIds": [],
+          "typography": {
+            "headingText": "Trending Now",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "fontWeight": "bold",
+            "letterSpacing": null,
+            "lineHeight": null,
+            "textTransform": "none",
+            "subText": "Our most loved devices.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#64748b",
+            "alignment": "center"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "8e577443-b168-4284-a5af-c3801b08df24",
+        "type": "product_grid",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "lg",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "title": "Clearance Sale",
+          "ruleType": "clearance_sale",
+          "limit": 8,
+          "columns": 4,
+          "gap": "lg",
+          "pagination": false,
+          "manualProductIds": [
+            "69fdfa9170a57cefcea4f11a",
+            "69fdfa9170a57cefcea4f101",
+            "69f6cc90bee3a73e6b914cfd",
+            "69fdfa9170a57cefcea4f10a"
+          ],
+          "categoryId": "69f63878193ab67840140081",
+          "typography": {
+            "headingText": "Special Offers",
+            "headingFont": "Inter",
+            "headingColor": "#a30000",
+            "headingSize": "2xl",
+            "fontWeight": "bold",
+            "letterSpacing": "sd",
+            "lineHeight": "se",
+            "textTransform": "uppercase",
+            "subText": "Incredible deals while stocks last.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#64748b",
+            "alignment": "center"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "eca1a127-1191-413d-b0ed-2eee35851854",
+        "type": "featured_product",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "layout": "image_left",
+          "showDescription": false,
+          "showReviews": false,
+          "productId": "69fdfa9170a57cefcea4f11a",
+          "typography": {
+            "headingText": "Flagship Smartphone of the Year",
+            "headingFont": "Work Sans",
+            "headingColor": "#0f172a",
+            "headingSize": "lg",
+            "fontWeight": "bold",
+            "letterSpacing": null,
+            "lineHeight": null,
+            "textTransform": "none",
+            "subText": "Experience unparalleled performance and camera quality.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#475569",
+            "alignment": "left"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [
+            "69fdfa9170a57cefcea4f11a"
+          ],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "02864fa8-4a58-4194-91b1-60da858752f4",
+        "type": "text_content",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "alignment": "center",
+          "maxWidth": "full",
+          "title": "The Shivam Electronics Promise",
+          "content": "We believe in bringing the best technology to your doorstep. With authentic products, competitive pricing, and exceptional customer service, we are committed to being your trusted tech partner.",
+          "design": {
+            "customBackground": "#f8fafc",
+            "borderRadius": "xl",
+            "boxShadow": "sm"
+          },
+          "typography": {
+            "headingText": "Our Commitment",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "bodyFont": "Roboto",
+            "bodyColor": "#475569",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "0d88440e-5442-4d25-87ef-b365cfae5358",
+        "type": "feature_grid",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "columns": 4,
+          "items": [
+            {
+              "icon": "pi-shield",
+              "title": "1 Year Warranty",
+              "description": "On all genuine products."
+            },
+            {
+              "icon": "pi-truck",
+              "title": "Free Shipping",
+              "description": "On orders over ₹5000."
+            },
+            {
+              "icon": "pi-sync",
+              "title": "Easy Returns",
+              "description": "7-day hassle-free return policy."
+            },
+            {
+              "icon": "pi-headphones",
+              "title": "24/7 Support",
+              "description": "Always here to help you."
+            }
+          ],
+          "title": "Why Choose Us",
+          "typography": {
+            "headingText": "Our Benefits",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "subText": "Shopping made easy and secure.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#475569",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "e3405df7-d9c5-42c3-a7a4-4f85d9418537",
+        "type": "category_grid",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "title": "Shop by Category",
+          "layout": "grid",
+          "limit": 6,
+          "selectedCategories": [],
+          "typography": {
+            "headingText": "Explore Electronics",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "subText": "Find exactly what you need.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#64748b",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "36b7e2b4-fd6e-4294-b20f-2c3ab46ae4fb",
+        "type": "faq_accordion",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "title": "Frequently Asked Questions",
+          "items": [
+            {
+              "question": "Do you offer EMI options?",
+              "answer": "Yes, we offer flexible EMI options on all major credit cards and select debit cards."
+            },
+            {
+              "question": "Are all products original?",
+              "answer": "Absolutely. Shivam Electronics guarantees 100% genuine products sourced directly from brands or authorized distributors."
+            }
+          ],
+          "typography": {
+            "headingText": "Got Questions?",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "subText": "We have answers.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#475569",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "f5f7d4a6-a4f7-4bda-9c59-7c6c35a71ccb",
+        "type": "blog_feed",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "title": "Tech Insights",
+          "limit": 3,
+          "showDate": true,
+          "showExcerpt": true,
+          "typography": {
+            "headingText": "Latest News & Reviews",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "subText": "Stay updated with the tech world.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#64748b",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "7c838cf3-11cc-4428-a762-fac47af00f6c",
+        "type": "testimonial_slider",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "title": "What Our Customers Say",
+          "items": [
+            {
+              "name": "Rahul Verma",
+              "role": "Verified Buyer",
+              "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150&auto=format&fit=crop",
+              "rating": 5,
+              "text": "Excellent service and genuine products. Got my new laptop delivered within 2 days!"
+            },
+            {
+              "name": "Priya Sharma",
+              "role": "Tech Enthusiast",
+              "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop",
+              "rating": 5,
+              "text": "The store staff is very knowledgeable. They helped me pick the perfect smartwatch."
+            }
+          ],
+          "typography": {
+            "headingText": "Customer Reviews",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "subText": "Real feedback from real users.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#475569",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "9750b32b-0847-4f0e-a520-6aac6bd9e87b",
+        "type": "logo_cloud",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "title": "Top Brands We Carry",
+          "grayscale": true,
+          "logos": [
+            {
+              "image": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg",
+              "alt": "Apple",
+              "link": "/brand/apple"
+            },
+            {
+              "image": "https://upload.wikimedia.org/wikipedia/commons/2/24/Samsung_Logo.svg",
+              "alt": "Samsung",
+              "link": "/brand/samsung"
+            },
+            {
+              "image": "https://upload.wikimedia.org/wikipedia/commons/a/ad/HP_logo_2012.svg",
+              "alt": "HP",
+              "link": "/brand/hp"
+            }
+          ],
+          "typography": {
+            "headingText": "Authorized Partners",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "subText": "Shop from the world's leading tech companies.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#64748b",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "cacfd425-7f69-4a7f-bdb9-fa6c6fbbd2c7",
+        "type": "instagram_feed",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "title": "Follow Us on Instagram",
+          "limit": 6,
+          "typography": {
+            "headingText": "@ShivamElectronics",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "subText": "Tag us to be featured!",
+            "bodyFont": "Roboto",
+            "bodyColor": "#64748b",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "username": "shivamelectronics_official",
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "5dd73311-8471-400c-a6d6-069706f608c7",
+        "type": "stats_counter",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "dark",
+          "items": [
+            {
+              "value": 10000,
+              "suffix": "+",
+              "label": "Happy Customers"
+            },
+            {
+              "value": 50,
+              "suffix": "+",
+              "label": "Brands"
+            },
+            {
+              "value": 5,
+              "suffix": "M+",
+              "label": "Products Sold"
+            }
+          ],
+          "typography": {
+            "headingText": "Our Impact",
+            "headingFont": "Inter",
+            "headingColor": "#ffffff",
+            "headingSize": "2xl",
+            "subText": "Trust built over years.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#cbd5e1",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "7a6dac3c-bb98-4987-a96d-74eecf8490a4",
+        "type": "newsletter_signup",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "title": "Join our newsletter",
+          "description": "Get exclusive offers, tech news, and early access to sales.",
+          "buttonText": "Subscribe Now",
+          "layout": "center",
+          "typography": {
+            "headingText": "Stay Connected",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "subText": "Never miss an update.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#475569",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "customBackground": "#f1f5f9",
+            "borderRadius": "lg",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "97a8d818-5d74-46b1-b624-4dc9a934b049",
+        "type": "countdown_timer",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "lg",
+          "paddingBottom": "lg",
+          "themeMode": "light",
+          "title": "Flash Sale Ends In:",
+          "style": "boxes",
+          "targetDate": "2026-06-15T23:59:59.000Z",
+          "typography": {
+            "headingText": "Hurry Up!",
+            "headingFont": "Inter",
+            "headingColor": "#dc2626",
+            "headingSize": "2xl",
+            "subText": "Limited time discounts on top gadgets.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#64748b",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "10c007b4-db8d-4c6a-9f54-4d7460690b36",
+        "type": "pricing_table",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "title": "Extended Warranty Plans",
+          "plans": [
+            {
+              "name": "Basic Protection",
+              "price": "₹999",
+              "period": "/year",
+              "features": [
+                "Accidental Damage Cover",
+                "Liquid Damage Cover"
+              ],
+              "isPopular": false,
+              "ctaText": "View Plan",
+              "ctaLink": "/warranty"
+            },
+            {
+              "name": "Premium Care",
+              "price": "₹1999",
+              "period": "/year",
+              "features": [
+                "Accidental Damage Cover",
+                "Liquid Damage Cover",
+                "Free Pickup & Drop",
+                "Priority Service"
+              ],
+              "isPopular": true,
+              "ctaText": "Most Popular",
+              "ctaLink": "/warranty"
+            }
+          ],
+          "typography": {
+            "headingText": "Protect Your Devices",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "subText": "Peace of mind for your valuable tech.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#475569",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "acaf9d4f-7e6e-47ef-95ff-6a02b969d1a0",
+        "type": "map_locations",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "zoom": 12,
+          "height": "400px",
+          "typography": {
+            "headingText": "Visit Our Store",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "subText": "Experience the tech in person.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#475569",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "ca40b7aa-a335-43b2-a9c1-e3d7124071d1",
+        "type": "contact_form",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "themeMode": "light",
+          "title": "Get in Touch",
+          "typography": {
+            "headingText": "Contact Us",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "2xl",
+            "subText": "We are here to help with any queries.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#475569",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "emailTo": "support@shivamelectronics.com",
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "fe2e7a65-4b5f-4737-8994-50bcced8aa16",
+        "type": "divider",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "md",
+          "paddingBottom": "md",
+          "themeMode": "light",
+          "style": "solid",
+          "width": "container",
+          "typography": {
+            "headingFont": "Poppins",
+            "bodyFont": "Inter",
+            "headingSize": "lg",
+            "alignment": "left"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "8e410441-6bcd-4fa1-80ec-1ee4f5e14cf3",
+        "type": "spacer",
+        "config": {
+          "height": 40,
+          "hideOnMobile": false,
+          "paddingTop": "md",
+          "paddingBottom": "md",
+          "themeMode": "auto",
+          "typography": {
+            "headingFont": "Poppins",
+            "bodyFont": "Inter",
+            "headingSize": "lg",
+            "alignment": "left"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "7a9760c9-85aa-4e45-8193-f89b4bf223f5",
+        "type": "bento_grid",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "design": {
+            "customBackground": "#ffffff",
+            "borderRadius": "xl",
+            "boxShadow": "sm"
+          },
+          "gap": "md",
+          "columns": 4,
+          "items": [
+            {
+              "colSpan": 2,
+              "rowSpan": 2,
+              "contentType": "image",
+              "backgroundColor": "#f8fafc",
+              "image": "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?q=80&w=2070&auto=format&fit=crop",
+              "title": "Smart Home Hubs",
+              "content": "Control your home with a tap."
+            },
+            {
+              "colSpan": 2,
+              "rowSpan": 1,
+              "contentType": "image",
+              "backgroundColor": "#f1f5f9",
+              "image": "https://images.unsplash.com/photo-1546868871-7041f2a55e12?q=80&w=1964&auto=format&fit=crop",
+              "title": "Wearables",
+              "content": "Track your fitness."
+            },
+            {
+              "colSpan": 2,
+              "rowSpan": 1,
+              "contentType": "image",
+              "backgroundColor": "#e2e8f0",
+              "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop",
+              "title": "Premium Headphones",
+              "content": "Noise cancellation at its best."
+            }
+          ],
+          "themeMode": "auto",
+          "typography": {
+            "headingFont": "Poppins",
+            "bodyFont": "Inter",
+            "headingSize": "lg",
+            "alignment": "left"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "9a008ecc-92ba-4e18-a4b5-c9b79c90dc06",
+        "type": "stacked_cards",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "cardWidth": "lg",
+          "cards": [
+            {
+              "cardBgColor": "#0f172a",
+              "title": "Gaming Laptops",
+              "content": "Ultimate performance for serious gamers. RTX 40-series available.",
+              "image": "https://images.unsplash.com/photo-1600861194942-f883de0dfe96?q=80&w=2069&auto=format&fit=crop",
+              "badge": "New Arrivals"
+            },
+            {
+              "cardBgColor": "#1e293b",
+              "title": "Ultra-thin Ultrabooks",
+              "content": "Perfect for professionals on the go. Lightweight and powerful.",
+              "image": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=2071&auto=format&fit=crop",
+              "badge": "Best Sellers"
+            }
+          ],
+          "themeMode": "auto",
+          "typography": {
+            "headingFont": "Poppins",
+            "bodyFont": "Inter",
+            "headingSize": "lg",
+            "alignment": "left",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "99f770f5-8403-4eaa-93f1-f8adf47c7855",
+        "type": "asymmetric_canvas",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "canvasHeight": "lg",
+          "layers": [
+            {
+              "elementType": "media_frame",
+              "image": "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=2042&auto=format&fit=crop",
+              "title": "Build Your Dream Setup",
+              "body": "Find monitors, keyboards, and accessories tailored for productivity and gaming.",
+              "horizontalAlignment": "center",
+              "verticalAlignment": "center",
+              "layerDepth": 2
+            }
+          ],
+          "themeMode": "auto",
+          "typography": {
+            "headingFont": "Poppins",
+            "bodyFont": "Inter",
+            "headingSize": "lg",
+            "alignment": "left",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "51545d0e-e848-4161-9a1f-d17d7d6df31c",
+        "type": "hover_reveal_list",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "typography": {
+            "headingText": "Featured Categories",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "lg",
+            "subText": "Hover to explore",
+            "bodyFont": "Roboto",
+            "bodyColor": "#475569",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "revealStyle": "follow_cursor",
+          "items": [
+            {
+              "title": "Smartphones",
+              "subtitle": "Apple, Samsung, OnePlus",
+              "image": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=1780&auto=format&fit=crop"
+            },
+            {
+              "title": "Televisions",
+              "subtitle": "OLED, QLED, 4K",
+              "image": "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?q=80&w=2070&auto=format&fit=crop"
+            },
+            {
+              "title": "Cameras",
+              "subtitle": "DSLR, Mirrorless, Action Cams",
+              "image": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1964&auto=format&fit=crop"
+            }
+          ],
+          "themeMode": "auto",
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "2425a3ff-d8d1-4b5e-a0fc-82a5af69de0c",
+        "type": "split_screen_slider",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "md",
+          "paddingBottom": "xl",
+          "typography": {
+            "headingText": "The Evolution of Tech",
+            "headingFont": "Inter",
+            "headingColor": "#0f172a",
+            "headingSize": "lg",
+            "fontWeight": "bold",
+            "letterSpacing": null,
+            "lineHeight": null,
+            "textTransform": "none",
+            "subText": "From classic designs to modern marvels.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#475569",
+            "alignment": "center"
+          },
+          "design": {
+            "customBackground": "#f8fafc",
+            "borderRadius": "xl",
+            "boxShadow": "sm"
+          },
+          "textSide": "right",
+          "scrollDirection": "vertical",
+          "slides": [
+            {
+              "image": "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?q=80&w=1964&auto=format&fit=crop",
+              "caption": "The Classic Computing Era"
+            },
+            {
+              "image": "https://images.unsplash.com/photo-1614624532983-4ce03382d63d?q=80&w=1931&auto=format&fit=crop",
+              "caption": "The Modern Desktop Experience"
+            }
+          ],
+          "themeMode": "auto"
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "d49f54dd-324d-4875-825b-a148b99d9b56",
+        "type": "editorial_hero",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "design": {
+            "borderRadius": "sm",
+            "boxShadow": "md"
+          },
+          "accentPosition": "floating_overlap",
+          "ctaButton": {
+            "text": "Discover Innovation",
+            "link": "/collections/innovation",
+            "variant": "ghost",
+            "buttonColor": "#000000",
+            "icon": null
+          },
+          "primaryTitle": "Hello there ",
+          "primaryFont": "Inter",
+          "accentTitle": "make it possible",
+          "accentFont": "Roboto",
+          "mainImage": "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop",
+          "secondaryImage": "https://images.pexels.com/photos/3394939/pexels-photo-3394939.jpeg",
+          "themeMode": "auto",
+          "typography": {
+            "headingFont": "Poppins",
+            "bodyFont": "Inter",
+            "headingSize": "lg",
+            "alignment": "left"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "025bd9c9-776d-4706-8d7b-04c625bc5cc9",
+        "type": "hero_banner",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "md",
+          "paddingBottom": "lg",
+          "typography": {
+            "headingText": "Empower Your Home",
+            "headingFont": "Ubuntu",
+            "headingColor": "#ffffff",
+            "headingSize": "lg",
+            "fontWeight": "900",
+            "letterSpacing": "1px",
+            "lineHeight": "2",
+            "textTransform": "none",
+            "subText": "Smart appliances for a smarter living.",
+            "bodyFont": "Roboto",
+            "bodyColor": "#0e5cc4",
+            "alignment": "center"
+          },
+          "height": "small",
+          "overlayColor": "#000000",
+          "overlayOpacity": 40,
+          "ctaButtons": [
+            {
+              "text": "Shop Smart Home",
+              "link": "/category/smart-home",
+              "variant": "secondary",
+              "buttonColor": "#ffffff",
+              "icon": null
+            }
+          ],
+          "contentPosition": "center",
+          "backgroundImage": "https://images.pexels.com/photos/3394939/pexels-photo-3394939.jpeg",
+          "themeMode": "auto",
+          "design": {
+            "overlayColor": "#000000",
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "080cfb6f-0724-4804-a8bc-4b23fddbca32",
+        "type": "text_video_mask",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "xl",
+          "paddingBottom": "xl",
+          "canvasBgColor": "#0f172a",
+          "maskText": "SHIVAM",
+          "maskFont": "Roboto",
+          "videoUrl": "https://www.pexels.com/download/video/37290803/",
+          "themeMode": "auto",
+          "typography": {
+            "headingFont": "Poppins",
+            "bodyFont": "Inter",
+            "headingSize": "lg",
+            "alignment": "left"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "seo": {
+      "title": "Home",
+      "description": "Welcome to our store",
+      "keywords": [],
+      "noIndex": false
+    },
+    "slug": "home",
+    "sourceUpdatedAt": "2026-06-03T11:53:45.140Z",
+    "themeOverride": {
+      "mode": "preset"
+    },
+    "updatedAt": "2026-06-03T11:54:31.040Z"
+  },
+  {
+    "_id": "6a156d7704133621c292568c",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "pageId": "6a148ba004133621c2925678",
+    "__v": 0,
+    "createdAt": "2026-05-26T09:52:55.219Z",
+    "isHomepage": false,
+    "layout": {
+      "header": [
+        {
+          "id": "sbyx-kfnni",
+          "type": "navbar_simple",
+          "config": {
+            "logoHeight": 40,
+            "sticky": true,
+            "showCart": true,
+            "showSearch": true,
+            "links": [
+              {
+                "label": "Home",
+                "url": "/"
+              },
+              {
+                "label": "Shop",
+                "url": "/products"
+              },
+              {
+                "label": "About",
+                "url": "/about"
+              },
+              {
+                "label": "Contact",
+                "url": "/contact"
+              },
+              {
+                "label": "Manish",
+                "url": "/manish"
+              },
+              {
+                "label": "m12",
+                "url": "/landing-page"
+              },
+              {
+                "label": "hardik",
+                "url": "/hardik"
+              }
+            ],
+            "paddingTop": "none",
+            "paddingBottom": "none",
+            "themeMode": "auto",
+            "typography": {
+              "headingFont": "Poppins",
+              "bodyFont": "Inter",
+              "headingSize": "lg",
+              "alignment": "left"
+            },
+            "design": {
+              "borderRadius": "none",
+              "boxShadow": "none"
+            }
+          },
+          "manualData": {
+            "productIds": [],
+            "categoryIds": [],
+            "imageUrls": []
+          },
+          "smartRuleId": null,
+          "isActive": true,
+          "isHiddenOnMobile": false,
+          "isHiddenOnDesktop": false
+        }
+      ],
+      "footer": [
+        {
+          "id": "b80saXMDZy",
+          "type": "footer_simple",
+          "config": {
+            "copyright": "© 2026 My Store",
+            "socialLinks": true,
+            "columns": [
+              {
+                "title": "Quick Links",
+                "links": [
+                  {
+                    "label": "Home",
+                    "url": "/"
+                  },
+                  {
+                    "label": "Shop",
+                    "url": "/products"
+                  },
+                  {
+                    "label": "Contact",
+                    "url": "/contact"
+                  }
+                ]
+              }
+            ],
+            "paddingTop": "lg",
+            "paddingBottom": "lg",
+            "themeMode": "auto",
+            "typography": {
+              "headingFont": "Poppins",
+              "bodyFont": "Inter",
+              "headingSize": "lg",
+              "alignment": "left"
+            },
+            "design": {
+              "borderRadius": "none",
+              "boxShadow": "none"
+            }
+          },
+          "manualData": {
+            "productIds": [],
+            "categoryIds": [],
+            "imageUrls": []
+          },
+          "smartRuleId": null,
+          "isActive": true,
+          "isHiddenOnMobile": false,
+          "isHiddenOnDesktop": false
+        }
+      ],
+      "globalSettings": {
+        "logo": {
+          "width": 150
+        },
+        "typography": {
+          "headingFont": "Poppins",
+          "bodyFont": "Inter"
+        },
+        "colors": {
+          "primary": "#6366f1",
+          "secondary": "var(--text-secondary)",
+          "accent": "#6366f1"
+        },
+        "shopName": "Manish Singh",
+        "defaultSeo": {
+          "siteName": "My Store",
+          "titleSuffix": "| My Store"
+        },
+        "commerce": {
+          "currency": "INR",
+          "currencySymbol": "₹",
+          "allowGuestCheckout": true,
+          "taxDisplayMode": "inclusive",
+          "shippingEnabled": false,
+          "minOrderAmount": 0,
+          "catalogMode": true
+        }
+      },
+      "version": 27
+    },
+    "layoutVersion": 27,
+    "name": "About Us",
+    "pageType": "custom",
+    "pageVersion": 1,
+    "publishedAt": "2026-05-25T17:53:19.656Z",
+    "sections": [
+      {
+        "id": "QdFdPvtW",
+        "type": "hero_banner",
+        "config": {
+          "title": "Our Story at Shivam Electronics",
+          "subtitle": "Learn about our mission, our journey, and the people who make it happen.",
+          "backgroundImage": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f",
+          "height": "medium",
+          "textAlign": "center",
+          "overlayOpacity": 50,
+          "ctaButtons": []
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "JesUiBCh",
+        "type": "split_image_text",
+        "config": {
+          "title": "Who We Are",
+          "content": "We at Shivam Electronics are passionate about delivering the best products to our customers. Since our founding, we have been dedicated to quality, service, and innovation. We believe in pushing the boundaries of what is possible.",
+          "image": "https://images.unsplash.com/photo-1542744173-8e7e53415bb0",
+          "imagePosition": "right"
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "M0Dg3hsW",
+        "type": "testimonial_slider",
+        "config": {
+          "title": "Meet Our Leadership",
+          "items": [
+            {
+              "name": "Manish singh",
+              "role": "Owner & Founder",
+              "rating": 5,
+              "text": "Committed to driving Shivam Electronics forward and ensuring the highest level of customer satisfaction."
+            },
+            {
+              "name": "Ankur singh",
+              "role": "Executive Team",
+              "rating": 5,
+              "text": "Committed to driving Shivam Electronics forward and ensuring the highest level of customer satisfaction."
+            },
+            {
+              "name": "ronak singh",
+              "role": "Executive Team",
+              "rating": 5,
+              "text": "Committed to driving Shivam Electronics forward and ensuring the highest level of customer satisfaction."
+            },
+            {
+              "name": "Singh Ronak",
+              "role": "Executive Team",
+              "rating": 5,
+              "text": "Committed to driving Shivam Electronics forward and ensuring the highest level of customer satisfaction."
+            }
+          ]
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "seo": {
+      "keywords": [],
+      "noIndex": false
+    },
+    "slug": "about",
+    "sourceUpdatedAt": "2026-06-02T08:18:41.744Z",
+    "themeOverride": {
+      "mode": "preset"
+    },
+    "updatedAt": "2026-06-03T11:54:33.218Z"
+  },
+  {
+    "_id": "6a156d7804133621c292568d",
+    "pageId": "6a148ba004133621c2925679",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "createdAt": "2026-05-26T09:52:55.919Z",
+    "isHomepage": false,
+    "layout": {
+      "header": [
+        {
+          "id": "sbyx-kfnni",
+          "type": "navbar_simple",
+          "config": {
+            "logoHeight": 40,
+            "sticky": true,
+            "showCart": true,
+            "showSearch": true,
+            "links": [
+              {
+                "label": "Home",
+                "url": "/"
+              },
+              {
+                "label": "Shop",
+                "url": "/products"
+              },
+              {
+                "label": "About",
+                "url": "/about"
+              },
+              {
+                "label": "Contact",
+                "url": "/contact"
+              },
+              {
+                "label": "Manish",
+                "url": "/manish"
+              },
+              {
+                "label": "m12",
+                "url": "/landing-page"
+              },
+              {
+                "label": "hardik",
+                "url": "/hardik"
+              }
+            ],
+            "paddingTop": "none",
+            "paddingBottom": "none",
+            "themeMode": "auto",
+            "typography": {
+              "headingFont": "Poppins",
+              "bodyFont": "Inter",
+              "headingSize": "lg",
+              "alignment": "left"
+            },
+            "design": {
+              "borderRadius": "none",
+              "boxShadow": "none"
+            }
+          },
+          "manualData": {
+            "productIds": [],
+            "categoryIds": [],
+            "imageUrls": []
+          },
+          "smartRuleId": null,
+          "isActive": true,
+          "isHiddenOnMobile": false,
+          "isHiddenOnDesktop": false
+        }
+      ],
+      "footer": [
+        {
+          "id": "b80saXMDZy",
+          "type": "footer_simple",
+          "config": {
+            "copyright": "© 2026 My Store",
+            "socialLinks": true,
+            "columns": [
+              {
+                "title": "Quick Links",
+                "links": [
+                  {
+                    "label": "Home",
+                    "url": "/"
+                  },
+                  {
+                    "label": "Shop",
+                    "url": "/products"
+                  },
+                  {
+                    "label": "Contact",
+                    "url": "/contact"
+                  }
+                ]
+              }
+            ],
+            "paddingTop": "lg",
+            "paddingBottom": "lg",
+            "themeMode": "auto",
+            "typography": {
+              "headingFont": "Poppins",
+              "bodyFont": "Inter",
+              "headingSize": "lg",
+              "alignment": "left"
+            },
+            "design": {
+              "borderRadius": "none",
+              "boxShadow": "none"
+            }
+          },
+          "manualData": {
+            "productIds": [],
+            "categoryIds": [],
+            "imageUrls": []
+          },
+          "smartRuleId": null,
+          "isActive": true,
+          "isHiddenOnMobile": false,
+          "isHiddenOnDesktop": false
+        }
+      ],
+      "globalSettings": {
+        "logo": {
+          "width": 150
+        },
+        "typography": {
+          "headingFont": "Poppins",
+          "bodyFont": "Inter"
+        },
+        "colors": {
+          "primary": "#6366f1",
+          "secondary": "var(--text-secondary)",
+          "accent": "#6366f1"
+        },
+        "shopName": "Manish Singh",
+        "defaultSeo": {
+          "siteName": "My Store",
+          "titleSuffix": "| My Store"
+        },
+        "commerce": {
+          "currency": "INR",
+          "currencySymbol": "₹",
+          "allowGuestCheckout": true,
+          "taxDisplayMode": "inclusive",
+          "shippingEnabled": false,
+          "minOrderAmount": 0,
+          "catalogMode": true
+        }
+      },
+      "version": 27
+    },
+    "layoutVersion": 27,
+    "name": "Contact Us",
+    "pageType": "custom",
+    "pageVersion": 1,
+    "publishedAt": "2026-05-25T17:53:19.743Z",
+    "sections": [
+      {
+        "id": "FNUFequY",
+        "type": "hero_banner",
+        "config": {
+          "title": "Get in Touch",
+          "subtitle": "We at Shivam Electronics would love to hear from you.",
+          "height": "small",
+          "textAlign": "center",
+          "overlayOpacity": 20,
+          "ctaButtons": []
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "CC4gl86A",
+        "type": "split_image_text",
+        "config": {
+          "title": "Contact Information",
+          "content": "**Email:** msms5476mmmm@gmail.com\n**Phone:** 8160966299\n**Address:** F8 jb shopping center, surat, gujarat 394327, India\n\nOur support team is available during regular business hours to assist you.",
+          "image": "https://images.unsplash.com/photo-1516387938699-a93567ec168e",
+          "imagePosition": "left"
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "PCjyyHMc",
+        "type": "map_locations",
+        "config": {
+          "title": "Visit Us",
+          "zoom": 12
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "seo": {
+      "keywords": [],
+      "noIndex": false
+    },
+    "slug": "contact",
+    "sourceUpdatedAt": "2026-06-01T14:49:07.339Z",
+    "themeOverride": {
+      "mode": "preset"
+    },
+    "updatedAt": "2026-06-03T11:54:33.910Z"
+  },
+  {
+    "_id": "6a19109e04133621c2925890",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "pageId": "6a0f3e617e50cd844826d57c",
+    "__v": 0,
+    "createdAt": "2026-05-29T04:05:50.464Z",
+    "isHomepage": false,
+    "layout": {
+      "header": [
+        {
+          "id": "sbyx-kfnni",
+          "type": "navbar_simple",
+          "config": {
+            "logoHeight": 40,
+            "sticky": true,
+            "showCart": true,
+            "showSearch": true,
+            "links": [
+              {
+                "label": "Home",
+                "url": "/"
+              },
+              {
+                "label": "Shop",
+                "url": "/products"
+              },
+              {
+                "label": "About",
+                "url": "/about"
+              },
+              {
+                "label": "Contact",
+                "url": "/contact"
+              },
+              {
+                "label": "Manish",
+                "url": "/manish"
+              },
+              {
+                "label": "m12",
+                "url": "/landing-page"
+              },
+              {
+                "label": "hardik",
+                "url": "/hardik"
+              }
+            ],
+            "paddingTop": "none",
+            "paddingBottom": "none",
+            "themeMode": "auto",
+            "typography": {
+              "headingFont": "Poppins",
+              "bodyFont": "Inter",
+              "headingSize": "lg",
+              "alignment": "left"
+            },
+            "design": {
+              "borderRadius": "none",
+              "boxShadow": "none"
+            }
+          },
+          "manualData": {
+            "productIds": [],
+            "categoryIds": [],
+            "imageUrls": []
+          },
+          "smartRuleId": null,
+          "isActive": true,
+          "isHiddenOnMobile": false,
+          "isHiddenOnDesktop": false
+        }
+      ],
+      "footer": [
+        {
+          "id": "b80saXMDZy",
+          "type": "footer_simple",
+          "config": {
+            "copyright": "© 2026 My Store",
+            "socialLinks": true,
+            "columns": [
+              {
+                "title": "Quick Links",
+                "links": [
+                  {
+                    "label": "Home",
+                    "url": "/"
+                  },
+                  {
+                    "label": "Shop",
+                    "url": "/products"
+                  },
+                  {
+                    "label": "Contact",
+                    "url": "/contact"
+                  }
+                ]
+              }
+            ],
+            "paddingTop": "lg",
+            "paddingBottom": "lg",
+            "themeMode": "auto",
+            "typography": {
+              "headingFont": "Poppins",
+              "bodyFont": "Inter",
+              "headingSize": "lg",
+              "alignment": "left"
+            },
+            "design": {
+              "borderRadius": "none",
+              "boxShadow": "none"
+            }
+          },
+          "manualData": {
+            "productIds": [],
+            "categoryIds": [],
+            "imageUrls": []
+          },
+          "smartRuleId": null,
+          "isActive": true,
+          "isHiddenOnMobile": false,
+          "isHiddenOnDesktop": false
+        }
+      ],
+      "globalSettings": {
+        "logo": {
+          "width": 150
+        },
+        "typography": {
+          "headingFont": "Poppins",
+          "bodyFont": "Inter"
+        },
+        "colors": {
+          "primary": "#6366f1",
+          "secondary": "var(--text-secondary)",
+          "accent": "#6366f1"
+        },
+        "shopName": "Manish Singh",
+        "defaultSeo": {
+          "siteName": "My Store",
+          "titleSuffix": "| My Store"
+        },
+        "commerce": {
+          "currency": "INR",
+          "currencySymbol": "₹",
+          "allowGuestCheckout": true,
+          "taxDisplayMode": "inclusive",
+          "shippingEnabled": false,
+          "minOrderAmount": 0,
+          "catalogMode": true
+        }
+      },
+      "version": 27
+    },
+    "layoutVersion": 27,
+    "name": "Products",
+    "pageType": "products",
+    "pageVersion": 1,
+    "publishedAt": "2026-05-29T04:05:49.793Z",
+    "sections": [],
+    "seo": {
+      "title": "Products",
+      "description": "Our products",
+      "keywords": [],
+      "noIndex": false
+    },
+    "slug": "products",
+    "sourceUpdatedAt": "2026-05-29T04:05:49.793Z",
+    "themeOverride": {
+      "mode": "preset"
+    },
+    "updatedAt": "2026-06-03T11:54:32.527Z"
+  },
+  {
+    "_id": "6a19b12e04133621c29258fb",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "pageId": "6a19ac9a290c02a9c65dbe99",
+    "__v": 0,
+    "createdAt": "2026-05-29T15:30:54.257Z",
+    "isHomepage": false,
+    "layout": {
+      "header": [
+        {
+          "id": "sbyx-kfnni",
+          "type": "navbar_simple",
+          "config": {
+            "logoHeight": 40,
+            "sticky": true,
+            "showCart": true,
+            "showSearch": true,
+            "links": [
+              {
+                "label": "Home",
+                "url": "/"
+              },
+              {
+                "label": "Shop",
+                "url": "/products"
+              },
+              {
+                "label": "About",
+                "url": "/about"
+              },
+              {
+                "label": "Contact",
+                "url": "/contact"
+              },
+              {
+                "label": "Manish",
+                "url": "/manish"
+              },
+              {
+                "label": "m12",
+                "url": "/landing-page"
+              },
+              {
+                "label": "hardik",
+                "url": "/hardik"
+              }
+            ],
+            "paddingTop": "none",
+            "paddingBottom": "none",
+            "themeMode": "auto",
+            "typography": {
+              "headingFont": "Poppins",
+              "bodyFont": "Inter",
+              "headingSize": "lg",
+              "alignment": "left"
+            },
+            "design": {
+              "borderRadius": "none",
+              "boxShadow": "none"
+            }
+          },
+          "manualData": {
+            "productIds": [],
+            "categoryIds": [],
+            "imageUrls": []
+          },
+          "smartRuleId": null,
+          "isActive": true,
+          "isHiddenOnMobile": false,
+          "isHiddenOnDesktop": false
+        }
+      ],
+      "footer": [
+        {
+          "id": "b80saXMDZy",
+          "type": "footer_simple",
+          "config": {
+            "copyright": "© 2026 My Store",
+            "socialLinks": true,
+            "columns": [
+              {
+                "title": "Quick Links",
+                "links": [
+                  {
+                    "label": "Home",
+                    "url": "/"
+                  },
+                  {
+                    "label": "Shop",
+                    "url": "/products"
+                  },
+                  {
+                    "label": "Contact",
+                    "url": "/contact"
+                  }
+                ]
+              }
+            ],
+            "paddingTop": "lg",
+            "paddingBottom": "lg",
+            "themeMode": "auto",
+            "typography": {
+              "headingFont": "Poppins",
+              "bodyFont": "Inter",
+              "headingSize": "lg",
+              "alignment": "left"
+            },
+            "design": {
+              "borderRadius": "none",
+              "boxShadow": "none"
+            }
+          },
+          "manualData": {
+            "productIds": [],
+            "categoryIds": [],
+            "imageUrls": []
+          },
+          "smartRuleId": null,
+          "isActive": true,
+          "isHiddenOnMobile": false,
+          "isHiddenOnDesktop": false
+        }
+      ],
+      "globalSettings": {
+        "logo": {
+          "width": 150
+        },
+        "typography": {
+          "headingFont": "Poppins",
+          "bodyFont": "Inter"
+        },
+        "colors": {
+          "primary": "#6366f1",
+          "secondary": "var(--text-secondary)",
+          "accent": "#6366f1"
+        },
+        "shopName": "Manish Singh",
+        "defaultSeo": {
+          "siteName": "My Store",
+          "titleSuffix": "| My Store"
+        },
+        "commerce": {
+          "currency": "INR",
+          "currencySymbol": "₹",
+          "allowGuestCheckout": true,
+          "taxDisplayMode": "inclusive",
+          "shippingEnabled": false,
+          "minOrderAmount": 0,
+          "catalogMode": true
+        }
+      },
+      "version": 27
+    },
+    "layoutVersion": 27,
+    "name": "Landing Page",
+    "pageType": "custom",
+    "pageVersion": 17,
+    "publishedAt": "2026-05-29T15:30:54.088Z",
+    "sections": [
+      {
+        "id": "48409418-4d7d-4d58-a300-b78bfa08484a",
+        "type": "hero_banner",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "sm",
+          "paddingBottom": "lg",
+          "typography": {
+            "headingText": "Shivam Electronics",
+            "headingFont": "Poppins",
+            "headingColor": "#ffffff",
+            "headingSize": "lg",
+            "subText": "welcome to the shop ",
+            "bodyFont": "Inter",
+            "bodyColor": "#D51C39",
+            "alignment": "center",
+            "fontWeight": "bold",
+            "textTransform": "none"
+          },
+          "height": "medium",
+          "overlayColor": "#000000",
+          "overlayOpacity": 14,
+          "ctaButtons": [
+            {
+              "text": "Shop",
+              "link": "/shop",
+              "variant": "primary",
+              "buttonColor": "ffffff",
+              "icon": "pi pi-home"
+            }
+          ],
+          "contentPosition": "center",
+          "backgroundImage": "https://i.pinimg.com/736x/84/3d/50/843d506b72808099f8edf85411934340.jpg",
+          "themeMode": "auto",
+          "design": {
+            "overlayColor": "#000000",
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "629735e1-a036-4546-a030-1c0b50ce4bd1",
+        "type": "bento_grid",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "2xl",
+          "paddingBottom": "xl",
+          "design": {
+            "customBackground": "#BADFDB",
+            "borderRadius": "md",
+            "boxShadow": "md"
+          },
+          "gap": "lg",
+          "columns": 4,
+          "items": [
+            {
+              "colSpan": 2,
+              "rowSpan": 4,
+              "contentType": "image",
+              "backgroundColor": "#BADFDB",
+              "image": "https://i.pinimg.com/736x/6f/37/56/6f37562ebe4d9562ffcbf2e9467e0b5f.jpg",
+              "title": "Manish",
+              "content": "Hello there "
+            },
+            {
+              "colSpan": 2,
+              "rowSpan": 2,
+              "contentType": "image",
+              "backgroundColor": "#C9B59C",
+              "image": "https://i.pinimg.com/736x/6f/37/56/6f37562ebe4d9562ffcbf2e9467e0b5f.jpg",
+              "title": "manish sing",
+              "content": "Hello There"
+            },
+            {
+              "colSpan": 2,
+              "rowSpan": 2,
+              "contentType": "image",
+              "backgroundColor": null,
+              "image": "https://i.pinimg.com/736x/6f/37/56/6f37562ebe4d9562ffcbf2e9467e0b5f.jpg",
+              "title": "qwd",
+              "content": "wef"
+            }
+          ],
+          "themeMode": "auto",
+          "typography": {
+            "headingFont": "Poppins",
+            "bodyFont": "Inter",
+            "headingSize": "lg",
+            "alignment": "left"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "fb1787cf-9999-4925-8999-e5b8c0501006",
+        "type": "stacked_cards",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "none",
+          "paddingBottom": "none",
+          "typography": {
+            "headingText": "hello there",
+            "headingFont": "Poppins",
+            "headingSize": "lg",
+            "fontWeight": "bold",
+            "letterSpacing": "1",
+            "lineHeight": "2",
+            "textTransform": "uppercase",
+            "subText": "2efqw3we",
+            "bodyFont": "Raleway",
+            "alignment": "left"
+          },
+          "cardWidth": "md",
+          "cards": [
+            {
+              "cardBgColor": "",
+              "title": "manish",
+              "content": "awdfwaefwfwefwe",
+              "image": "https://i.pinimg.com/736x/aa/18/77/aa1877348830258867e94425a1395145.jpg",
+              "imageFit": "contain",
+              "imageBgColor": null,
+              "imageRotation": -81,
+              "imageScale": 0.7,
+              "badge": "manish"
+            }
+          ],
+          "themeMode": "auto",
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      },
+      {
+        "id": "e87794dd-dc36-4444-9066-b79222da49b9",
+        "type": "asymmetric_canvas",
+        "config": {
+          "isActive": true,
+          "hideOnMobile": false,
+          "hideOnDesktop": false,
+          "paddingTop": "2xl",
+          "paddingBottom": "2xl",
+          "canvasHeight": "sm",
+          "layers": [
+            {
+              "elementType": "media_frame",
+              "horizontalAlignment": "left",
+              "verticalAlignment": "center",
+              "layerDepth": 1,
+              "widthPercent": 92,
+              "aspectRatio": "2/3",
+              "offsetX": -7,
+              "offsetY": -6,
+              "image": "https://i.pinimg.com/736x/aa/18/77/aa1877348830258867e94425a1395145.jpg",
+              "imageFit": "cover",
+              "imageRotation": 0,
+              "imageScale": 0.75,
+              "imageBgColor": "#eb8888",
+              "overlayColor": "#b39292",
+              "overlayOpacity": 2,
+              "borderRadius": "lg",
+              "title": "mansih",
+              "body": "q1212121",
+              "bgColor": "#9e4141",
+              "textColor": "#d93434",
+              "glassEffect": true
+            }
+          ],
+          "themeMode": "auto",
+          "typography": {
+            "headingText": "manish singh",
+            "headingFont": "Poppins",
+            "headingSize": "lg",
+            "fontWeight": "bold",
+            "letterSpacing": null,
+            "lineHeight": null,
+            "textTransform": "none",
+            "bodyFont": "Inter",
+            "alignment": "center"
+          },
+          "design": {
+            "borderRadius": "none",
+            "boxShadow": "none"
+          }
+        },
+        "manualData": {
+          "productIds": [],
+          "categoryIds": [],
+          "imageUrls": []
+        },
+        "smartRuleId": null,
+        "isActive": true,
+        "isHiddenOnMobile": false,
+        "isHiddenOnDesktop": false
+      }
+    ],
+    "seo": {
+      "keywords": [],
+      "noIndex": false
+    },
+    "slug": "landing-page",
+    "sourceUpdatedAt": "2026-06-01T14:49:08.196Z",
+    "themeOverride": {
+      "mode": "preset"
+    },
+    "updatedAt": "2026-06-03T11:54:34.603Z"
+  }
+]

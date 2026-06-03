@@ -210,7 +210,8 @@ leaveRequestSchema.methods.approve = async function (approverId, comments, sessi
       this.daysCount,
       this._id,
       `Leave approved: ${this.leaveRequestId}`,
-      approverId
+      approverId,
+      session
     );
   }
 

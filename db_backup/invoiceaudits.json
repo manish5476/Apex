@@ -1,0 +1,74 @@
+[
+  {
+    "_id": "69f9ca5d2035f3b5e867edc8",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "invoiceId": "69f9ca572035f3b5e867eda3",
+    "action": "CREATE",
+    "performedBy": "69eef9935011d1bea4120a24",
+    "details": "Invoice INV-20260505-6569 created. Total: 220000",
+    "ipAddress": "",
+    "createdAt": "2026-05-05T10:45:49.150Z",
+    "updatedAt": "2026-05-05T10:45:49.150Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fcd63955bf72e9122fd105",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "invoiceId": "69f9ca572035f3b5e867eda3",
+    "action": "PAYMENT_ADDED",
+    "performedBy": "69eef9935011d1bea4120a24",
+    "details": "Payment of 180000 added. Total paid: 220000",
+    "ipAddress": "",
+    "createdAt": "2026-05-07T18:13:13.045Z",
+    "updatedAt": "2026-05-07T18:13:13.045Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b2e41744f6367955e90c4",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "invoiceId": "6a0b2e3d744f6367955e90a9",
+    "action": "CREATE",
+    "performedBy": "69eef9935011d1bea4120a24",
+    "details": "Invoice INV-20260518-5929 created. Total: 200482",
+    "ipAddress": "",
+    "createdAt": "2026-05-18T15:20:33.879Z",
+    "updatedAt": "2026-05-18T15:20:33.879Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a18121340649b8f23ad5ab2",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "invoiceId": "6a18121040649b8f23ad5a9b",
+    "action": "CREATE",
+    "performedBy": "69eef9935011d1bea4120a24",
+    "details": "Invoice INV-20260528-2752 created. Total: 100000",
+    "ipAddress": "",
+    "createdAt": "2026-05-28T09:59:47.950Z",
+    "updatedAt": "2026-05-28T09:59:47.950Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a182c9340649b8f23ad63cd",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "invoiceId": "6a182c8f40649b8f23ad63b5",
+    "action": "CREATE",
+    "performedBy": "69eef9935011d1bea4120a24",
+    "details": "Invoice INV-20260528-4344 created. Total: 2000",
+    "ipAddress": "",
+    "createdAt": "2026-05-28T11:52:51.289Z",
+    "updatedAt": "2026-05-28T11:52:51.289Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a184f9d9c46344e8162327b",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "invoiceId": "6a184f9d9c46344e8162325b",
+    "action": "CREATE",
+    "performedBy": "69eef9935011d1bea4120a24",
+    "details": "Invoice INV-20260528-6810 created. Total: 100000",
+    "ipAddress": "",
+    "createdAt": "2026-05-28T14:22:21.959Z",
+    "updatedAt": "2026-05-28T14:22:21.959Z",
+    "__v": 0
+  }
+]

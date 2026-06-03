@@ -1,0 +1,20 @@
+[
+  {
+    "_id": "6a00ab42936a078cf0485317",
+    "noteId": "69fadb1b21034271f9e98cab",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "author": "69eef9935011d1bea4120a24",
+    "content": "Manish",
+    "parentCommentId": null,
+    "threadDepth": 0,
+    "mentions": [],
+    "isEdited": false,
+    "isDeleted": false,
+    "reactions": [],
+    "attachments": [],
+    "editHistory": [],
+    "createdAt": "2026-05-10T15:58:58.905Z",
+    "updatedAt": "2026-05-10T15:58:58.905Z",
+    "__v": 0
+  }
+]

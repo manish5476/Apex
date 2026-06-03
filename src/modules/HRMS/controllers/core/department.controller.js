@@ -2,6 +2,7 @@
 const mongoose   = require('mongoose');
 const Department = require('../../models/department.model');
 const User       = require('../../../auth/core/user.model');
+const Employee   = require('../../models/employee.model');
 const catchAsync = require('../../../../core/utils/api/catchAsync');
 const AppError   = require('../../../../core/utils/api/appError');
 const factory    = require('../../../../core/utils/api/handlerFactory');
@@ -194,7 +195,7 @@ exports.deleteDepartment = catchAsync(async (req, res, next) => {
   if (!department) return next(new AppError('Department not found', 404));
 
   const [employeeCount, childCount] = await Promise.all([
-    User.countDocuments({ organizationId: req.user.organizationId, 'employeeProfile.departmentId': department._id, isActive: true }),
+    Employee.countDocuments({ organizationId: req.user.organizationId, departmentId: department._id }),
     Department.countDocuments({ organizationId: req.user.organizationId, parentDepartment: department._id, isActive: true }),
   ]);
 
@@ -259,17 +260,17 @@ exports.getDepartmentEmployees = catchAsync(async (req, res, next) => {
   }
 
   const query = {
-    organizationId:                          req.user.organizationId,
-    'employeeProfile.departmentId':          { $in: departmentIds },
-    isActive:                                req.query.isActive !== 'false',
+    organizationId: req.user.organizationId,
+    departmentId:   { $in: departmentIds },
   };
 
   const [employees, total] = await Promise.all([
-    User.find(query)
-      .select('name email phone avatar employeeProfile.designationId status isActive')
-      .populate('employeeProfile.designationId', 'title grade')
-      .skip(skip).limit(limit).sort({ name: 1 }),
-    User.countDocuments(query),
+    Employee.find(query)
+      .select('user departmentId designationId employmentType')
+      .populate('user', 'name email phone avatar status isActive')
+      .populate('designationId', 'title grade')
+      .skip(skip).limit(limit).sort({ createdAt: -1 }),
+    Employee.countDocuments(query),
   ]);
 
   res.status(200).json({ status: 'success', results: employees.length, total, page, totalPages: Math.ceil(total / limit), data: { employees } });

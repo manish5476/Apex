@@ -322,13 +322,15 @@ exports.getLeaveBalanceReport = catchAsync(async (req, res, next) => {
     { $match: { organizationId: req.user.organizationId, financialYear } },
     { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'userInfo' } },
     { $unwind: '$userInfo' },
+    { $lookup: { from: 'employees', localField: 'user', foreignField: 'user', as: 'empInfo' } },
+    { $unwind: '$empInfo' },
     { $match: { 'userInfo.isActive': true, 'userInfo.status': 'approved' } },
   ];
 
   if (departmentId) {
     // FIX BUG-LB-C01 [CRITICAL] — Added `new` keyword (Mongoose 6+ requirement)
     pipeline.push({
-      $match: { 'userInfo.employeeProfile.departmentId': new mongoose.Types.ObjectId(departmentId) },
+      $match: { 'empInfo.departmentId': new mongoose.Types.ObjectId(departmentId) },
     });
   }
 
@@ -337,10 +339,10 @@ exports.getLeaveBalanceReport = catchAsync(async (req, res, next) => {
       $project: {
         userId:       '$userInfo._id',
         employeeName: '$userInfo.name',
-        employeeId:   '$userInfo.employeeProfile.employeeId',
-        department:   '$userInfo.employeeProfile.departmentId',
-        designation:  '$userInfo.employeeProfile.designationId',
-        dateOfJoining:'$userInfo.employeeProfile.dateOfJoining',
+        employeeId:   '$empInfo.employeeId',
+        department:   '$empInfo.departmentId',
+        designation:  '$empInfo.designationId',
+        dateOfJoining:'$empInfo.dateOfJoining',
         casualLeave:  { total: '$casualLeave.total',  used: '$casualLeave.used',  available: { $subtract: ['$casualLeave.total',  '$casualLeave.used']  } },
         sickLeave:    { total: '$sickLeave.total',    used: '$sickLeave.used',    available: { $subtract: ['$sickLeave.total',    '$sickLeave.used']    } },
         earnedLeave:  { total: '$earnedLeave.total',  used: '$earnedLeave.used',  available: { $subtract: ['$earnedLeave.total',  '$earnedLeave.used']  } },

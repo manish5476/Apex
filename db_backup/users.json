@@ -1,0 +1,739 @@
+[
+  {
+    "_id": "69eef9935011d1bea4120a24",
+    "name": "Manish singh",
+    "email": "msms5476@gmail.com",
+    "password": "$2b$12$8MRFWorIBLPtHcixpPNIjOr/vEmfHhvwc.OzPGG6Xx1Y9IuDAFn7i",
+    "phone": "8160966299",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "role": "69eef9935011d1bea4120a23",
+    "isOwner": true,
+    "isSuperAdmin": true,
+    "status": "approved",
+    "isActive": true,
+    "isDeleted": false,
+    "permissionOverrides": {
+      "granted": [],
+      "revoked": []
+    },
+    "mustChangePassword": false,
+    "employeeProfile": {
+      "employeeId": "EMP-001",
+      "departmentId": "69eef9935011d1bea4120a26",
+      "designationId": "69eef9935011d1bea4120a27",
+      "dateOfJoining": "2026-04-27T05:52:19.753Z",
+      "reportingManagerId": null,
+      "employmentType": "permanent",
+      "bankDetails": {
+        "accountName": "",
+        "accountNumber": "11111111",
+        "ifscCode": "",
+        "bankName": "",
+        "panCard": "",
+        "uanNumber": ""
+      },
+      "dateOfBirth": null,
+      "guarantorDetails": {
+        "name": "",
+        "relationship": "",
+        "phone": ""
+      },
+      "secondaryPhone": "",
+      "workLocation": ""
+    },
+    "attendanceConfig": {
+      "shiftId": "69eef9935011d1bea4120a25",
+      "isAttendanceEnabled": true,
+      "allowWebPunch": true,
+      "allowMobilePunch": true,
+      "enforceGeoFence": false,
+      "geoFenceRadius": 100,
+      "biometricVerified": false,
+      "machineUserId": ""
+    },
+    "loginAttempts": 0,
+    "isLoginBlocked": false,
+    "emailVerified": false,
+    "refreshTokens": [],
+    "maxConcurrentSessions": 10,
+    "themeId": "theme-aurora",
+    "language": "en",
+    "preferences": {
+      "notifications": {
+        "email": true,
+        "push": true,
+        "sms": false
+      },
+      "theme": "light"
+    },
+    "devices": [
+      {
+        "deviceId": "3612c22f195a1f808caedefbfd67938e",
+        "deviceType": "web",
+        "lastActive": "2026-06-02T14:17:00.373Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "c4f95fccec7362256ab9da185e4a9289",
+        "deviceType": "web",
+        "lastActive": "2026-06-02T14:17:09.044Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "d010f87dac174d745f4d5ae0082df97d",
+        "deviceType": "web",
+        "lastActive": "2026-06-02T14:21:23.668Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "98ec4f96e7dc89c7981b2c80cd0e040a",
+        "deviceType": "web",
+        "lastActive": "2026-06-02T15:50:03.544Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "487f47bbc011ec076aa4daea6276cc7e",
+        "deviceType": "web",
+        "lastActive": "2026-06-02T16:52:19.640Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "b278a48ad5005eba1c814e11993b9087",
+        "deviceType": "web",
+        "lastActive": "2026-06-02T17:07:20.059Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "9a1dfcc063448b13bef28b0e91939051",
+        "deviceType": "web",
+        "lastActive": "2026-06-03T10:55:29.681Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "e300f68739e88ce3ca910254ee56fb41",
+        "deviceType": "web",
+        "lastActive": "2026-06-03T11:55:55.405Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "6d2779c22035edb431693efb63b5119c",
+        "deviceType": "web",
+        "lastActive": "2026-06-03T14:34:49.633Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "0f0eeb8ec1f558f6ffba4128776dce83",
+        "deviceType": "web",
+        "lastActive": "2026-06-03T15:34:01.940Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      }
+    ],
+    "createdAt": "2026-04-27T05:52:21.491Z",
+    "updatedAt": "2026-06-03T15:34:01.942Z",
+    "__v": 169,
+    "lastLoginAt": "2026-06-03T15:34:01.940Z",
+    "lastLoginIP": "::1",
+    "updatedBy": "69eef9935011d1bea4120a24",
+    "upiId": ""
+  },
+  {
+    "_id": "69f8bf5e09064323ab45c1bd",
+    "name": "Ankur singh",
+    "email": "msms5476mmm@gmail.com",
+    "password": "$2b$12$GZZjBFp3jitUvAAD8Jz6reMjPRITqQ/y0vh3GhFAmqWmHaMc4tAvu",
+    "phone": "7622047483",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "role": "69f8bfc209064323ab45c200",
+    "isOwner": false,
+    "isSuperAdmin": false,
+    "status": "approved",
+    "isActive": true,
+    "isDeleted": false,
+    "permissionOverrides": {
+      "granted": [],
+      "revoked": []
+    },
+    "mustChangePassword": false,
+    "employeeProfile": {
+      "employeeId": "Emp002",
+      "departmentId": "69eef9935011d1bea4120a26",
+      "reportingManagerId": "69eef9935011d1bea4120a24",
+      "employmentType": "permanent",
+      "workLocation": "Surat",
+      "bankDetails": {},
+      "guarantorDetails": {}
+    },
+    "attendanceConfig": {
+      "shiftId": "69eef9935011d1bea4120a25",
+      "isAttendanceEnabled": true,
+      "allowWebPunch": false,
+      "allowMobilePunch": true,
+      "enforceGeoFence": false,
+      "geoFenceRadius": 100,
+      "biometricVerified": false
+    },
+    "loginAttempts": 0,
+    "isLoginBlocked": false,
+    "emailVerified": false,
+    "refreshTokens": [],
+    "maxConcurrentSessions": 1,
+    "themeId": "theme-glass",
+    "language": "en",
+    "preferences": {
+      "notifications": {
+        "email": true,
+        "push": true,
+        "sms": false
+      },
+      "theme": "light"
+    },
+    "createdBy": "69eef9935011d1bea4120a24",
+    "updatedBy": "69eef9935011d1bea4120a24",
+    "devices": [
+      {
+        "deviceId": "4f0818b0d3d0f7619964025b9d50dd81",
+        "deviceType": "web",
+        "lastActive": "2026-05-04T15:50:39.623Z",
+        "userAgent": "okhttp/4.12.0"
+      }
+    ],
+    "createdAt": "2026-05-04T15:46:38.996Z",
+    "updatedAt": "2026-05-04T15:50:39.624Z",
+    "__v": 1,
+    "lastLoginAt": "2026-05-04T15:50:39.623Z",
+    "lastLoginIP": "152.59.36.194"
+  },
+  {
+    "_id": "69fada9721034271f9e98c29",
+    "name": "ronak singh",
+    "email": "msms5476m@gmail.com",
+    "password": "$2b$12$CxIkJ.zJ2USl95w.zGRj6eA1Zj.H.uDvVYhoFx6sUn3rgyZAL6BeS",
+    "phone": "9328483618",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "isOwner": false,
+    "isSuperAdmin": false,
+    "status": "approved",
+    "isActive": true,
+    "isDeleted": false,
+    "permissionOverrides": {
+      "granted": [],
+      "revoked": []
+    },
+    "mustChangePassword": false,
+    "employeeProfile": {
+      "employmentType": "permanent",
+      "bankDetails": {
+        "accountName": "",
+        "accountNumber": "",
+        "ifscCode": "",
+        "bankName": "",
+        "panCard": "",
+        "uanNumber": ""
+      },
+      "dateOfBirth": null,
+      "dateOfJoining": null,
+      "employeeId": "",
+      "guarantorDetails": {
+        "name": "",
+        "relationship": "",
+        "phone": ""
+      },
+      "secondaryPhone": "",
+      "workLocation": ""
+    },
+    "attendanceConfig": {
+      "isAttendanceEnabled": true,
+      "allowWebPunch": false,
+      "allowMobilePunch": true,
+      "enforceGeoFence": false,
+      "geoFenceRadius": 100,
+      "biometricVerified": false,
+      "machineUserId": "",
+      "shiftId": "69eef9935011d1bea4120a25"
+    },
+    "loginAttempts": 0,
+    "isLoginBlocked": false,
+    "emailVerified": false,
+    "refreshTokens": [],
+    "maxConcurrentSessions": 1,
+    "themeId": "theme-glass",
+    "language": "en",
+    "preferences": {
+      "notifications": {
+        "email": true,
+        "push": true,
+        "sms": false
+      },
+      "theme": "light"
+    },
+    "devices": [
+      {
+        "deviceId": "8eb52ce0a8e0d50c6565346da999521b",
+        "deviceType": "web",
+        "lastActive": "2026-05-09T11:14:06.214Z",
+        "userAgent": "okhttp/4.12.0"
+      },
+      {
+        "deviceId": "5401f4617bc307264f147d074794d96f",
+        "deviceType": "web",
+        "lastActive": "2026-05-09T14:29:29.096Z",
+        "userAgent": "okhttp/4.12.0"
+      },
+      {
+        "deviceId": "695a7ba35b670de93efc2e14348657c2",
+        "deviceType": "web",
+        "lastActive": "2026-05-09T14:31:46.891Z",
+        "userAgent": "okhttp/4.12.0"
+      },
+      {
+        "deviceId": "3571c8b2a149044b3875afb7f8af2f3b",
+        "deviceType": "web",
+        "lastActive": "2026-05-25T14:32:00.483Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "44cc48afd6d56d5bd3bf2d6af65f654a",
+        "deviceType": "web",
+        "lastActive": "2026-05-25T14:32:12.964Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "4be8e47114cdb650f54381954f27c46c",
+        "deviceType": "web",
+        "lastActive": "2026-05-25T16:44:09.769Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "02a1d481890979d76097239302b551b2",
+        "deviceType": "web",
+        "lastActive": "2026-05-26T17:13:24.239Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      }
+    ],
+    "createdAt": "2026-05-06T06:07:19.177Z",
+    "updatedAt": "2026-05-26T17:13:24.531Z",
+    "__v": 7,
+    "branchId": "69eef9935011d1bea4120a22",
+    "role": "69f8bfc209064323ab45c200",
+    "lastLoginAt": "2026-05-26T17:13:24.238Z",
+    "lastLoginIP": "::1",
+    "updatedBy": "69eef9935011d1bea4120a24"
+  },
+  {
+    "_id": "6a0013bca84aefbf8cead3b5",
+    "name": "Singh Ronak",
+    "email": "rounak1828@gmail.com",
+    "password": "$2b$12$EgnSTb8DzbBSEfdwWrtwRuUFySmDXItiLWM8sJAG/GS/bywKfY2eq",
+    "phone": "9328483619",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "isOwner": false,
+    "isSuperAdmin": false,
+    "status": "approved",
+    "isActive": true,
+    "isDeleted": false,
+    "permissionOverrides": {
+      "granted": [],
+      "revoked": []
+    },
+    "mustChangePassword": false,
+    "employeeProfile": {
+      "employmentType": "permanent",
+      "bankDetails": {},
+      "departmentId": "69eef9935011d1bea4120a26",
+      "designationId": "69eef9935011d1bea4120a27",
+      "guarantorDetails": {},
+      "reportingManagerId": "69eef9935011d1bea4120a24"
+    },
+    "attendanceConfig": {
+      "isAttendanceEnabled": true,
+      "allowWebPunch": false,
+      "allowMobilePunch": true,
+      "enforceGeoFence": false,
+      "geoFenceRadius": 100,
+      "biometricVerified": false,
+      "shiftId": "69eef9935011d1bea4120a25"
+    },
+    "loginAttempts": 0,
+    "isLoginBlocked": false,
+    "emailVerified": false,
+    "refreshTokens": [],
+    "maxConcurrentSessions": 1,
+    "themeId": "theme-glass",
+    "language": "en",
+    "preferences": {
+      "notifications": {
+        "email": true,
+        "push": true,
+        "sms": false
+      },
+      "theme": "light"
+    },
+    "devices": [
+      {
+        "deviceId": "08f5423f52ee2a74194f94362f016bca",
+        "deviceType": "web",
+        "lastActive": "2026-05-10T05:13:40.890Z",
+        "userAgent": "okhttp/4.12.0"
+      }
+    ],
+    "createdAt": "2026-05-10T05:12:28.013Z",
+    "updatedAt": "2026-05-18T16:23:49.764Z",
+    "__v": 1,
+    "branchId": "69eef9935011d1bea4120a22",
+    "role": "69eef9935011d1bea4120a23",
+    "lastLoginAt": "2026-05-10T05:13:40.890Z",
+    "lastLoginIP": "1.38.160.31",
+    "updatedBy": "69eef9935011d1bea4120a24",
+    "avatar": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779121427/shivam_electronics/69eef9935011d1bea4120a21/avatar/qmpuvfst58tigmzweuvs.jpg",
+    "avatarAsset": "6a0b3d157fc6e6fe1eeb4c46"
+  },
+  {
+    "_id": "6a0f4c038864bb2c1faf9aab",
+    "name": "manish singh",
+    "email": "msms5476mm@gmail.com",
+    "password": "$2b$12$vLxqw5CFc8UDnYDHu.vkr.HPGF2XetFOQ06rCAyP7l0yJEGettK..",
+    "phone": "816096699",
+    "organizationId": "6a0f4c038864bb2c1faf9aa8",
+    "branchId": "6a0f4c038864bb2c1faf9aa9",
+    "role": "6a0f4c038864bb2c1faf9aaa",
+    "isOwner": true,
+    "isSuperAdmin": true,
+    "status": "approved",
+    "isActive": true,
+    "isDeleted": false,
+    "permissionOverrides": {
+      "granted": [],
+      "revoked": []
+    },
+    "mustChangePassword": false,
+    "employeeProfile": {
+      "employeeId": "EMP-001",
+      "departmentId": "6a0f4c038864bb2c1faf9aad",
+      "designationId": "6a0f4c038864bb2c1faf9aae",
+      "dateOfJoining": "2026-05-21T18:16:35.382Z",
+      "reportingManagerId": null,
+      "employmentType": "permanent"
+    },
+    "attendanceConfig": {
+      "shiftId": "6a0f4c038864bb2c1faf9aac",
+      "isAttendanceEnabled": true,
+      "allowWebPunch": true,
+      "allowMobilePunch": true,
+      "enforceGeoFence": false,
+      "geoFenceRadius": 100,
+      "biometricVerified": false
+    },
+    "loginAttempts": 0,
+    "isLoginBlocked": false,
+    "emailVerified": false,
+    "refreshTokens": [],
+    "maxConcurrentSessions": 1,
+    "themeId": "theme-glass",
+    "language": "en",
+    "preferences": {
+      "notifications": {
+        "email": true,
+        "push": true,
+        "sms": false
+      },
+      "theme": "light"
+    },
+    "devices": [
+      {
+        "deviceId": "d495282456393fd7658aae7a5ae6e79d",
+        "deviceType": "web",
+        "lastActive": "2026-05-21T18:16:47.633Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      }
+    ],
+    "createdAt": "2026-05-21T18:16:35.820Z",
+    "updatedAt": "2026-05-21T18:16:47.850Z",
+    "__v": 1,
+    "lastLoginAt": "2026-05-21T18:16:47.633Z",
+    "lastLoginIP": "::1"
+  },
+  {
+    "_id": "6a118ed49e3a8e47c4673f5b",
+    "name": "dhanraj patil",
+    "email": "dhanrajpatil786@gmail.com",
+    "password": "$2b$12$wtP8vFWnESAUILZa4OfugOI15TIQHb/WSy56dhVH8PXQdYzLrFWR6",
+    "phone": "7777777777",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "isOwner": false,
+    "isSuperAdmin": false,
+    "status": "approved",
+    "isActive": true,
+    "isDeleted": false,
+    "permissionOverrides": {
+      "granted": [],
+      "revoked": []
+    },
+    "mustChangePassword": false,
+    "employeeProfile": {
+      "employmentType": "permanent"
+    },
+    "attendanceConfig": {
+      "isAttendanceEnabled": true,
+      "allowWebPunch": false,
+      "allowMobilePunch": true,
+      "enforceGeoFence": false,
+      "geoFenceRadius": 100,
+      "biometricVerified": false
+    },
+    "loginAttempts": 0,
+    "isLoginBlocked": false,
+    "emailVerified": false,
+    "refreshTokens": [],
+    "maxConcurrentSessions": 1,
+    "themeId": "theme-glass",
+    "language": "en",
+    "preferences": {
+      "notifications": {
+        "email": true,
+        "push": true,
+        "sms": false
+      },
+      "theme": "light"
+    },
+    "devices": [
+      {
+        "deviceId": "34bf6650f1415f14d1328d11febc8789",
+        "deviceType": "web",
+        "lastActive": "2026-05-23T11:27:57.573Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      }
+    ],
+    "createdAt": "2026-05-23T11:26:12.385Z",
+    "updatedAt": "2026-05-23T11:30:12.310Z",
+    "__v": 1,
+    "branchId": "69eef9935011d1bea4120a22",
+    "role": "69eef9935011d1bea4120a23",
+    "lastLoginAt": "2026-05-23T11:27:57.572Z",
+    "lastLoginIP": "14.97.113.170"
+  },
+  {
+    "_id": "6a13127e2269a8ea633c224d",
+    "name": "Mukesh singj",
+    "email": "ms220320@gmail.com",
+    "password": "$2b$12$SSYGLE4fWB4T4HzB7R4gvOsS3hB.dkDD58OMSnczdEagWcjPjzCYK",
+    "phone": "9510082747",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "isOwner": false,
+    "isSuperAdmin": false,
+    "status": "approved",
+    "isActive": true,
+    "isDeleted": false,
+    "permissionOverrides": {
+      "granted": [],
+      "revoked": []
+    },
+    "mustChangePassword": false,
+    "employeeProfile": {
+      "employmentType": "permanent"
+    },
+    "attendanceConfig": {
+      "isAttendanceEnabled": true,
+      "allowWebPunch": false,
+      "allowMobilePunch": true,
+      "enforceGeoFence": false,
+      "geoFenceRadius": 100,
+      "biometricVerified": false
+    },
+    "loginAttempts": 0,
+    "isLoginBlocked": false,
+    "emailVerified": false,
+    "refreshTokens": [],
+    "maxConcurrentSessions": 1,
+    "themeId": "theme-glass",
+    "language": "en",
+    "preferences": {
+      "notifications": {
+        "email": true,
+        "push": true,
+        "sms": false
+      },
+      "theme": "light"
+    },
+    "devices": [
+      {
+        "deviceId": "d91a8c0dd5ea13c8590b17e7da284f21",
+        "deviceType": "web",
+        "lastActive": "2026-05-24T15:01:21.632Z",
+        "userAgent": "okhttp/4.12.0"
+      }
+    ],
+    "createdAt": "2026-05-24T15:00:14.993Z",
+    "updatedAt": "2026-05-24T15:01:21.634Z",
+    "__v": 1,
+    "branchId": "69eef9935011d1bea4120a22",
+    "role": "69eef9935011d1bea4120a23",
+    "lastLoginAt": "2026-05-24T15:01:21.631Z",
+    "lastLoginIP": "171.61.167.184"
+  },
+  {
+    "_id": "6a13eadb58e8aa84a01c7b73",
+    "name": "Neha",
+    "email": "nehakansara98@gmail.com",
+    "password": "$2b$12$WVTMhZ0KPcW5qVYD53tFhuIWhx4LMnUamlT8j6GaVh77XSmtRUfqi",
+    "phone": "917874291924",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "isOwner": false,
+    "isSuperAdmin": false,
+    "status": "approved",
+    "isActive": true,
+    "isDeleted": false,
+    "permissionOverrides": {
+      "granted": [],
+      "revoked": []
+    },
+    "mustChangePassword": false,
+    "employeeProfile": {
+      "employmentType": "permanent",
+      "bankDetails": {},
+      "guarantorDetails": {}
+    },
+    "attendanceConfig": {
+      "isAttendanceEnabled": true,
+      "allowWebPunch": false,
+      "allowMobilePunch": true,
+      "enforceGeoFence": false,
+      "geoFenceRadius": 100,
+      "biometricVerified": false,
+      "shiftId": "69eef9935011d1bea4120a25"
+    },
+    "loginAttempts": 0,
+    "isLoginBlocked": false,
+    "emailVerified": false,
+    "refreshTokens": [],
+    "maxConcurrentSessions": 1,
+    "themeId": "theme-glass",
+    "language": "en",
+    "preferences": {
+      "notifications": {
+        "email": true,
+        "push": true,
+        "sms": false
+      },
+      "theme": "light"
+    },
+    "devices": [
+      {
+        "deviceId": "b672b8a41837d7137c4efa5ed38dfd23",
+        "deviceType": "web",
+        "lastActive": "2026-05-25T06:25:15.440Z",
+        "userAgent": "okhttp/4.12.0"
+      }
+    ],
+    "createdAt": "2026-05-25T06:23:23.810Z",
+    "updatedAt": "2026-05-25T06:29:37.190Z",
+    "__v": 1,
+    "branchId": "69eef9935011d1bea4120a22",
+    "role": "69eef9935011d1bea4120a23",
+    "lastLoginAt": "2026-05-25T06:25:15.440Z",
+    "lastLoginIP": "42.108.136.111",
+    "updatedBy": "69eef9935011d1bea4120a24"
+  },
+  {
+    "_id": "6a13ed6958e8aa84a01c7e58",
+    "name": "Dhanraj patil",
+    "email": "patil@gmail.com",
+    "password": "$2b$12$nM1iZsTSsjNMk25WO/JAG.C0OnrhASD6Q0xh.QdJIbEqUJ3UgWPV.",
+    "phone": "8866713191",
+    "organizationId": "6a13ed6958e8aa84a01c7e55",
+    "branchId": "6a13ed6958e8aa84a01c7e56",
+    "role": "6a13ed6958e8aa84a01c7e57",
+    "isOwner": true,
+    "isSuperAdmin": true,
+    "status": "approved",
+    "isActive": true,
+    "isDeleted": false,
+    "permissionOverrides": {
+      "granted": [],
+      "revoked": []
+    },
+    "mustChangePassword": false,
+    "employeeProfile": {
+      "employeeId": "EMP-001",
+      "departmentId": "6a13ed6958e8aa84a01c7e5a",
+      "designationId": "6a13ed6958e8aa84a01c7e5b",
+      "dateOfJoining": "2026-05-25T06:34:17.902Z",
+      "reportingManagerId": null,
+      "employmentType": "permanent",
+      "bankDetails": {
+        "accountName": "",
+        "accountNumber": "",
+        "ifscCode": "",
+        "bankName": "",
+        "panCard": "",
+        "uanNumber": ""
+      },
+      "dateOfBirth": null,
+      "guarantorDetails": {
+        "name": "",
+        "relationship": "",
+        "phone": ""
+      },
+      "secondaryPhone": "",
+      "workLocation": ""
+    },
+    "attendanceConfig": {
+      "shiftId": "6a13ed6958e8aa84a01c7e59",
+      "isAttendanceEnabled": true,
+      "allowWebPunch": true,
+      "allowMobilePunch": true,
+      "enforceGeoFence": false,
+      "geoFenceRadius": 100,
+      "biometricVerified": false,
+      "machineUserId": ""
+    },
+    "loginAttempts": 0,
+    "isLoginBlocked": false,
+    "emailVerified": false,
+    "refreshTokens": [],
+    "maxConcurrentSessions": 10,
+    "themeId": "theme-glass",
+    "language": "en",
+    "preferences": {
+      "notifications": {
+        "email": true,
+        "push": true,
+        "sms": false
+      },
+      "theme": "light"
+    },
+    "devices": [
+      {
+        "deviceId": "2b4e3ce0e00ea4e0b879b2da82297437",
+        "deviceType": "web",
+        "lastActive": "2026-05-25T06:34:55.502Z",
+        "userAgent": "okhttp/4.12.0"
+      },
+      {
+        "deviceId": "13a408c841f8a8db02f0ad3300d3cd45",
+        "deviceType": "web",
+        "lastActive": "2026-05-25T06:43:24.341Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "5522e713d21c3ebd9dde90aaaf1e75e8",
+        "deviceType": "web",
+        "lastActive": "2026-05-25T11:39:47.280Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      },
+      {
+        "deviceId": "4fd12969c4ea054536e59f1bf2cce94f",
+        "deviceType": "web",
+        "lastActive": "2026-05-25T11:40:44.464Z",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+      }
+    ],
+    "createdAt": "2026-05-25T06:34:19.572Z",
+    "updatedAt": "2026-05-25T11:40:44.465Z",
+    "__v": 4,
+    "lastLoginAt": "2026-05-25T11:40:44.463Z",
+    "lastLoginIP": "14.97.113.170",
+    "updatedBy": "6a13ed6958e8aa84a01c7e58"
+  }
+]

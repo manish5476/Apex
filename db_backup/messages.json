@@ -1,0 +1,235 @@
+[
+  {
+    "_id": "6a118f629e3a8e47c4674017",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "6a118ed49e3a8e47c4673f5b",
+    "body": "252",
+    "attachments": [],
+    "readBy": [
+      "6a118ed49e3a8e47c4673f5b",
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:28:34.235Z",
+    "updatedAt": "2026-05-23T11:28:35.258Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f679e3a8e47c4674028",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "69eef9935011d1bea4120a24",
+    "body": "hi",
+    "attachments": [],
+    "readBy": [
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:28:39.677Z",
+    "updatedAt": "2026-05-23T11:28:39.677Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f679e3a8e47c467402a",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "6a118ed49e3a8e47c4673f5b",
+    "body": "Hi",
+    "attachments": [],
+    "readBy": [
+      "6a118ed49e3a8e47c4673f5b",
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:28:39.911Z",
+    "updatedAt": "2026-05-23T11:28:40.894Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f6c9e3a8e47c4674038",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "6a118ed49e3a8e47c4673f5b",
+    "body": "kkrh",
+    "attachments": [],
+    "readBy": [
+      "6a118ed49e3a8e47c4673f5b",
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:28:44.504Z",
+    "updatedAt": "2026-05-23T11:28:45.504Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f709e3a8e47c4674043",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "69eef9935011d1bea4120a24",
+    "body": "uo",
+    "attachments": [],
+    "readBy": [
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:28:48.587Z",
+    "updatedAt": "2026-05-23T11:28:48.587Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f729e3a8e47c467404e",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "6a118ed49e3a8e47c4673f5b",
+    "body": "kese hai bhai",
+    "attachments": [],
+    "readBy": [
+      "6a118ed49e3a8e47c4673f5b",
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:28:50.894Z",
+    "updatedAt": "2026-05-23T11:28:51.851Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f7a9e3a8e47c4674059",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "69eef9935011d1bea4120a24",
+    "body": "kya kar rahe ho janab",
+    "attachments": [],
+    "readBy": [
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:28:58.143Z",
+    "updatedAt": "2026-05-23T11:28:58.143Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f7c9e3a8e47c4674064",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "6a118ed49e3a8e47c4673f5b",
+    "body": "tu to boj aj kal fev ho gaya na",
+    "attachments": [],
+    "readBy": [
+      "6a118ed49e3a8e47c4673f5b",
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:29:00.149Z",
+    "updatedAt": "2026-05-23T11:29:01.266Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f809e3a8e47c467406f",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "69eef9935011d1bea4120a24",
+    "body": "o mast",
+    "attachments": [],
+    "readBy": [
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:29:04.667Z",
+    "updatedAt": "2026-05-23T11:29:04.667Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f839e3a8e47c467407f",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "69eef9935011d1bea4120a24",
+    "body": "t",
+    "attachments": [],
+    "readBy": [
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:29:07.438Z",
+    "updatedAt": "2026-05-23T11:29:07.438Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f839e3a8e47c4674083",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "6a118ed49e3a8e47c4673f5b",
+    "body": "sb log tuje hi bula rahe he",
+    "attachments": [],
+    "readBy": [
+      "6a118ed49e3a8e47c4673f5b",
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:29:07.870Z",
+    "updatedAt": "2026-05-23T11:29:08.844Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f889e3a8e47c4674090",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "69eef9935011d1bea4120a24",
+    "body": "ok",
+    "attachments": [],
+    "readBy": [
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:29:12.561Z",
+    "updatedAt": "2026-05-23T11:29:12.561Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f8f9e3a8e47c467409b",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "6a118ed49e3a8e47c4673f5b",
+    "body": "kya hai bhai esa",
+    "attachments": [],
+    "readBy": [
+      "6a118ed49e3a8e47c4673f5b",
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:29:19.973Z",
+    "updatedAt": "2026-05-23T11:29:21.039Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118f9e9e3a8e47c46740a6",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "69eef9935011d1bea4120a24",
+    "body": "are check kar raha tha chal raha hao a nhi",
+    "attachments": [],
+    "readBy": [
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:29:34.808Z",
+    "updatedAt": "2026-05-23T11:29:34.808Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a118fb39e3a8e47c46740b1",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "channelId": "6a118f459e3a8e47c4673fe2",
+    "senderId": "6a118ed49e3a8e47c4673f5b",
+    "body": "k",
+    "attachments": [],
+    "readBy": [
+      "6a118ed49e3a8e47c4673f5b",
+      "69eef9935011d1bea4120a24"
+    ],
+    "deleted": false,
+    "createdAt": "2026-05-23T11:29:55.388Z",
+    "updatedAt": "2026-05-23T11:29:56.360Z",
+    "__v": 0
+  }
+]

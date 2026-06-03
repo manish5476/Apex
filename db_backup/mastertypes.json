@@ -1,0 +1,74 @@
+[
+  {
+    "_id": "69f63878193ab67840140071",
+    "name": "category",
+    "__v": 0,
+    "createdAt": "2026-05-02T17:46:32.325Z",
+    "isActive": true,
+    "label": "Category",
+    "updatedAt": "2026-05-02T17:46:32.325Z"
+  },
+  {
+    "_id": "69f63878193ab67840140073",
+    "name": "brand",
+    "__v": 0,
+    "createdAt": "2026-05-02T17:46:32.325Z",
+    "isActive": true,
+    "label": "Brand",
+    "updatedAt": "2026-05-02T17:46:32.325Z"
+  },
+  {
+    "_id": "69f63878193ab67840140077",
+    "name": "product_condition",
+    "__v": 0,
+    "createdAt": "2026-05-02T17:46:32.325Z",
+    "isActive": true,
+    "label": "Product Condition",
+    "updatedAt": "2026-05-02T17:46:32.325Z"
+  },
+  {
+    "_id": "69f63878193ab67840140072",
+    "name": "sub_category",
+    "__v": 0,
+    "createdAt": "2026-05-02T17:46:32.325Z",
+    "isActive": true,
+    "label": "Sub Category",
+    "updatedAt": "2026-05-02T17:46:32.325Z"
+  },
+  {
+    "_id": "69f63878193ab67840140075",
+    "name": "tax_rate",
+    "__v": 0,
+    "createdAt": "2026-05-02T17:46:32.325Z",
+    "isActive": true,
+    "label": "Tax Rate",
+    "updatedAt": "2026-05-02T17:46:32.325Z"
+  },
+  {
+    "_id": "69f63878193ab67840140076",
+    "name": "warranty_plan",
+    "__v": 0,
+    "createdAt": "2026-05-02T17:46:32.325Z",
+    "isActive": true,
+    "label": "Warranty Plan",
+    "updatedAt": "2026-05-02T17:46:32.325Z"
+  },
+  {
+    "_id": "69f63878193ab67840140070",
+    "name": "department",
+    "__v": 0,
+    "createdAt": "2026-05-02T17:46:32.325Z",
+    "isActive": true,
+    "label": "Department",
+    "updatedAt": "2026-05-02T17:46:32.325Z"
+  },
+  {
+    "_id": "69f63878193ab67840140074",
+    "name": "unit",
+    "__v": 0,
+    "createdAt": "2026-05-02T17:46:32.325Z",
+    "isActive": true,
+    "label": "Unit",
+    "updatedAt": "2026-05-02T17:46:32.325Z"
+  }
+]

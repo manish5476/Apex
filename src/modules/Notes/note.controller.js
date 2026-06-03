@@ -160,7 +160,7 @@ exports.getNotes = catchAsync(async (req, res) => {
   const filter = Note.accessFilter(
     req.user._id,
     req.user.organizationId,
-    req.user.employeeProfile?.departmentId ? [req.user.employeeProfile.departmentId] : []
+    req.user.employee?.departmentId ? [req.user.employee.departmentId] : []
   );
 
   if (type) filter.itemType = type;

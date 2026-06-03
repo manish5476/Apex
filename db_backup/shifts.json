@@ -1,0 +1,146 @@
+[
+  {
+    "_id": "69ecd82a02486535082c4dd5",
+    "name": "General Shift",
+    "organizationId": "69ecd82a02486535082c4dd1",
+    "startTime": "09:00",
+    "endTime": "18:00",
+    "breakDurationMins": 60,
+    "gracePeriodMins": 15,
+    "lateThresholdMins": 30,
+    "earlyDepartureThresholdMins": 15,
+    "halfDayThresholdHrs": 4,
+    "minFullDayHrs": 8,
+    "maxOvertimeHrs": 4,
+    "shiftType": "fixed",
+    "isNightShift": false,
+    "crossesMidnight": false,
+    "weeklyOffs": [
+      0
+    ],
+    "applicableDays": [],
+    "overtimeRules": {
+      "enabled": false,
+      "multiplier": 1.5,
+      "afterHours": 8,
+      "doubleAfterHours": 12,
+      "holidayMultiplier": 2
+    },
+    "flexiConfig": {
+      "minHoursPerDay": 4
+    },
+    "isActive": true,
+    "breaks": [],
+    "createdAt": "2026-04-25T15:05:15.990Z",
+    "updatedAt": "2026-04-25T15:05:15.990Z",
+    "__v": 0
+  },
+  {
+    "_id": "69eef9935011d1bea4120a25",
+    "name": "General Shift",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "startTime": "09:00",
+    "endTime": "18:00",
+    "breakDurationMins": 60,
+    "gracePeriodMins": 15,
+    "lateThresholdMins": 30,
+    "earlyDepartureThresholdMins": 15,
+    "halfDayThresholdHrs": 4,
+    "minFullDayHrs": 8,
+    "maxOvertimeHrs": 4,
+    "shiftType": "fixed",
+    "isNightShift": false,
+    "crossesMidnight": false,
+    "weeklyOffs": [
+      0
+    ],
+    "applicableDays": [],
+    "overtimeRules": {
+      "enabled": false,
+      "multiplier": 1.5,
+      "afterHours": 8,
+      "doubleAfterHours": 12,
+      "holidayMultiplier": 2
+    },
+    "flexiConfig": {
+      "minHoursPerDay": 4
+    },
+    "isActive": true,
+    "breaks": [],
+    "createdAt": "2026-04-27T05:52:20.749Z",
+    "updatedAt": "2026-04-27T05:52:20.749Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0f4c038864bb2c1faf9aac",
+    "name": "General Shift",
+    "organizationId": "6a0f4c038864bb2c1faf9aa8",
+    "startTime": "09:00",
+    "endTime": "18:00",
+    "breakDurationMins": 60,
+    "gracePeriodMins": 15,
+    "lateThresholdMins": 30,
+    "earlyDepartureThresholdMins": 15,
+    "halfDayThresholdHrs": 4,
+    "minFullDayHrs": 8,
+    "maxOvertimeHrs": 4,
+    "shiftType": "fixed",
+    "isNightShift": false,
+    "crossesMidnight": false,
+    "weeklyOffs": [
+      0
+    ],
+    "applicableDays": [],
+    "overtimeRules": {
+      "enabled": false,
+      "multiplier": 1.5,
+      "afterHours": 8,
+      "doubleAfterHours": 12,
+      "holidayMultiplier": 2
+    },
+    "flexiConfig": {
+      "minHoursPerDay": 4
+    },
+    "isActive": true,
+    "breaks": [],
+    "createdAt": "2026-05-21T18:16:35.653Z",
+    "updatedAt": "2026-05-21T18:16:35.653Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a13ed6958e8aa84a01c7e59",
+    "name": "General Shift",
+    "organizationId": "6a13ed6958e8aa84a01c7e55",
+    "startTime": "09:00",
+    "endTime": "18:00",
+    "breakDurationMins": 60,
+    "gracePeriodMins": 15,
+    "lateThresholdMins": 30,
+    "earlyDepartureThresholdMins": 15,
+    "halfDayThresholdHrs": 4,
+    "minFullDayHrs": 8,
+    "maxOvertimeHrs": 4,
+    "shiftType": "fixed",
+    "isNightShift": false,
+    "crossesMidnight": false,
+    "weeklyOffs": [
+      0
+    ],
+    "applicableDays": [],
+    "overtimeRules": {
+      "enabled": false,
+      "multiplier": 1.5,
+      "afterHours": 8,
+      "doubleAfterHours": 12,
+      "holidayMultiplier": 2
+    },
+    "flexiConfig": {
+      "minHoursPerDay": 4
+    },
+    "isActive": true,
+    "breaks": [],
+    "createdAt": "2026-05-25T06:34:18.874Z",
+    "updatedAt": "2026-05-25T06:34:18.874Z",
+    "__v": 0
+  }
+]

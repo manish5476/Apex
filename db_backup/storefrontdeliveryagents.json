@@ -1,0 +1,23 @@
+[
+  {
+    "_id": "6a15dd2e9cb65374563aec6f",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "staffId": null,
+    "name": "manish singh",
+    "phone": "8160966298",
+    "email": "msms5476@gmail.com",
+    "password": "$2b$10$9X7P3UIrI1zCHOD/nA1Ck.VmHDyt2qaX19eDMjnYq3sqTSyRPI6Ka",
+    "vehicleType": "truck",
+    "vehicleRegistrationNumber": "12",
+    "isActive": true,
+    "assignedOrders": [
+      "6a15cbd9af6196032a8e4694",
+      "6a16ce8909cb041575245ca6"
+    ],
+    "lastActiveAt": "2026-06-01T05:26:17.968Z",
+    "createdAt": "2026-05-26T17:49:34.802Z",
+    "updatedAt": "2026-06-01T05:26:17.968Z",
+    "__v": 2,
+    "alternatePhone": "1122334455"
+  }
+]

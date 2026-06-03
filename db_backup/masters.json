@@ -1,0 +1,3293 @@
+[
+  {
+    "_id": "69f63878193ab67840140078",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "department",
+    "name": "Mobiles & Tablets",
+    "__v": 0,
+    "code": "DEP-MOB",
+    "createdAt": "2026-05-02T17:46:32.558Z",
+    "description": "Smartphones, tablets, wearables, and mobile accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 10
+    },
+    "parentId": null,
+    "slug": "mobiles-tablets",
+    "updatedAt": "2026-05-02T17:46:32.558Z"
+  },
+  {
+    "_id": "69f63878193ab67840140079",
+    "name": "Computers & Gaming",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "department",
+    "__v": 0,
+    "code": "DEP-COM",
+    "createdAt": "2026-05-02T17:46:32.558Z",
+    "description": "Laptops, desktops, printers, monitors, and gaming gear",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 20
+    },
+    "parentId": null,
+    "slug": "computers-gaming",
+    "updatedAt": "2026-05-02T17:46:32.558Z"
+  },
+  {
+    "_id": "69f63878193ab6784014007a",
+    "name": "TV, Audio & Entertainment",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "department",
+    "__v": 0,
+    "code": "DEP-ENT",
+    "createdAt": "2026-05-02T17:46:32.558Z",
+    "description": "Televisions, sound systems, streaming, cameras, and media devices",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 30
+    },
+    "parentId": null,
+    "slug": "tv-audio-entertainment",
+    "updatedAt": "2026-05-02T17:46:32.558Z"
+  },
+  {
+    "_id": "69f63878193ab6784014007c",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "department",
+    "name": "Smart Home & Security",
+    "__v": 0,
+    "code": "DEP-SMA",
+    "createdAt": "2026-05-02T17:46:32.558Z",
+    "description": "Connected home, surveillance, networking, and automation products",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 50
+    },
+    "parentId": null,
+    "slug": "smart-home-security",
+    "updatedAt": "2026-05-02T17:46:32.558Z"
+  },
+  {
+    "_id": "69f63878193ab6784014007b",
+    "name": "Home Appliances",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "department",
+    "__v": 0,
+    "code": "DEP-APP",
+    "createdAt": "2026-05-02T17:46:32.558Z",
+    "description": "Large and small appliances for home and kitchen",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 40
+    },
+    "parentId": null,
+    "slug": "home-appliances",
+    "updatedAt": "2026-05-02T17:46:32.558Z"
+  },
+  {
+    "_id": "69f63878193ab6784014007d",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "department",
+    "name": "Accessories & Essentials",
+    "__v": 0,
+    "code": "DEP-ACC",
+    "createdAt": "2026-05-02T17:46:32.558Z",
+    "description": "Cables, chargers, batteries, storage, mounts, and everyday essentials",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 60
+    },
+    "parentId": null,
+    "slug": "accessories-essentials",
+    "updatedAt": "2026-05-02T17:46:32.558Z"
+  },
+  {
+    "_id": "69f63878193ab6784014007e",
+    "type": "category",
+    "name": "Smartphones",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-MOB",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Android and iOS smartphones",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140078",
+    "slug": "smartphones",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140081",
+    "type": "category",
+    "name": "Audio",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-AUD",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Speakers, soundbars, headphones, earbuds, and home theatre",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007a",
+    "slug": "audio",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab6784014007f",
+    "type": "category",
+    "name": "Tablets",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-TAB",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Tablets, iPads, and tablet accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140078",
+    "slug": "tablets",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140080",
+    "type": "category",
+    "name": "Televisions",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-TV",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "LED, OLED, QLED, Mini LED, and lifestyle TVs",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007a",
+    "slug": "televisions",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140082",
+    "type": "category",
+    "name": "Cameras & Imaging",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-CAM",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Cameras, lenses, action cameras, and imaging accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007a",
+    "slug": "cameras-imaging",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140083",
+    "type": "category",
+    "name": "Streaming & Media",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-STR",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Streaming sticks, media players, and set-top accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007a",
+    "slug": "streaming-media",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140085",
+    "type": "category",
+    "name": "Washing Machines",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-WAS",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Front load, top load, semi-automatic, and washer dryers",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007b",
+    "slug": "washing-machines",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140084",
+    "type": "category",
+    "name": "Refrigerators",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-REF",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Single door, double door, side-by-side, and French door refrigerators",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007b",
+    "slug": "refrigerators",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140086",
+    "type": "category",
+    "name": "Air Conditioners",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-AC",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Split, window, portable, and commercial ACs",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007b",
+    "slug": "air-conditioners",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140087",
+    "type": "category",
+    "name": "Kitchen Appliances",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-KIT",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Microwaves, ovens, mixers, air fryers, chimneys, and dishwashers",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007b",
+    "slug": "kitchen-appliances",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140088",
+    "type": "category",
+    "name": "Home Care Appliances",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-CAR",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Vacuum cleaners, irons, water purifiers, geysers, and air purifiers",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007b",
+    "slug": "home-care-appliances",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140089",
+    "type": "category",
+    "name": "Personal Care",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-PER",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Trimmers, shavers, hair dryers, grooming kits, and oral care",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007b",
+    "slug": "personal-care",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab6784014008a",
+    "type": "category",
+    "name": "Wearables",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-WEA",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Smart watches, fitness bands, and smart rings",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140078",
+    "slug": "wearables",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab6784014008b",
+    "name": "Smart Home Devices",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "category",
+    "__v": 0,
+    "code": "CAT-SMH",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Smart speakers, displays, lights, plugs, sensors, and automation hubs",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007c",
+    "slug": "smart-home-devices",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab6784014008c",
+    "name": "Security & Surveillance",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "category",
+    "__v": 0,
+    "code": "CAT-SEC",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "CCTV, smart locks, video doorbells, and alarm systems",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007c",
+    "slug": "security-surveillance",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab6784014008d",
+    "name": "Cables, Batteries & Storage",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "category",
+    "__v": 0,
+    "code": "CAT-ESS",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Cables, adapters, batteries, memory cards, SSDs, and hard drives",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007d",
+    "slug": "cables-batteries-storage",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140091",
+    "type": "category",
+    "name": "Monitors",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-MON",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Office, gaming, creator, and curved monitors",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140079",
+    "slug": "monitors",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140092",
+    "type": "category",
+    "name": "Printers & Scanners",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-PRN",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Inkjet, laser, photo printers, scanners, and supplies",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140079",
+    "slug": "printers-scanners",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140094",
+    "type": "category",
+    "name": "Networking",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-NET",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Routers, mesh Wi-Fi, extenders, switches, and adapters",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007c",
+    "slug": "networking",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab6784014008e",
+    "name": "Mobile Accessories",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "category",
+    "__v": 0,
+    "code": "CAT-MAC",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Cases, screen guards, chargers, cables, and power banks",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140078",
+    "slug": "mobile-accessories",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab6784014008f",
+    "type": "category",
+    "name": "Laptops",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-LAP",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Consumer, business, creator, and gaming laptops",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140079",
+    "slug": "laptops",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140093",
+    "type": "category",
+    "name": "Gaming",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-GAM",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Consoles, controllers, gaming accessories, and gaming peripherals",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140079",
+    "slug": "gaming",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63878193ab67840140090",
+    "type": "category",
+    "name": "Desktops & All-in-Ones",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "CAT-DES",
+    "createdAt": "2026-05-02T17:46:32.729Z",
+    "description": "Desktop PCs, all-in-ones, mini PCs, and workstations",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140079",
+    "slug": "desktops-all-in-ones",
+    "updatedAt": "2026-05-02T17:46:32.729Z"
+  },
+  {
+    "_id": "69f63879193ab67840140095",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "5G Smartphones",
+    "__v": 0,
+    "code": "SUB-5GPH",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007e",
+    "slug": "5g-smartphones",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab67840140099",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Business Laptops",
+    "__v": 0,
+    "code": "SUB-BIZLAP",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008f",
+    "slug": "business-laptops",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab67840140096",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Flagship Phones",
+    "__v": 0,
+    "code": "SUB-FLAG",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007e",
+    "slug": "flagship-phones",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab67840140098",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Student Laptops",
+    "__v": 0,
+    "code": "SUB-STULAP",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008f",
+    "slug": "student-laptops",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab67840140097",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Cases & Screen Guards",
+    "__v": 0,
+    "code": "SUB-CASE",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008e",
+    "slug": "cases-screen-guards",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab6784014009a",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Gaming Laptops",
+    "__v": 0,
+    "code": "SUB-GAMLAP",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008f",
+    "slug": "gaming-laptops",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab6784014009c",
+    "name": "All-in-One PCs",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-AIO",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140090",
+    "slug": "all-in-one-pcs",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab6784014009d",
+    "name": "Mini PCs",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-MINIPC",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140090",
+    "slug": "mini-pcs",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab6784014009b",
+    "name": "MacBooks",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-MACB",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008f",
+    "slug": "macbooks",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400a1",
+    "type": "sub_category",
+    "name": "Budget Phones",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-BUDG",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007e",
+    "slug": "budget-phones",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab6784014009f",
+    "name": "Office Monitors",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-OFFMON",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140091",
+    "slug": "office-monitors",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab6784014009e",
+    "name": "Gaming Monitors",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-GMON",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140091",
+    "slug": "gaming-monitors",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400a0",
+    "name": "Inkjet Printers",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-INK",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140092",
+    "slug": "inkjet-printers",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400a3",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Gaming Consoles",
+    "__v": 0,
+    "code": "SUB-CON",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140093",
+    "slug": "gaming-consoles",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400a2",
+    "name": "Laser Printers",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-LAS",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140092",
+    "slug": "laser-printers",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400a4",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Gaming Accessories",
+    "__v": 0,
+    "code": "SUB-GACC",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140093",
+    "slug": "gaming-accessories",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400a5",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Wi-Fi Routers",
+    "__v": 0,
+    "code": "SUB-ROUT",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140094",
+    "slug": "wi-fi-routers",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400a6",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Mesh Wi-Fi Systems",
+    "__v": 0,
+    "code": "SUB-MESH",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140094",
+    "slug": "mesh-wi-fi-systems",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400a7",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Smart TVs",
+    "__v": 0,
+    "code": "SUB-SMARTTV",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140080",
+    "slug": "smart-tvs",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400a8",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "OLED TVs",
+    "__v": 0,
+    "code": "SUB-OLED",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140080",
+    "slug": "oled-tvs",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400a9",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "QLED & Mini LED TVs",
+    "__v": 0,
+    "code": "SUB-QLED",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140080",
+    "slug": "qled-mini-led-tvs",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400aa",
+    "type": "sub_category",
+    "name": "Soundbars",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-SBAR",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140081",
+    "slug": "soundbars",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ab",
+    "type": "sub_category",
+    "name": "True Wireless Earbuds",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-TWS",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140081",
+    "slug": "true-wireless-earbuds",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ae",
+    "type": "sub_category",
+    "name": "Bluetooth Speakers",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-BSPK",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140081",
+    "slug": "bluetooth-speakers",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ac",
+    "type": "sub_category",
+    "name": "Foldable Phones",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-FOLD",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007e",
+    "slug": "foldable-phones",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ad",
+    "type": "sub_category",
+    "name": "Headphones",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-HPH",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140081",
+    "slug": "headphones",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400b0",
+    "name": "Action Cameras",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-ACTCAM",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140082",
+    "slug": "action-cameras",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400af",
+    "type": "sub_category",
+    "name": "Mirrorless & DSLR Cameras",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-DSLR",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140082",
+    "slug": "mirrorless-dslr-cameras",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400b1",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Streaming Sticks",
+    "__v": 0,
+    "code": "SUB-STRSTK",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140083",
+    "slug": "streaming-sticks",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400b2",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Double Door Refrigerators",
+    "__v": 0,
+    "code": "SUB-DBREF",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140084",
+    "slug": "double-door-refrigerators",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400b3",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Side-by-Side Refrigerators",
+    "__v": 0,
+    "code": "SUB-SBSREF",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140084",
+    "slug": "side-by-side-refrigerators",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400b4",
+    "name": "Front Load Washing Machines",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-FLWM",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140085",
+    "slug": "front-load-washing-machines",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400b5",
+    "name": "Top Load Washing Machines",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-TLWM",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140085",
+    "slug": "top-load-washing-machines",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400b6",
+    "type": "sub_category",
+    "name": "Split ACs",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-SPLITAC",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140086",
+    "slug": "split-acs",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400b7",
+    "type": "sub_category",
+    "name": "iPads",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-IPAD",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007f",
+    "slug": "ipads",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400b8",
+    "type": "sub_category",
+    "name": "Window ACs",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-WINAC",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140086",
+    "slug": "window-acs",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400b9",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Microwave Ovens",
+    "__v": 0,
+    "code": "SUB-MWOVEN",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140087",
+    "slug": "microwave-ovens",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400bb",
+    "type": "sub_category",
+    "name": "Mixer Grinders",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-MIXER",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140087",
+    "slug": "mixer-grinders",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ba",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Air Fryers",
+    "__v": 0,
+    "code": "SUB-AIRFRY",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140087",
+    "slug": "air-fryers",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400bc",
+    "type": "sub_category",
+    "name": "Dishwashers",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-DWASH",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140087",
+    "slug": "dishwashers",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400bf",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Air Purifiers",
+    "__v": 0,
+    "code": "SUB-AIRPUR",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140088",
+    "slug": "air-purifiers",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400be",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Water Purifiers",
+    "__v": 0,
+    "code": "SUB-PUR",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140088",
+    "slug": "water-purifiers",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400bd",
+    "type": "sub_category",
+    "name": "Vacuum Cleaners",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-VAC",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140088",
+    "slug": "vacuum-cleaners",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400c0",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Trimmers & Shavers",
+    "__v": 0,
+    "code": "SUB-TRIM",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140089",
+    "slug": "trimmers-shavers",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400c1",
+    "name": "Hair Care Appliances",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-HAIR",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab67840140089",
+    "slug": "hair-care-appliances",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400c3",
+    "name": "Smart Lights",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-SLIGHT",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008b",
+    "slug": "smart-lights",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400c2",
+    "name": "Android Tablets",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-ANDTAB",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014007f",
+    "slug": "android-tablets",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400c4",
+    "name": "Smart Plugs",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-SPLUG",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008b",
+    "slug": "smart-plugs",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400c6",
+    "name": "Video Doorbells",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-VDOOR",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008c",
+    "slug": "video-doorbells",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400c9",
+    "type": "sub_category",
+    "name": "Batteries",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-BATT",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008d",
+    "slug": "batteries",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400cb",
+    "type": "sub_category",
+    "name": "Fitness Bands",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-FIT",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008a",
+    "slug": "fitness-bands",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400c7",
+    "type": "sub_category",
+    "name": "Cables & Adapters",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-CABLE",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008d",
+    "slug": "cables-adapters",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400c5",
+    "name": "CCTV Cameras",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "__v": 0,
+    "code": "SUB-CCTV",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008c",
+    "slug": "cctv-cameras",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400c8",
+    "type": "sub_category",
+    "name": "Storage Devices",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-STOR",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008d",
+    "slug": "storage-devices",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ca",
+    "type": "sub_category",
+    "name": "Smart Watches",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "SUB-SWATCH",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008a",
+    "slug": "smart-watches",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400cd",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Chargers & Adapters",
+    "__v": 0,
+    "code": "SUB-CHG",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008e",
+    "slug": "chargers-adapters",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400cc",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "sub_category",
+    "name": "Power Banks",
+    "__v": 0,
+    "code": "SUB-PBANK",
+    "createdAt": "2026-05-02T17:46:32.866Z",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": "69f63878193ab6784014008e",
+    "slug": "power-banks",
+    "updatedAt": "2026-05-02T17:46:32.866Z"
+  },
+  {
+    "_id": "69f63879193ab678401400cf",
+    "type": "brand",
+    "name": "Samsung",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-SAMSUNG",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Samsung products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 2
+    },
+    "parentId": null,
+    "slug": "samsung",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ce",
+    "type": "brand",
+    "name": "Apple",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-APPLE",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Apple products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 1
+    },
+    "parentId": null,
+    "slug": "apple",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400d0",
+    "type": "brand",
+    "name": "Google",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-GOOGLE",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Google products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 11
+    },
+    "parentId": null,
+    "slug": "google",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400d1",
+    "type": "brand",
+    "name": "Nokia",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-NOKIA",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Nokia products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 12
+    },
+    "parentId": null,
+    "slug": "nokia",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400d2",
+    "type": "brand",
+    "name": "Lenovo",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-LENOVO",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Lenovo products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 13
+    },
+    "parentId": null,
+    "slug": "lenovo",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400d4",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Dell",
+    "__v": 0,
+    "code": "BRD-DELL",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Dell products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 15
+    },
+    "parentId": null,
+    "slug": "dell",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400d3",
+    "type": "brand",
+    "name": "HP",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-HP",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "HP products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 14
+    },
+    "parentId": null,
+    "slug": "hp",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400d5",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Asus",
+    "__v": 0,
+    "code": "BRD-ASUS",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Asus products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 16
+    },
+    "parentId": null,
+    "slug": "asus",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400d6",
+    "type": "brand",
+    "name": "Acer",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-ACER",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Acer products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 17
+    },
+    "parentId": null,
+    "slug": "acer",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400d7",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "MSI",
+    "__v": 0,
+    "code": "BRD-MSI",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "MSI products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 18
+    },
+    "parentId": null,
+    "slug": "msi",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400d8",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Microsoft",
+    "__v": 0,
+    "code": "BRD-MICROSOF",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Microsoft products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 19
+    },
+    "parentId": null,
+    "slug": "microsoft",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400d9",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Logitech",
+    "__v": 0,
+    "code": "BRD-LOGITECH",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Logitech products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 20
+    },
+    "parentId": null,
+    "slug": "logitech",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400da",
+    "name": "OnePlus",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "__v": 0,
+    "code": "BRD-ONEPLUS",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "OnePlus products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 3
+    },
+    "parentId": null,
+    "slug": "oneplus",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400db",
+    "type": "brand",
+    "name": "Sony",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-SONY",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Sony products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 21
+    },
+    "parentId": null,
+    "slug": "sony",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400dc",
+    "type": "brand",
+    "name": "LG",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-LG",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "LG products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 22
+    },
+    "parentId": null,
+    "slug": "lg",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400de",
+    "type": "brand",
+    "name": "TCL",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-TCL",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "TCL products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 24
+    },
+    "parentId": null,
+    "slug": "tcl",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400dd",
+    "type": "brand",
+    "name": "Panasonic",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-PANASONI",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Panasonic products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 23
+    },
+    "parentId": null,
+    "slug": "panasonic",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400df",
+    "name": "Hisense",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "__v": 0,
+    "code": "BRD-HISENSE",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Hisense products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 25
+    },
+    "parentId": null,
+    "slug": "hisense",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400e0",
+    "type": "brand",
+    "name": "Vu",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-VU",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Vu products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 26
+    },
+    "parentId": null,
+    "slug": "vu",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400e1",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Philips",
+    "__v": 0,
+    "code": "BRD-PHILIPS",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Philips products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 27
+    },
+    "parentId": null,
+    "slug": "philips",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400e2",
+    "name": "Bose",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "__v": 0,
+    "code": "BRD-BOSE",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Bose products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 28
+    },
+    "parentId": null,
+    "slug": "bose",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400e3",
+    "name": "JBL",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "__v": 0,
+    "code": "BRD-JBL",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "JBL products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 29
+    },
+    "parentId": null,
+    "slug": "jbl",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400e4",
+    "name": "Sennheiser",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "__v": 0,
+    "code": "BRD-SENNHEIS",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Sennheiser products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 30
+    },
+    "parentId": null,
+    "slug": "sennheiser",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400e5",
+    "name": "Xiaomi",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "__v": 0,
+    "code": "BRD-XIAOMI",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Xiaomi products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 4
+    },
+    "parentId": null,
+    "slug": "xiaomi",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400e6",
+    "type": "brand",
+    "name": "Boat",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-BOAT",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Boat products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 31
+    },
+    "parentId": null,
+    "slug": "boat",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400e7",
+    "type": "brand",
+    "name": "Noise",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-NOISE",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Noise products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 32
+    },
+    "parentId": null,
+    "slug": "noise",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400e8",
+    "type": "brand",
+    "name": "Fire-Boltt",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-FIREBOLT",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Fire-Boltt products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 33
+    },
+    "parentId": null,
+    "slug": "fire-boltt",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400e9",
+    "type": "brand",
+    "name": "Garmin",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-GARMIN",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Garmin products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 34
+    },
+    "parentId": null,
+    "slug": "garmin",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ea",
+    "type": "brand",
+    "name": "Fastrack",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-FASTRACK",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Fastrack products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 35
+    },
+    "parentId": null,
+    "slug": "fastrack",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400eb",
+    "type": "brand",
+    "name": "Canon",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-CANON",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Canon products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 36
+    },
+    "parentId": null,
+    "slug": "canon",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ec",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Nikon",
+    "__v": 0,
+    "code": "BRD-NIKON",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Nikon products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 37
+    },
+    "parentId": null,
+    "slug": "nikon",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ed",
+    "type": "brand",
+    "name": "Fujifilm",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-FUJIFILM",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Fujifilm products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 38
+    },
+    "parentId": null,
+    "slug": "fujifilm",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400f0",
+    "type": "brand",
+    "name": "Redmi",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-REDMI",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Redmi products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 5
+    },
+    "parentId": null,
+    "slug": "redmi",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ee",
+    "type": "brand",
+    "name": "GoPro",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-GOPRO",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "GoPro products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 39
+    },
+    "parentId": null,
+    "slug": "gopro",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ef",
+    "type": "brand",
+    "name": "DJI",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-DJI",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "DJI products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 40
+    },
+    "parentId": null,
+    "slug": "dji",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400f1",
+    "type": "brand",
+    "name": "Whirlpool",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-WHIRLPOO",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Whirlpool products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 41
+    },
+    "parentId": null,
+    "slug": "whirlpool",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400f2",
+    "name": "Godrej",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "__v": 0,
+    "code": "BRD-GODREJ",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Godrej products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 42
+    },
+    "parentId": null,
+    "slug": "godrej",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400f3",
+    "name": "Haier",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "__v": 0,
+    "code": "BRD-HAIER",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Haier products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 43
+    },
+    "parentId": null,
+    "slug": "haier",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400f4",
+    "type": "brand",
+    "name": "Bosch",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-BOSCH",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Bosch products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 44
+    },
+    "parentId": null,
+    "slug": "bosch",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400f5",
+    "type": "brand",
+    "name": "IFB",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-IFB",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "IFB products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 45
+    },
+    "parentId": null,
+    "slug": "ifb",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400f6",
+    "type": "brand",
+    "name": "Voltas",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-VOLTAS",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Voltas products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 46
+    },
+    "parentId": null,
+    "slug": "voltas",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400f7",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Blue Star",
+    "__v": 0,
+    "code": "BRD-BLUESTAR",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Blue Star products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 47
+    },
+    "parentId": null,
+    "slug": "blue-star",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400f8",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Carrier",
+    "__v": 0,
+    "code": "BRD-CARRIER",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Carrier products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 48
+    },
+    "parentId": null,
+    "slug": "carrier",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400f9",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Daikin",
+    "__v": 0,
+    "code": "BRD-DAIKIN",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Daikin products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 49
+    },
+    "parentId": null,
+    "slug": "daikin",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400fa",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Lloyd",
+    "__v": 0,
+    "code": "BRD-LLOYD",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Lloyd products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 50
+    },
+    "parentId": null,
+    "slug": "lloyd",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400fb",
+    "type": "brand",
+    "name": "Realme",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-REALME",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Realme products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 6
+    },
+    "parentId": null,
+    "slug": "realme",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400fc",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Prestige",
+    "__v": 0,
+    "code": "BRD-PRESTIGE",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Prestige products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 51
+    },
+    "parentId": null,
+    "slug": "prestige",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400fd",
+    "type": "brand",
+    "name": "Bajaj",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-BAJAJ",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Bajaj products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 52
+    },
+    "parentId": null,
+    "slug": "bajaj",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400fe",
+    "type": "brand",
+    "name": "Havells",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-HAVELLS",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Havells products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 53
+    },
+    "parentId": null,
+    "slug": "havells",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab678401400ff",
+    "type": "brand",
+    "name": "Usha",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-USHA",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Usha products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 54
+    },
+    "parentId": null,
+    "slug": "usha",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140100",
+    "type": "brand",
+    "name": "Kent",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-KENT",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Kent products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 55
+    },
+    "parentId": null,
+    "slug": "kent",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140101",
+    "type": "brand",
+    "name": "Eureka Forbes",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-EUREKAFO",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Eureka Forbes products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 56
+    },
+    "parentId": null,
+    "slug": "eureka-forbes",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140102",
+    "type": "brand",
+    "name": "Dyson",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-DYSON",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Dyson products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 57
+    },
+    "parentId": null,
+    "slug": "dyson",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140105",
+    "type": "brand",
+    "name": "D-Link",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-DLINK",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "D-Link products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 60
+    },
+    "parentId": null,
+    "slug": "d-link",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140104",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "TP-Link",
+    "__v": 0,
+    "code": "BRD-TPLINK",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "TP-Link products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 59
+    },
+    "parentId": null,
+    "slug": "tp-link",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140103",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "iRobot",
+    "__v": 0,
+    "code": "BRD-IROBOT",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "iRobot products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 58
+    },
+    "parentId": null,
+    "slug": "irobot",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140106",
+    "type": "brand",
+    "name": "Vivo",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-VIVO",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Vivo products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 7
+    },
+    "parentId": null,
+    "slug": "vivo",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140109",
+    "type": "brand",
+    "name": "Brother",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-BROTHER",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Brother products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 63
+    },
+    "parentId": null,
+    "slug": "brother",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140107",
+    "name": "Netgear",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "__v": 0,
+    "code": "BRD-NETGEAR",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Netgear products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 61
+    },
+    "parentId": null,
+    "slug": "netgear",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140108",
+    "type": "brand",
+    "name": "Epson",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "BRD-EPSON",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Epson products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 62
+    },
+    "parentId": null,
+    "slug": "epson",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab6784014010a",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Croma",
+    "__v": 0,
+    "code": "BRD-CROMA",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Croma products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 64
+    },
+    "parentId": null,
+    "slug": "croma",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab6784014010b",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Amazon",
+    "__v": 0,
+    "code": "BRD-AMAZON",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Amazon products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 65
+    },
+    "parentId": null,
+    "slug": "amazon",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab6784014010e",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Wipro",
+    "__v": 0,
+    "code": "BRD-WIPRO",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Wipro products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 68
+    },
+    "parentId": null,
+    "slug": "wipro",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140113",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Kingston",
+    "__v": 0,
+    "code": "BRD-KINGSTON",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Kingston products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 72
+    },
+    "parentId": null,
+    "slug": "kingston",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab6784014010d",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Syska",
+    "__v": 0,
+    "code": "BRD-SYSKA",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Syska products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 67
+    },
+    "parentId": null,
+    "slug": "syska",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab6784014010f",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "SanDisk",
+    "__v": 0,
+    "code": "BRD-SANDISK",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "SanDisk products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 69
+    },
+    "parentId": null,
+    "slug": "sandisk",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140110",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Seagate",
+    "__v": 0,
+    "code": "BRD-SEAGATE",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Seagate products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 70
+    },
+    "parentId": null,
+    "slug": "seagate",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140117",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Motorola",
+    "__v": 0,
+    "code": "BRD-MOTOROLA",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Motorola products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 9
+    },
+    "parentId": null,
+    "slug": "motorola",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab6784014010c",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Google Nest",
+    "__v": 0,
+    "code": "BRD-GOOGLENE",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Google Nest products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 66
+    },
+    "parentId": null,
+    "slug": "google-nest",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140111",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Oppo",
+    "__v": 0,
+    "code": "BRD-OPPO",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Oppo products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 8
+    },
+    "parentId": null,
+    "slug": "oppo",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140112",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Western Digital",
+    "__v": 0,
+    "code": "BRD-WESTERND",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Western Digital products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 71
+    },
+    "parentId": null,
+    "slug": "western-digital",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140114",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Crucial",
+    "__v": 0,
+    "code": "BRD-CRUCIAL",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Crucial products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 73
+    },
+    "parentId": null,
+    "slug": "crucial",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140115",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Duracell",
+    "__v": 0,
+    "code": "BRD-DURACELL",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Duracell products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 74
+    },
+    "parentId": null,
+    "slug": "duracell",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140116",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Energizer",
+    "__v": 0,
+    "code": "BRD-ENERGIZE",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Energizer products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 75
+    },
+    "parentId": null,
+    "slug": "energizer",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140118",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "brand",
+    "name": "Nothing",
+    "__v": 0,
+    "code": "BRD-NOTHING",
+    "createdAt": "2026-05-02T17:46:33.076Z",
+    "description": "Nothing products and accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": true,
+      "sortOrder": 10
+    },
+    "parentId": null,
+    "slug": "nothing",
+    "updatedAt": "2026-05-02T17:46:33.076Z"
+  },
+  {
+    "_id": "69f63879193ab67840140119",
+    "type": "unit",
+    "name": "Piece",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "UNT-PC",
+    "createdAt": "2026-05-02T17:46:33.322Z",
+    "description": "Single saleable item",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "piece",
+    "updatedAt": "2026-05-02T17:46:33.322Z"
+  },
+  {
+    "_id": "69f63879193ab6784014011a",
+    "type": "unit",
+    "name": "Set",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "UNT-SET",
+    "createdAt": "2026-05-02T17:46:33.322Z",
+    "description": "Grouped set or kit",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "set",
+    "updatedAt": "2026-05-02T17:46:33.322Z"
+  },
+  {
+    "_id": "69f63879193ab6784014011b",
+    "type": "unit",
+    "name": "Pair",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "UNT-PAIR",
+    "createdAt": "2026-05-02T17:46:33.322Z",
+    "description": "Two-piece pair",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "pair",
+    "updatedAt": "2026-05-02T17:46:33.322Z"
+  },
+  {
+    "_id": "69f63879193ab6784014011c",
+    "type": "unit",
+    "name": "Box",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "UNT-BOX",
+    "createdAt": "2026-05-02T17:46:33.322Z",
+    "description": "Box quantity",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "box",
+    "updatedAt": "2026-05-02T17:46:33.322Z"
+  },
+  {
+    "_id": "69f63879193ab6784014011d",
+    "type": "unit",
+    "name": "Meter",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "UNT-MTR",
+    "createdAt": "2026-05-02T17:46:33.322Z",
+    "description": "Measured length for cables and rolls",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "meter",
+    "updatedAt": "2026-05-02T17:46:33.322Z"
+  },
+  {
+    "_id": "69f63879193ab6784014011e",
+    "type": "unit",
+    "name": "Kilogram",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "UNT-KG",
+    "createdAt": "2026-05-02T17:46:33.322Z",
+    "description": "Weight-based item",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "kilogram",
+    "updatedAt": "2026-05-02T17:46:33.322Z"
+  },
+  {
+    "_id": "69f63879193ab6784014011f",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "tax_rate",
+    "name": "GST 0%",
+    "__v": 0,
+    "code": "GST-0",
+    "createdAt": "2026-05-02T17:46:33.373Z",
+    "description": "Nil rated or exempt products",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "gst-0",
+    "updatedAt": "2026-05-02T17:46:33.373Z"
+  },
+  {
+    "_id": "69f63879193ab67840140120",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "tax_rate",
+    "name": "GST 5%",
+    "__v": 0,
+    "code": "GST-5",
+    "createdAt": "2026-05-02T17:46:33.373Z",
+    "description": "Low tax rate products",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "gst-5",
+    "updatedAt": "2026-05-02T17:46:33.373Z"
+  },
+  {
+    "_id": "69f63879193ab67840140121",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "tax_rate",
+    "name": "GST 12%",
+    "__v": 0,
+    "code": "GST-12",
+    "createdAt": "2026-05-02T17:46:33.373Z",
+    "description": "Standard consumer electronics slab",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "gst-12",
+    "updatedAt": "2026-05-02T17:46:33.373Z"
+  },
+  {
+    "_id": "69f63879193ab67840140122",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "tax_rate",
+    "name": "GST 18%",
+    "__v": 0,
+    "code": "GST-18",
+    "createdAt": "2026-05-02T17:46:33.373Z",
+    "description": "Common electronics and accessories slab",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "gst-18",
+    "updatedAt": "2026-05-02T17:46:33.373Z"
+  },
+  {
+    "_id": "69f63879193ab67840140123",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "tax_rate",
+    "name": "GST 28%",
+    "__v": 0,
+    "code": "GST-28",
+    "createdAt": "2026-05-02T17:46:33.373Z",
+    "description": "High tax rate appliances and premium goods",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "gst-28",
+    "updatedAt": "2026-05-02T17:46:33.373Z"
+  },
+  {
+    "_id": "69f63879193ab67840140124",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "warranty_plan",
+    "name": "Standard Manufacturer Warranty",
+    "__v": 0,
+    "code": "WAR-STD",
+    "createdAt": "2026-05-02T17:46:33.417Z",
+    "description": "Default manufacturer warranty",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "standard-manufacturer-warranty",
+    "updatedAt": "2026-05-02T17:46:33.417Z"
+  },
+  {
+    "_id": "69f63879193ab67840140125",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "warranty_plan",
+    "name": "Extended Warranty - 1 Year",
+    "__v": 0,
+    "code": "WAR-EXT1",
+    "createdAt": "2026-05-02T17:46:33.417Z",
+    "description": "One additional year of protection",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "extended-warranty-1-year",
+    "updatedAt": "2026-05-02T17:46:33.417Z"
+  },
+  {
+    "_id": "69f63879193ab67840140126",
+    "type": "warranty_plan",
+    "name": "Extended Warranty - 2 Years",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "__v": 0,
+    "code": "WAR-EXT2",
+    "createdAt": "2026-05-02T17:46:33.417Z",
+    "description": "Two additional years of protection",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "extended-warranty-2-years",
+    "updatedAt": "2026-05-02T17:46:33.417Z"
+  },
+  {
+    "_id": "69f63879193ab67840140128",
+    "name": "Installation Included",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "warranty_plan",
+    "__v": 0,
+    "code": "WAR-INST",
+    "createdAt": "2026-05-02T17:46:33.417Z",
+    "description": "Installation or setup included with sale",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "installation-included",
+    "updatedAt": "2026-05-02T17:46:33.417Z"
+  },
+  {
+    "_id": "69f63879193ab67840140127",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "warranty_plan",
+    "name": "Accidental Damage Protection",
+    "__v": 0,
+    "code": "WAR-ADP",
+    "createdAt": "2026-05-02T17:46:33.417Z",
+    "description": "Protection for eligible accidental damage",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "accidental-damage-protection",
+    "updatedAt": "2026-05-02T17:46:33.417Z"
+  },
+  {
+    "_id": "69f63879193ab67840140129",
+    "name": "New",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "product_condition",
+    "__v": 0,
+    "code": "CON-NEW",
+    "createdAt": "2026-05-02T17:46:33.462Z",
+    "description": "Brand-new sealed product",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "new",
+    "updatedAt": "2026-05-02T17:46:33.462Z"
+  },
+  {
+    "_id": "69f63879193ab6784014012a",
+    "name": "Open Box",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "product_condition",
+    "__v": 0,
+    "code": "CON-OPEN",
+    "createdAt": "2026-05-02T17:46:33.462Z",
+    "description": "Opened box with complete accessories",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "open-box",
+    "updatedAt": "2026-05-02T17:46:33.462Z"
+  },
+  {
+    "_id": "69f63879193ab6784014012b",
+    "name": "Demo Unit",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "product_condition",
+    "__v": 0,
+    "code": "CON-DEMO",
+    "createdAt": "2026-05-02T17:46:33.462Z",
+    "description": "Store display or demonstration product",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "demo-unit",
+    "updatedAt": "2026-05-02T17:46:33.462Z"
+  },
+  {
+    "_id": "69f63879193ab6784014012c",
+    "name": "Refurbished",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "type": "product_condition",
+    "__v": 0,
+    "code": "CON-REF",
+    "createdAt": "2026-05-02T17:46:33.462Z",
+    "description": "Refurbished and quality checked product",
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "parentId": null,
+    "slug": "refurbished",
+    "updatedAt": "2026-05-02T17:46:33.462Z"
+  },
+  {
+    "_id": "6a13ee0e58e8aa84a01c7ece",
+    "organizationId": "6a13ed6958e8aa84a01c7e55",
+    "type": "category",
+    "name": "Echo",
+    "code": "123456",
+    "description": "Echo kar sale",
+    "parentId": null,
+    "isActive": false,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "createdAt": "2026-05-25T06:37:02.746Z",
+    "updatedAt": "2026-05-25T06:39:21.591Z",
+    "slug": "echo-7i5qv7",
+    "__v": 0
+  },
+  {
+    "_id": "6a13ee6d58e8aa84a01c7ef6",
+    "organizationId": "6a13ed6958e8aa84a01c7e55",
+    "type": "category",
+    "name": "Echo5",
+    "code": "ECHO",
+    "description": "Th",
+    "parentId": null,
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "createdAt": "2026-05-25T06:38:37.608Z",
+    "updatedAt": "2026-05-25T06:40:10.901Z",
+    "slug": "echo1-r0hjpo",
+    "__v": 0
+  },
+  {
+    "_id": "6a13f04858e8aa84a01c7f9e",
+    "organizationId": "6a13ed6958e8aa84a01c7e55",
+    "type": "tax_rate",
+    "name": "700000",
+    "slug": "700000-kg4lc9",
+    "code": null,
+    "description": null,
+    "parentId": null,
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "__v": 0,
+    "createdAt": "2026-05-25T06:46:32.676Z",
+    "updatedAt": "2026-05-25T06:46:32.676Z"
+  },
+  {
+    "_id": "6a13f04858e8aa84a01c7f9f",
+    "organizationId": "6a13ed6958e8aa84a01c7e55",
+    "type": "brand",
+    "name": "maruti",
+    "slug": "maruti-f335ax",
+    "code": null,
+    "description": null,
+    "parentId": null,
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "__v": 0,
+    "createdAt": "2026-05-25T06:46:32.677Z",
+    "updatedAt": "2026-05-25T06:46:32.677Z"
+  },
+  {
+    "_id": "6a13f04858e8aa84a01c7fa0",
+    "organizationId": "6a13ed6958e8aa84a01c7e55",
+    "type": "unit",
+    "name": "pcs",
+    "slug": "pcs-w31qk8",
+    "code": null,
+    "description": null,
+    "parentId": null,
+    "isActive": true,
+    "metadata": {
+      "isFeatured": false,
+      "sortOrder": 0
+    },
+    "__v": 0,
+    "createdAt": "2026-05-25T06:46:32.677Z",
+    "updatedAt": "2026-05-25T06:46:32.677Z"
+  }
+]

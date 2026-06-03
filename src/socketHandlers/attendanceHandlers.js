@@ -1,6 +1,8 @@
-const AttendanceDaily = require('../modules/hr/attendance/models/attendanceDaily.model');
-const AttendanceRequest = require('../modules/hr/attendance/models/attendanceRequest.model');
-const User = require('../modules/auth/core/user.model.js');
+// FIX BUG-SPLIT-04 [CRITICAL] — Corrected import paths from deleted 'hr/' to 'HRMS/'.
+// Previous paths did not exist and caused server crash on startup.
+const AttendanceDaily   = require('../modules/HRMS/models/attendanceDaily.model');
+const AttendanceRequest = require('../modules/HRMS/models/attendanceRequest.model');
+const Employee          = require('../modules/HRMS/models/employee.model');
 const dayjs = require('dayjs');
 
 module.exports = function(io) {
@@ -107,41 +109,45 @@ module.exports = function(io) {
         });
     }
     
+    // FIX BUG-SPLIT-04 [CRITICAL] — sendTeamSummary now uses Employee collection.
+    // Old code queried User.find({ manager: managerId }) — 'manager' is not a User field.
+    // Employee.reportingManagerId is the canonical field for reporting hierarchy.
     async function sendTeamSummary(socket, managerId, filters) {
         const today = dayjs().format('YYYY-MM-DD');
-        
-        // Get manager's team members
-        const teamMembers = await User.find({
-            manager: managerId,
-            status: 'active'
-        }).select('_id name department');
-        
-        const memberIds = teamMembers.map(m => m._id);
-        
+        const orgId = socket.user.organizationId;
+
+        // Get manager's direct reports from the Employee collection
+        const teamEmployees = await Employee.find({
+            reportingManagerId: managerId,
+            status: 'active',
+            organizationId: orgId,
+        }).populate('user', '_id name').select('user departmentId').lean();
+
+        const memberIds = teamEmployees.map(e => e.user?._id).filter(Boolean);
+
         const teamAttendance = await AttendanceDaily.find({
             user: { $in: memberIds },
-            date: today
-        }).populate('user', 'name department')
+            date: today,
+        }).populate('user', 'name')
           .populate('logs', 'type timestamp')
           .lean();
-        
+
         socket.emit('attendance:team:summary', {
             date: today,
-            totalMembers: teamMembers.length,
+            totalMembers: memberIds.length,
             present: teamAttendance.filter(a => a.status === 'present').length,
-            absent: teamAttendance.filter(a => a.status === 'absent').length,
-            late: teamAttendance.filter(a => a.isLate).length,
+            absent:  teamAttendance.filter(a => a.status === 'absent').length,
+            late:    teamAttendance.filter(a => a.isLate).length,
             details: teamAttendance.map(a => ({
-                userId: a.user._id,
-                userName: a.user.name,
-                department: a.user.department,
-                status: a.status,
-                firstIn: a.firstIn,
-                lastOut: a.lastOut,
+                userId:     a.user._id,
+                userName:   a.user.name,
+                status:     a.status,
+                firstIn:    a.firstIn,
+                lastOut:    a.lastOut,
                 totalHours: a.totalWorkHours,
-                isLate: a.isLate
+                isLate:     a.isLate,
             })),
-            updatedAt: new Date()
+            updatedAt: new Date(),
         });
     }
     

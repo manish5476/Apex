@@ -1,0 +1,303 @@
+[
+  {
+    "_id": "69f642cc2c16c800c283a626",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "companyName": "Usha",
+    "contacts": [],
+    "category": "Apoliances",
+    "tags": [],
+    "email": "manish.nehal.singh@gmail.com",
+    "phone": "8181818188",
+    "address": {
+      "street": "",
+      "city": "",
+      "state": "",
+      "zipCode": "",
+      "country": "India"
+    },
+    "gstNumber": null,
+    "panNumber": null,
+    "openingBalance": 0,
+    "outstandingBalance": 822740,
+    "creditLimit": 0,
+    "branchesSupplied": [
+      "69eef9935011d1bea4120a22"
+    ],
+    "isActive": true,
+    "isDeleted": false,
+    "createdBy": "69eef9935011d1bea4120a24",
+    "documents": [],
+    "createdAt": "2026-05-02T18:30:36.127Z",
+    "updatedAt": "2026-05-19T15:12:20.482Z",
+    "__v": 0,
+    "bankDetails": {
+      "accountName": "",
+      "accountNumber": "",
+      "bankName": "",
+      "ifscCode": "",
+      "branch": ""
+    },
+    "updatedBy": "69eef9935011d1bea4120a24"
+  },
+  {
+    "_id": "69fdf35cc094b6d0a1137595",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "companyName": "Samsung SUppliers",
+    "contactPerson": "",
+    "contacts": [],
+    "category": "",
+    "tags": [],
+    "email": null,
+    "phone": null,
+    "altPhone": "",
+    "address": {
+      "street": "",
+      "city": "",
+      "state": "",
+      "zipCode": "",
+      "country": "India"
+    },
+    "gstNumber": null,
+    "panNumber": null,
+    "openingBalance": 0,
+    "outstandingBalance": 0,
+    "paymentTerms": "",
+    "creditLimit": 0,
+    "bankDetails": {
+      "accountName": "",
+      "accountNumber": "",
+      "bankName": "",
+      "ifscCode": "",
+      "branch": ""
+    },
+    "branchesSupplied": [],
+    "isActive": true,
+    "isDeleted": false,
+    "createdBy": "69eef9935011d1bea4120a24",
+    "documents": [],
+    "createdAt": "2026-05-08T14:29:48.180Z",
+    "updatedAt": "2026-05-08T14:29:48.180Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fdf383c094b6d0a11375ab",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "companyName": "Bajaj Suppliers",
+    "contactPerson": "",
+    "contacts": [],
+    "category": "12",
+    "tags": [],
+    "email": "msms5476@gmail.com",
+    "phone": null,
+    "altPhone": "",
+    "address": {
+      "street": "69,Balaji green city kadodara surat near noorie media",
+      "city": "kadodara/surat",
+      "state": "gujarat",
+      "zipCode": "394327",
+      "country": "India"
+    },
+    "gstNumber": null,
+    "panNumber": null,
+    "openingBalance": 0,
+    "outstandingBalance": 165200,
+    "paymentTerms": "",
+    "creditLimit": 0,
+    "bankDetails": {
+      "accountName": "",
+      "accountNumber": "",
+      "bankName": "",
+      "ifscCode": "",
+      "branch": ""
+    },
+    "branchesSupplied": [],
+    "isActive": true,
+    "isDeleted": false,
+    "createdBy": "69eef9935011d1bea4120a24",
+    "documents": [],
+    "createdAt": "2026-05-08T14:30:27.465Z",
+    "updatedAt": "2026-05-08T15:33:51.004Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fdf4cdc094b6d0a1137605",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "companyName": "Bajaj Supplierss",
+    "contactPerson": "",
+    "contacts": [
+      {
+        "name": "",
+        "department": "Other",
+        "phone": "",
+        "email": "",
+        "isPrimary": false,
+        "_id": "69fdf4cdc094b6d0a1137606"
+      }
+    ],
+    "category": "12",
+    "tags": [],
+    "email": null,
+    "phone": null,
+    "altPhone": "",
+    "address": {
+      "street": "69,Balaji green city kadodara surat near noorie media",
+      "city": "kadodara/surat",
+      "state": "gujarat",
+      "zipCode": "394327",
+      "country": "India"
+    },
+    "gstNumber": null,
+    "panNumber": null,
+    "openingBalance": 0,
+    "outstandingBalance": 0,
+    "paymentTerms": "",
+    "creditLimit": 0,
+    "bankDetails": {
+      "accountName": "",
+      "accountNumber": "",
+      "bankName": "",
+      "ifscCode": "",
+      "branch": ""
+    },
+    "branchesSupplied": [
+      "69eef9935011d1bea4120a22"
+    ],
+    "isActive": true,
+    "isDeleted": false,
+    "createdBy": "69eef9935011d1bea4120a24",
+    "documents": [],
+    "createdAt": "2026-05-08T14:35:57.594Z",
+    "updatedAt": "2026-05-08T14:35:57.594Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fdf691c094b6d0a113767c",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "avatar": "https://res.cloudinary.com/apex/image/upload/v1715000000/suppliers/bajaj_logo.png",
+    "companyName": "Bajaj Electronics & Suppliers",
+    "contactPerson": "Ravi Bajaj",
+    "contacts": [
+      {
+        "name": "Ravi Bajaj",
+        "department": "Management",
+        "phone": "9876543210",
+        "email": "ravi@bajaj-mock.com",
+        "isPrimary": true,
+        "_id": "69fdf691c094b6d0a113767d"
+      },
+      {
+        "name": "Pooja Sharma",
+        "department": "Accounts",
+        "phone": "9876543211",
+        "email": "accounts@bajaj-mock.com",
+        "isPrimary": false,
+        "_id": "69fdf691c094b6d0a113767e"
+      }
+    ],
+    "category": "Appliances",
+    "tags": [
+      "Wholesale",
+      "Premium Partner"
+    ],
+    "email": "contact@bajaj-mock.com",
+    "phone": "9876543210",
+    "altPhone": "0261-2345678",
+    "address": {
+      "street": "69, Balaji Green City, Kadodara",
+      "city": "Surat",
+      "state": "Gujarat",
+      "zipCode": "394327",
+      "country": "India"
+    },
+    "gstNumber": "24AADCB2234M1Z5",
+    "panNumber": "AADCB2234M",
+    "openingBalance": 25000,
+    "outstandingBalance": 0,
+    "paymentTerms": "Net 15",
+    "creditLimit": 500000,
+    "bankDetails": {
+      "accountName": "Bajaj Electronics",
+      "accountNumber": "50200099887766",
+      "bankName": "ICICI Bank",
+      "ifscCode": "ICIC0000123",
+      "branch": "Kadodara"
+    },
+    "documents": [
+      {
+        "docType": "GST",
+        "url": "https://res.cloudinary.com/apex/raw/upload/v1715000111/docs/gst_cert.pdf",
+        "public_id": "docs/gst_cert_12345",
+        "verified": true,
+        "_id": "69fdf691c094b6d0a113767f",
+        "uploadedAt": "2026-05-08T14:43:29.800Z"
+      },
+      {
+        "docType": "PAN",
+        "url": "https://res.cloudinary.com/apex/image/upload/v1715000222/docs/pan_card.jpg",
+        "public_id": "docs/pan_card_67890",
+        "verified": false,
+        "_id": "69fdf691c094b6d0a1137680",
+        "uploadedAt": "2026-05-08T14:43:29.800Z"
+      }
+    ],
+    "branchesSupplied": [
+      "69eef9935011d1bea4120a22"
+    ],
+    "isActive": true,
+    "isDeleted": false,
+    "createdBy": "69eef9935011d1bea4120a24",
+    "createdAt": "2026-05-08T14:43:29.802Z",
+    "updatedAt": "2026-05-24T15:16:43.627Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe09ff984edf3328e5ac4f",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "companyName": "manish",
+    "contactPerson": "",
+    "contacts": [
+      {
+        "name": "manish singh",
+        "department": null,
+        "phone": "7878787878",
+        "email": "msms5476@gmail.com",
+        "isPrimary": false,
+        "_id": "6a04979413b4a9a09490ae49"
+      }
+    ],
+    "categoryId": null,
+    "tags": [],
+    "email": "msms547j6@gmail.com",
+    "phone": null,
+    "altPhone": "",
+    "address": {
+      "street": "69,Balaji green city kadodara surat near noorie media",
+      "city": "kadodara/surat",
+      "state": "gujarat",
+      "zipCode": "394327",
+      "country": "India"
+    },
+    "gstNumber": null,
+    "panNumber": null,
+    "openingBalance": 0,
+    "outstandingBalance": 0,
+    "paymentTerms": "",
+    "creditLimit": 0,
+    "bankDetails": {
+      "accountName": "",
+      "accountNumber": "",
+      "bankName": "",
+      "ifscCode": "",
+      "branch": ""
+    },
+    "branchesSupplied": [],
+    "isActive": true,
+    "isDeleted": false,
+    "createdBy": "69eef9935011d1bea4120a24",
+    "documents": [],
+    "createdAt": "2026-05-08T16:06:23.245Z",
+    "updatedAt": "2026-05-13T15:24:04.679Z",
+    "__v": 0,
+    "updatedBy": "69eef9935011d1bea4120a24"
+  }
+]

@@ -1,0 +1,1651 @@
+[
+  {
+    "_id": "6a12ce320decbfd90ddbd663",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12ce320decbfd90ddbd65c",
+    "sessionId": "6a1078c7d32abb2c101df9b8",
+    "guestOrder": true,
+    "cartId": "6a1078c7d32abb2c101df9bb",
+    "billingAddress": {
+      "fullName": "manish singh",
+      "phone": "8160966299",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "manish singh",
+      "phone": "8160966299",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f102",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Dell Alienware m16 Gaming Laptop",
+          "slug": "dell-alienware-m16-gaming-laptop-7fo7-z",
+          "sku": "DELL-ALW-M16",
+          "image": null,
+          "variantTitle": null,
+          "sellingPrice": 195000,
+          "discountedPrice": 189999,
+          "taxRate": 18,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 189999,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 189999,
+        "_id": "6a12ce320decbfd90ddbd664"
+      }
+    ],
+    "totals": {
+      "subtotal": 189999,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 189999,
+      "currency": "INR"
+    },
+    "appliedCoupons": [],
+    "paymentStatus": "pending",
+    "fulfillmentStatus": "unfulfilled",
+    "orderStatus": "confirmed",
+    "notes": "",
+    "internalNotes": "",
+    "metadata": {
+      "paymentIntentId": null,
+      "linkedCustomerId": "6a1888effc6e83c950d5efea"
+    },
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-05-24T10:08:50.562Z"
+      },
+      {
+        "type": "status_update",
+        "message": "Order status changed to confirmed",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-27T10:15:39.266Z"
+      },
+      {
+        "type": "delivery_assigned",
+        "message": "Assigned to carrier: 12 (Tracking: 12)",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-27T10:15:51.350Z"
+      }
+    ],
+    "createdAt": "2026-05-24T10:08:50.561Z",
+    "updatedAt": "2026-06-01T14:11:53.787Z",
+    "orderNumber": "SF-20260524-QQSIWTC",
+    "__v": 2,
+    "carrierName": "12",
+    "deliveryNotes": "121212",
+    "trackingNumber": "12",
+    "estimatedDeliveryDate": "2026-05-28T00:00:00.000Z",
+    "crmSyncError": null,
+    "crmSyncStatus": "synced",
+    "deliveryFee": 0,
+    "fulfilledBy": "merchant",
+    "paymentMethod": "COD",
+    "totalAmount": 189999,
+    "crmCustomerId": "6a1888effc6e83c950d5efea",
+    "crmInvoiceId": "6a1d9328baeb18f8c174ae6f",
+    "crmSaleId": "6a1d9328baeb18f8c174ae79"
+  },
+  {
+    "_id": "6a12d264973ec8a4c3c08608",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12d236973ec8a4c3c08559",
+    "sessionId": "6a1078c7d32abb2c101df9b8",
+    "guestOrder": false,
+    "cartId": "6a12ce320decbfd90ddbd66c",
+    "billingAddress": {
+      "fullName": "manish singh",
+      "phone": "2222222222",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "manish singh",
+      "phone": "2222222222",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f118",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bose Smart Soundbar 900",
+          "slug": "bose-smart-soundbar-900-iskawx",
+          "sku": "BOSE-SBAR-900",
+          "image": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779069653/shivam_electronics/69eef9935011d1bea4120a21/product/hpbm3b5xlytcyqkj1nuw.jpg",
+          "variantTitle": null,
+          "sellingPrice": 89900,
+          "discountedPrice": 84900,
+          "taxRate": 18,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 84900,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 84900,
+        "_id": "6a12d264973ec8a4c3c08609"
+      }
+    ],
+    "totals": {
+      "subtotal": 84900,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 84900,
+      "currency": "INR"
+    },
+    "appliedCoupons": [],
+    "paymentStatus": "pending",
+    "fulfillmentStatus": "unfulfilled",
+    "orderStatus": "confirmed",
+    "notes": "",
+    "internalNotes": "",
+    "metadata": {
+      "paymentIntentId": null,
+      "linkedCustomerId": "6a14828b784728eed2d38ab2"
+    },
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-05-24T10:26:44.354Z"
+      },
+      {
+        "type": "status_update",
+        "message": "Order status changed to confirmed",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-27T16:55:39.807Z"
+      }
+    ],
+    "createdAt": "2026-05-24T10:26:44.354Z",
+    "updatedAt": "2026-06-01T14:11:54.981Z",
+    "orderNumber": "SF-20260524-4LKHLI3",
+    "__v": 1,
+    "carrierName": "",
+    "deliveryNotes": "",
+    "fulfilledBy": "merchant",
+    "trackingNumber": "",
+    "crmSyncError": null,
+    "crmSyncStatus": "synced",
+    "deliveryFee": 0,
+    "paymentMethod": "COD",
+    "totalAmount": 84900,
+    "crmCustomerId": "6a14828b784728eed2d38ab2",
+    "crmInvoiceId": "6a1d932abaeb18f8c174aeb8",
+    "crmSaleId": "6a1d932abaeb18f8c174aebe"
+  },
+  {
+    "_id": "6a12d4d6e86484639cf3f71d",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12d236973ec8a4c3c08559",
+    "sessionId": "6a1078c7d32abb2c101df9b8",
+    "guestOrder": false,
+    "cartId": "6a12d264973ec8a4c3c08611",
+    "billingAddress": {
+      "fullName": "manish singh",
+      "phone": "07878787878",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "manish singh",
+      "phone": "07878787878",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f102",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Dell Alienware m16 Gaming Laptop",
+          "slug": "dell-alienware-m16-gaming-laptop-7fo7-z",
+          "sku": "DELL-ALW-M16",
+          "image": null,
+          "variantTitle": null,
+          "sellingPrice": 195000,
+          "discountedPrice": 189999,
+          "taxRate": 18,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 189999,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 189999,
+        "_id": "6a12d4d6e86484639cf3f71e"
+      }
+    ],
+    "totals": {
+      "subtotal": 189999,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 189999,
+      "currency": "INR"
+    },
+    "appliedCoupons": [],
+    "paymentStatus": "pending",
+    "fulfillmentStatus": "unfulfilled",
+    "orderStatus": "confirmed",
+    "notes": "",
+    "internalNotes": "",
+    "metadata": {
+      "paymentIntentId": null,
+      "linkedCustomerId": "6a14828b784728eed2d38ab2"
+    },
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-05-24T10:37:10.298Z"
+      },
+      {
+        "type": "status_update",
+        "message": "Order status changed to confirmed",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-27T10:14:23.173Z"
+      },
+      {
+        "type": "delivery_assigned",
+        "message": "Assigned to carrier: 12 (Tracking: 12)",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-27T10:14:36.769Z"
+      }
+    ],
+    "createdAt": "2026-05-24T10:37:10.297Z",
+    "updatedAt": "2026-06-01T14:11:55.783Z",
+    "orderNumber": "SF-20260524-UFKDKXB",
+    "__v": 2,
+    "carrierName": "12",
+    "deliveryNotes": "121212",
+    "trackingNumber": "12",
+    "estimatedDeliveryDate": "2026-05-27T00:00:00.000Z",
+    "crmSyncError": null,
+    "crmSyncStatus": "synced",
+    "deliveryFee": 0,
+    "fulfilledBy": "merchant",
+    "paymentMethod": "COD",
+    "totalAmount": 189999,
+    "crmCustomerId": "6a14828b784728eed2d38ab2",
+    "crmInvoiceId": "6a1d932bbaeb18f8c174aef4",
+    "crmSaleId": "6a1d932bbaeb18f8c174aefb"
+  },
+  {
+    "_id": "6a146648eada13b7b48972e4",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12d236973ec8a4c3c08559",
+    "sessionId": "6a1078c7d32abb2c101df9b8",
+    "guestOrder": false,
+    "cartId": "6a146179eada13b7b489710e",
+    "billingAddress": {
+      "fullName": "manish singh",
+      "phone": "07878787878",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "manish singh",
+      "phone": "07878787878",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f121",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bosch 13 Place Dishwasher",
+          "slug": "bosch-13-place-dishwasher-cui8az",
+          "sku": "BOS-13P-DWASH",
+          "image": null,
+          "variantTitle": null,
+          "sellingPrice": 51990,
+          "discountedPrice": 45990,
+          "taxRate": 18,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 45990,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 45990,
+        "_id": "6a146648eada13b7b48972e5"
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f123",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Havells Nutri Art Air Fryer",
+          "slug": "havells-nutri-art-air-fryer-v4mfgh",
+          "sku": "HAV-NUTRI-AF",
+          "image": null,
+          "variantTitle": null,
+          "sellingPrice": 8500,
+          "discountedPrice": 6999,
+          "taxRate": 18,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 6999,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 6999,
+        "_id": "6a146648eada13b7b48972e6"
+      },
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bajaj chtak ha",
+          "slug": "bajaj-chtak-ha-vgbv0m",
+          "sku": "8901308729421",
+          "image": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779690367/shivam_electronics/69eef9935011d1bea4120a21/product/ugml2yo8upxccyvh3xu0.jpg",
+          "variantTitle": null,
+          "sellingPrice": 2000,
+          "discountedPrice": null,
+          "taxRate": 0,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 2000,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 2000,
+        "_id": "6a146648eada13b7b48972e7"
+      }
+    ],
+    "totals": {
+      "subtotal": 54989,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 54989,
+      "currency": "INR"
+    },
+    "appliedCoupons": [],
+    "paymentStatus": "pending",
+    "fulfillmentStatus": "unfulfilled",
+    "orderStatus": "confirmed",
+    "notes": "",
+    "internalNotes": "",
+    "metadata": {
+      "paymentIntentId": null,
+      "linkedCustomerId": "6a14828b784728eed2d38ab2"
+    },
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-05-25T15:10:00.683Z"
+      },
+      {
+        "type": "status_update",
+        "message": "Order status changed to confirmed",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-28T16:54:11.538Z"
+      }
+    ],
+    "createdAt": "2026-05-25T15:10:00.682Z",
+    "updatedAt": "2026-06-01T14:11:56.658Z",
+    "orderNumber": "SF-20260525-IBRB3RP",
+    "__v": 1,
+    "carrierName": "",
+    "deliveryFee": 0,
+    "deliveryNotes": "",
+    "fulfilledBy": "merchant",
+    "paymentMethod": "COD",
+    "totalAmount": 54989,
+    "trackingNumber": "",
+    "crmSyncError": null,
+    "crmSyncStatus": "synced",
+    "crmCustomerId": "6a14828b784728eed2d38ab2",
+    "crmInvoiceId": "6a1d932cbaeb18f8c174af20",
+    "crmSaleId": "6a1d932cbaeb18f8c174af26"
+  },
+  {
+    "_id": "6a15cbd9af6196032a8e4694",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12d236973ec8a4c3c08559",
+    "sessionId": "6a1078c7d32abb2c101df9b8",
+    "guestOrder": false,
+    "cartId": "6a15cb95af6196032a8e4576",
+    "billingAddress": {
+      "fullName": "manish singh",
+      "phone": "07878787878",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "manish singh",
+      "phone": "07878787878",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bajaj chtak ha",
+          "slug": "bajaj-chtak-ha-vgbv0m",
+          "sku": "8901308729421",
+          "image": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779690367/shivam_electronics/69eef9935011d1bea4120a21/product/ugml2yo8upxccyvh3xu0.jpg",
+          "variantTitle": null,
+          "sellingPrice": 2000,
+          "discountedPrice": null,
+          "taxRate": 0,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 2000,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 2000,
+        "_id": "6a15cbd9af6196032a8e4695"
+      }
+    ],
+    "totals": {
+      "subtotal": 2000,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 2000,
+      "currency": "INR"
+    },
+    "appliedCoupons": [],
+    "paymentStatus": "pending",
+    "fulfillmentStatus": "delivered",
+    "orderStatus": "confirmed",
+    "notes": "",
+    "internalNotes": "",
+    "metadata": {
+      "paymentIntentId": null,
+      "linkedCustomerId": null
+    },
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-05-26T16:35:37.490Z"
+      },
+      {
+        "type": "status_update",
+        "message": "Order status changed to confirmed",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-26T17:38:11.617Z"
+      },
+      {
+        "type": "fulfillment_update",
+        "message": "Fulfillment status changed to delivered",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-26T17:38:27.669Z"
+      },
+      {
+        "type": "delivery_assigned",
+        "message": "Assigned to delivery agent: manish singh",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-27T10:12:48.199Z"
+      },
+      {
+        "type": "delivery_assigned",
+        "message": "Assigned to delivery agent: manish singh",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-27T10:12:49.327Z"
+      },
+      {
+        "type": "delivery_assigned",
+        "message": "Assigned to delivery agent: manish singh",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-27T10:12:52.493Z"
+      }
+    ],
+    "createdAt": "2026-05-26T16:35:37.489Z",
+    "updatedAt": "2026-06-01T14:11:57.425Z",
+    "orderNumber": "SF-20260526-L19NPIY",
+    "__v": 5,
+    "carrierName": "sD",
+    "deliveryNotes": "fdbfbdfb",
+    "trackingNumber": "fdsb",
+    "deliveryAgent": "6a15dd2e9cb65374563aec6f",
+    "estimatedDeliveryDate": "2026-05-26T00:00:00.000Z",
+    "crmSyncError": null,
+    "crmSyncStatus": "synced",
+    "deliveryFee": 0,
+    "fulfilledBy": "merchant",
+    "paymentMethod": "COD",
+    "totalAmount": 2000,
+    "crmCustomerId": "6a14828b784728eed2d38ab2",
+    "crmInvoiceId": "6a1d932cbaeb18f8c174af3e",
+    "crmSaleId": "6a1d932dbaeb18f8c174af42"
+  },
+  {
+    "_id": "6a16ce8909cb041575245ca6",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a1530c4b41afeefd8a13577",
+    "sessionId": "6a16bc59e5996d712604d348",
+    "guestOrder": false,
+    "cartId": "6a16ce7309cb041575245c7f",
+    "billingAddress": {
+      "fullName": "wf",
+      "phone": "1212121212",
+      "country": "India",
+      "state": "1212",
+      "city": "121212",
+      "postalCode": "1212",
+      "addressLine1": "121212",
+      "addressLine2": "121212",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "wf",
+      "phone": "1212121212",
+      "country": "India",
+      "state": "1212",
+      "city": "121212",
+      "postalCode": "1212",
+      "addressLine1": "121212",
+      "addressLine2": "121212",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bajaj chtak ha",
+          "slug": "bajaj-chtak-ha-vgbv0m",
+          "sku": "8901308729421",
+          "image": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779690367/shivam_electronics/69eef9935011d1bea4120a21/product/ugml2yo8upxccyvh3xu0.jpg",
+          "variantTitle": null,
+          "sellingPrice": 2000,
+          "discountedPrice": null,
+          "taxRate": 0,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 2000,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 2000,
+        "_id": "6a16ce8909cb041575245ca7"
+      }
+    ],
+    "totals": {
+      "subtotal": 2000,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 2000,
+      "currency": "INR"
+    },
+    "appliedCoupons": [],
+    "paymentStatus": "pending",
+    "fulfillmentStatus": "shipped",
+    "orderStatus": "confirmed",
+    "deliveryAgent": "6a15dd2e9cb65374563aec6f",
+    "trackingNumber": "12",
+    "carrierName": "12",
+    "deliveryNotes": "1212",
+    "estimatedDeliveryDate": "2026-05-27T00:00:00.000Z",
+    "notes": "",
+    "internalNotes": "",
+    "metadata": {
+      "paymentIntentId": null,
+      "linkedCustomerId": "69f94f57a976a6f3a5d314ad"
+    },
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-05-27T10:59:21.663Z"
+      },
+      {
+        "type": "status_update",
+        "message": "Order status changed to confirmed",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-27T10:59:53.372Z"
+      },
+      {
+        "type": "delivery_assigned",
+        "message": "Assigned to delivery agent: manish singh",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-27T11:00:06.054Z"
+      },
+      {
+        "type": "delivery_update",
+        "message": "Order picked up and is out for delivery by manish singh",
+        "actorId": "6a15dd2e9cb65374563aec6f",
+        "at": "2026-06-01T05:26:33.451Z"
+      }
+    ],
+    "createdAt": "2026-05-27T10:59:21.662Z",
+    "updatedAt": "2026-06-01T14:11:58.483Z",
+    "orderNumber": "SF-20260527-42WQLV3",
+    "__v": 3,
+    "crmSyncStatus": "synced",
+    "deliveryFee": 0,
+    "fulfilledBy": "merchant",
+    "paymentMethod": "COD",
+    "totalAmount": 2000,
+    "crmSyncError": null,
+    "crmCustomerId": "69f94f57a976a6f3a5d314ad",
+    "crmInvoiceId": "6a1d932dbaeb18f8c174af5a",
+    "crmSaleId": "6a1d932dbaeb18f8c174af5e"
+  },
+  {
+    "_id": "6a187b227831db19f48f774c",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12ce320decbfd90ddbd65c",
+    "sessionId": "6a1078c7d32abb2c101df9b8",
+    "guestOrder": false,
+    "cartId": "6a12d8dde86484639cf3fab8",
+    "billingAddress": {
+      "fullName": "manish singh",
+      "phone": "8160966299",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "manish singh",
+      "phone": "8160966299",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bajaj chtak ha",
+          "slug": "bajaj-chtak-ha-vgbv0m",
+          "sku": "8901308729421",
+          "image": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779690367/shivam_electronics/69eef9935011d1bea4120a21/product/ugml2yo8upxccyvh3xu0.jpg",
+          "variantTitle": null,
+          "sellingPrice": 2000,
+          "discountedPrice": null,
+          "taxRate": 0,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 2000,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 2000,
+        "_id": "6a187b227831db19f48f774d"
+      }
+    ],
+    "totals": {
+      "subtotal": 2000,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 2000,
+      "currency": "INR"
+    },
+    "totalAmount": 2000,
+    "appliedCoupons": [],
+    "paymentMethod": "COD",
+    "paymentStatus": "pending",
+    "fulfillmentStatus": "delivered",
+    "orderStatus": "confirmed",
+    "deliveryAgent": null,
+    "platformDeliveryAgent": null,
+    "fulfilledBy": "platform",
+    "deliveryFee": 0,
+    "trackingNumber": "",
+    "carrierName": "Porter Rapid",
+    "deliveryNotes": "",
+    "estimatedDeliveryDate": null,
+    "notes": "",
+    "internalNotes": "",
+    "metadata": {
+      "paymentIntentId": null,
+      "linkedCustomerId": "6a1888effc6e83c950d5efea",
+      "logistics": {
+        "fulfillmentMode": "public_partner",
+        "publicPartnerId": "porter-rapid",
+        "publicPartnerName": "Porter Rapid",
+        "dispatchPriority": "normal",
+        "serviceLevel": "standard",
+        "plannedAt": "2026-05-28T17:52:01.425Z",
+        "plannedBy": "69eef9935011d1bea4120a24"
+      },
+      "crmCustomerAutoConvertedAt": "2026-05-28T18:26:56.176Z"
+    },
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-05-28T17:28:02.827Z"
+      },
+      {
+        "type": "status_update",
+        "message": "Order status changed to confirmed",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-28T17:29:13.036Z"
+      },
+      {
+        "type": "delivery_assigned",
+        "message": "Routed through Apex partner network: Porter Rapid",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-28T17:52:01.426Z"
+      },
+      {
+        "type": "fulfillment_update",
+        "message": "Fulfillment status changed to shipped",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-28T18:26:45.232Z"
+      },
+      {
+        "type": "fulfillment_update",
+        "message": "Fulfillment status changed to delivered",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-28T18:26:55.691Z"
+      },
+      {
+        "type": "customer_linked",
+        "message": "Storefront customer linked to CRM customer",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-28T18:26:56.176Z"
+      },
+      {
+        "type": "invoice_created",
+        "message": "CRM invoice created for delivered storefront order",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-28T18:26:56.416Z"
+      }
+    ],
+    "createdAt": "2026-05-28T17:28:02.826Z",
+    "updatedAt": "2026-06-01T14:12:01.111Z",
+    "orderNumber": "SF-20260528-B-YQ0YW",
+    "__v": 4,
+    "crmSyncError": null,
+    "crmSyncStatus": "synced",
+    "crmCustomerId": "6a1888effc6e83c950d5efea",
+    "crmInvoiceId": "6a1d932ebaeb18f8c174af76",
+    "crmSaleId": "6a1d932ebaeb18f8c174af7a"
+  },
+  {
+    "_id": "6a190c1db4efe54438a5fb14",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a190bb9b4efe54438a5fa2b",
+    "sessionId": "6a19090cb4efe54438a5f97f",
+    "guestOrder": false,
+    "cartId": "6a19090cb4efe54438a5f982",
+    "billingAddress": {
+      "fullName": "Ankur Singh",
+      "phone": "7622047483",
+      "country": "India",
+      "state": "gujarat",
+      "city": "surat",
+      "postalCode": "394327",
+      "addressLine1": "sajbdfwenf",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "Ankur Singh",
+      "phone": "7622047483",
+      "country": "India",
+      "state": "gujarat",
+      "city": "surat",
+      "postalCode": "394327",
+      "addressLine1": "sajbdfwenf",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f118",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bose Smart Soundbar 900",
+          "slug": "bose-smart-soundbar-900-iskawx",
+          "sku": "BOSE-SBAR-900",
+          "image": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779069653/shivam_electronics/69eef9935011d1bea4120a21/product/hpbm3b5xlytcyqkj1nuw.jpg",
+          "variantTitle": null,
+          "sellingPrice": 89900,
+          "discountedPrice": 84900,
+          "taxRate": 18,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 84900,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 84900,
+        "_id": "6a190c1db4efe54438a5fb15"
+      },
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bajaj chtak ha",
+          "slug": "bajaj-chtak-ha-vgbv0m",
+          "sku": "8901308729421",
+          "image": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779690367/shivam_electronics/69eef9935011d1bea4120a21/product/ugml2yo8upxccyvh3xu0.jpg",
+          "variantTitle": null,
+          "sellingPrice": 2000,
+          "discountedPrice": null,
+          "taxRate": 0,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 2000,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 2000,
+        "_id": "6a190c1db4efe54438a5fb16"
+      }
+    ],
+    "totals": {
+      "subtotal": 86900,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 86900,
+      "currency": "INR"
+    },
+    "totalAmount": 86900,
+    "appliedCoupons": [],
+    "paymentMethod": "COD",
+    "paymentStatus": "pending",
+    "fulfillmentStatus": "delivered",
+    "orderStatus": "confirmed",
+    "deliveryAgent": null,
+    "platformDeliveryAgent": null,
+    "fulfilledBy": "platform",
+    "deliveryFee": 0,
+    "trackingNumber": "",
+    "carrierName": "Apex Express Network",
+    "deliveryNotes": "",
+    "estimatedDeliveryDate": null,
+    "notes": "",
+    "internalNotes": "",
+    "metadata": {
+      "paymentIntentId": null,
+      "linkedCustomerId": "6a1abc4381b18e2ef792fb33",
+      "logistics": {
+        "fulfillmentMode": "public_partner",
+        "publicPartnerId": "apex-express",
+        "publicPartnerName": "Apex Express Network",
+        "dispatchPriority": "low",
+        "serviceLevel": "standard",
+        "deliveryQuote": {
+          "baseRate": 86,
+          "codFee": 521,
+          "handlingFee": 18,
+          "priorityMultiplier": 0.9,
+          "serviceMultiplier": 1,
+          "estimatedCost": 563,
+          "customerShippingPaid": 0,
+          "margin": -563,
+          "chargeRecommendation": 563
+        },
+        "plannedAt": "2026-05-29T03:53:11.355Z",
+        "plannedBy": "69eef9935011d1bea4120a24"
+      }
+    },
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-05-29T03:46:37.172Z"
+      },
+      {
+        "type": "status_update",
+        "message": "Order status changed to confirmed",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-29T03:51:33.457Z"
+      },
+      {
+        "type": "delivery_assigned",
+        "message": "Routed through Apex partner network: Apex Express Network",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-29T03:53:11.355Z"
+      },
+      {
+        "type": "fulfillment_update",
+        "message": "Fulfillment status changed to shipped",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-29T03:53:46.025Z"
+      },
+      {
+        "type": "fulfillment_update",
+        "message": "Fulfillment status changed to delivered",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-06-01T04:47:14.499Z"
+      },
+      {
+        "type": "crm_sync_failed",
+        "message": "CRM sync failed: Cannot find module '../../modules/organization/core/branch.model'\nRequire stack:\n- /opt/render/project/src/src/PublicModules/utils/storefront/branchResolver.js\n- /opt/render/project/src/src/PublicModules/services/storefront/crmBridge.service.js\n- /opt/render/project/src/src/PublicModules/services/storefront/order.service.js\n- /opt/render/project/src/src/PublicModules/controllers/storefront/storefrontCustomer.controller.js\n- /opt/render/project/src/src/PublicModules/routes/storefront/public.routes.js\n- /opt/render/project/src/src/Indexes/routesIndex.js\n- /opt/render/project/src/src/routes/routeRegistrynew.js\n- /opt/render/project/src/src/app.js\n- /opt/render/project/src/src/server.js",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-06-01T04:47:15.182Z"
+      }
+    ],
+    "createdAt": "2026-05-29T03:46:37.172Z",
+    "updatedAt": "2026-06-01T14:12:06.861Z",
+    "orderNumber": "SF-20260529-MIN2AJM",
+    "__v": 4,
+    "crmSyncError": null,
+    "crmSyncStatus": "synced",
+    "crmCustomerId": "6a1abc4381b18e2ef792fb33",
+    "crmInvoiceId": "6a1d9335baeb18f8c174af92",
+    "crmSaleId": "6a1d9335baeb18f8c174af97"
+  },
+  {
+    "_id": "6a19c9957f428dcebdd3bd17",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12ce320decbfd90ddbd65c",
+    "sessionId": "6a1078c7d32abb2c101df9b8",
+    "guestOrder": false,
+    "cartId": "6a187b237831db19f48f7757",
+    "billingAddress": {
+      "fullName": "manish singh",
+      "phone": "8160966299",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "manish singh",
+      "phone": "8160966299",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f118",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bose Smart Soundbar 900",
+          "slug": "bose-smart-soundbar-900-iskawx",
+          "sku": "BOSE-SBAR-900",
+          "image": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779069653/shivam_electronics/69eef9935011d1bea4120a21/product/hpbm3b5xlytcyqkj1nuw.jpg",
+          "variantTitle": null,
+          "sellingPrice": 89900,
+          "discountedPrice": 84900,
+          "taxRate": 18,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 84900,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 84900,
+        "_id": "6a19c9957f428dcebdd3bd18"
+      }
+    ],
+    "totals": {
+      "subtotal": 84900,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 84900,
+      "currency": "INR"
+    },
+    "totalAmount": 84900,
+    "appliedCoupons": [],
+    "paymentMethod": "COD",
+    "paymentStatus": "paid",
+    "fulfillmentStatus": "delivered",
+    "orderStatus": "confirmed",
+    "deliveryAgent": null,
+    "platformDeliveryAgent": "6a1a7aee414f65cfc4cd156d",
+    "fulfilledBy": "platform",
+    "deliveryFee": 0,
+    "trackingNumber": "",
+    "carrierName": "Apex Express Network",
+    "deliveryNotes": "12",
+    "estimatedDeliveryDate": "2026-05-30T00:00:00.000Z",
+    "notes": "",
+    "internalNotes": "",
+    "metadata": {
+      "paymentIntentId": null,
+      "linkedCustomerId": null,
+      "logistics": {
+        "fulfillmentMode": "public_partner",
+        "publicPartnerId": "apex-express",
+        "publicPartnerName": "Apex Express Network",
+        "dispatchPriority": "normal",
+        "serviceLevel": "standard",
+        "deliveryQuote": {
+          "baseRate": 86,
+          "codFee": 509,
+          "handlingFee": 18,
+          "priorityMultiplier": 1,
+          "serviceMultiplier": 1,
+          "estimatedCost": 613,
+          "customerShippingPaid": 0,
+          "margin": -613,
+          "chargeRecommendation": 613
+        },
+        "plannedAt": "2026-05-30T05:49:18.543Z",
+        "plannedBy": "69eef9935011d1bea4120a24"
+      }
+    },
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-05-29T17:15:01.541Z"
+      },
+      {
+        "type": "status_update",
+        "message": "Order status changed to confirmed",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-30T05:48:30.137Z"
+      },
+      {
+        "type": "delivery_assigned",
+        "message": "Routed through Apex partner network: Apex Express Network",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-30T05:49:03.707Z"
+      },
+      {
+        "type": "delivery_assigned",
+        "message": "Routed through Apex partner network: Apex Express Network",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-05-30T05:49:18.543Z"
+      },
+      {
+        "type": "delivery_assigned",
+        "message": "Assigned to Apex Delivery Partner",
+        "actorId": "6a1a7aee414f65cfc4cd156d",
+        "at": "2026-05-30T05:51:52.386Z"
+      },
+      {
+        "type": "payment_collected",
+        "message": "Payment collected by delivery partner",
+        "actorId": "6a1a7aee414f65cfc4cd156d",
+        "at": "2026-05-30T05:57:47.987Z"
+      },
+      {
+        "type": "delivered",
+        "message": "Order delivered by Apex Partner",
+        "actorId": "6a1a7aee414f65cfc4cd156d",
+        "at": "2026-05-30T05:57:47.987Z"
+      }
+    ],
+    "createdAt": "2026-05-29T17:15:01.540Z",
+    "updatedAt": "2026-06-01T14:27:03.894Z",
+    "orderNumber": "SF-20260529-YAVDHNI",
+    "__v": 5,
+    "crmSyncError": null,
+    "crmSyncStatus": "synced",
+    "crmCustomerId": "6a1888effc6e83c950d5efea",
+    "crmInvoiceId": "6a1d96b617a34b4d78cfbca9",
+    "crmSaleId": "6a1d96b617a34b4d78cfbcac"
+  },
+  {
+    "_id": "6a1d267bf5316d861cbec951",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a1d2642f5316d861cbec904",
+    "sessionId": "6a1d0fde86426cccd87e403d",
+    "guestOrder": false,
+    "cartId": "6a1d0fdf86426cccd87e4040",
+    "crmInvoiceId": "6a1d96b817a34b4d78cfbcfe",
+    "crmSaleId": "6a1d96b817a34b4d78cfbd00",
+    "crmCustomerId": "6a1d2726f5316d861cbeca8b",
+    "crmSyncStatus": "synced",
+    "crmSyncError": null,
+    "billingAddress": {
+      "fullName": "ronak  Singh",
+      "phone": "7878787878",
+      "country": "India",
+      "state": "gujarat",
+      "city": "surat",
+      "postalCode": "394327",
+      "addressLine1": "dvb",
+      "addressLine2": "sertb",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "ronak  Singh",
+      "phone": "7878787878",
+      "country": "India",
+      "state": "gujarat",
+      "city": "surat",
+      "postalCode": "394327",
+      "addressLine1": "dvb",
+      "addressLine2": "sertb",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f118",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bose Smart Soundbar 900",
+          "slug": "bose-smart-soundbar-900-iskawx",
+          "sku": "BOSE-SBAR-900",
+          "image": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779069653/shivam_electronics/69eef9935011d1bea4120a21/product/hpbm3b5xlytcyqkj1nuw.jpg",
+          "variantTitle": null,
+          "sellingPrice": 89900,
+          "discountedPrice": 84900,
+          "taxRate": 18,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 84900,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 84900,
+        "_id": "6a1d267bf5316d861cbec952"
+      },
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bajaj chtak ha",
+          "slug": "bajaj-chtak-ha-vgbv0m",
+          "sku": "8901308729421",
+          "image": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779690367/shivam_electronics/69eef9935011d1bea4120a21/product/ugml2yo8upxccyvh3xu0.jpg",
+          "variantTitle": null,
+          "sellingPrice": 2000,
+          "discountedPrice": null,
+          "taxRate": 0,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 2000,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 2000,
+        "_id": "6a1d267bf5316d861cbec953"
+      }
+    ],
+    "totals": {
+      "subtotal": 86900,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 86900,
+      "currency": "INR"
+    },
+    "totalAmount": 86900,
+    "appliedCoupons": [],
+    "paymentMethod": "COD",
+    "paymentStatus": "pending",
+    "fulfillmentStatus": "delivered",
+    "orderStatus": "confirmed",
+    "deliveryAgent": null,
+    "platformDeliveryAgent": null,
+    "fulfilledBy": "merchant",
+    "deliveryFee": 0,
+    "trackingNumber": "",
+    "carrierName": "",
+    "deliveryNotes": "",
+    "estimatedDeliveryDate": null,
+    "notes": "",
+    "internalNotes": "",
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-06-01T06:28:11.781Z"
+      },
+      {
+        "type": "status_update",
+        "message": "Order status changed to confirmed",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-06-01T06:29:20.167Z"
+      },
+      {
+        "type": "delivery_assigned",
+        "message": "Delivery details updated",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-06-01T06:29:27.744Z"
+      },
+      {
+        "type": "fulfillment_update",
+        "message": "Fulfillment status changed to shipped",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-06-01T06:29:37.179Z"
+      },
+      {
+        "type": "fulfillment_update",
+        "message": "Fulfillment status changed to delivered",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-06-01T06:29:42.104Z"
+      },
+      {
+        "type": "crm_sync_skipped",
+        "message": "CRM sync skipped: customer phone number is required",
+        "actorId": "69eef9935011d1bea4120a24",
+        "at": "2026-06-01T06:29:42.333Z"
+      }
+    ],
+    "createdAt": "2026-06-01T06:28:11.781Z",
+    "updatedAt": "2026-06-01T14:27:04.630Z",
+    "orderNumber": "SF-20260601-LNH7WZE",
+    "__v": 4,
+    "metadata": {
+      "logistics": {
+        "fulfillmentMode": "internal_fleet",
+        "publicPartnerId": null,
+        "publicPartnerName": "",
+        "dispatchPriority": "normal",
+        "serviceLevel": "standard",
+        "deliveryQuote": {
+          "baseRate": 54,
+          "codFee": 521,
+          "handlingFee": 18,
+          "priorityMultiplier": 1,
+          "serviceMultiplier": 1,
+          "estimatedCost": 593,
+          "customerShippingPaid": 0,
+          "margin": -593,
+          "chargeRecommendation": 593
+        },
+        "plannedAt": "2026-06-01T06:29:27.744Z",
+        "plannedBy": "69eef9935011d1bea4120a24"
+      },
+      "linkedCustomerId": "6a1d2726f5316d861cbeca8b"
+    }
+  },
+  {
+    "_id": "6a1d9b3e8315436c55e71d78",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12ce320decbfd90ddbd65c",
+    "sessionId": "6a1078c7d32abb2c101df9b8",
+    "guestOrder": false,
+    "cartId": "6a1d92864736b09af2da5095",
+    "crmInvoiceId": "6a1d9b3f8315436c55e71d7f",
+    "crmSaleId": "6a1d9b3f8315436c55e71d83",
+    "crmCustomerId": "6a1888effc6e83c950d5efea",
+    "crmSyncStatus": "synced",
+    "crmSyncError": null,
+    "billingAddress": {
+      "fullName": "manish singh",
+      "phone": "8160966299",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "manish singh",
+      "phone": "8160966299",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bajaj chtak ha",
+          "slug": "bajaj-chtak-ha-vgbv0m",
+          "sku": "8901308729421",
+          "image": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779690367/shivam_electronics/69eef9935011d1bea4120a21/product/ugml2yo8upxccyvh3xu0.jpg",
+          "variantTitle": null,
+          "sellingPrice": 2000,
+          "discountedPrice": null,
+          "taxRate": 0,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 2000,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 2000,
+        "_id": "6a1d9b3e8315436c55e71d79"
+      }
+    ],
+    "totals": {
+      "subtotal": 2000,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 2000,
+      "currency": "INR"
+    },
+    "totalAmount": 2000,
+    "appliedCoupons": [],
+    "paymentMethod": "COD",
+    "paymentStatus": "pending",
+    "fulfillmentStatus": "unfulfilled",
+    "orderStatus": "placed",
+    "deliveryAgent": null,
+    "platformDeliveryAgent": null,
+    "fulfilledBy": "merchant",
+    "deliveryFee": 0,
+    "trackingNumber": "",
+    "carrierName": "",
+    "deliveryNotes": "",
+    "estimatedDeliveryDate": null,
+    "notes": "",
+    "internalNotes": "",
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-06-01T14:46:22.993Z"
+      }
+    ],
+    "createdAt": "2026-06-01T14:46:22.993Z",
+    "updatedAt": "2026-06-01T14:46:23.780Z",
+    "orderNumber": "SF-20260601-9-BJDVM",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d9bfb8315436c55e7209c",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12ce320decbfd90ddbd65c",
+    "sessionId": "6a1078c7d32abb2c101df9b8",
+    "guestOrder": false,
+    "cartId": "6a1d9b3f8315436c55e71d9d",
+    "crmInvoiceId": "6a1d9bfc8315436c55e720a3",
+    "crmSaleId": "6a1d9bfc8315436c55e720a7",
+    "crmCustomerId": "6a1888effc6e83c950d5efea",
+    "crmSyncStatus": "synced",
+    "crmSyncError": null,
+    "billingAddress": {
+      "fullName": "manish singh",
+      "phone": "8160966299",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "manish singh",
+      "phone": "8160966299",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Bajaj chtak ha",
+          "slug": "bajaj-chtak-ha-vgbv0m",
+          "sku": "8901308729421",
+          "image": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779690367/shivam_electronics/69eef9935011d1bea4120a21/product/ugml2yo8upxccyvh3xu0.jpg",
+          "variantTitle": null,
+          "sellingPrice": 2000,
+          "discountedPrice": null,
+          "taxRate": 0,
+          "isTaxInclusive": false
+        },
+        "quantity": 1,
+        "unitPrice": 2000,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 2000,
+        "_id": "6a1d9bfb8315436c55e7209d"
+      }
+    ],
+    "totals": {
+      "subtotal": 2000,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 2000,
+      "currency": "INR"
+    },
+    "totalAmount": 2000,
+    "appliedCoupons": [],
+    "paymentMethod": "COD",
+    "paymentStatus": "pending",
+    "fulfillmentStatus": "unfulfilled",
+    "orderStatus": "placed",
+    "deliveryAgent": null,
+    "platformDeliveryAgent": null,
+    "fulfilledBy": "merchant",
+    "deliveryFee": 0,
+    "trackingNumber": "",
+    "carrierName": "",
+    "deliveryNotes": "",
+    "estimatedDeliveryDate": null,
+    "notes": "",
+    "internalNotes": "",
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-06-01T14:49:31.915Z"
+      }
+    ],
+    "createdAt": "2026-06-01T14:49:31.915Z",
+    "updatedAt": "2026-06-01T14:49:32.614Z",
+    "orderNumber": "SF-20260601-F9MXYI9",
+    "__v": 0
+  },
+  {
+    "_id": "6a1da1578315436c55e7259b",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12ce320decbfd90ddbd65c",
+    "sessionId": "6a1078c7d32abb2c101df9b8",
+    "guestOrder": false,
+    "cartId": "6a1da1038315436c55e72442",
+    "crmInvoiceId": "6a1da1578315436c55e725a2",
+    "crmSaleId": "6a1da1588315436c55e725a6",
+    "crmCustomerId": "6a1888effc6e83c950d5efea",
+    "crmSyncStatus": "synced",
+    "crmSyncError": null,
+    "billingAddress": {
+      "fullName": "manish singh",
+      "phone": "8160966299",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "shippingAddress": {
+      "fullName": "manish singh",
+      "phone": "8160966299",
+      "country": "India",
+      "state": "gujarat",
+      "city": "kadodara/surat",
+      "postalCode": "394327",
+      "addressLine1": "69,Balaji green city kadodara surat near noorie media",
+      "addressLine2": "",
+      "landmark": ""
+    },
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f123",
+        "variantId": null,
+        "branchId": null,
+        "snapshot": {
+          "name": "Havells Nutri Art Air Fryer",
+          "slug": "havells-nutri-art-air-fryer-v4mfgh",
+          "sku": "HAV-NUTRI-AF",
+          "image": null,
+          "variantTitle": null,
+          "sellingPrice": 8500,
+          "discountedPrice": 6999,
+          "taxRate": 18,
+          "isTaxInclusive": false
+        },
+        "quantity": 2,
+        "unitPrice": 6999,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "lineTotal": 13998,
+        "_id": "6a1da1578315436c55e7259c"
+      }
+    ],
+    "totals": {
+      "subtotal": 13998,
+      "discount": 0,
+      "shipping": 0,
+      "tax": 0,
+      "grandTotal": 13998,
+      "currency": "INR"
+    },
+    "totalAmount": 13998,
+    "appliedCoupons": [],
+    "paymentMethod": "COD",
+    "paymentStatus": "pending",
+    "fulfillmentStatus": "unfulfilled",
+    "orderStatus": "placed",
+    "deliveryAgent": null,
+    "platformDeliveryAgent": null,
+    "fulfilledBy": "merchant",
+    "deliveryFee": 0,
+    "trackingNumber": "",
+    "carrierName": "",
+    "deliveryNotes": "",
+    "estimatedDeliveryDate": null,
+    "notes": "",
+    "internalNotes": "",
+    "timeline": [
+      {
+        "type": "order_placed",
+        "message": "Order placed",
+        "actorId": null,
+        "at": "2026-06-01T15:12:23.716Z"
+      }
+    ],
+    "createdAt": "2026-06-01T15:12:23.715Z",
+    "updatedAt": "2026-06-01T15:12:24.734Z",
+    "orderNumber": "SF-20260601-KLNNBXO",
+    "__v": 0
+  }
+]

@@ -1,8 +1,9 @@
-const User = require('../../auth/core/user.model');
+const User         = require('../../auth/core/user.model');
 const Organization = require('./organization.model');
-const AppError = require('../../../core/utils/api/appError');
-const catchAsync = require('../../../core/utils/api/catchAsync');
-const ActivityLog = require('../../activity/activityLogModel');
+const Employee     = require('../../HRMS/models/employee.model');
+const AppError     = require('../../../core/utils/api/appError');
+const catchAsync   = require('../../../core/utils/api/catchAsync');
+const ActivityLog  = require('../../activity/activityLogModel');
 const { logActivity } = require('../../activity/activityLogService');
 
 // ======================================================
@@ -15,11 +16,15 @@ const { logActivity } = require('../../activity/activityLogService');
  * The invited user must reset their password via the forgot-password flow on first login.
  */
 exports.inviteUser = catchAsync(async (req, res, next) => {
-  const { email, name, role, branchId } = req.body;
+  // FIX BUG-SPLIT-02 [CRITICAL] — phone is a required field on User schema.
+  // Original did not include phone → Mongoose validation error on every invite.
+  const { email, name, role, branchId, phone } = req.body;
   const orgId = req.user.organizationId;
 
   if (!email || !name)
     return next(new AppError('Name and email are required.', 400));
+  if (!phone)
+    return next(new AppError('Phone number is required to invite a user.', 400));
 
   // Check for existing active user with this email
   const existing = await User.findOne({ email });
@@ -32,6 +37,7 @@ exports.inviteUser = catchAsync(async (req, res, next) => {
   const invitedUser = await User.create({
     name,
     email,
+    phone,
     password: tempPassword,
     mustChangePassword: true,
     role,
@@ -75,6 +81,14 @@ exports.removeMember = catchAsync(async (req, res, next) => {
     return next(new AppError('You cannot remove the owner.', 400));
 
   await User.findByIdAndUpdate(memberId, { status: 'inactive', isActive: false });
+
+  // FIX BUG-SPLIT-05 [CRITICAL] — Also deactivate the Employee document.
+  // Previously the User was deactivated but the linked Employee stayed 'active',
+  // causing inflated department headcounts and ghost employees in HR queries.
+  await Employee.findOneAndUpdate(
+    { user: memberId, organizationId: orgId },
+    { $set: { status: 'inactive', dateOfExit: new Date(), updatedBy: req.user.id } }
+  );
 
   await logActivity(
     orgId,

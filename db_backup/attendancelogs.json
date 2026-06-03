@@ -1,0 +1,188 @@
+[
+  {
+    "_id": "6a1f08950b022210f5e15a11",
+    "source": "web",
+    "user": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "timestamp": "2026-06-02T16:45:09.008Z",
+    "serverTimestamp": "2026-06-02T16:45:09.419Z",
+    "type": "in",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "location": {
+      "geoJson": {
+        "type": "Point",
+        "coordinates": [
+          72.971863,
+          21.16631
+        ]
+      },
+      "accuracy": 241,
+      "geofenceStatus": "disabled",
+      "geofenceId": null
+    },
+    "isVerified": true,
+    "processingStatus": "processed",
+    "dailyAttendanceId": null,
+    "isCorrection": false,
+    "createdAt": "2026-06-02T16:45:09.426Z",
+    "updatedAt": "2026-06-02T16:45:09.896Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1f0c850b022210f5e15ab9",
+    "source": "web",
+    "user": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "timestamp": "2026-06-02T17:01:52.836Z",
+    "serverTimestamp": "2026-06-02T17:01:57.872Z",
+    "type": "out",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "location": {
+      "geoJson": {
+        "type": "Point",
+        "coordinates": [
+          72.8286,
+          21.2149
+        ]
+      },
+      "accuracy": 50000,
+      "geofenceStatus": "disabled",
+      "geofenceId": null
+    },
+    "isVerified": true,
+    "processingStatus": "processed",
+    "dailyAttendanceId": null,
+    "isCorrection": false,
+    "createdAt": "2026-06-02T17:01:57.874Z",
+    "updatedAt": "2026-06-02T17:02:00.026Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1f0d9f0b022210f5e15aee",
+    "source": "web",
+    "user": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "timestamp": "2026-06-02T17:06:30.073Z",
+    "serverTimestamp": "2026-06-02T17:06:39.323Z",
+    "type": "in",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "location": {
+      "geoJson": {
+        "type": "Point",
+        "coordinates": [
+          72.8286,
+          21.2149
+        ]
+      },
+      "accuracy": 50000,
+      "geofenceStatus": "disabled",
+      "geofenceId": null
+    },
+    "isVerified": true,
+    "processingStatus": "processed",
+    "dailyAttendanceId": null,
+    "isCorrection": false,
+    "createdAt": "2026-06-02T17:06:39.382Z",
+    "updatedAt": "2026-06-02T17:06:43.058Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1f0f6a0b022210f5e15b6e",
+    "source": "web",
+    "user": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "timestamp": "2026-06-02T17:14:11.609Z",
+    "serverTimestamp": "2026-06-02T17:14:18.364Z",
+    "type": "out",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "location": {
+      "geoJson": {
+        "type": "Point",
+        "coordinates": [
+          72.8286,
+          21.2149
+        ]
+      },
+      "accuracy": 50000,
+      "geofenceStatus": "disabled",
+      "geofenceId": null
+    },
+    "isVerified": true,
+    "processingStatus": "processed",
+    "dailyAttendanceId": null,
+    "isCorrection": false,
+    "createdAt": "2026-06-02T17:14:18.366Z",
+    "updatedAt": "2026-06-02T17:14:22.033Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1f0f850b022210f5e15b81",
+    "source": "web",
+    "user": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "timestamp": "2026-06-02T17:14:34.784Z",
+    "serverTimestamp": "2026-06-02T17:14:45.005Z",
+    "type": "remote_in",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "location": {
+      "geoJson": {
+        "type": "Point",
+        "coordinates": [
+          72.8286,
+          21.2149
+        ]
+      },
+      "accuracy": 50000,
+      "geofenceStatus": "disabled",
+      "geofenceId": null
+    },
+    "isVerified": true,
+    "processingStatus": "processed",
+    "dailyAttendanceId": null,
+    "isCorrection": false,
+    "createdAt": "2026-06-02T17:14:45.006Z",
+    "updatedAt": "2026-06-02T17:14:49.534Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a200844e87a7b83be97e871",
+    "source": "web",
+    "user": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "timestamp": "2026-06-03T10:56:40.660Z",
+    "serverTimestamp": "2026-06-03T10:56:04.009Z",
+    "type": "out",
+    "ipAddress": "10.26.12.4",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "location": {
+      "geoJson": {
+        "type": "Point",
+        "coordinates": [
+          72.73433513657608,
+          21.180787278688236
+        ]
+      },
+      "accuracy": 57,
+      "geofenceStatus": "disabled",
+      "geofenceId": null
+    },
+    "isVerified": true,
+    "processingStatus": "processed",
+    "dailyAttendanceId": null,
+    "isCorrection": false,
+    "createdAt": "2026-06-03T10:56:04.012Z",
+    "updatedAt": "2026-06-03T10:56:05.438Z",
+    "__v": 0
+  }
+]

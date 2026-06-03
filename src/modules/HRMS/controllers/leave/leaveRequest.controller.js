@@ -4,6 +4,7 @@ const LeaveRequest  = require('../../models/leaveRequest.model');
 const LeaveBalance  = require('../../models/leaveBalance.model');
 const AttendanceDaily = require('../../models/attendanceDaily.model');
 const User          = require('../../../auth/core/user.model');
+const Employee      = require('../../models/employee.model');
 const catchAsync    = require('../../../../core/utils/api/catchAsync');
 const AppError      = require('../../../../core/utils/api/appError');
 const factory       = require('../../../../core/utils/api/handlerFactory');
@@ -92,7 +93,7 @@ exports.createLeaveRequest = catchAsync(async (req, res, next) => {
   req.body.user           = req.user._id;
   req.body.organizationId = req.user.organizationId;
   req.body.branchId       = req.user.branchId;
-  req.body.departmentId   = req.user.employeeProfile?.departmentId;
+  // departmentId will be populated from Employee record
   req.body.appliedBy      = req.user._id;
 
   const { balance } = await validateLeaveRequest(req.body, req.user.organizationId, req.user._id);
@@ -107,19 +108,26 @@ exports.createLeaveRequest = catchAsync(async (req, res, next) => {
   };
 
   // FIX BUG-LR-C05 — Build approval flow BEFORE opening transaction
-  const user = await User.findById(req.user._id)
-    .populate('employeeProfile.reportingManagerId').lean();
+  const employee = await Employee.findOne({ user: req.user._id, organizationId: req.user.organizationId }).lean();
+  
+  if (!employee) {
+    throw new AppError('Employee profile not found.', 404);
+  }
+  
+  req.body.departmentId = employee.departmentId;
 
   const approvalFlow = [];
+  let currentLevel = 1;
 
-  if (user.employeeProfile?.reportingManagerId) {
-    approvalFlow.push({ approver: user.employeeProfile.reportingManagerId._id || user.employeeProfile.reportingManagerId, level: 1, status: 'pending' });
+  if (employee.reportingManagerId) {
+    approvalFlow.push({ approver: employee.reportingManagerId, level: currentLevel++, status: 'pending' });
   }
 
   const Department = mongoose.model('Department');
-  const department = await Department.findById(user.employeeProfile?.departmentId).lean();
-  if (department?.headOfDepartment && department.headOfDepartment.toString() !== user.employeeProfile?.reportingManagerId?.toString()) {
-    approvalFlow.push({ approver: department.headOfDepartment, level: 2, status: 'pending' });
+  const department = await Department.findById(employee.departmentId).lean();
+  
+  if (department?.headOfDepartment && department.headOfDepartment.toString() !== employee.reportingManagerId?.toString()) {
+    approvalFlow.push({ approver: department.headOfDepartment, level: currentLevel++, status: 'pending' });
   }
 
   if (req.body.daysCount > 5) {
@@ -127,7 +135,7 @@ exports.createLeaveRequest = catchAsync(async (req, res, next) => {
     const hrRole  = await Role.findOne({ organizationId: req.user.organizationId, name: 'HR Manager' }).lean();
     if (hrRole) {
       const [hrUser] = await User.find({ role: hrRole._id, organizationId: req.user.organizationId, isActive: true }).select('_id').limit(1).lean();
-      if (hrUser) approvalFlow.push({ approver: hrUser._id, level: 3, status: 'pending' });
+      if (hrUser) approvalFlow.push({ approver: hrUser._id, level: currentLevel++, status: 'pending' });
     }
   }
 
@@ -141,7 +149,7 @@ exports.createLeaveRequest = catchAsync(async (req, res, next) => {
     await session.commitTransaction();
 
     await leaveRequest.populate([
-      { path: 'user',                   select: 'name employeeProfile.employeeId' },
+      { path: 'user',                   select: 'name' },
       { path: 'approvalFlow.approver',  select: 'name email' },
       { path: 'handoverTo',             select: 'name' },
     ]);
@@ -540,8 +548,8 @@ exports.getTeamLeaveCalendar = catchAsync(async (req, res, next) => {
   const startDate = new Date(targetYear, targetMonth - 1, 1);
   const endDate   = new Date(targetYear, targetMonth, 0, 23, 59, 59);
 
-  const teamMembers   = await User.find({ organizationId: req.user.organizationId, 'employeeProfile.reportingManagerId': req.user._id, isActive: true }).select('_id');
-  const teamMemberIds = teamMembers.map(m => m._id);
+  const teamMembers   = await Employee.find({ organizationId: req.user.organizationId, reportingManagerId: req.user._id }).select('user');
+  const teamMemberIds = teamMembers.map(m => m.user);
 
   const leaves = await LeaveRequest.find({
     user:           { $in: teamMemberIds },
@@ -552,7 +560,7 @@ exports.getTeamLeaveCalendar = catchAsync(async (req, res, next) => {
       { endDate:   { $lte: endDate, $gte: startDate } },
       { startDate: { $lte: startDate }, endDate: { $gte: endDate } },
     ],
-  }).populate('user', 'name employeeProfile.employeeId avatar').sort('startDate');
+  }).populate('user', 'name avatar').sort('startDate');
 
   const calendar = [];
   const current  = new Date(startDate);

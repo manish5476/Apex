@@ -1,0 +1,90 @@
+[
+  {
+    "_id": "69ecd82a02486535082c4dd7",
+    "title": "Director",
+    "organizationId": "69ecd82a02486535082c4dd1",
+    "level": 10,
+    "grade": "C",
+    "responsibilities": [],
+    "qualifications": [],
+    "salaryBand": {
+      "currency": "INR"
+    },
+    "reportsTo": [],
+    "isActive": true,
+    "metadata": {
+      "isManager": false,
+      "isExecutive": false,
+      "requiresApproval": false
+    },
+    "createdAt": "2026-04-25T15:05:16.454Z",
+    "updatedAt": "2026-04-25T15:05:16.454Z",
+    "__v": 0
+  },
+  {
+    "_id": "69eef9935011d1bea4120a27",
+    "title": "Director",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "level": 10,
+    "grade": "C",
+    "responsibilities": [],
+    "qualifications": [],
+    "salaryBand": {
+      "currency": "INR"
+    },
+    "reportsTo": [],
+    "isActive": true,
+    "metadata": {
+      "isManager": false,
+      "isExecutive": false,
+      "requiresApproval": false
+    },
+    "createdAt": "2026-04-27T05:52:21.241Z",
+    "updatedAt": "2026-04-27T05:52:21.241Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0f4c038864bb2c1faf9aae",
+    "title": "Director",
+    "organizationId": "6a0f4c038864bb2c1faf9aa8",
+    "level": 10,
+    "grade": "C",
+    "responsibilities": [],
+    "qualifications": [],
+    "salaryBand": {
+      "currency": "INR"
+    },
+    "reportsTo": [],
+    "isActive": true,
+    "metadata": {
+      "isManager": false,
+      "isExecutive": false,
+      "requiresApproval": false
+    },
+    "createdAt": "2026-05-21T18:16:35.770Z",
+    "updatedAt": "2026-05-21T18:16:35.770Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a13ed6958e8aa84a01c7e5b",
+    "title": "Director",
+    "organizationId": "6a13ed6958e8aa84a01c7e55",
+    "level": 10,
+    "grade": "C",
+    "responsibilities": [],
+    "qualifications": [],
+    "salaryBand": {
+      "currency": "INR"
+    },
+    "reportsTo": [],
+    "isActive": true,
+    "metadata": {
+      "isManager": false,
+      "isExecutive": false,
+      "requiresApproval": false
+    },
+    "createdAt": "2026-05-25T06:34:19.338Z",
+    "updatedAt": "2026-05-25T06:34:19.338Z",
+    "__v": 0
+  }
+]

@@ -1,0 +1,2076 @@
+[
+  {
+    "_id": "69ecd8f902486535082c4e0c",
+    "userId": "69ecd82a02486535082c4dd4",
+    "organizationId": "69ecd82a02486535082c4dd1",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.29.166.31",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 0,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-04-25T15:08:41.408Z",
+    "__v": 0
+  },
+  {
+    "_id": "69ecd8fa02486535082c4e10",
+    "userId": "69ecd82a02486535082c4dd4",
+    "organizationId": "69ecd82a02486535082c4dd1",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.24.20.26",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 0,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-04-25T15:08:42.009Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fcb4df8008a8c15eb700e9",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 14,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-07T15:50:55.284Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fcb4df8008a8c15eb700f1",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 14,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-07T15:50:55.913Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fdf4fac094b6d0a1137632",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69f642cc2c16c800c283a626",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69f642cc2c16c800c283a626/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T14:36:42.611Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe005f62e542381068de56",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:25:19.484Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe006462e542381068de83",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:25:24.638Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe006762e542381068de98",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fdf4cdc094b6d0a1137605",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf4cdc094b6d0a1137605/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:25:27.332Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe006a62e542381068dea0",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fdf4cdc094b6d0a1137605",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf4cdc094b6d0a1137605/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:25:30.468Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe006d62e542381068deae",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fdf383c094b6d0a11375ab",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf383c094b6d0a11375ab/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:25:33.612Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe006f62e542381068debc",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fdf35cc094b6d0a1137595",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf35cc094b6d0a1137595/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:25:35.710Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe007262e542381068deca",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69f642cc2c16c800c283a626",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69f642cc2c16c800c283a626/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:25:38.277Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe00b662e542381068def5",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69f642cc2c16c800c283a626",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69f642cc2c16c800c283a626/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:26:46.945Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe00c262e542381068df0c",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fdf35cc094b6d0a1137595",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf35cc094b6d0a1137595/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:26:58.413Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe00d762e542381068df39",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69f642cc2c16c800c283a626",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69f642cc2c16c800c283a626/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:27:19.337Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe00fd62e542381068df53",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69f642cc2c16c800c283a626",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69f642cc2c16c800c283a626/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:27:57.511Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe00fd62e542381068df5b",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69f642cc2c16c800c283a626",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69f642cc2c16c800c283a626/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:27:57.842Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe010162e542381068df88",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69f642cc2c16c800c283a626",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69f642cc2c16c800c283a626/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:28:01.276Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe01b362e542381068dfec",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:30:59.831Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe01ef62e542381068e047",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fdf4cdc094b6d0a1137605",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf4cdc094b6d0a1137605/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:31:59.475Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe01f462e542381068e057",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:32:04.412Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe01f962e542381068e065",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fdf383c094b6d0a11375ab",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf383c094b6d0a11375ab/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:32:09.208Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe020162e542381068e073",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fdf35cc094b6d0a1137595",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf35cc094b6d0a1137595/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-08T15:32:17.205Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a01f48087e51267ec3d57db",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 30,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-11T15:23:44.514Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a01f48187e51267ec3d57e3",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 30,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-11T15:23:45.030Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a01f48287e51267ec3d57eb",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "2",
+        "limit": "20"
+      },
+      "total": 30,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=2&limit=20",
+        "query": {
+          "page": "2",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-11T15:23:46.946Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a01f696bf20759ccdb9e7c3",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.24.182.129",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "1",
+        "limit": "50"
+      },
+      "total": 30,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=1&limit=50",
+        "query": {
+          "scope": "all",
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-11T15:32:38.990Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a01f94587e51267ec3d595e",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 30,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-11T15:44:05.599Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a01f94587e51267ec3d5960",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 30,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-11T15:44:05.704Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a01f94c87e51267ec3d5968",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "2",
+        "limit": "20"
+      },
+      "total": 30,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=2&limit=20",
+        "query": {
+          "page": "2",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-11T15:44:12.167Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a04976e13b4a9a09490ae2b",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.24.182.129",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69fe09ff984edf3328e5ac4f",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fe09ff984edf3328e5ac4f/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:23:26.248Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0497d510886d764fe6e7ee",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fe09ff984edf3328e5ac4f",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fe09ff984edf3328e5ac4f/transactions?page=1&limit=50",
+        "query": {
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:25:09.235Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0497f410886d764fe6e7fc",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=50",
+        "query": {
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:25:40.122Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a04986210886d764fe6e826",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf383c094b6d0a11375ab",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf383c094b6d0a11375ab/transactions?page=1&limit=50",
+        "query": {
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:27:30.688Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0498b910886d764fe6e838",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf383c094b6d0a11375ab",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf383c094b6d0a11375ab/transactions?page=1&limit=50",
+        "query": {
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:28:57.549Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0498d810886d764fe6e85b",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=50",
+        "query": {
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:29:28.623Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a04992910886d764fe6e86a",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=50",
+        "query": {
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:30:49.203Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a04994110886d764fe6e87f",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf4cdc094b6d0a1137605",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf4cdc094b6d0a1137605/transactions?page=1&limit=50",
+        "query": {
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:31:13.529Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a04994510886d764fe6e88d",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf383c094b6d0a11375ab",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf383c094b6d0a11375ab/transactions?page=1&limit=50",
+        "query": {
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:31:17.290Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a04994910886d764fe6e89b",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf383c094b6d0a11375ab",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf383c094b6d0a11375ab/transactions?page=1&limit=50",
+        "query": {
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:31:21.230Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a04995810886d764fe6e8a9",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=50",
+        "query": {
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:31:36.570Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a04995d10886d764fe6e8b7",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=50",
+        "query": {
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:31:41.949Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a04999310886d764fe6e90c",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:32:35.478Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0499af10886d764fe6e91a",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fe09ff984edf3328e5ac4f",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fe09ff984edf3328e5ac4f/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:33:03.195Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0499e610886d764fe6e92c",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fe09ff984edf3328e5ac4f",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fe09ff984edf3328e5ac4f/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:33:58.100Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0499f810886d764fe6e93a",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fe09ff984edf3328e5ac4f",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fe09ff984edf3328e5ac4f/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:34:16.610Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0499ff10886d764fe6e948",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fe09ff984edf3328e5ac4f",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fe09ff984edf3328e5ac4f/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:34:23.047Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049a0210886d764fe6e956",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fe09ff984edf3328e5ac4f",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fe09ff984edf3328e5ac4f/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:34:26.835Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049a1510886d764fe6e964",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fe09ff984edf3328e5ac4f",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fe09ff984edf3328e5ac4f/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:34:45.372Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049a2710886d764fe6e9b2",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf4cdc094b6d0a1137605",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf4cdc094b6d0a1137605/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:35:03.016Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049a8910886d764fe6ea26",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:36:41.803Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049aac10886d764fe6ea4c",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:37:16.054Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049ab410886d764fe6ea5a",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:37:24.069Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049ac210886d764fe6ea68",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:37:38.219Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049b4310886d764fe6eac9",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:39:47.021Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049c2310886d764fe6eb23",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 30,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:43:31.405Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049c2310886d764fe6eb27",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 30,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:43:31.568Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049c3410886d764fe6eb3c",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:43:48.030Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049c6d10886d764fe6eb53",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:44:45.538Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a049c8a10886d764fe6ebcb",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.173.161.69",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-13T15:45:14.408Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b2f1a744f6367955e91cf",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:customerTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.25.193.131",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69f94f57a976a6f3a5d314ad",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/customers/69f94f57a976a6f3a5d314ad/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T15:24:10.920Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b2f1c744f6367955e91d7",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:customerTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.28.13.2",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69f94f57a976a6f3a5d314ad",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/customers/69f94f57a976a6f3a5d314ad/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T15:24:12.594Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b2f1e744f6367955e91df",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:customerTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.24.182.129",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "69f94f57a976a6f3a5d314ad",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/customers/69f94f57a976a6f3a5d314ad/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T15:24:14.338Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b3f117fc6e6fe1eeb4d01",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf4cdc094b6d0a1137605",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf4cdc094b6d0a1137605/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:32:17.028Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b3f417fc6e6fe1eeb4d4f",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:33:05.112Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b3f727fc6e6fe1eeb4d73",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:33:54.628Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b3f7f7fc6e6fe1eeb4d81",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:34:07.748Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b403b7fc6e6fe1eeb4d93",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:supplierTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "partyId": "69fdf691c094b6d0a113767c",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/suppliers/69fdf691c094b6d0a113767c/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:37:15.213Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b40967fc6e6fe1eeb4e10",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 39,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:38:46.334Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b40967fc6e6fe1eeb4e14",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 39,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=1&limit=20",
+        "query": {
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:38:46.488Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b40997fc6e6fe1eeb4e1c",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "page": "2",
+        "limit": "20"
+      },
+      "total": 39,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?page=2&limit=20",
+        "query": {
+          "page": "2",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:38:49.421Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b4113fad054a447e3a167",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.24.182.129",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "1",
+        "limit": "50"
+      },
+      "total": 39,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=1&limit=50",
+        "query": {
+          "scope": "all",
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:40:51.548Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b4119fad054a447e3a184",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.25.193.131",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "1",
+        "limit": "50"
+      },
+      "total": 39,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=1&limit=50",
+        "query": {
+          "scope": "all",
+          "page": "1",
+          "limit": "50"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:40:57.533Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b418a7fc6e6fe1eeb4ef5",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 39,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=1&limit=20",
+        "query": {
+          "scope": "all",
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:42:50.456Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b418a7fc6e6fe1eeb4efc",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 39,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=1&limit=20",
+        "query": {
+          "scope": "all",
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:42:50.816Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b418d7fc6e6fe1eeb4f04",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "2",
+        "limit": "20"
+      },
+      "total": 39,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=2&limit=20",
+        "query": {
+          "scope": "all",
+          "page": "2",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:42:53.523Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b41a87fc6e6fe1eeb4f0c",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "1",
+        "limit": "20",
+        "effect": "debit"
+      },
+      "total": 19,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=1&limit=20&effect=debit",
+        "query": {
+          "scope": "all",
+          "page": "1",
+          "limit": "20",
+          "effect": "debit"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:43:20.145Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b41aa7fc6e6fe1eeb4f14",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 39,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=1&limit=20",
+        "query": {
+          "scope": "all",
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:43:22.229Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b41ac7fc6e6fe1eeb4f1c",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "1",
+        "limit": "20",
+        "effect": "debit"
+      },
+      "total": 19,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=1&limit=20&effect=debit",
+        "query": {
+          "scope": "all",
+          "page": "1",
+          "limit": "20",
+          "effect": "debit"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:43:24.529Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b41ae7fc6e6fe1eeb4f24",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "::ffff:10.58.106.121",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 39,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=1&limit=20",
+        "query": {
+          "scope": "all",
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-18T16:43:26.927Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a13ebc458e8aa84a01c7d00",
+    "userId": "6a13eadb58e8aa84a01c7b73",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.30.75.4",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 43,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=1&limit=20",
+        "query": {
+          "scope": "all",
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-25T06:27:16.687Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a13ebc458e8aa84a01c7d02",
+    "userId": "6a13eadb58e8aa84a01c7b73",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.26.144.1",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 43,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=1&limit=20",
+        "query": {
+          "scope": "all",
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-25T06:27:16.740Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a13ebca58e8aa84a01c7d0a",
+    "userId": "6a13eadb58e8aa84a01c7b73",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:transactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.30.75.4",
+    "userAgent": "okhttp/4.12.0",
+    "meta": {
+      "query": {
+        "scope": "all",
+        "page": "1",
+        "limit": "20"
+      },
+      "total": 43,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/transactions?scope=all&page=1&limit=20",
+        "query": {
+          "scope": "all",
+          "page": "1",
+          "limit": "20"
+        }
+      }
+    },
+    "createdAt": "2026-05-25T06:27:22.710Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d2742f5316d861cbecadb",
+    "userId": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "action": "read:customerTransactions",
+    "entityType": "transaction",
+    "entityId": null,
+    "ip": "10.26.94.131",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "meta": {
+      "partyId": "6a1d2726f5316d861cbeca8b",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/partytransactions/customers/6a1d2726f5316d861cbeca8b/transactions?page=1&limit=100",
+        "query": {
+          "page": "1",
+          "limit": "100"
+        }
+      }
+    },
+    "createdAt": "2026-06-01T06:31:30.066Z",
+    "__v": 0
+  }
+]

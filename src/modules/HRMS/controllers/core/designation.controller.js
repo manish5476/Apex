@@ -2,6 +2,7 @@
 const mongoose     = require('mongoose');
 const Designation  = require('../../models/designation.model');
 const User         = require('../../../auth/core/user.model');
+const Employee     = require('../../models/employee.model');
 const catchAsync   = require('../../../../core/utils/api/catchAsync');
 const AppError     = require('../../../../core/utils/api/appError');
 const factory      = require('../../../../core/utils/api/handlerFactory');
@@ -126,7 +127,7 @@ exports.deleteDesignation = catchAsync(async (req, res, next) => {
   if (!designation) return next(new AppError('Designation not found', 404));
 
   const [employeeCount, referencedAsNext] = await Promise.all([
-    User.countDocuments({ organizationId: req.user.organizationId, 'employeeProfile.designationId': designation._id, isActive: true }),
+    Employee.countDocuments({ organizationId: req.user.organizationId, designationId: designation._id }),
     Designation.countDocuments({ organizationId: req.user.organizationId, nextDesignation: designation._id }),
   ]);
 
@@ -238,17 +239,17 @@ exports.getDesignationEmployees = catchAsync(async (req, res, next) => {
   const skip  = (page - 1) * limit;
 
   const query = {
-    organizationId:                          req.user.organizationId,
-    'employeeProfile.designationId':         designation._id,
-    isActive:                                req.query.isActive !== 'false',
+    organizationId: req.user.organizationId,
+    designationId:  designation._id,
   };
 
   const [employees, total] = await Promise.all([
-    User.find(query)
-      .select('name email phone avatar employeeProfile.departmentId employeeProfile.employeeId status')
-      .populate('employeeProfile.departmentId', 'name')
-      .skip(skip).limit(limit).sort({ name: 1 }),
-    User.countDocuments(query),
+    Employee.find(query)
+      .select('user departmentId employeeId designationId')
+      .populate('user', 'name email phone avatar status isActive')
+      .populate('departmentId', 'name')
+      .skip(skip).limit(limit).sort({ createdAt: -1 }),
+    Employee.countDocuments(query),
   ]);
 
   res.status(200).json({ status: 'success', results: employees.length, total, page, totalPages: Math.ceil(total / limit), data: { employees } });
@@ -293,15 +294,14 @@ exports.getPromotionEligible = catchAsync(async (req, res, next) => {
   const cutoff = new Date();
   cutoff.setFullYear(cutoff.getFullYear() - years);
 
-  const eligibleEmployees = await User.find({
-    organizationId:                        req.user.organizationId,
-    'employeeProfile.designationId':       designation._id,
-    'employeeProfile.dateOfJoining':       { $lte: cutoff },
-    isActive: true,
-    status:   'approved',
+  const eligibleEmployees = await Employee.find({
+    organizationId: req.user.organizationId,
+    designationId:  designation._id,
+    dateOfJoining:  { $lte: cutoff },
   })
-    .select('name employeeProfile.employeeId employeeProfile.dateOfJoining employeeProfile.departmentId')
-    .populate('employeeProfile.departmentId', 'name')
+    .select('user employeeId dateOfJoining departmentId designationId')
+    .populate('user', 'name status isActive')
+    .populate('departmentId', 'name')
     .lean();
 
   let nextDesignation = null;

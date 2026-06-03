@@ -1,0 +1,62 @@
+[
+  {
+    "_id": "69ecd82a02486535082c4dd6",
+    "name": "Administration",
+    "organizationId": "69ecd82a02486535082c4dd1",
+    "branchId": "69ecd82a02486535082c4dd2",
+    "parentDepartment": null,
+    "headOfDepartment": "69ecd82a02486535082c4dd4",
+    "employeeCount": 0,
+    "isActive": true,
+    "level": 0,
+    "createdAt": "2026-04-25T15:05:16.222Z",
+    "updatedAt": "2026-04-25T15:05:16.222Z",
+    "path": "/69ecd82a02486535082c4dd6",
+    "__v": 0
+  },
+  {
+    "_id": "69eef9935011d1bea4120a26",
+    "name": "Administration",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "parentDepartment": null,
+    "headOfDepartment": "69eef9935011d1bea4120a24",
+    "employeeCount": 0,
+    "isActive": true,
+    "level": 0,
+    "createdAt": "2026-04-27T05:52:20.991Z",
+    "updatedAt": "2026-04-27T05:52:20.991Z",
+    "path": "/69eef9935011d1bea4120a26",
+    "__v": 0
+  },
+  {
+    "_id": "6a0f4c038864bb2c1faf9aad",
+    "name": "Administration",
+    "organizationId": "6a0f4c038864bb2c1faf9aa8",
+    "branchId": "6a0f4c038864bb2c1faf9aa9",
+    "parentDepartment": null,
+    "headOfDepartment": "6a0f4c038864bb2c1faf9aab",
+    "employeeCount": 0,
+    "isActive": true,
+    "level": 0,
+    "createdAt": "2026-05-21T18:16:35.709Z",
+    "updatedAt": "2026-05-21T18:16:35.709Z",
+    "path": "/6a0f4c038864bb2c1faf9aad",
+    "__v": 0
+  },
+  {
+    "_id": "6a13ed6958e8aa84a01c7e5a",
+    "name": "Administration",
+    "organizationId": "6a13ed6958e8aa84a01c7e55",
+    "branchId": "6a13ed6958e8aa84a01c7e56",
+    "parentDepartment": null,
+    "headOfDepartment": "6a13ed6958e8aa84a01c7e58",
+    "employeeCount": 0,
+    "isActive": true,
+    "level": 0,
+    "createdAt": "2026-05-25T06:34:19.104Z",
+    "updatedAt": "2026-05-25T06:34:19.104Z",
+    "path": "/6a13ed6958e8aa84a01c7e5a",
+    "__v": 0
+  }
+]

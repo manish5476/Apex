@@ -1,0 +1,352 @@
+[
+  {
+    "_id": "69ecd82b02486535082c4ddf",
+    "user": "69ecd82a02486535082c4dd4",
+    "organizationId": "69ecd82a02486535082c4dd1",
+    "financialYear": "2026-2027",
+    "openingBalance": {
+      "casualLeave": 0,
+      "sickLeave": 0,
+      "earnedLeave": 0,
+      "compensatoryOff": 0,
+      "paidLeave": 0,
+      "unpaidLeave": 0,
+      "marriageLeave": 0,
+      "paternityLeave": 0,
+      "maternityLeave": 0,
+      "bereavementLeave": 0
+    },
+    "casualLeave": {
+      "total": 12,
+      "used": 0
+    },
+    "sickLeave": {
+      "total": 10,
+      "used": 0
+    },
+    "earnedLeave": {
+      "total": 15,
+      "used": 0
+    },
+    "compensatoryOff": {
+      "total": 0,
+      "used": 0
+    },
+    "paidLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "unpaidLeave": {
+      "total": 9999,
+      "used": 0
+    },
+    "marriageLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "paternityLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "maternityLeave": {
+      "total": 84,
+      "used": 0
+    },
+    "bereavementLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "accrualRate": {
+      "earnedLeavePerMonth": 1.5,
+      "sickLeavePerQuarter": 2.5
+    },
+    "carryForward": {
+      "maxDays": 30,
+      "isExpired": false
+    },
+    "recentTransactions": [],
+    "createdAt": "2026-04-25T15:05:20.947Z",
+    "updatedAt": "2026-04-25T15:05:20.947Z",
+    "__v": 0
+  },
+  {
+    "_id": "69eef9935011d1bea4120a2f",
+    "user": "69eef9935011d1bea4120a24",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "financialYear": "2026-2027",
+    "openingBalance": {
+      "casualLeave": 0,
+      "sickLeave": 0,
+      "earnedLeave": 0,
+      "compensatoryOff": 0,
+      "paidLeave": 0,
+      "unpaidLeave": 0,
+      "marriageLeave": 0,
+      "paternityLeave": 0,
+      "maternityLeave": 0,
+      "bereavementLeave": 0
+    },
+    "casualLeave": {
+      "total": 12,
+      "used": 0
+    },
+    "sickLeave": {
+      "total": 10,
+      "used": 0
+    },
+    "earnedLeave": {
+      "total": 15,
+      "used": 0
+    },
+    "compensatoryOff": {
+      "total": 0,
+      "used": 0
+    },
+    "paidLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "unpaidLeave": {
+      "total": 9999,
+      "used": 0
+    },
+    "marriageLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "paternityLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "maternityLeave": {
+      "total": 84,
+      "used": 0
+    },
+    "bereavementLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "accrualRate": {
+      "earnedLeavePerMonth": 1.5,
+      "sickLeavePerQuarter": 2.5
+    },
+    "carryForward": {
+      "maxDays": 30,
+      "isExpired": false
+    },
+    "recentTransactions": [],
+    "createdAt": "2026-04-27T05:52:23.827Z",
+    "updatedAt": "2026-04-27T05:52:23.827Z",
+    "__v": 0
+  },
+  {
+    "_id": "69f8bf6109064323ab45c1bf",
+    "user": "69f8bf5e09064323ab45c1bd",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "financialYear": "2026-2027",
+    "openingBalance": {
+      "casualLeave": 0,
+      "sickLeave": 0,
+      "earnedLeave": 0,
+      "compensatoryOff": 0,
+      "paidLeave": 0,
+      "unpaidLeave": 0,
+      "marriageLeave": 0,
+      "paternityLeave": 0,
+      "maternityLeave": 0,
+      "bereavementLeave": 0
+    },
+    "casualLeave": {
+      "total": 12,
+      "used": 0
+    },
+    "sickLeave": {
+      "total": 10,
+      "used": 0
+    },
+    "earnedLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "compensatoryOff": {
+      "total": 0,
+      "used": 0
+    },
+    "paidLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "unpaidLeave": {
+      "total": 9999,
+      "used": 0
+    },
+    "marriageLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "paternityLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "maternityLeave": {
+      "total": 84,
+      "used": 0
+    },
+    "bereavementLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "accrualRate": {
+      "earnedLeavePerMonth": 1.5,
+      "sickLeavePerQuarter": 2.5
+    },
+    "carryForward": {
+      "maxDays": 30,
+      "isExpired": false
+    },
+    "recentTransactions": [],
+    "createdAt": "2026-05-04T15:46:41.638Z",
+    "updatedAt": "2026-05-04T15:46:41.638Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0f4c038864bb2c1faf9ab6",
+    "user": "6a0f4c038864bb2c1faf9aab",
+    "organizationId": "6a0f4c038864bb2c1faf9aa8",
+    "financialYear": "2026-2027",
+    "openingBalance": {
+      "casualLeave": 0,
+      "sickLeave": 0,
+      "earnedLeave": 0,
+      "compensatoryOff": 0,
+      "paidLeave": 0,
+      "unpaidLeave": 0,
+      "marriageLeave": 0,
+      "paternityLeave": 0,
+      "maternityLeave": 0,
+      "bereavementLeave": 0
+    },
+    "casualLeave": {
+      "total": 12,
+      "used": 0
+    },
+    "sickLeave": {
+      "total": 10,
+      "used": 0
+    },
+    "earnedLeave": {
+      "total": 15,
+      "used": 0
+    },
+    "compensatoryOff": {
+      "total": 0,
+      "used": 0
+    },
+    "paidLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "unpaidLeave": {
+      "total": 9999,
+      "used": 0
+    },
+    "marriageLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "paternityLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "maternityLeave": {
+      "total": 84,
+      "used": 0
+    },
+    "bereavementLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "accrualRate": {
+      "earnedLeavePerMonth": 1.5,
+      "sickLeavePerQuarter": 2.5
+    },
+    "carryForward": {
+      "maxDays": 30,
+      "isExpired": false
+    },
+    "recentTransactions": [],
+    "createdAt": "2026-05-21T18:16:36.336Z",
+    "updatedAt": "2026-05-21T18:16:36.336Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a13ed6958e8aa84a01c7e63",
+    "user": "6a13ed6958e8aa84a01c7e58",
+    "organizationId": "6a13ed6958e8aa84a01c7e55",
+    "financialYear": "2026-2027",
+    "openingBalance": {
+      "casualLeave": 0,
+      "sickLeave": 0,
+      "earnedLeave": 0,
+      "compensatoryOff": 0,
+      "paidLeave": 0,
+      "unpaidLeave": 0,
+      "marriageLeave": 0,
+      "paternityLeave": 0,
+      "maternityLeave": 0,
+      "bereavementLeave": 0
+    },
+    "casualLeave": {
+      "total": 12,
+      "used": 0
+    },
+    "sickLeave": {
+      "total": 10,
+      "used": 0
+    },
+    "earnedLeave": {
+      "total": 15,
+      "used": 0
+    },
+    "compensatoryOff": {
+      "total": 0,
+      "used": 0
+    },
+    "paidLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "unpaidLeave": {
+      "total": 9999,
+      "used": 0
+    },
+    "marriageLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "paternityLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "maternityLeave": {
+      "total": 84,
+      "used": 0
+    },
+    "bereavementLeave": {
+      "total": 0,
+      "used": 0
+    },
+    "accrualRate": {
+      "earnedLeavePerMonth": 1.5,
+      "sickLeavePerQuarter": 2.5
+    },
+    "carryForward": {
+      "maxDays": 30,
+      "isExpired": false
+    },
+    "recentTransactions": [],
+    "createdAt": "2026-05-25T06:34:22.232Z",
+    "updatedAt": "2026-05-25T06:34:22.232Z",
+    "__v": 0
+  }
+]

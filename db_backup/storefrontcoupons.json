@@ -1,0 +1,19 @@
+[
+  {
+    "_id": "6a15c949af6196032a8e4410",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "code": "WELCOME100",
+    "discountType": "fixed",
+    "amount": 100,
+    "maxDiscount": null,
+    "minPurchaseAmount": 5000,
+    "startDate": "2026-05-26T00:00:00.000Z",
+    "endDate": "2026-05-30T00:00:00.000Z",
+    "usageLimit": 5,
+    "usedCount": 0,
+    "isActive": true,
+    "createdAt": "2026-05-26T16:24:41.818Z",
+    "updatedAt": "2026-05-26T16:24:41.818Z",
+    "__v": 0
+  }
+]

@@ -3,6 +3,7 @@ const mongoose    = require('mongoose');
 const GeoFence    = require('../../models/geoFencing.model');
 const AttendanceLog = require('../../models/attendanceLog.model');
 const User        = require('../../../auth/core/user.model');
+const Employee    = require('../../models/employee.model');
 const catchAsync  = require('../../../../core/utils/api/catchAsync');
 const AppError    = require('../../../../core/utils/api/appError');
 const factory     = require('../../../../core/utils/api/handlerFactory');
@@ -274,22 +275,23 @@ exports.assignToDepartments = catchAsync(async (req, res, next) => {
   geofence.updatedBy       = req.user._id;
   await geofence.save();
 
-  const users = await User.find({
+  const employees = await Employee.find({
     organizationId: req.user.organizationId,
-    'employeeProfile.departmentId': { $in: departmentIds },
-    isActive: true,
-  }).select('_id');
+    departmentId: { $in: departmentIds },
+  }).select('user');
 
-  if (users.length) {
+  const userIds = employees.map(e => e.user);
+
+  if (userIds.length) {
     await User.updateMany(
-      { _id: { $in: users.map(u => u._id) } },
+      { _id: { $in: userIds }, isActive: true },
       { $set: { 'attendanceConfig.geoFenceId': geofence._id, 'attendanceConfig.enforceGeoFence': true } }
     );
   }
 
   res.status(200).json({
     status: 'success',
-    data: { geofence: geofence.name, assignedDepartments: departmentIds.length, affectedUsers: users.length },
+    data: { geofence: geofence.name, assignedDepartments: departmentIds.length, affectedUsers: userIds.length },
   });
 });
 
@@ -367,12 +369,14 @@ exports.getViolations = catchAsync(async (req, res, next) => {
     { $match: matchStage },
     { $lookup: { from: 'users',     localField: 'user',               foreignField: '_id', as: 'userInfo'     } },
     { $unwind: '$userInfo' },
+    { $lookup: { from: 'employees', localField: 'user',               foreignField: 'user', as: 'empInfo'     } },
+    { $unwind: { path: '$empInfo', preserveNullAndEmptyArrays: true } },
     { $lookup: { from: 'geofences', localField: 'location.geofenceId', foreignField: '_id', as: 'geofenceInfo' } },
     {
       $project: {
         timestamp: 1,
         type:      1,
-        user: { _id: '$userInfo._id', name: '$userInfo.name', employeeId: '$userInfo.employeeProfile.employeeId' },
+        user: { _id: '$userInfo._id', name: '$userInfo.name', employeeId: '$empInfo.employeeId' },
         geofence: { _id: { $arrayElemAt: ['$geofenceInfo._id', 0] }, name: { $arrayElemAt: ['$geofenceInfo.name', 0] }, centerCoords: { $arrayElemAt: ['$geofenceInfo.center.coordinates', 0] } },
         // FIX BUG-GF-C02 — store coordinates for JS-side distance calculation
         userCoords: '$location.geoJson.coordinates',

@@ -1,0 +1,74 @@
+[
+  {
+    "_id": "6a146a4f48bdacaed8b12d20",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12d236973ec8a4c3c08559",
+    "productId": "69fdfa9170a57cefcea4f118",
+    "variantId": null,
+    "addedAt": "2026-05-25T15:27:11.549Z",
+    "createdAt": "2026-05-25T15:27:11.550Z",
+    "updatedAt": "2026-05-25T15:27:11.550Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a146a5248bdacaed8b12d2f",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12d236973ec8a4c3c08559",
+    "productId": "69fdfa9170a57cefcea4f123",
+    "variantId": null,
+    "addedAt": "2026-05-25T15:27:14.967Z",
+    "createdAt": "2026-05-25T15:27:14.967Z",
+    "updatedAt": "2026-05-25T15:27:14.967Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a146a5448bdacaed8b12d3e",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12d236973ec8a4c3c08559",
+    "productId": "6a1313672269a8ea633c23b2",
+    "variantId": null,
+    "addedAt": "2026-05-25T15:27:16.225Z",
+    "createdAt": "2026-05-25T15:27:16.225Z",
+    "updatedAt": "2026-05-25T15:27:16.225Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a15a7dd1b7dd098b90a2c16",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12ce320decbfd90ddbd65c",
+    "productId": "6a1313672269a8ea633c23b2",
+    "variantId": null,
+    "addedAt": "2026-05-26T14:02:05.173Z",
+    "createdAt": "2026-05-26T14:02:05.174Z",
+    "updatedAt": "2026-05-26T14:02:05.174Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a15b139282bb2b59a8f3720",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12ce320decbfd90ddbd65c",
+    "productId": "69fdfa9170a57cefcea4f124",
+    "variantId": null,
+    "addedAt": "2026-05-26T14:42:01.624Z",
+    "createdAt": "2026-05-26T14:42:01.624Z",
+    "updatedAt": "2026-05-26T14:42:01.624Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a15b13e282bb2b59a8f3767",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "storefrontId": null,
+    "customerId": "6a12ce320decbfd90ddbd65c",
+    "productId": "69fdfa9170a57cefcea4f127",
+    "variantId": null,
+    "addedAt": "2026-05-26T14:42:06.543Z",
+    "createdAt": "2026-05-26T14:42:06.544Z",
+    "updatedAt": "2026-05-26T14:42:06.544Z",
+    "__v": 0
+  }
+]

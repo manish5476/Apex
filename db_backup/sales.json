@@ -1,0 +1,785 @@
+[
+  {
+    "_id": "69f9ca5b2035f3b5e867edbc",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "69f9ca572035f3b5e867eda3",
+    "invoiceNumber": "INV-20260505-6569",
+    "customerId": "69f94f57a976a6f3a5d314ad",
+    "items": [
+      {
+        "productId": "69f6cc90bee3a73e6b914cfd",
+        "sku": "",
+        "name": "Acer laptop",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 100000,
+        "purchasePriceAtSale": 100000,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 100000
+      },
+      {
+        "productId": "69f6cc6cbee3a73e6b914ceb",
+        "sku": "",
+        "name": "Samsung s21",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 120000,
+        "purchasePriceAtSale": 120000,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 120000
+      }
+    ],
+    "subTotal": 220000,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 220000,
+    "paidAmount": 20000,
+    "dueAmount": 200000,
+    "paymentStatus": "partial",
+    "status": "active",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "meta": {
+      "fromInvoice": true,
+      "snapshotDate": "2026-05-05T10:45:47.249Z"
+    },
+    "createdAt": "2026-05-05T10:45:47.488Z",
+    "updatedAt": "2026-05-05T10:45:47.488Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0b2e40744f6367955e90b9",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a0b2e3d744f6367955e90a9",
+    "invoiceNumber": "INV-20260518-5929",
+    "customerId": "69f94f57a976a6f3a5d314ad",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f101",
+        "sku": "MACB-PRO-M3-14",
+        "name": "Apple MacBook Pro M3 14-inch",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 169900,
+        "purchasePriceAtSale": 140000,
+        "discount": 0,
+        "tax": 30582,
+        "lineTotal": 200482
+      }
+    ],
+    "subTotal": 169900,
+    "taxTotal": 30582,
+    "discountTotal": 0,
+    "totalAmount": 200482,
+    "paidAmount": 0,
+    "dueAmount": 200482,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "meta": {
+      "fromInvoice": true,
+      "snapshotDate": "2026-05-18T15:20:31.988Z"
+    },
+    "createdAt": "2026-05-18T15:20:32.223Z",
+    "updatedAt": "2026-05-18T15:20:32.223Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a18121240649b8f23ad5aa7",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a18121040649b8f23ad5a9b",
+    "invoiceNumber": "INV-20260528-2752",
+    "customerId": "69f94f57a976a6f3a5d314ad",
+    "items": [
+      {
+        "productId": "69f6cc90bee3a73e6b914cfd",
+        "sku": "",
+        "name": "Acer laptop",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 100000,
+        "purchasePriceAtSale": 100000,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 100000
+      }
+    ],
+    "subTotal": 100000,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 100000,
+    "paidAmount": 0,
+    "dueAmount": 100000,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "meta": {
+      "fromInvoice": true,
+      "snapshotDate": "2026-05-28T09:59:46.123Z"
+    },
+    "createdAt": "2026-05-28T09:59:46.349Z",
+    "updatedAt": "2026-05-28T09:59:46.349Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a182c9140649b8f23ad63c1",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a182c8f40649b8f23ad63b5",
+    "invoiceNumber": "INV-20260528-4344",
+    "customerId": "6a14828b784728eed2d38ab2",
+    "items": [
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "sku": "8901308729421",
+        "name": "Bajaj chtak ha",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 2000,
+        "purchasePriceAtSale": 1600,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 2000
+      }
+    ],
+    "subTotal": 2000,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 2000,
+    "paidAmount": 0,
+    "dueAmount": 2000,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "meta": {
+      "fromInvoice": true,
+      "snapshotDate": "2026-05-28T11:52:49.435Z"
+    },
+    "createdAt": "2026-05-28T11:52:49.667Z",
+    "updatedAt": "2026-05-28T11:52:49.667Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a184f9d9c46344e81623270",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a184f9d9c46344e8162325b",
+    "invoiceNumber": "INV-20260528-6810",
+    "customerId": "69f94f57a976a6f3a5d314ad",
+    "items": [
+      {
+        "productId": "69f6cc90bee3a73e6b914cfd",
+        "sku": "",
+        "name": "Acer laptop",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 100000,
+        "purchasePriceAtSale": 100000,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 100000
+      }
+    ],
+    "subTotal": 100000,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 100000,
+    "paidAmount": 100000,
+    "dueAmount": 0,
+    "paymentStatus": "paid",
+    "status": "active",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "meta": {
+      "fromInvoice": true,
+      "snapshotDate": "2026-05-28T14:22:21.636Z"
+    },
+    "createdAt": "2026-05-28T14:22:21.679Z",
+    "updatedAt": "2026-05-28T14:22:21.679Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d9328baeb18f8c174ae79",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1d9328baeb18f8c174ae6f",
+    "invoiceNumber": "INV-000001",
+    "customerId": "6a1888effc6e83c950d5efea",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f102",
+        "sku": "",
+        "name": "Dell Alienware m16 Gaming Laptop",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 189999,
+        "purchasePriceAtSale": 165000,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 189999
+      }
+    ],
+    "subTotal": 189999,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 189999,
+    "paidAmount": 0,
+    "dueAmount": 189999,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260524-QQSIWTC",
+      "orderRef": "6a12ce320decbfd90ddbd663"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a12ce320decbfd90ddbd663",
+    "createdAt": "2026-06-01T14:11:52.571Z",
+    "updatedAt": "2026-06-01T14:11:52.571Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d932abaeb18f8c174aebe",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1d932abaeb18f8c174aeb8",
+    "invoiceNumber": "INV-000002",
+    "customerId": "6a14828b784728eed2d38ab2",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f118",
+        "sku": "",
+        "name": "Bose Smart Soundbar 900",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 84900,
+        "purchasePriceAtSale": 65000,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 84900
+      }
+    ],
+    "subTotal": 84900,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 84900,
+    "paidAmount": 0,
+    "dueAmount": 84900,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260524-4LKHLI3",
+      "orderRef": "6a12d264973ec8a4c3c08608"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a12d264973ec8a4c3c08608",
+    "createdAt": "2026-06-01T14:11:54.184Z",
+    "updatedAt": "2026-06-01T14:11:54.184Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d932bbaeb18f8c174aefb",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1d932bbaeb18f8c174aef4",
+    "invoiceNumber": "INV-000003",
+    "customerId": "6a14828b784728eed2d38ab2",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f102",
+        "sku": "",
+        "name": "Dell Alienware m16 Gaming Laptop",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 189999,
+        "purchasePriceAtSale": 165000,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 189999
+      }
+    ],
+    "subTotal": 189999,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 189999,
+    "paidAmount": 0,
+    "dueAmount": 189999,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260524-UFKDKXB",
+      "orderRef": "6a12d4d6e86484639cf3f71d"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a12d4d6e86484639cf3f71d",
+    "createdAt": "2026-06-01T14:11:55.277Z",
+    "updatedAt": "2026-06-01T14:11:55.277Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d932cbaeb18f8c174af26",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1d932cbaeb18f8c174af20",
+    "invoiceNumber": "INV-000004",
+    "customerId": "6a14828b784728eed2d38ab2",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f121",
+        "sku": "",
+        "name": "Bosch 13 Place Dishwasher",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 45990,
+        "purchasePriceAtSale": 35000,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 45990
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f123",
+        "sku": "",
+        "name": "Havells Nutri Art Air Fryer",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 6999,
+        "purchasePriceAtSale": 5200,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 6999
+      },
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "sku": "",
+        "name": "Bajaj chtak ha",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 2000,
+        "purchasePriceAtSale": 1600,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 2000
+      }
+    ],
+    "subTotal": 54989,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 54989,
+    "paidAmount": 0,
+    "dueAmount": 54989,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260525-IBRB3RP",
+      "orderRef": "6a146648eada13b7b48972e4"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a146648eada13b7b48972e4",
+    "createdAt": "2026-06-01T14:11:56.156Z",
+    "updatedAt": "2026-06-01T14:11:56.156Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d932dbaeb18f8c174af42",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1d932cbaeb18f8c174af3e",
+    "invoiceNumber": "INV-000005",
+    "customerId": "6a14828b784728eed2d38ab2",
+    "items": [
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "sku": "",
+        "name": "Bajaj chtak ha",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 2000,
+        "purchasePriceAtSale": 1600,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 2000
+      }
+    ],
+    "subTotal": 2000,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 2000,
+    "paidAmount": 0,
+    "dueAmount": 2000,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260526-L19NPIY",
+      "orderRef": "6a15cbd9af6196032a8e4694"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a15cbd9af6196032a8e4694",
+    "createdAt": "2026-06-01T14:11:57.021Z",
+    "updatedAt": "2026-06-01T14:11:57.021Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d932dbaeb18f8c174af5e",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1d932dbaeb18f8c174af5a",
+    "invoiceNumber": "INV-000006",
+    "customerId": "69f94f57a976a6f3a5d314ad",
+    "items": [
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "sku": "",
+        "name": "Bajaj chtak ha",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 2000,
+        "purchasePriceAtSale": 1600,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 2000
+      }
+    ],
+    "subTotal": 2000,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 2000,
+    "paidAmount": 0,
+    "dueAmount": 2000,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260527-42WQLV3",
+      "orderRef": "6a16ce8909cb041575245ca6"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a16ce8909cb041575245ca6",
+    "createdAt": "2026-06-01T14:11:57.771Z",
+    "updatedAt": "2026-06-01T14:11:57.771Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d932ebaeb18f8c174af7a",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1d932ebaeb18f8c174af76",
+    "invoiceNumber": "INV-000007",
+    "customerId": "6a1888effc6e83c950d5efea",
+    "items": [
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "sku": "",
+        "name": "Bajaj chtak ha",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 2000,
+        "purchasePriceAtSale": 1600,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 2000
+      }
+    ],
+    "subTotal": 2000,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 2000,
+    "paidAmount": 0,
+    "dueAmount": 2000,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260528-B-YQ0YW",
+      "orderRef": "6a187b227831db19f48f774c"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a187b227831db19f48f774c",
+    "createdAt": "2026-06-01T14:11:58.910Z",
+    "updatedAt": "2026-06-01T14:11:58.910Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d9335baeb18f8c174af97",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1d9335baeb18f8c174af92",
+    "invoiceNumber": "INV-000008",
+    "customerId": "6a1abc4381b18e2ef792fb33",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f118",
+        "sku": "",
+        "name": "Bose Smart Soundbar 900",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 84900,
+        "purchasePriceAtSale": 65000,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 84900
+      },
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "sku": "",
+        "name": "Bajaj chtak ha",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 2000,
+        "purchasePriceAtSale": 1600,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 2000
+      }
+    ],
+    "subTotal": 86900,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 86900,
+    "paidAmount": 0,
+    "dueAmount": 86900,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260529-MIN2AJM",
+      "orderRef": "6a190c1db4efe54438a5fb14"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a190c1db4efe54438a5fb14",
+    "createdAt": "2026-06-01T14:12:05.277Z",
+    "updatedAt": "2026-06-01T14:12:05.277Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d96b617a34b4d78cfbcac",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1d96b617a34b4d78cfbca9",
+    "invoiceNumber": "INV-000009",
+    "customerId": "6a1888effc6e83c950d5efea",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f118",
+        "sku": "",
+        "name": "Bose Smart Soundbar 900",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 84900,
+        "purchasePriceAtSale": 65000,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 84900
+      }
+    ],
+    "subTotal": 84900,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 84900,
+    "paidAmount": 84900,
+    "dueAmount": 0,
+    "paymentStatus": "paid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260529-YAVDHNI",
+      "orderRef": "6a19c9957f428dcebdd3bd17"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a19c9957f428dcebdd3bd17",
+    "createdAt": "2026-06-01T14:27:02.959Z",
+    "updatedAt": "2026-06-01T14:27:02.959Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d96b817a34b4d78cfbd00",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1d96b817a34b4d78cfbcfe",
+    "invoiceNumber": "INV-000010",
+    "customerId": "6a1d2726f5316d861cbeca8b",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f118",
+        "sku": "",
+        "name": "Bose Smart Soundbar 900",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 84900,
+        "purchasePriceAtSale": 65000,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 84900
+      },
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "sku": "",
+        "name": "Bajaj chtak ha",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 2000,
+        "purchasePriceAtSale": 1600,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 2000
+      }
+    ],
+    "subTotal": 86900,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 86900,
+    "paidAmount": 0,
+    "dueAmount": 86900,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260601-LNH7WZE",
+      "orderRef": "6a1d267bf5316d861cbec951"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a1d267bf5316d861cbec951",
+    "createdAt": "2026-06-01T14:27:04.189Z",
+    "updatedAt": "2026-06-01T14:27:04.189Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d9b3f8315436c55e71d83",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1d9b3f8315436c55e71d7f",
+    "invoiceNumber": "INV-000011",
+    "customerId": "6a1888effc6e83c950d5efea",
+    "items": [
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "sku": "",
+        "name": "Bajaj chtak ha",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 2000,
+        "purchasePriceAtSale": 1600,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 2000
+      }
+    ],
+    "subTotal": 2000,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 2000,
+    "paidAmount": 0,
+    "dueAmount": 2000,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260601-9-BJDVM",
+      "orderRef": "6a1d9b3e8315436c55e71d78"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a1d9b3e8315436c55e71d78",
+    "createdAt": "2026-06-01T14:46:23.380Z",
+    "updatedAt": "2026-06-01T14:46:23.380Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1d9bfc8315436c55e720a7",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1d9bfc8315436c55e720a3",
+    "invoiceNumber": "INV-000012",
+    "customerId": "6a1888effc6e83c950d5efea",
+    "items": [
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "sku": "",
+        "name": "Bajaj chtak ha",
+        "qty": 1,
+        "originalQty": 1,
+        "rate": 2000,
+        "purchasePriceAtSale": 1600,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 2000
+      }
+    ],
+    "subTotal": 2000,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 2000,
+    "paidAmount": 0,
+    "dueAmount": 2000,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260601-F9MXYI9",
+      "orderRef": "6a1d9bfb8315436c55e7209c"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a1d9bfb8315436c55e7209c",
+    "createdAt": "2026-06-01T14:49:32.180Z",
+    "updatedAt": "2026-06-01T14:49:32.180Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1da1588315436c55e725a6",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "invoiceId": "6a1da1578315436c55e725a2",
+    "invoiceNumber": "INV-000013",
+    "customerId": "6a1888effc6e83c950d5efea",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f123",
+        "sku": "",
+        "name": "Havells Nutri Art Air Fryer",
+        "qty": 2,
+        "originalQty": 2,
+        "rate": 6999,
+        "purchasePriceAtSale": 5200,
+        "discount": 0,
+        "tax": 0,
+        "lineTotal": 13998
+      }
+    ],
+    "subTotal": 13998,
+    "taxTotal": 0,
+    "discountTotal": 0,
+    "totalAmount": 13998,
+    "paidAmount": 0,
+    "dueAmount": 13998,
+    "paymentStatus": "unpaid",
+    "status": "active",
+    "createdBy": null,
+    "meta": {
+      "source": "storefront",
+      "orderNumber": "SF-20260601-KLNNBXO",
+      "orderRef": "6a1da1578315436c55e7259b"
+    },
+    "source": "storefront",
+    "storefrontOrderId": "6a1da1578315436c55e7259b",
+    "createdAt": "2026-06-01T15:12:24.134Z",
+    "updatedAt": "2026-06-01T15:12:24.134Z",
+    "__v": 0
+  }
+]

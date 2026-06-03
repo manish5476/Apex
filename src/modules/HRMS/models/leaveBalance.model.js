@@ -12,6 +12,7 @@ const LEAVE_TYPES = [
 const leaveBalanceSchema = new mongoose.Schema({
   user:           { type: mongoose.Schema.Types.ObjectId, ref: 'User',         required: true, index: true },
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
+  branchId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', index: true },
 
   financialYear: { type: String, required: true }, // "2024-2025"
 
@@ -88,6 +89,7 @@ const leaveBalanceSchema = new mongoose.Schema({
 leaveBalanceSchema.index({ user: 1, financialYear: 1 }, { unique: true });
 // FIX BUG-LB-05 [LOW] — Added org+year compound index for HR bulk queries
 leaveBalanceSchema.index({ organizationId: 1, financialYear: 1 });
+leaveBalanceSchema.index({ organizationId: 1, branchId: 1, financialYear: 1 });
 
 // ─────────────────────────────────────────────
 //  Virtuals
@@ -130,13 +132,14 @@ leaveBalanceSchema.virtual('availableLeaves').get(function () {
  * @param {string} description
  * @param {ObjectId} userId
  */
-leaveBalanceSchema.methods.creditLeave = async function (leaveType, amount, referenceId, description, userId) {
+leaveBalanceSchema.methods.creditLeave = async function (leaveType, amount, referenceId, description, userId, session = null) {
   // FIX BUG-LB-01 — Validate leaveType before using it as a dynamic property key
   if (!LEAVE_TYPES.includes(leaveType)) {
     throw new Error(`Invalid leaveType: '${leaveType}'. Must be one of: ${LEAVE_TYPES.join(', ')}`);
   }
   if (amount <= 0) throw new Error('Credit amount must be positive');
 
+  const balanceBefore = this[leaveType].total - this[leaveType].used;
   this[leaveType].total += amount;
 
   const transaction = {
@@ -156,7 +159,35 @@ leaveBalanceSchema.methods.creditLeave = async function (leaveType, amount, refe
   }
 
   this.updatedBy = userId;
-  await this.save();
+  if (session) {
+    await this.save({ session });
+  } else {
+    await this.save();
+  }
+
+  const LeaveTransaction = getLeaveTransactionModel();
+  const ledgerEntry = {
+    user: this.user,
+    organizationId: this.organizationId,
+    branchId: this.branchId,
+    leaveBalanceId: this._id,
+    financialYear: this.financialYear,
+    leaveType,
+    changeType: 'credited',
+    amount,
+    balanceBefore,
+    runningBalance: transaction.runningBalance,
+    referenceType: referenceId ? 'LeaveRequest' : 'ManualAdjustment',
+    referenceId,
+    description,
+    processedBy: userId,
+  };
+
+  if (session) {
+    await LeaveTransaction.create([ledgerEntry], { session });
+  } else {
+    await LeaveTransaction.create(ledgerEntry);
+  }
 
   return transaction;
 };
@@ -170,16 +201,16 @@ leaveBalanceSchema.methods.creditLeave = async function (leaveType, amount, refe
  * @param {string} description
  * @param {ObjectId} userId
  */
-leaveBalanceSchema.methods.debitLeave = async function (leaveType, amount, referenceId, description, userId) {
+leaveBalanceSchema.methods.debitLeave = async function (leaveType, amount, referenceId, description, userId, session = null) {
   if (!LEAVE_TYPES.includes(leaveType)) {
     throw new Error(`Invalid leaveType: '${leaveType}'. Must be one of: ${LEAVE_TYPES.join(', ')}`);
   }
   if (amount <= 0) throw new Error('Debit amount must be positive');
 
   // FIX BUG-LB-03 — After fixing unpaidLeave.total, this calculation is now safe for all types
-  const available = this[leaveType].total - this[leaveType].used;
-  if (available < amount) {
-    throw new Error(`Insufficient ${leaveType} balance. Available: ${available}, Requested: ${amount}`);
+  const balanceBefore = this[leaveType].total - this[leaveType].used;
+  if (balanceBefore < amount) {
+    throw new Error(`Insufficient ${leaveType} balance. Available: ${balanceBefore}, Requested: ${amount}`);
   }
 
   this[leaveType].used += amount;
@@ -200,28 +231,48 @@ leaveBalanceSchema.methods.debitLeave = async function (leaveType, amount, refer
   }
 
   this.updatedBy = userId;
-  await this.save();
+  if (session) {
+    await this.save({ session });
+  } else {
+    await this.save();
+  }
+
+  const LeaveTransaction = getLeaveTransactionModel();
+  const ledgerEntry = {
+    user: this.user,
+    organizationId: this.organizationId,
+    branchId: this.branchId,
+    leaveBalanceId: this._id,
+    financialYear: this.financialYear,
+    leaveType,
+    changeType: 'debited',
+    amount,
+    balanceBefore,
+    runningBalance: transaction.runningBalance,
+    referenceType: referenceId ? 'LeaveRequest' : 'ManualAdjustment',
+    referenceId,
+    description,
+    processedBy: userId,
+  };
+
+  if (session) {
+    await LeaveTransaction.create([ledgerEntry], { session });
+  } else {
+    await LeaveTransaction.create(ledgerEntry);
+  }
 
   return transaction;
 };
 
 module.exports = mongoose.model('LeaveBalance', leaveBalanceSchema);
 
+function getLeaveTransactionModel() {
+  return mongoose.models.LeaveTransaction || require('./leaveTransaction.model');
+}
+
 /*
- * NOTE [BUG-LB-04]: For full transaction history, create a separate collection:
- *
- * const leaveTransactionSchema = new mongoose.Schema({
- *   userId:        { type: ObjectId, ref: 'User',         required: true, index: true },
- *   organizationId:{ type: ObjectId, ref: 'Organization', required: true, index: true },
- *   financialYear: { type: String,   required: true },
- *   leaveType:     String,
- *   changeType:    { type: String, enum: ['credited','debited','adjusted','expired','carry_forward'] },
- *   amount:        Number,
- *   runningBalance:Number,
- *   referenceId:   { type: ObjectId, ref: 'LeaveRequest' },
- *   description:   String,
- *   processedBy:   { type: ObjectId, ref: 'User' },
- * }, { timestamps: true });
+ * NOTE [BUG-LB-04]: Full transaction history now lives in LeaveTransaction.
+ * recentTransactions remains a last-20 cache for fast employee/profile views.
  */
 
 

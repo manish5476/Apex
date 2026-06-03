@@ -284,11 +284,11 @@ exports.getAttendanceDashboard = catchAsync(async (req, res, next) => {
   // Department-wise breakdown
   const deptWise = await AttendanceDaily.aggregate([
     { $match: { organizationId: orgId, date: { $gte: dayStart, $lte: dayEnd } } },
-    { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'userInfo' } },
-    { $unwind: '$userInfo' },
+    { $lookup: { from: 'employees', localField: 'user', foreignField: 'user', as: 'empInfo' } },
+    { $unwind: '$empInfo' },
     {
       $group: {
-        _id:     '$userInfo.employeeProfile.departmentId',
+        _id:     '$empInfo.departmentId',
         total:   { $sum: 1 },
         present: { $sum: { $cond: [{ $in: ['$status', ['present','late','half_day']] }, 1, 0] } },
         absent:  { $sum: { $cond: [{ $eq: ['$status', 'absent'] }, 1, 0] } },
@@ -442,12 +442,14 @@ exports.getAttendanceReport = catchAsync(async (req, res, next) => {
     { $match: matchStage },
     { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'userInfo' } },
     { $unwind: '$userInfo' },
+    { $lookup: { from: 'employees', localField: 'user', foreignField: 'user', as: 'empInfo' } },
+    { $unwind: '$empInfo' },
   ];
 
   if (departmentId) {
     // FIX BUG-AD-C03 [CRITICAL] — Added `new` keyword. Mongoose 6+ requires it.
     pipeline.push({
-      $match: { 'userInfo.employeeProfile.departmentId': new mongoose.Types.ObjectId(departmentId) },
+      $match: { 'empInfo.departmentId': new mongoose.Types.ObjectId(departmentId) },
     });
   }
 
@@ -462,8 +464,8 @@ exports.getAttendanceReport = catchAsync(async (req, res, next) => {
       $group: {
         _id:            '$userInfo._id',
         employeeName:   { $first: '$userInfo.name' },
-        employeeId:     { $first: '$userInfo.employeeProfile.employeeId' },
-        departmentId:   { $first: '$userInfo.employeeProfile.departmentId' },
+        employeeId:     { $first: '$empInfo.employeeId' },
+        departmentId:   { $first: '$empInfo.departmentId' },
         totalDays:      { $sum: 1 },
         present:        { $sum: { $cond: [{ $in: ['$status', ['present','late','half_day']] }, 1, 0] } },
         absent:         { $sum: { $cond: [{ $eq: ['$status', 'absent'] }, 1, 0] } },

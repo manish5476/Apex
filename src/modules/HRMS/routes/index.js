@@ -6,6 +6,7 @@ const hrmsResponseFormatter = require('../middleware/responseFormatter');
 // Import HRMS route modules
 const departmentRoutes = require('./core/department.routes');
 const designationRoutes = require('./core/designation.routes');
+const employeeRoutes = require('./core/employee.routes');
 const shiftRoutes = require('./core/shift.routes');
 const shiftGroupRoutes = require('./core/shiftGroup.routes');
 const leaveRequestRoutes = require('./leave/leaveRequest.routes');
@@ -31,6 +32,7 @@ router.use(hrmsResponseFormatter);
 // Mount all HRMS routes under /hrms
 router.use('/departments', departmentRoutes);
 router.use('/designations', designationRoutes);
+router.use('/employees', employeeRoutes);
 router.use('/shifts', shiftRoutes);
 router.use('/shift-groups', shiftGroupRoutes);
 router.use('/leave-requests', leaveRequestRoutes);

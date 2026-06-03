@@ -13,6 +13,7 @@ const Shift = require('../../HRMS/models/shift.model');
 const LeaveBalance = require('../../HRMS/models/leaveBalance.model');
 const Department = require('../../HRMS/models/department.model');
 const Designation = require('../../HRMS/models/designation.model');
+const Employee = require('../../HRMS/models/employee.model');
 const { emitToOrg, emitToUser } = require('../../../socketHandlers/socket');
 const { seedDefaultStorefront } = require('../../../PublicModules/services/storefront-onboarding.service');
 
@@ -129,13 +130,17 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
       isSuperAdmin: true,
       status: 'approved',
       isActive: true,
-      employeeProfile: {
-        employeeId: 'EMP-001',
-        departmentId: deptId,
-        designationId: desigId,
-        dateOfJoining: new Date(),
-        reportingManagerId: null,
-      },
+    });
+
+    const newOwnerEmployee = new Employee({
+      user: ownerId,
+      organizationId: orgId,
+      employeeId: 'EMP-001',
+      departmentId: deptId,
+      designationId: desigId,
+      dateOfJoining: new Date(),
+      reportingManagerId: null,
+      employmentType: 'permanent',
       attendanceConfig: {
         shiftId: shiftId,
         isAttendanceEnabled: true,
@@ -162,6 +167,7 @@ exports.createOrganization = catchAsync(async (req, res, next) => {
     await defaultDept.save({ session });
     await defaultDesig.save({ session });
     await newOwner.save({ session });
+    await newOwnerEmployee.save({ session });
     await leaveBalance.save({ session });
 
     // Seed Default Storefront for this new organization
@@ -266,6 +272,22 @@ exports.approveMember = catchAsync(async (req, res, next) => {
   user.role = roleId;
   user.branchId = branchId;
   await user.save();
+
+  // Create an Employee record for the approved user if it doesn't exist
+  const existingEmployee = await Employee.findOne({ user: user._id });
+  if (!existingEmployee) {
+    await Employee.create({
+      user: user._id,
+      organizationId: req.user.organizationId,
+      employmentType: 'permanent',
+      attendanceConfig: {
+        isAttendanceEnabled: true,
+        allowWebPunch: false,
+        allowMobilePunch: true,
+        enforceGeoFence: false,
+      },
+    });
+  }
 
   const userResponse = user.toObject();
   userResponse.permissions = role.permissions || [];

@@ -1,0 +1,115 @@
+[
+  {
+    "_id": "69eef9935011d1bea4120a21",
+    "name": "Shivam Electronics",
+    "uniqueShopId": "SHIVAM",
+    "owner": "69eef9935011d1bea4120a24",
+    "mainBranch": "69eef9935011d1bea4120a22",
+    "branches": [
+      "69eef9935011d1bea4120a22"
+    ],
+    "primaryEmail": "msms5476mmmm@gmail.com",
+    "primaryPhone": "8160966299",
+    "settings": {
+      "currency": "INR",
+      "timezone": "Asia/Kolkata",
+      "financialYearStart": "April"
+    },
+    "features": {
+      "whatsappEnabled": true
+    },
+    "whatsappWallet": {
+      "credits": 50
+    },
+    "superAdminRole": "superadmin",
+    "isActive": true,
+    "createdAt": "2026-04-27T05:52:19.757Z",
+    "updatedAt": "2026-06-03T11:54:28.781Z",
+    "__v": 0,
+    "platformDelivery": {
+      "enabled": true
+    }
+  },
+  {
+    "_id": "6a0f4649ed7b37844589fa66",
+    "name": "Apex Infinity Store",
+    "uniqueShopId": "APEX INFINITY",
+    "owner": "6a0f4649ed7b37844589fa65",
+    "branches": [],
+    "primaryEmail": "hello@apexinfinity.com",
+    "primaryPhone": "+1 (555) 123-4567",
+    "settings": {
+      "currency": "INR",
+      "timezone": "Asia/Kolkata",
+      "financialYearStart": "April"
+    },
+    "features": {
+      "whatsappEnabled": true
+    },
+    "whatsappWallet": {
+      "credits": 0
+    },
+    "superAdminRole": "superadmin",
+    "isActive": true,
+    "createdAt": "2026-05-21T17:52:09.228Z",
+    "updatedAt": "2026-05-21T17:52:09.228Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0f4c038864bb2c1faf9aa8",
+    "name": "Manish SIngh",
+    "uniqueShopId": "MANISH",
+    "owner": "6a0f4c038864bb2c1faf9aab",
+    "mainBranch": "6a0f4c038864bb2c1faf9aa9",
+    "branches": [
+      "6a0f4c038864bb2c1faf9aa9"
+    ],
+    "gstNumber": "",
+    "primaryEmail": "msms5476@gmail.com",
+    "primaryPhone": "816096699",
+    "settings": {
+      "currency": "INR",
+      "timezone": "Asia/Kolkata",
+      "financialYearStart": "April"
+    },
+    "features": {
+      "whatsappEnabled": true
+    },
+    "whatsappWallet": {
+      "credits": 50
+    },
+    "superAdminRole": "superadmin",
+    "isActive": true,
+    "createdAt": "2026-05-21T18:16:35.393Z",
+    "updatedAt": "2026-05-21T18:16:35.393Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a13ed6958e8aa84a01c7e55",
+    "name": "Patil",
+    "uniqueShopId": "PATIL",
+    "owner": "6a13ed6958e8aa84a01c7e58",
+    "mainBranch": "6a13ed6958e8aa84a01c7e56",
+    "branches": [
+      "6a13ed6958e8aa84a01c7e56"
+    ],
+    "primaryEmail": "dhanrajpatil587@gmail.com",
+    "primaryPhone": "8866713191",
+    "settings": {
+      "currency": "INR",
+      "timezone": "Asia/Kolkata",
+      "financialYearStart": "April"
+    },
+    "features": {
+      "whatsappEnabled": true
+    },
+    "whatsappWallet": {
+      "credits": 50
+    },
+    "superAdminRole": "superadmin",
+    "isActive": true,
+    "createdAt": "2026-05-25T06:34:17.904Z",
+    "updatedAt": "2026-05-25T06:34:17.904Z",
+    "__v": 0
+  }
+]

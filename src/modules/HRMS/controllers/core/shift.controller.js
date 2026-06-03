@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Shift = require('../../models/shift.model');
 const ShiftGroup = require('../../models/shiftGroup.model');
 const User = require('../../../auth/core/user.model');
+const Employee = require('../../models/employee.model');
 const catchAsync = require('../../../../core/utils/api/catchAsync');
 const AppError = require('../../../../core/utils/api/appError');
 const factory = require('../../../../core/utils/api/handlerFactory');
@@ -231,27 +232,26 @@ exports.getShiftAssignments = catchAsync(async (req, res, next) => {
   
   const query = {
     organizationId: req.user.organizationId,
-    'attendanceConfig.shiftId': shift._id,
-    isActive: true
+    'attendanceConfig.shiftId': shift._id
   };
   
-  const [users, total] = await Promise.all([
-    User.find(query)
-      .select('name employeeProfile.employeeId employeeProfile.departmentId attendanceConfig')
-      .populate('employeeProfile.departmentId', 'name')
+  const [employees, total] = await Promise.all([
+    Employee.find(query)
+      .select('user employeeId departmentId attendanceConfig')
+      .populate('user', 'name')
+      .populate('departmentId', 'name')
       .skip(skip)
-      .limit(limit)
-      .sort('name'),
-    User.countDocuments(query)
+      .limit(limit),
+    Employee.countDocuments(query)
   ]);
   
   res.status(200).json({
     status: 'success',
-    results: users.length,
+    results: employees.length,
     total,
     page,
     totalPages: Math.ceil(total / limit),
-    data: { users }
+    data: { users: employees }
   });
 });
 
@@ -320,11 +320,9 @@ exports.getShiftCoverage = catchAsync(async (req, res, next) => {
   // Get users per shift
   const coverage = await Promise.all(
     shifts.map(async (shift) => {
-      const count = await User.countDocuments({
+      const count = await Employee.countDocuments({
         organizationId: req.user.organizationId,
-        'attendanceConfig.shiftId': shift._id,
-        isActive: true,
-        status: 'approved'
+        'attendanceConfig.shiftId': shift._id
       });
       
       // Check if it's a working day for this shift
@@ -468,8 +466,8 @@ exports.validateShiftAssignment = catchAsync(async (req, res, next) => {
   const isWorkingDay = !shift.weeklyOffs?.includes(dayOfWeek);
   
   // Check if user already has shift
-  const user = await User.findById(userId);
-  const currentShiftId = user?.attendanceConfig?.shiftId;
+  const employee = await Employee.findOne({ user: userId });
+  const currentShiftId = employee?.attendanceConfig?.shiftId;
   
   const warnings = [];
   

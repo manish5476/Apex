@@ -1,0 +1,44 @@
+[
+  {
+    "_id": "6a180147ae73676075903687",
+    "name": "manish singh",
+    "phone": "8160966299",
+    "password": "$2b$12$/5X.9FdWKmovpLIOColuQOTdQQ4uKthSdgq7ca/GoeGl.ISysZxCa",
+    "city": "surat",
+    "state": "gujarat",
+    "zipCode": "394327",
+    "isActive": true,
+    "status": "available",
+    "createdAt": "2026-05-28T08:48:07.337Z",
+    "updatedAt": "2026-05-28T08:48:07.337Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1a783d414f65cfc4cd147f",
+    "name": "manish singh",
+    "phone": "7878787878",
+    "password": "$2b$12$gFnDV1sUTByVMpTFd2qenezvg5AA3gpocLRZ404bgcZn6X7W3MBaK",
+    "city": "curat",
+    "state": "gujarat",
+    "zipCode": "394327",
+    "isActive": true,
+    "status": "available",
+    "createdAt": "2026-05-30T05:40:13.692Z",
+    "updatedAt": "2026-05-30T05:40:13.692Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1a7aee414f65cfc4cd156d",
+    "name": "manish",
+    "phone": "7777777777",
+    "password": "$2b$12$rSz98JOK2LVwVL3KkC9T/eS3mlA7K6/gWcDJwBI2Shw5RlIZLI27K",
+    "city": "curat",
+    "state": "gujarat",
+    "zipCode": "394327",
+    "isActive": true,
+    "status": "available",
+    "createdAt": "2026-05-30T05:51:42.711Z",
+    "updatedAt": "2026-05-30T05:51:42.711Z",
+    "__v": 0
+  }
+]

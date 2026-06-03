@@ -1,0 +1,813 @@
+[
+  {
+    "_id": "69f6455656a0d32ef32e31df",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "supplierId": "69f642cc2c16c800c283a626",
+    "supplierSnapshot": {
+      "name": "Usha",
+      "address": "India",
+      "gstNumber": null,
+      "email": "manish.nehal.singh@gmail.com"
+    },
+    "invoiceNumber": "1",
+    "purchaseDate": "2026-05-02T00:00:00.000Z",
+    "status": "received",
+    "items": [
+      {
+        "productId": "69f0143c5d553faf054f4d87",
+        "name": "Manish singh",
+        "quantity": 200,
+        "purchasePrice": 5000,
+        "taxRate": 8,
+        "discount": 0
+      }
+    ],
+    "subTotal": 1000000,
+    "totalTax": 80000,
+    "totalDiscount": 0,
+    "grandTotal": 1080000,
+    "paymentStatus": "paid",
+    "paidAmount": 1080000,
+    "balanceAmount": 0,
+    "paymentMethod": "bank",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "notes": "Manish singh received the details\nPayment: 1070000 (Ref: N/A)\nStatus: received — Testing status update",
+    "attachedFiles": [
+      {
+        "url": "https://res.cloudinary.com/dltyapjf6/image/upload/v1777747343/shivam_electronics/69eef9935011d1bea4120a21/invoice/wr1fviuammgncz9o0ox0.jpg",
+        "public_id": "shivam_electronics/69eef9935011d1bea4120a21/invoice/wr1fviuammgncz9o0ox0",
+        "format": "image/jpeg",
+        "bytes": 239771,
+        "assetId": "69f6459056a0d32ef32e325e",
+        "_id": "69f6459056a0d32ef32e3260"
+      }
+    ],
+    "isDeleted": false,
+    "returnedQuantities": [],
+    "createdAt": "2026-05-02T18:41:26.707Z",
+    "updatedAt": "2026-05-02T18:47:10.111Z",
+    "__v": 1
+  },
+  {
+    "_id": "69f6cccebee3a73e6b914d2e",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "supplierId": "69f642cc2c16c800c283a626",
+    "supplierSnapshot": {
+      "name": "Usha",
+      "address": "India",
+      "gstNumber": null,
+      "email": "manish.nehal.singh@gmail.com"
+    },
+    "invoiceNumber": "3",
+    "purchaseDate": "2026-05-03T00:00:00.000Z",
+    "status": "received",
+    "items": [
+      {
+        "productId": "69f6cc6cbee3a73e6b914ceb",
+        "name": "Samsung s21",
+        "quantity": 1,
+        "purchasePrice": 120000,
+        "taxRate": 0,
+        "discount": 0
+      },
+      {
+        "productId": "69f0143c5d553faf054f4d87",
+        "name": "Manish singh",
+        "quantity": 1,
+        "purchasePrice": 10000,
+        "taxRate": 0,
+        "discount": 0
+      },
+      {
+        "productId": "69f6cc90bee3a73e6b914cfd",
+        "name": "Acer laptop",
+        "quantity": 1,
+        "purchasePrice": 100000,
+        "taxRate": 0,
+        "discount": 0
+      }
+    ],
+    "subTotal": 230000,
+    "totalTax": 0,
+    "totalDiscount": 0,
+    "grandTotal": 230000,
+    "paymentStatus": "paid",
+    "paidAmount": 230000,
+    "balanceAmount": 0,
+    "paymentMethod": "cash",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "notes": "Status: received — Marked as received from mobile app\nPayment: 230000 (Ref: N/A)",
+    "attachedFiles": [],
+    "isDeleted": false,
+    "returnedQuantities": [],
+    "createdAt": "2026-05-03T04:19:26.715Z",
+    "updatedAt": "2026-05-03T04:19:53.355Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fdfcda62e542381068dc3a",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "supplierId": "69fdf691c094b6d0a113767c",
+    "supplierSnapshot": {
+      "name": "Bajaj Electronics & Suppliers",
+      "address": {
+        "street": "69, Balaji Green City, Kadodara",
+        "city": "Surat",
+        "state": "Gujarat",
+        "zipCode": "394327",
+        "country": "India"
+      },
+      "gstNumber": "24AADCB2234M1Z5",
+      "email": "contact@bajaj-mock.com"
+    },
+    "invoiceNumber": "1",
+    "purchaseDate": "2026-05-08T15:01:17.321Z",
+    "status": "draft",
+    "items": [
+      {
+        "productId": "69f6cc90bee3a73e6b914cfd",
+        "name": "Acer laptop",
+        "quantity": 1,
+        "purchasePrice": 100000,
+        "taxRate": 0,
+        "discount": 0
+      }
+    ],
+    "subTotal": 100000,
+    "totalTax": 0,
+    "totalDiscount": 0,
+    "grandTotal": 100000,
+    "paymentStatus": "unpaid",
+    "paidAmount": 0,
+    "balanceAmount": 100000,
+    "paymentMethod": "cash",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "notes": "manish singh",
+    "attachedFiles": [],
+    "isDeleted": false,
+    "returnedQuantities": [],
+    "createdAt": "2026-05-08T15:10:18.967Z",
+    "updatedAt": "2026-05-08T15:10:18.967Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fdff9962e542381068dcb1",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "supplierId": "69f642cc2c16c800c283a626",
+    "supplierSnapshot": {
+      "name": "Usha",
+      "address": {
+        "street": "",
+        "city": "",
+        "state": "",
+        "zipCode": "",
+        "country": "India"
+      },
+      "gstNumber": null,
+      "email": "manish.nehal.singh@gmail.com"
+    },
+    "invoiceNumber": "INV-AC-2024",
+    "purchaseDate": "2026-05-09T11:30:00.000Z",
+    "status": "draft",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f110",
+        "name": "Daikin 1.5 Ton Split AC",
+        "quantity": 10,
+        "purchasePrice": 32000,
+        "taxRate": 28,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f111",
+        "name": "Blue Star 1 Ton Split AC",
+        "quantity": 5,
+        "purchasePrice": 27000,
+        "taxRate": 28,
+        "discount": 0
+      }
+    ],
+    "subTotal": 455000,
+    "totalTax": 127400,
+    "totalDiscount": 0,
+    "grandTotal": 582400,
+    "paymentStatus": "unpaid",
+    "paidAmount": 0,
+    "balanceAmount": 582400,
+    "paymentMethod": "cheque",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "notes": "Summer stock bulk order. Delivery expected by next week.",
+    "attachedFiles": [],
+    "isDeleted": false,
+    "returnedQuantities": [],
+    "createdAt": "2026-05-08T15:22:01.885Z",
+    "updatedAt": "2026-05-08T15:22:01.885Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe000362e542381068dcf7",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "supplierId": "69fdf691c094b6d0a113767c",
+    "supplierSnapshot": {
+      "name": "Bajaj Electronics & Suppliers",
+      "address": {
+        "street": "69, Balaji Green City, Kadodara",
+        "city": "Surat",
+        "state": "Gujarat",
+        "zipCode": "394327",
+        "country": "India"
+      },
+      "gstNumber": "24AADCB2234M1Z5",
+      "email": "contact@bajaj-mock.com"
+    },
+    "invoiceNumber": "INV-LAP-3001",
+    "purchaseDate": "2026-05-09T10:00:00.000Z",
+    "status": "received",
+    "items": [
+      {
+        "productId": "69f6cc90bee3a73e6b914cfd",
+        "name": "Acer laptop",
+        "quantity": 5,
+        "purchasePrice": 100000,
+        "taxRate": 0,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f105",
+        "name": "Asus ROG Zephyrus G14",
+        "quantity": 4,
+        "purchasePrice": 120000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f102",
+        "name": "Dell Alienware m16 Gaming Laptop",
+        "quantity": 3,
+        "purchasePrice": 165000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f103",
+        "name": "HP Pavilion x360 2-in-1 Laptop",
+        "quantity": 10,
+        "purchasePrice": 55000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f104",
+        "name": "Lenovo ThinkPad T14",
+        "quantity": 5,
+        "purchasePrice": 85000,
+        "taxRate": 18,
+        "discount": 0
+      }
+    ],
+    "subTotal": 2450000,
+    "totalTax": 351000,
+    "totalDiscount": 0,
+    "grandTotal": 2801000,
+    "paymentStatus": "paid",
+    "paidAmount": 2801000,
+    "balanceAmount": 0,
+    "paymentMethod": "bank",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "notes": "Bulk laptop order for Q2 inventory.",
+    "attachedFiles": [],
+    "isDeleted": false,
+    "returnedQuantities": [],
+    "createdAt": "2026-05-08T15:23:47.350Z",
+    "updatedAt": "2026-05-08T15:23:47.350Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe000962e542381068dd26",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "supplierId": "69fdf35cc094b6d0a1137595",
+    "supplierSnapshot": {
+      "name": "Samsung SUppliers",
+      "address": {
+        "street": "",
+        "city": "",
+        "state": "",
+        "zipCode": "",
+        "country": "India"
+      },
+      "gstNumber": null,
+      "email": null
+    },
+    "invoiceNumber": "INV-MOB-3002",
+    "purchaseDate": "2026-05-09T11:15:00.000Z",
+    "status": "draft",
+    "items": [
+      {
+        "productId": "69f6cc6cbee3a73e6b914ceb",
+        "name": "Samsung s21",
+        "quantity": 10,
+        "purchasePrice": 120000,
+        "taxRate": 0,
+        "discount": 0
+      },
+      {
+        "productId": "69fdf9c170a57cefcea4f0f7",
+        "name": "samsung",
+        "quantity": 5,
+        "purchasePrice": 120000,
+        "taxRate": 1,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f10a",
+        "name": "Apple iPhone 14 128GB",
+        "quantity": 10,
+        "purchasePrice": 52000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f106",
+        "name": "Apple iPhone 15 Pro Max 256GB",
+        "quantity": 5,
+        "purchasePrice": 140000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f107",
+        "name": "Motorola Edge 50 Pro",
+        "quantity": 15,
+        "purchasePrice": 27000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f108",
+        "name": "Motorola Razr 40 Ultra",
+        "quantity": 2,
+        "purchasePrice": 65000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f109",
+        "name": "Nokia G42 5G",
+        "quantity": 20,
+        "purchasePrice": 10500,
+        "taxRate": 18,
+        "discount": 0
+      }
+    ],
+    "subTotal": 3765000,
+    "totalTax": 359700,
+    "totalDiscount": 0,
+    "grandTotal": 4124700,
+    "paymentStatus": "partial",
+    "paidAmount": 1000000,
+    "balanceAmount": 3124700,
+    "paymentMethod": "bank",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "notes": "Smartphone restock including Apple and Motorola flagships.",
+    "attachedFiles": [],
+    "isDeleted": false,
+    "returnedQuantities": [],
+    "createdAt": "2026-05-08T15:23:53.158Z",
+    "updatedAt": "2026-05-08T15:23:53.158Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe000d62e542381068dd2f",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "supplierId": "69fdf691c094b6d0a113767c",
+    "supplierSnapshot": {
+      "name": "Bajaj Electronics & Suppliers",
+      "address": {
+        "street": "69, Balaji Green City, Kadodara",
+        "city": "Surat",
+        "state": "Gujarat",
+        "zipCode": "394327",
+        "country": "India"
+      },
+      "gstNumber": "24AADCB2234M1Z5",
+      "email": "contact@bajaj-mock.com"
+    },
+    "invoiceNumber": "INV-TVA-3003",
+    "purchaseDate": "2026-05-09T12:30:00.000Z",
+    "status": "received",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f10d",
+        "name": "Croma 43-inch Smart LED TV",
+        "quantity": 12,
+        "purchasePrice": 15000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f10e",
+        "name": "LG 55-inch QNED Smart TV",
+        "quantity": 6,
+        "purchasePrice": 58000,
+        "taxRate": 28,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f10b",
+        "name": "LG 65-inch OLED C3 TV",
+        "quantity": 3,
+        "purchasePrice": 145000,
+        "taxRate": 28,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f10c",
+        "name": "Hisense 55-inch U7K Mini LED",
+        "quantity": 5,
+        "purchasePrice": 45000,
+        "taxRate": 28,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f10f",
+        "name": "Hisense 65-inch OLED 4K",
+        "quantity": 2,
+        "purchasePrice": 95000,
+        "taxRate": 28,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f119",
+        "name": "JBL Bar 5.1 Surround",
+        "quantity": 4,
+        "purchasePrice": 38000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f118",
+        "name": "Bose Smart Soundbar 900",
+        "quantity": 2,
+        "purchasePrice": 65000,
+        "taxRate": 18,
+        "discount": 0
+      }
+    ],
+    "subTotal": 1660000,
+    "totalTax": 418600,
+    "totalDiscount": 0,
+    "grandTotal": 2078600,
+    "paymentStatus": "paid",
+    "paidAmount": 2078600,
+    "balanceAmount": 0,
+    "paymentMethod": "cheque",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "notes": "TVs and Soundbars for showroom display.",
+    "attachedFiles": [],
+    "isDeleted": false,
+    "returnedQuantities": [],
+    "createdAt": "2026-05-08T15:23:57.256Z",
+    "updatedAt": "2026-05-08T15:23:57.256Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe001162e542381068dd65",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "supplierId": "69fdf383c094b6d0a11375ab",
+    "supplierSnapshot": {
+      "name": "Bajaj Suppliers",
+      "address": {
+        "street": "69,Balaji green city kadodara surat near noorie media",
+        "city": "kadodara/surat",
+        "state": "gujarat",
+        "zipCode": "394327",
+        "country": "India"
+      },
+      "gstNumber": null,
+      "email": "msms5476@gmail.com"
+    },
+    "invoiceNumber": "INV-ACC-3004",
+    "purchaseDate": "2026-05-10T09:00:00.000Z",
+    "status": "draft",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f124",
+        "name": "Canon EOS R5 Mirrorless Camera",
+        "quantity": 1,
+        "purchasePrice": 250000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f125",
+        "name": "Nikon Z6 II",
+        "quantity": 2,
+        "purchasePrice": 140000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f126",
+        "name": "Fujifilm X-T5",
+        "quantity": 2,
+        "purchasePrice": 130000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f127",
+        "name": "GoPro HERO12 Black",
+        "quantity": 5,
+        "purchasePrice": 32000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f128",
+        "name": "DJI Osmo Action 4",
+        "quantity": 4,
+        "purchasePrice": 29000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f11b",
+        "name": "Garmin Forerunner 965",
+        "quantity": 5,
+        "purchasePrice": 48000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f11c",
+        "name": "Fire-Boltt Phoenix Pro",
+        "quantity": 20,
+        "purchasePrice": 900,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f11d",
+        "name": "Noise ColorFit Pro 4",
+        "quantity": 15,
+        "purchasePrice": 1200,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f11e",
+        "name": "Fastrack Reflex Play",
+        "quantity": 10,
+        "purchasePrice": 2500,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f115",
+        "name": "Bose QuietComfort 45",
+        "quantity": 5,
+        "purchasePrice": 19000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f116",
+        "name": "JBL Flip 6 Bluetooth Speaker",
+        "quantity": 10,
+        "purchasePrice": 6500,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f117",
+        "name": "Boat Airdopes 141",
+        "quantity": 30,
+        "purchasePrice": 800,
+        "taxRate": 18,
+        "discount": 0
+      }
+    ],
+    "subTotal": 1551000,
+    "totalTax": 279180,
+    "totalDiscount": 0,
+    "grandTotal": 1830180,
+    "paymentStatus": "unpaid",
+    "paidAmount": 0,
+    "balanceAmount": 1830180,
+    "paymentMethod": "cash",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "notes": "Cameras and personal audio stock.",
+    "attachedFiles": [],
+    "isDeleted": false,
+    "returnedQuantities": [],
+    "createdAt": "2026-05-08T15:24:01.767Z",
+    "updatedAt": "2026-05-08T15:24:01.767Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fe001662e542381068dd6e",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "supplierId": "69f642cc2c16c800c283a626",
+    "supplierSnapshot": {
+      "name": "Usha",
+      "address": {
+        "street": "",
+        "city": "",
+        "state": "",
+        "zipCode": "",
+        "country": "India"
+      },
+      "gstNumber": null,
+      "email": "manish.nehal.singh@gmail.com"
+    },
+    "invoiceNumber": "INV-MIX-3005",
+    "purchaseDate": "2026-05-10T14:45:00.000Z",
+    "status": "received",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f121",
+        "name": "Bosch 13 Place Dishwasher",
+        "quantity": 3,
+        "purchasePrice": 35000,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f120",
+        "name": "Havells Air Oven 4L",
+        "quantity": 8,
+        "purchasePrice": 4500,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f123",
+        "name": "Havells Nutri Art Air Fryer",
+        "quantity": 5,
+        "purchasePrice": 5200,
+        "taxRate": 18,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f113",
+        "name": "Carrier 2 Ton Split AC",
+        "quantity": 4,
+        "purchasePrice": 42000,
+        "taxRate": 28,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f114",
+        "name": "Daikin 1 Ton Inverter AC",
+        "quantity": 6,
+        "purchasePrice": 28000,
+        "taxRate": 28,
+        "discount": 0
+      },
+      {
+        "productId": "69fdfa9170a57cefcea4f112",
+        "name": "Lloyd 1.5 Ton Inverter AC",
+        "quantity": 5,
+        "purchasePrice": 29000,
+        "taxRate": 28,
+        "discount": 0
+      },
+      {
+        "productId": "69f0143c5d553faf054f4d87",
+        "name": "Manish singh",
+        "quantity": 1,
+        "purchasePrice": 10000,
+        "taxRate": 0,
+        "discount": 0
+      }
+    ],
+    "subTotal": 658000,
+    "totalTax": 164740,
+    "totalDiscount": 0,
+    "grandTotal": 822740,
+    "paymentStatus": "unpaid",
+    "paidAmount": 0,
+    "balanceAmount": 822740,
+    "paymentMethod": "cheque",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "notes": "Kitchen appliances and extra AC units.\nPayment: 822740 (Ref: N/A)\nStatus: received — Status updated via UI\nPayment of 822740 deleted",
+    "attachedFiles": [
+      {
+        "url": "https://res.cloudinary.com/dltyapjf6/image/upload/v1779203481/shivam_electronics/69eef9935011d1bea4120a21/invoice/gros3xvbrapr8fac2op7.png",
+        "public_id": "shivam_electronics/69eef9935011d1bea4120a21/invoice/gros3xvbrapr8fac2op7",
+        "format": "image/png",
+        "bytes": 2751057,
+        "assetId": "6a0c7d9beeceb6510a04e5a2",
+        "_id": "6a0c7d9beeceb6510a04e5a4"
+      }
+    ],
+    "isDeleted": false,
+    "returnedQuantities": [],
+    "createdAt": "2026-05-08T15:24:06.421Z",
+    "updatedAt": "2026-05-19T15:12:20.249Z",
+    "__v": 1
+  },
+  {
+    "_id": "69fe01e162e542381068e015",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "supplierId": "69fdf383c094b6d0a11375ab",
+    "supplierSnapshot": {
+      "name": "Bajaj Suppliers",
+      "address": {
+        "street": "69,Balaji green city kadodara surat near noorie media",
+        "city": "kadodara/surat",
+        "state": "gujarat",
+        "zipCode": "394327",
+        "country": "India"
+      },
+      "gstNumber": null,
+      "email": "msms5476@gmail.com"
+    },
+    "invoiceNumber": "U1",
+    "purchaseDate": "2026-05-08T15:31:23.349Z",
+    "status": "received",
+    "items": [
+      {
+        "productId": "69fdfa9170a57cefcea4f101",
+        "name": "Apple MacBook Pro M3 14-inch",
+        "quantity": 1,
+        "purchasePrice": 140000,
+        "taxRate": 18,
+        "discount": 0
+      }
+    ],
+    "subTotal": 140000,
+    "totalTax": 25200,
+    "totalDiscount": 0,
+    "grandTotal": 165200,
+    "paymentStatus": "unpaid",
+    "paidAmount": 0,
+    "balanceAmount": 165200,
+    "paymentMethod": "cash",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "notes": "regvrtf\nStatus: received — Status updated via UI",
+    "attachedFiles": [],
+    "isDeleted": false,
+    "returnedQuantities": [],
+    "createdAt": "2026-05-08T15:31:45.376Z",
+    "updatedAt": "2026-05-08T15:33:51.181Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a1315e72269a8ea633c2560",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "branchId": "69eef9935011d1bea4120a22",
+    "supplierId": "69fdf691c094b6d0a113767c",
+    "supplierSnapshot": {
+      "name": "Bajaj Electronics & Suppliers",
+      "address": {
+        "street": "69, Balaji Green City, Kadodara",
+        "city": "Surat",
+        "state": "Gujarat",
+        "zipCode": "394327",
+        "country": "India"
+      },
+      "gstNumber": "24AADCB2234M1Z5",
+      "email": "contact@bajaj-mock.com"
+    },
+    "invoiceNumber": "88866",
+    "purchaseDate": "2026-05-24T00:00:00.000Z",
+    "status": "received",
+    "items": [
+      {
+        "productId": "6a1313672269a8ea633c23b2",
+        "name": "Bajaj chtak ha",
+        "quantity": 10,
+        "purchasePrice": 1600,
+        "taxRate": 0,
+        "discount": 0
+      }
+    ],
+    "subTotal": 16000,
+    "totalTax": 0,
+    "totalDiscount": 0,
+    "grandTotal": 16000,
+    "paymentStatus": "paid",
+    "paidAmount": 16000,
+    "balanceAmount": 0,
+    "paymentMethod": "cash",
+    "createdBy": "69eef9935011d1bea4120a24",
+    "notes": "Status: received — Marked as received from mobile app\nPayment: 16000 (Ref: 5)",
+    "attachedFiles": [],
+    "isDeleted": false,
+    "returnedQuantities": [],
+    "createdAt": "2026-05-24T15:14:47.999Z",
+    "updatedAt": "2026-05-24T15:16:44.548Z",
+    "__v": 0
+  }
+]

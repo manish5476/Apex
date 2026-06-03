@@ -1,0 +1,87 @@
+[
+  {
+    "_id": "69ecd82a02486535082c4dd2",
+    "organizationId": "69ecd82a02486535082c4dd1",
+    "name": "JOLWA",
+    "address": {
+      "street": "F8 jb shopping center",
+      "city": "kadodara",
+      "state": "gujarat",
+      "zipCode": "394327",
+      "country": "India"
+    },
+    "managerId": "69ecd82a02486535082c4dd4",
+    "isMainBranch": true,
+    "isActive": true,
+    "isDeleted": false,
+    "branchCode": "BR-WPGVCA",
+    "createdAt": "2026-04-25T15:05:15.258Z",
+    "updatedAt": "2026-04-25T15:05:15.258Z",
+    "__v": 0
+  },
+  {
+    "_id": "69eef9935011d1bea4120a22",
+    "organizationId": "69eef9935011d1bea4120a21",
+    "name": "Jolwa",
+    "address": {
+      "street": "F8 jb shopping center",
+      "city": "surat",
+      "state": "gujarat",
+      "zipCode": "394327",
+      "country": "India"
+    },
+    "managerId": "69eef9935011d1bea4120a24",
+    "isMainBranch": true,
+    "isActive": true,
+    "isDeleted": false,
+    "branchCode": "BR-JFSVIV",
+    "createdAt": "2026-04-27T05:52:20.005Z",
+    "updatedAt": "2026-05-28T09:48:56.890Z",
+    "__v": 0,
+    "location": {
+      "lat": 21.180838,
+      "lng": 72.734299
+    },
+    "phoneNumber": ""
+  },
+  {
+    "_id": "6a0f4c038864bb2c1faf9aa9",
+    "organizationId": "6a0f4c038864bb2c1faf9aa8",
+    "name": "Head Office",
+    "address": {
+      "street": "69,Balaji green city kadodara surat near noorie media",
+      "city": "kadodara/surat",
+      "state": "gujarat",
+      "zipCode": "394327",
+      "country": "India"
+    },
+    "managerId": "6a0f4c038864bb2c1faf9aab",
+    "isMainBranch": true,
+    "isActive": true,
+    "isDeleted": false,
+    "branchCode": "BR-HXV8UV",
+    "createdAt": "2026-05-21T18:16:35.463Z",
+    "updatedAt": "2026-05-21T18:16:35.463Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a13ed6958e8aa84a01c7e56",
+    "organizationId": "6a13ed6958e8aa84a01c7e55",
+    "name": "Dindoli",
+    "address": {
+      "street": "Dindoli",
+      "city": "surat",
+      "state": "gujarat",
+      "zipCode": "394210",
+      "country": "India"
+    },
+    "managerId": "6a13ed6958e8aa84a01c7e58",
+    "isMainBranch": true,
+    "isActive": true,
+    "isDeleted": false,
+    "branchCode": "BR-YYEUOT",
+    "createdAt": "2026-05-25T06:34:18.151Z",
+    "updatedAt": "2026-05-25T06:34:18.151Z",
+    "__v": 0
+  }
+]
