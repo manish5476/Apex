@@ -10,7 +10,7 @@ const Shift = require('../../models/shift.model');
 const catchAsync = require('../../../../core/utils/api/catchAsync');
 const AppError = require('../../../../core/utils/api/appError');
 const employeePopulate = [
-  { path: 'user', select: 'name email phone avatar status isActive role branchId' },
+  { path: 'user', select: 'name email phone avatar status isActive role branchId', populate: { path: 'role', select: 'name' } },
   { path: 'branchId', select: 'name branchCode' },
   { path: 'departmentId', select: 'name code' },
   { path: 'designationId', select: 'title code level grade' },

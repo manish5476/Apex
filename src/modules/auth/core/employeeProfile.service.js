@@ -9,10 +9,16 @@ exports.attachEmployeeRecord = async (user) => {
     .populate('designationId', 'title')
     .populate('reportingManagerId', 'name avatar')
     .populate('attendanceConfig.shiftId', 'name startTime endTime')
-    .populate('attendanceConfig.shiftGroupId', 'name')
     .populate('attendanceConfig.geoFenceId', 'name')
+    .select('+compensation.bankDetails')
     .lean();
   if (employee) {
+    if (employee.compensation && employee.compensation.bankDetails) {
+      employee.bankDetails = employee.compensation.bankDetails;
+    }
+    if (employee.emergencyContacts && employee.emergencyContacts.length > 0) {
+      employee.guarantorDetails = employee.emergencyContacts[0];
+    }
     userObj.employee = employee;
   }
 
@@ -35,34 +41,32 @@ exports.syncEmployeeFromUserPayload = async ({ user, body, actorId, session }) =
     if (body.employee.dateOfJoining) employeePayload.dateOfJoining = body.employee.dateOfJoining;
 
     if (body.employee.personal) {
-      employeePayload.personal = employeePayload.personal || {};
-      if (body.employee.personal.secondaryPhone) employeePayload.personal.secondaryPhone = body.employee.personal.secondaryPhone;
-      if (body.employee.personal.dateOfBirth) employeePayload.personal.dateOfBirth = body.employee.personal.dateOfBirth;
-      if (body.employee.personal.gender) employeePayload.personal.gender = body.employee.personal.gender;
-      if (body.employee.personal.maritalStatus) employeePayload.personal.maritalStatus = body.employee.personal.maritalStatus;
-      if (body.employee.personal.bloodGroup) employeePayload.personal.bloodGroup = body.employee.personal.bloodGroup;
+      if (body.employee.personal.secondaryPhone) employeePayload['personal.secondaryPhone'] = body.employee.personal.secondaryPhone;
+      if (body.employee.personal.dateOfBirth) employeePayload['personal.dateOfBirth'] = body.employee.personal.dateOfBirth;
+      if (body.employee.personal.gender) employeePayload['personal.gender'] = body.employee.personal.gender;
+      if (body.employee.personal.maritalStatus) employeePayload['personal.maritalStatus'] = body.employee.personal.maritalStatus;
+      if (body.employee.personal.bloodGroup) employeePayload['personal.bloodGroup'] = body.employee.personal.bloodGroup;
     }
 
-    if (body.employee.guarantorDetails) {
-      employeePayload.guarantorDetails = body.employee.guarantorDetails;
+    if (body.employee.guarantorDetails && Object.values(body.employee.guarantorDetails).some(v => v)) {
+      employeePayload.emergencyContacts = [body.employee.guarantorDetails];
     }
 
-    if (body.employee.bankDetails) {
-      employeePayload.bankDetails = body.employee.bankDetails;
+    if (body.employee.bankDetails && Object.values(body.employee.bankDetails).some(v => v)) {
+      employeePayload['compensation.bankDetails'] = body.employee.bankDetails;
     }
 
     if (body.employee.attendanceConfig) {
-      employeePayload.attendanceConfig = employeePayload.attendanceConfig || {};
       const att = body.employee.attendanceConfig;
-      if (att.shiftId !== undefined) employeePayload.attendanceConfig.shiftId = att.shiftId;
-      if (att.shiftGroupId !== undefined) employeePayload.attendanceConfig.shiftGroupId = att.shiftGroupId;
-      if (att.machineUserId !== undefined) employeePayload.attendanceConfig.machineUserId = att.machineUserId;
-      if (att.isAttendanceEnabled !== undefined) employeePayload.attendanceConfig.isAttendanceEnabled = att.isAttendanceEnabled;
-      if (att.allowWebPunch !== undefined) employeePayload.attendanceConfig.allowWebPunch = att.allowWebPunch;
-      if (att.allowMobilePunch !== undefined) employeePayload.attendanceConfig.allowMobilePunch = att.allowMobilePunch;
-      if (att.enforceGeoFence !== undefined) employeePayload.attendanceConfig.enforceGeoFence = att.enforceGeoFence;
-      if (att.geoFenceId !== undefined) employeePayload.attendanceConfig.geoFenceId = att.geoFenceId;
-      if (att.biometricVerified !== undefined) employeePayload.attendanceConfig.biometricVerified = att.biometricVerified;
+      if (att.shiftId !== undefined) employeePayload['attendanceConfig.shiftId'] = att.shiftId;
+      if (att.shiftGroupId !== undefined) employeePayload['attendanceConfig.shiftGroupId'] = att.shiftGroupId;
+      if (att.machineUserId !== undefined) employeePayload['attendanceConfig.machineUserId'] = att.machineUserId;
+      if (att.isAttendanceEnabled !== undefined) employeePayload['attendanceConfig.isAttendanceEnabled'] = att.isAttendanceEnabled;
+      if (att.allowWebPunch !== undefined) employeePayload['attendanceConfig.allowWebPunch'] = att.allowWebPunch;
+      if (att.allowMobilePunch !== undefined) employeePayload['attendanceConfig.allowMobilePunch'] = att.allowMobilePunch;
+      if (att.enforceGeoFence !== undefined) employeePayload['attendanceConfig.enforceGeoFence'] = att.enforceGeoFence;
+      if (att.geoFenceId !== undefined) employeePayload['attendanceConfig.geoFenceId'] = att.geoFenceId;
+      if (att.biometricVerified !== undefined) employeePayload['attendanceConfig.biometricVerified'] = att.biometricVerified;
     }
   }
 
@@ -92,7 +96,19 @@ exports.syncEmployeeFromUserPayload = async ({ user, body, actorId, session }) =
     // Assign defaults if missing for creation
     if (!employeePayload.employeeId) employeePayload.employeeId = `EMP-${Date.now()}`;
 
-    const [newEmployee] = await Employee.create([employeePayload], { session });
+    // Expand dot notation fields for create (Mongoose handles most, but just to be safe for sub-documents)
+    const createPayload = {};
+    for (const [key, value] of Object.entries(employeePayload)) {
+      if (key.includes('.')) {
+        const [parent, child] = key.split('.');
+        createPayload[parent] = createPayload[parent] || {};
+        createPayload[parent][child] = value;
+      } else {
+        createPayload[key] = value;
+      }
+    }
+
+    const [newEmployee] = await Employee.create([createPayload], { session });
     return newEmployee;
   }
 };

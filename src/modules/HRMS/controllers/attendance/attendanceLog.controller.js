@@ -5,6 +5,7 @@ const AttendanceDaily = require('../../models/attendanceDaily.model');
 const Shift          = require('../../models/shift.model');
 const GeoFence       = require('../../models/geoFencing.model');
 const User           = require('../../../auth/core/user.model');
+const Employee       = require('../../models/employee.model');
 const catchAsync     = require('../../../../core/utils/api/catchAsync');
 const AppError       = require('../../../../core/utils/api/appError');
 const factory        = require('../../../../core/utils/api/handlerFactory');
@@ -34,7 +35,7 @@ const calculateWorkHours = (firstIn, lastOut) => {
  * @param {ObjectId} branchId
  * @param {Object}   user  - Full user document (needed for dept/designation check)
  */
-const checkGeoFence = async (coordinates, organizationId, branchId, user) => {
+const checkGeoFence = async (coordinates, organizationId, branchId, userId, employee) => {
   const [longitude, latitude] = coordinates;
 
   const geofences = await GeoFence.find({
@@ -47,14 +48,14 @@ const checkGeoFence = async (coordinates, organizationId, branchId, user) => {
 
   for (const geofence of geofences) {
     if (!geofence.applicableToAll) {
-      // FIX BUG-AL-C05 — Compare against the correct user sub-fields
+      // FIX BUG-AL-C05 — Compare against the correct employee sub-fields
       const isApplicable =
-        geofence.applicableUsers?.some(id => id.equals(user._id)) ||
+        geofence.applicableUsers?.some(id => id.equals(userId)) ||
         geofence.applicableDepartments?.some(id =>
-          user.employeeProfile?.departmentId && id.equals(user.employeeProfile.departmentId)
+          employee?.departmentId && id.equals(employee.departmentId)
         ) ||
         geofence.applicableDesignations?.some(id =>
-          user.employeeProfile?.designationId && id.equals(user.employeeProfile.designationId)
+          employee?.designationId && id.equals(employee.designationId)
         );
 
       if (!isApplicable) continue;
@@ -117,9 +118,9 @@ const processLogForDaily = async (log, session) => {
   }).session(session);
 
   if (!daily) {
-    const user  = await User.findById(log.user).lean().session(session);
-    const shift = user?.attendanceConfig?.shiftId
-      ? await Shift.findById(user.attendanceConfig.shiftId).lean().session(session)
+    const employee = await Employee.findOne({ user: log.user }).lean().session(session);
+    const shift = employee?.attendanceConfig?.shiftId
+      ? await Shift.findById(employee.attendanceConfig.shiftId).lean().session(session)
       : null;
 
     [daily] = await AttendanceDaily.create([{
@@ -127,7 +128,7 @@ const processLogForDaily = async (log, session) => {
       organizationId:   log.organizationId,
       branchId:         log.branchId,
       date:             dayStart,    // FIX BUG-AL-C01 — proper Date, not string
-      shiftId:          user?.attendanceConfig?.shiftId,
+      shiftId:          employee?.attendanceConfig?.shiftId,
       scheduledInTime:  shift?.startTime,
       scheduledOutTime: shift?.endTime,
       status:           'absent',
@@ -174,16 +175,21 @@ exports.createAttendanceLog = catchAsync(async (req, res, next) => {
   // Validations don't need to be transactional and their errors should not
   // go through abortTransaction() — they are business rule rejections, not DB errors.
 
-  if (!req.user.attendanceConfig?.isAttendanceEnabled) {
+  const employee = await Employee.findOne({ user: req.user._id, organizationId: req.user.organizationId });
+  if (!employee) {
+    return next(new AppError('Employee profile not found', 404));
+  }
+
+  if (!employee.attendanceConfig?.isAttendanceEnabled) {
     return next(new AppError('Attendance is disabled for your account', 403));
   }
 
   const source = detectSource(req);
 
-  if (source === 'web'    && !req.user.attendanceConfig?.allowWebPunch) {
+  if (source === 'web'    && !employee.attendanceConfig?.allowWebPunch) {
     return next(new AppError('Web punch is not allowed for your account', 403));
   }
-  if (source === 'mobile' && !req.user.attendanceConfig?.allowMobilePunch) {
+  if (source === 'mobile' && !employee.attendanceConfig?.allowMobilePunch) {
     return next(new AppError('Mobile punch is not allowed for your account', 403));
   }
 
@@ -196,13 +202,14 @@ exports.createAttendanceLog = catchAsync(async (req, res, next) => {
       req.body.location.geoJson.coordinates,
       req.user.organizationId,
       req.user.branchId,
-      req.user  // FIX BUG-AL-C05 — pass full user object
+      req.user._id,  // FIX BUG-AL-C05 — pass user ID
+      employee       // pass employee doc
     );
 
     geofenceStatus = geoResult.status;
     geofenceId     = geoResult.geofence?._id || null;
 
-    if (req.user.attendanceConfig?.enforceGeoFence && geoResult.status === 'outside') {
+    if (employee.attendanceConfig?.enforceGeoFence && geoResult.status === 'outside') {
       return next(new AppError('You are outside the allowed geofence area', 403));
     }
   }

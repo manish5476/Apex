@@ -17,7 +17,7 @@ const AppError = require('../../../core/utils/api/appError');
 const sendEmail = require('../../../core/infra/email');
 const logger = require('../../../bootstrap/logger');
 const { signAccessToken, signRefreshToken } = require('../../../core/utils/helpers/authUtils');
-const { createNotification } = require('../../notification/core/notification.service');
+const NotificationService = require('../../notification/core/notification.service');
 const { emitToUser } = require('../../../socketHandlers/socket');
 const { mergePermissions, VALID_TAGS } = require('../../../config/permissions');
 
@@ -121,20 +121,13 @@ exports.signup = catchAsync(async (req, res, next) => {
   if (organization.owner?._id) {
     const ownerId = organization.owner._id.toString();
 
-    emitToUser(ownerId, 'newNotification', {
-      title: 'New Signup Request',
-      message: `${newUser.name} (${newUser.email}) has signed up.`,
-      type: 'info',
-      createdAt: new Date().toISOString(),
-    });
-
-    const io = req.app.get('io');
-    createNotification(
-      organization._id, ownerId, 'USER_SIGNUP',
-      'New Employee Signup Request',
-      `${name} (${email}) is waiting for approval. Phone: ${phone}`,
-      io
-    ).catch(err => logger.error('DB Notification creation failed:', err.message));
+    NotificationService.create({
+      organizationId: organization._id,
+      recipientId: ownerId,
+      businessType: 'USER_SIGNUP',
+      title: 'New Employee Signup Request',
+      message: `${name} (${email}) is waiting for approval. Phone: ${phone}`
+    }).catch(err => logger.error('DB Notification creation failed:', err.message));
 
     sendEmail({
       email: organization.owner.email,
