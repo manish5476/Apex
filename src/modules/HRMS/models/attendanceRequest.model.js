@@ -4,6 +4,7 @@ const attendanceRequestSchema = new mongoose.Schema({
   user:           { type: mongoose.Schema.Types.ObjectId, ref: 'User',         required: true },
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
   branchId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
+  assignedApprover: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 
   attendanceDailyId: { type: mongoose.Schema.Types.ObjectId, ref: 'AttendanceDaily' },
   targetDate:        { type: Date, required: true },

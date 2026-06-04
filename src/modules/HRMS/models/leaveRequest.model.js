@@ -5,6 +5,7 @@ const leaveRequestSchema = new mongoose.Schema({
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
   branchId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
   departmentId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
+  assignedApprover: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 
   leaveRequestId: { type: String, unique: true }, // LR-2024-0001
 

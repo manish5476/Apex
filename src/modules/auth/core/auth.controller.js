@@ -301,24 +301,32 @@ exports.login = catchAsync(async (req, res, next) => {
   user.lastLoginIP = getClientIp(req);
   user.refreshTokens = [];
 
-  const deviceExists = user.devices?.some(d =>
+  const existingDeviceIndex = user.devices?.findIndex(d =>
     d.deviceId === req.headers['x-device-id'] ||
     (d.userAgent === req.headers['user-agent'] && d.deviceType === device)
   );
-  if (!deviceExists && req.headers['user-agent']) {
-    user.devices = user.devices || [];
+
+  user.devices = user.devices || [];
+
+  if (existingDeviceIndex !== -1 && existingDeviceIndex !== undefined) {
+    // Device exists, update lastActive and move it to the end (most recent)
+    const existingDevice = user.devices.splice(existingDeviceIndex, 1)[0];
+    existingDevice.lastActive = new Date();
+    user.devices.push(existingDevice);
+  } else if (req.headers['user-agent']) {
     user.devices.push({
       deviceId: req.headers['x-device-id'] || crypto.randomBytes(16).toString('hex'),
       deviceType: device.includes('mobile') ? 'mobile' : device.includes('tablet') ? 'tablet' : 'web',
       lastActive: new Date(),
       userAgent: req.headers['user-agent'],
     });
-    if (user.devices.length > 10) user.devices = user.devices.slice(-10);
+  }
+
+  if (user.devices.length > 10) {
+    user.devices = user.devices.slice(-10);
   }
 
   await user.save({ validateBeforeSave: false });
-
-  // ── FIX (Issue 1): permissions — send ['*'] not the full tag list ────────
   const permissions = (isOwner || isSuperAdmin)
     ? ['*']
     : mergePermissions(user.role?.permissions, user.permissionOverrides);

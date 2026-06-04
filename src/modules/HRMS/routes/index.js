@@ -16,6 +16,7 @@ const attendanceDailyRoutes = require('./attendance/attendanceDaily.routes');
 const attendanceMachineRoutes = require('./attendance/attendanceMachine.routes');
 const geoFenceRoutes = require('./attendance/geoFence.routes');
 const holidayRoutes = require('./attendance/holiday.routes');
+const attendanceRequestRoutes = require('./attendance/attendanceRequest.routes');
 
 // Health check specific to HRMS (optional)
 router.get('/health', (req, res) => {
@@ -42,5 +43,6 @@ router.use('/attendance/daily', attendanceDailyRoutes);
 router.use('/attendance/machines', attendanceMachineRoutes);
 router.use('/attendance/geofences', geoFenceRoutes);
 router.use('/attendance/holidays', holidayRoutes);
+router.use('/attendance-requests', attendanceRequestRoutes);
 
 module.exports = router;

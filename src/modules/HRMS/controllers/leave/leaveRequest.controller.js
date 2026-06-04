@@ -107,38 +107,12 @@ exports.createLeaveRequest = catchAsync(async (req, res, next) => {
     },
   };
 
-  // FIX BUG-LR-C05 — Build approval flow BEFORE opening transaction
-  const employee = await Employee.findOne({ user: req.user._id, organizationId: req.user.organizationId }).lean();
-  
-  if (!employee) {
-    throw new AppError('Employee profile not found.', 404);
-  }
-  
-  req.body.departmentId = employee.departmentId;
-
-  const approvalFlow = [];
-  let currentLevel = 1;
-
-  if (employee.reportingManagerId) {
-    approvalFlow.push({ approver: employee.reportingManagerId, level: currentLevel++, status: 'pending' });
+  const { assignedApprover } = req.body;
+  if (!assignedApprover) {
+    throw new AppError('Please select an approver.', 400);
   }
 
-  const Department = mongoose.model('Department');
-  const department = await Department.findById(employee.departmentId).lean();
-  
-  if (department?.headOfDepartment && department.headOfDepartment.toString() !== employee.reportingManagerId?.toString()) {
-    approvalFlow.push({ approver: department.headOfDepartment, level: currentLevel++, status: 'pending' });
-  }
-
-  if (req.body.daysCount > 5) {
-    const Role    = mongoose.model('Role');
-    const hrRole  = await Role.findOne({ organizationId: req.user.organizationId, name: 'HR Manager' }).lean();
-    if (hrRole) {
-      const [hrUser] = await User.find({ role: hrRole._id, organizationId: req.user.organizationId, isActive: true }).select('_id').limit(1).lean();
-      if (hrUser) approvalFlow.push({ approver: hrUser._id, level: currentLevel++, status: 'pending' });
-    }
-  }
-
+  const approvalFlow = [{ approver: assignedApprover, level: 1, status: 'pending' }];
   req.body.approvalFlow = approvalFlow;
 
   const session = await mongoose.startSession();
@@ -475,17 +449,17 @@ exports.getMyLeaveRequests = catchAsync(async (req, res, next) => {
  * causing `TypeError: Cannot read properties of undefined (reading '_id')`.
  */
 exports.getPendingApprovals = catchAsync(async (req, res, next) => {
-  const requests = await LeaveRequest.find({
+  const query = {
     organizationId: req.user.organizationId,
-    status:         'pending',
-    approvalFlow: {
-      $elemMatch: {
-        approver: req.user._id,
-        status:   'pending',
-        level:    { $lte: 5 },
-      },
-    },
-  })
+    status:         'pending'
+  };
+
+  // If the user is not a Super Admin or Owner, restrict to requests assigned to them
+  if (req.user.role !== 'Super Admin' && !req.user.isOwner) {
+    query.assignedApprover = req.user._id;
+  }
+
+  const requests = await LeaveRequest.find(query)
     .populate('user', 'name employeeProfile.employeeId employeeProfile.departmentId avatar')
     .populate('departmentId', 'name')
     .sort({ createdAt: -1 });
