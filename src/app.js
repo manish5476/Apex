@@ -101,35 +101,45 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // 2. Define strict whitelist
+    // 2. In development, allow all origins to accommodate dynamic local IPs
+    if (process.env.NODE_ENV === "development") {
+      return callback(null, true);
+    }
+
+    // 3. Parse environment origins if defined
+    const envOrigins = process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(",")
+      : [];
+
+    // 4. Define strict whitelist
     const allowedOrigins = [
       "http://localhost:4200",
       "http://localhost:8081",
       "https://apex-infinity.vercel.app",
-      "https://apex-infinity-vert.vercel.app"
+      "https://apex-infinity-vert.vercel.app",
+      ...envOrigins
     ];
 
-    // 3. Vercel Preview Regex
+    // 5. Vercel Preview Regex
     const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
-
     if (allowedOrigins.includes(origin) || isVercelPreview) {
       return callback(null, true);
     }
-    
+
     // Log failures but don't crash the request with a thrown Error object
     console.warn(`❌ CORS Rejected: ${origin}`);
     callback(new Error('CORS Not Allowed'));
   },
   credentials: true, // REQUIRED for cookies/auth
   allowedHeaders: [
-    "Content-Type", 
-    "Authorization", 
-    "X-Request-Id", 
-    "X-Storefront-Request", 
-    "X-Storefront-Session", 
+    "Content-Type",
+    "Authorization",
+    "X-Request-Id",
+    "X-Storefront-Request",
+    "X-Storefront-Session",
     "X-Customer-Token"
   ],
-  exposedHeaders: ["X-Request-Id", "Authorization"], 
+  exposedHeaders: ["X-Request-Id", "Authorization"],
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
   optionsSuccessStatus: 204 // Some browsers/proxies hate 200 for OPTIONS
 };
