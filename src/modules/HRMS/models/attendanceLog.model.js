@@ -45,9 +45,8 @@ const attendanceLogSchema = new mongoose.Schema({
       type: {
         type: String,
         enum: ['Point'],
-        default: 'Point',
       },
-      coordinates: { type: [Number] }, // [longitude, latitude]
+      coordinates: { type: [Number] },
     },
     accuracy:  Number,  // metres
     altitude:  Number,

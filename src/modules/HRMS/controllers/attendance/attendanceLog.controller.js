@@ -238,8 +238,13 @@ exports.createAttendanceLog = catchAsync(async (req, res, next) => {
       ipAddress:       req.ip || req.connection?.remoteAddress,
       userAgent:       req.get('User-Agent'),
       deviceId:        req.headers['x-device-id'],
-      location:        req.body.location
-        ? { ...req.body.location, geofenceStatus, geofenceId }
+      location:        req.body.location?.geoJson?.coordinates?.length === 2
+        ? { 
+            ...req.body.location, 
+            geoJson: { type: 'Point', coordinates: req.body.location.geoJson.coordinates },
+            geofenceStatus, 
+            geofenceId 
+          }
         : undefined,
     };
 
