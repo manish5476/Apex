@@ -22,9 +22,12 @@ const imageUploadService = require('../../uploads/imageUploadService'); // for a
 // ======================================================
 
 // createSupplier injects organizationId via the route (see createSupplier below)
-exports.getSupplier      = factory.getOne(Supplier);
+exports.getSupplier      = factory.getOne(Supplier, {
+  populate: { path: 'categoryId', select: 'name' }
+});
 exports.getAllSuppliers   = factory.getAll(Supplier, {
   searchFields: ['companyName', 'contactPerson', 'phone', 'email', 'gstNumber', 'panNumber'],
+  populate: { path: 'categoryId', select: 'name' }
 });
 exports.updateSupplier   = factory.updateOne(Supplier);
 exports.restoreSupplier  = factory.restoreOne(Supplier);
@@ -103,7 +106,8 @@ exports.getSupplierList = catchAsync(async (req, res, next) => {
     isActive: true,
     isDeleted: false,
   })
-    .select('companyName phone gstNumber')
+    .select('companyName phone gstNumber categoryId')
+    .populate('categoryId', 'name')
     .sort({ companyName: 1 })
     .limit(limit);
 
@@ -136,7 +140,8 @@ exports.searchSuppliers = catchAsync(async (req, res, next) => {
     isDeleted: false,
     ...(tokenClauses.length ? { $and: tokenClauses } : {}),
   })
-    .select('companyName contactPerson phone gstNumber avatar isActive')
+    .select('companyName contactPerson phone gstNumber avatar isActive categoryId')
+    .populate('categoryId', 'name')
     .limit(limit);
 
   res.status(200).json({

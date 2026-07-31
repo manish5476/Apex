@@ -1,7 +1,7 @@
 const Master = require("./model/master.model");
 const catchAsync = require("../../../core/utils/api/catchAsync");
 const AppError = require("../../../core/utils/api/appError");
-
+const ApiFeatures = require("../../../core/utils/api/ApiFeatures");
 /**
  * @desc Create new master item (category, brand, etc.)
  */
@@ -32,12 +32,23 @@ exports.getMasters = catchAsync(async (req, res, next) => {
   const filter = { organizationId: req.user.organizationId };
   if (req.query.type) filter.type = req.query.type.toLowerCase();
 
-  const masters = await Master.find(filter).sort("-createdAt");
+  const features = new ApiFeatures(Master.find(filter), req.query)
+    .filter()
+    .search(["name", "code", "description"])
+    .sort()
+    .limitFields()
+    .paginate();
+
+  const result = await features.execute();
 
   res.status(200).json({
     status: "success",
-    results: masters.length,
-    data: { masters },
+    results: result.results,
+    pagination: result.pagination,
+    data: { 
+      masters: result.data,
+      totalRecords: result.pagination ? result.pagination.totalResults : result.results
+    },
   });
 });
 
