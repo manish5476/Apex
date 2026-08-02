@@ -45,8 +45,8 @@ const EMI = require('../../accounting/payments/emi.model');
 
 // ── HRMS Models (Fixed Paths) ────────────────────────────────
 // Note: Based on your tree, these are directly in HRMS/models/
-const AttendanceDaily = require('../../HRMS/models/attendanceDaily.model');
-const LeaveBalance = require('../../HRMS/models/leaveBalance.model');
+const AttendanceDaily = require('../../HRMS/attendance/models/attendanceDaily.model');
+const LeaveBalance = require('../../HRMS/leave-management/models/leaveBalance.model');
 
 // ── Helpers ───────────────────────────────────────────────────
 

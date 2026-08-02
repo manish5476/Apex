@@ -32,15 +32,15 @@ const Payment = require('../../../accounting/payments/payment.model');
 const EMI = require('../../../accounting/payments/emi.model');
 
 // ─── HRMS Models ──────────────────────────────────────────────────────────────
-const Department = require('../../../HRMS/models/department.model');
-const Designation = require('../../../HRMS/models/designation.model');
-const Shift = require('../../../HRMS/models/shift.model');
-const ShiftAssignment = require('../../../HRMS/models/shiftAssignment.model');
-const Holiday = require('../../../HRMS/models/holiday.model');
-const GeoFencing = require('../../../HRMS/models/geoFencing.model');
-const AttendanceMachine = require('../../../HRMS/models/attendanceMachine.model');
-const AttendanceRequest = require('../../../HRMS/models/attendanceRequest.model');
-const LeaveRequest = require('../../../HRMS/models/leaveRequest.model');
+const Department = require('../../../HRMS/core-hr/models/department.model');
+const Designation = require('../../../HRMS/core-hr/models/designation.model');
+const Shift = require('../../../HRMS/attendance/models/shift.model');
+const ShiftAssignment = require('../../../HRMS/attendance/models/shiftAssignment.model');
+const Holiday = require('../../../HRMS/leave-management/models/holiday.model');
+const GeoFencing = require('../../../HRMS/attendance/models/geoFencing.model');
+const AttendanceMachine = require('../../../HRMS/attendance/models/attendanceMachine.model');
+const AttendanceRequest = require('../../../HRMS/attendance/models/attendanceRequest.model');
+const LeaveRequest = require('../../../HRMS/leave-management/models/leaveRequest.model');
 
 // ─── Notes & CRM ─────────────────────────────────────────────────────────────
 const Meeting = require('../../../Notes/meeting.model');

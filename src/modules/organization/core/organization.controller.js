@@ -9,11 +9,11 @@ const Organization = require('./organization.model');
 const Branch = require('./branch.model');
 const User = require('../../auth/core/user.model');
 const Role = require('../../auth/core/role.model');
-const Shift = require('../../HRMS/models/shift.model');
-const LeaveBalance = require('../../HRMS/models/leaveBalance.model');
-const Department = require('../../HRMS/models/department.model');
-const Designation = require('../../HRMS/models/designation.model');
-const Employee = require('../../HRMS/models/employee.model');
+const Shift = require('../../HRMS/attendance/models/shift.model');
+const LeaveBalance = require('../../HRMS/leave-management/models/leaveBalance.model');
+const Department = require('../../HRMS/core-hr/models/department.model');
+const Designation = require('../../HRMS/core-hr/models/designation.model');
+const Employee = require('../../HRMS/core-hr/models/employee.model');
 const { emitToOrg, emitToUser } = require('../../../socketHandlers/socket');
 const { seedDefaultStorefront } = require('../../../PublicModules/services/storefront-onboarding.service');
 

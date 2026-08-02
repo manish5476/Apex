@@ -8,11 +8,11 @@ const Organization = require('../../organization/core/organization.model');
 const ActivityLog = require('../../activity/activityLogModel');
 const Role = require('./role.model');
 const Session = require('./session.model');
-const Employee = require('../../HRMS/models/employee.model');
-const LeaveBalance = require('../../HRMS/models/leaveBalance.model');
-const Shift = require('../../HRMS/models/shift.model');
-const Department = require('../../HRMS/models/department.model');
-const Designation = require('../../HRMS/models/designation.model');
+const Employee = require('../../HRMS/core-hr/models/employee.model');
+const LeaveBalance = require('../../HRMS/leave-management/models/leaveBalance.model');
+const Shift = require('../../HRMS/attendance/models/shift.model');
+const Department = require('../../HRMS/core-hr/models/department.model');
+const Designation = require('../../HRMS/core-hr/models/designation.model');
 const Branch = require('../../organization/core/branch.model');
 const {
   attachEmployeeRecord,
@@ -440,17 +440,17 @@ exports.getOrgHierarchy = catchAsync(async (req, res, next) => {
   const userMap = {};
   const roots = [];
 
-  users.forEach(u => { 
+  users.forEach(u => {
     const emp = empMap[u._id.toString()] || {};
-    userMap[u._id.toString()] = { 
-      ...u, 
+    userMap[u._id.toString()] = {
+      ...u,
       employeeProfile: {
         designationId: emp.designationId,
         departmentId: emp.departmentId,
         reportingManagerId: emp.reportingManagerId
       },
-      reportees: [] 
-    }; 
+      reportees: []
+    };
   });
 
   users.forEach(u => {
@@ -496,15 +496,15 @@ exports.getUsersByDepartment = catchAsync(async (req, res, next) => {
     .select('name email phone avatar')
     .sort('name')
     .lean();
-    
+
   const empMap = {};
   employeesInDept.forEach(e => { empMap[e.user.toString()] = e; });
 
   const combinedUsers = users.map(u => ({
     ...u,
     employeeProfile: {
-        designationId: empMap[u._id.toString()]?.designationId,
-        employeeId: empMap[u._id.toString()]?.employeeId
+      designationId: empMap[u._id.toString()]?.designationId,
+      employeeId: empMap[u._id.toString()]?.employeeId
     }
   }));
 
@@ -1148,10 +1148,10 @@ exports.exportUsers = catchAsync(async (req, res, next) => {
     organizationId: req.user.organizationId,
     isActive: req.query.isActive !== 'false',
   };
-  
+
   if (departmentId) {
-     const emps = await Employee.find({ organizationId: req.user.organizationId, departmentId }).select('user').lean();
-     query._id = { $in: emps.map(e => e.user) };
+    const emps = await Employee.find({ organizationId: req.user.organizationId, departmentId }).select('user').lean();
+    query._id = { $in: emps.map(e => e.user) };
   }
 
   const users = await User.find(query)
@@ -1160,30 +1160,30 @@ exports.exportUsers = catchAsync(async (req, res, next) => {
     .lean();
 
   const employees = await Employee.find({
-      organizationId: req.user.organizationId,
-      user: { $in: users.map(u => u._id) }
+    organizationId: req.user.organizationId,
+    user: { $in: users.map(u => u._id) }
   })
     .populate('departmentId', 'name')
     .populate('designationId', 'title')
     .populate('reportingManagerId', 'name')
     .lean();
-    
+
   const empMap = {};
   employees.forEach(e => { empMap[e.user.toString()] = e; });
-  
+
   const combinedUsers = users.map(u => {
-      const emp = empMap[u._id.toString()];
-      return {
-          ...u,
-          employeeProfile: emp ? {
-              departmentId: emp.departmentId,
-              designationId: emp.designationId,
-              reportingManagerId: emp.reportingManagerId,
-              employeeId: emp.employeeId,
-              employmentType: emp.employmentType,
-              dateOfJoining: emp.dateOfJoining
-          } : {}
-      };
+    const emp = empMap[u._id.toString()];
+    return {
+      ...u,
+      employeeProfile: emp ? {
+        departmentId: emp.departmentId,
+        designationId: emp.designationId,
+        reportingManagerId: emp.reportingManagerId,
+        employeeId: emp.employeeId,
+        employmentType: emp.employmentType,
+        dateOfJoining: emp.dateOfJoining
+      } : {}
+    };
   });
 
   if (format === 'csv') {

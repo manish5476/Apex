@@ -45,20 +45,20 @@ export { default as Asset } from './modules/uploads/asset.model.js';
 export { default as Webhook } from './modules/webhook/webhook.model.js';
 
 // --- HRMS ---
-export { default as AttendanceDaily } from './modules/HRMS/models/attendanceDaily.model.js';
-export { default as AttendanceLog } from './modules/HRMS/models/attendanceLog.model.js';
-export { default as AttendanceMachine } from './modules/HRMS/models/attendanceMachine.model.js';
-export { default as AttendanceRequest } from './modules/HRMS/models/attendanceRequest.model.js';
-export { default as AttendanceSummary } from './modules/HRMS/models/attendanceSummary.model.js';
-export { default as Department } from './modules/HRMS/models/department.model.js';
-export { default as Designation } from './modules/HRMS/models/designation.model.js';
-export { default as GeoFencing } from './modules/HRMS/models/geoFencing.model.js';
-export { default as Holiday } from './modules/HRMS/models/holiday.model.js';
-export { default as LeaveBalance } from './modules/HRMS/models/leaveBalance.model.js';
-export { default as LeaveRequest } from './modules/HRMS/models/leaveRequest.model.js';
-export { default as ShiftAssignment } from './modules/HRMS/models/shiftAssignment.model.js';
-export { default as ShiftGroup } from './modules/HRMS/models/shiftGroup.model.js';
-export { default as Shift } from './modules/HRMS/models/shift.model.js';
+export { default as AttendanceDaily } from './modules/HRMS/attendance/models/attendanceDaily.model.js';
+export { default as AttendanceLog } from './modules/HRMS/attendance/models/attendanceLog.model.js';
+export { default as AttendanceMachine } from './modules/HRMS/attendance/models/attendanceMachine.model.js';
+export { default as AttendanceRequest } from './modules/HRMS/attendance/models/attendanceRequest.model.js';
+export { default as AttendanceSummary } from './modules/HRMS/attendance/models/attendanceSummary.model.js';
+export { default as Department } from './modules/HRMS/core-hr/models/department.model.js';
+export { default as Designation } from './modules/HRMS/core-hr/models/designation.model.js';
+export { default as GeoFencing } from './modules/HRMS/attendance/models/geoFencing.model.js';
+export { default as Holiday } from './modules/HRMS/leave-management/models/holiday.model.js';
+export { default as LeaveBalance } from './modules/HRMS/leave-management/models/leaveBalance.model.js';
+export { default as LeaveRequest } from './modules/HRMS/leave-management/models/leaveRequest.model.js';
+export { default as ShiftAssignment } from './modules/HRMS/attendance/models/shiftAssignment.model.js';
+export { default as ShiftGroup } from './modules/HRMS/attendance/models/shiftGroup.model.js';
+export { default as Shift } from './modules/HRMS/attendance/models/shift.model.js';
 
 
 // --- Public Modules (Storefront) ---

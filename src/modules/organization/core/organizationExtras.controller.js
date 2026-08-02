@@ -1,6 +1,6 @@
 const User         = require('../../auth/core/user.model');
 const Organization = require('./organization.model');
-const Employee     = require('../../HRMS/models/employee.model');
+const Employee     = require('../../HRMS/core-hr/models/employee.model');
 const AppError     = require('../../../core/utils/api/appError');
 const catchAsync   = require('../../../core/utils/api/catchAsync');
 const ActivityLog  = require('../../activity/activityLogModel');

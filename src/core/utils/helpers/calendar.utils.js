@@ -1,5 +1,5 @@
 const moment = require('moment');
-const Holiday = require('../../../modules/HRMS/models/holiday.model');
+const Holiday = require('../../../modules/HRMS/leave-management/models/holiday.model');
 
 /**
  * 📅 CENTRALIZED CALENDAR LOGIC

@@ -9,7 +9,7 @@ const User = require('./user.model');
 const Organization = require('../../organization/core/organization.model');
 const Role = require('./role.model');
 const Session = require('./session.model');
-const Employee = require('../../HRMS/models/employee.model');
+const Employee = require('../../HRMS/core-hr/models/employee.model');
 const { attachEmployeeRecord } = require('./employeeProfile.service');
 
 const catchAsync = require('../../../core/utils/api/catchAsync');

@@ -4,19 +4,19 @@ const router = express.Router();
 const hrmsResponseFormatter = require('../middleware/responseFormatter');
 
 // Import HRMS route modules
-const departmentRoutes = require('./core/department.routes');
-const designationRoutes = require('./core/designation.routes');
-const employeeRoutes = require('./core/employee.routes');
-const shiftRoutes = require('./core/shift.routes');
-const shiftGroupRoutes = require('./core/shiftGroup.routes');
-const leaveRequestRoutes = require('./leave/leaveRequest.routes');
-const leaveBalanceRoutes = require('./leave/leaveBalance.routes');
-const attendanceLogRoutes = require('./attendance/attendanceLog.routes');
-const attendanceDailyRoutes = require('./attendance/attendanceDaily.routes');
-const attendanceMachineRoutes = require('./attendance/attendanceMachine.routes');
-const geoFenceRoutes = require('./attendance/geoFence.routes');
-const holidayRoutes = require('./attendance/holiday.routes');
-const attendanceRequestRoutes = require('./attendance/attendanceRequest.routes');
+const departmentRoutes = require('../core-hr/routes/department.routes');
+const designationRoutes = require('../core-hr/routes/designation.routes');
+const employeeRoutes = require('../core-hr/routes/employee.routes');
+const shiftRoutes = require('../attendance/routes/shift.routes');
+const shiftGroupRoutes = require('../attendance/routes/shiftGroup.routes');
+const leaveRequestRoutes = require('../leave-management/routes/leaveRequest.routes');
+const leaveBalanceRoutes = require('../leave-management/routes/leaveBalance.routes');
+const attendanceLogRoutes = require('../attendance/routes/attendanceLog.routes');
+const attendanceDailyRoutes = require('../attendance/routes/attendanceDaily.routes');
+const attendanceMachineRoutes = require('../attendance/routes/attendanceMachine.routes');
+const geoFenceRoutes = require('../attendance/routes/geoFence.routes');
+const holidayRoutes = require('../leave-management/routes/holiday.routes');
+const attendanceRequestRoutes = require('../attendance/routes/attendanceRequest.routes');
 
 // Health check specific to HRMS (optional)
 router.get('/health', (req, res) => {

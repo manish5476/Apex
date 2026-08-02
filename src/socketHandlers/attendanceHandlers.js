@@ -1,8 +1,8 @@
 // FIX BUG-SPLIT-04 [CRITICAL] — Corrected import paths from deleted 'hr/' to 'HRMS/'.
 // Previous paths did not exist and caused server crash on startup.
-const AttendanceDaily   = require('../modules/HRMS/models/attendanceDaily.model');
-const AttendanceRequest = require('../modules/HRMS/models/attendanceRequest.model');
-const Employee          = require('../modules/HRMS/models/employee.model');
+const AttendanceDaily   = require('../modules/HRMS/attendance/models/attendanceDaily.model');
+const AttendanceRequest = require('../modules/HRMS/attendance/models/attendanceRequest.model');
+const Employee          = require('../modules/HRMS/core-hr/models/employee.model');
 const dayjs = require('dayjs');
 
 module.exports = function(io) {

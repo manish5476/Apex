@@ -1,4 +1,4 @@
-const Employee = require('../../HRMS/models/employee.model');
+const Employee = require('../../HRMS/core-hr/models/employee.model');
 
 exports.attachEmployeeRecord = async (user) => {
   if (!user) return user;

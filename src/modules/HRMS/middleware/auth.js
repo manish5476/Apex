@@ -2,7 +2,7 @@
 const { promisify } = require('util');
 const jwt = require('jsonwebtoken');
 // const User = require('../models/user.model');
-const AttendanceMachine = require('../models/attendanceMachine.model');
+const AttendanceMachine = require('../attendance/models/attendanceMachine.model');
 const User = require('../../auth/core/user.model');
 const catchAsync = require('../../../core/utils/api/catchAsync');
 const AppError = require('../../../core/utils/api/appError');
