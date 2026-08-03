@@ -41,5 +41,24 @@ const hrmsResponseFormatter = (req, res, next) => {
   next();
 };
 
-module.exports = hrmsResponseFormatter;
+hrmsResponseFormatter.success = (res, data, statusCode = 200, pagination = undefined) => {
+  const response = {
+    status: 'success',
+  };
+  if (data !== undefined) response.data = data;
+  if (pagination !== undefined) response.pagination = pagination;
+  return res.status(statusCode).json(response);
+};
 
+hrmsResponseFormatter.created = (res, data) => {
+  return res.status(201).json({
+    status: 'success',
+    data,
+  });
+};
+
+hrmsResponseFormatter.noContent = (res) => {
+  return res.status(204).json();
+};
+
+module.exports = hrmsResponseFormatter;
