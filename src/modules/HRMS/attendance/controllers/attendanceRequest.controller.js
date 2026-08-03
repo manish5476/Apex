@@ -3,7 +3,7 @@ const AppError = require('../../../../core/utils/api/appError');
 const repo = require('../repository/attendanceRequest.repository');
 const attendanceRequestService = require('../services/attendanceRequest.service');
 const { createRequestSchema, approveRequestSchema, rejectRequestSchema } = require('../validation/attendanceRequest.validation');
-const { success, created } = require('../../../middleware/responseFormatter');
+const { success, created } = require('../../middleware/responseFormatter');
 
 // ─────────────────────────────────────────────
 //  READ & GET OPERATIONS

@@ -3,7 +3,7 @@ const AppError = require('../../../../core/utils/api/appError');
 const repo = require('../repository/attendanceLog.repository');
 const attendanceLogService = require('../services/attendanceLog.service');
 const { manualPunchSchema, bulkMachineLogsSchema, flagLogSchema, correctLogSchema } = require('../validation/attendanceLog.validation');
-const { success, created } = require('../../../middleware/responseFormatter');
+const { success, created } = require('../../middleware/responseFormatter');
 const { startOfDay, endOfDay, parseQueryDate } = require('../../../../core/utils/dateHelpers');
 
 // --- Helper ---
@@ -155,6 +155,17 @@ exports.getRealtimeFeed = catchAsync(async (req, res) => {
   }
 
   return success(res, { total: logs.length, timeline, recent: logs.slice(0, 20) });
+});
+
+exports.getUserLogs = catchAsync(async (req, res, next) => {
+  const User = require('../../../auth/core/user.model');
+  const user = await User.findOne({ _id: req.params.userId, organizationId: req.user.organizationId });
+  if (!user) return next(new AppError('User not found', 404));
+
+  req.query.user = req.params.userId;
+  const result = await repo.getList(req.user.organizationId, req.query);
+  
+  return success(res, { logs: result.data }, 200, result.pagination);
 });
 
 

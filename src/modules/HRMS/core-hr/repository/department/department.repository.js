@@ -1,5 +1,5 @@
 const Department = require('../../models/department.model');
-const ApiFeatures = require('../../../../utils/api.utils'); // Assuming ApiFeatures was moved here
+const ApiFeatures = require('../../../../../core/utils/api/ApiFeatures');
 
 class DepartmentRepository {
   

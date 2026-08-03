@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const designationRepository = require('../../repository/designation/designation.repository');
-const AppError = require('../../../../core/utils/api/appError');
+const AppError = require('../../../../../core/utils/api/appError');
 
 class DesignationService {
   
@@ -141,6 +141,95 @@ class DesignationService {
 
   async getSalaryBands(orgId) {
     return designationRepository.getSalaryBandsAggregation(orgId);
+  }
+
+  async getDesignationHierarchy(orgId) {
+    const designations = await designationRepository.getAllActive(orgId);
+
+    const byLevel = {};
+    designations.forEach(d => {
+      (byLevel[d.level] = byLevel[d.level] || []).push(d);
+    });
+
+    const topLevel = designations.filter(d => !d.reportsTo || d.reportsTo.length === 0);
+
+    const buildReportingTree = (parent) => {
+      const children = designations.filter(d =>
+        d.reportsTo?.some(r => r.toString() === parent._id.toString())
+      );
+      return { ...parent, children: children.map(child => buildReportingTree(child)) };
+    };
+
+    const reportingHierarchy = topLevel.map(d => buildReportingTree(d));
+
+    return { byLevel, reportingHierarchy };
+  }
+
+  async getDesignationEmployees(orgId, designationId, query) {
+    const designation = await this.getById(orgId, designationId);
+
+    const page  = Math.max(1, parseInt(query.page)  || 1);
+    const limit = Math.min(100, parseInt(query.limit) || 20);
+    const skip  = (page - 1) * limit;
+
+    const filter = {
+      organizationId: orgId,
+      designationId:  designation._id,
+    };
+
+    const Employee = require('../../models/employee.model');
+
+    const [employees, total] = await Promise.all([
+      Employee.find(filter)
+        .select('user departmentId employeeId designationId')
+        .populate('user', 'name email phone avatar status isActive')
+        .populate('departmentId', 'name')
+        .skip(skip).limit(limit).sort({ createdAt: -1 }),
+      Employee.countDocuments(filter),
+    ]);
+
+    return {
+      employees,
+      pagination: { total, page, totalPages: Math.ceil(total / limit) }
+    };
+  }
+
+  async bulkCreateDesignations(orgId, designations, actorId) {
+    if (!Array.isArray(designations) || designations.length === 0) {
+      throw new AppError('Please provide an array of designations', 400);
+    }
+
+    const Designation = require('../../models/designation.model');
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const created = [];
+      const errors  = [];
+
+      for (const data of designations) {
+        try {
+          data.organizationId = orgId;
+          data.createdBy      = actorId;
+          data.updatedBy      = actorId;
+          
+          await this._validateDesignation(orgId, data);
+          
+          const [d] = await Designation.create([data], { session });
+          created.push(d);
+        } catch (error) {
+          errors.push({ data, error: error.message });
+        }
+      }
+
+      await session.commitTransaction();
+      return { designations: created, errors, resultsCount: created.length, errorsCount: errors.length };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
 }
 

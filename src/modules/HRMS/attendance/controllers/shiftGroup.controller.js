@@ -3,7 +3,7 @@ const AppError = require('../../../../core/utils/api/appError');
 const repo = require('../repository/shiftGroup.repository');
 const shiftGroupService = require('../services/shiftGroup.service');
 const { createShiftGroupSchema, updateShiftGroupSchema, generateScheduleSchema, assignGroupSchema } = require('../validation/shiftGroup.validation');
-const { success, created, noContent } = require('../../../middleware/responseFormatter');
+const { success, created, noContent } = require('../../middleware/responseFormatter');
 
 // --- CRUD ---
 

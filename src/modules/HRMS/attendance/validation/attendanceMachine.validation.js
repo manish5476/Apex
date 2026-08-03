@@ -9,7 +9,7 @@ exports.createMachineSchema = z.object({
   manufacturer: z.string().optional(),
   firmwareVersion: z.string().optional(),
   branchId: z.string().regex(objectIdRegex, 'Invalid Branch ID'),
-  ipAddress: z.string().ip().optional(),
+  ipAddress: z.string().optional(),
   macAddress: z.string().optional(),
   providerType: z.enum(['generic', 'zkteco', 'hikvision', 'essl', 'bioenable', 'suprema']).default('generic'),
   connectionProtocol: z.enum(['tcp', 'http', 'websocket', 'mqtt', 'usb']).default('http'),

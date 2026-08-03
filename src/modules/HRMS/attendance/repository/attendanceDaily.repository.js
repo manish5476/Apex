@@ -3,7 +3,7 @@ const AttendanceDaily = require('../models/attendanceDaily.model');
 const AttendanceLog = require('../models/attendanceLog.model');
 const AttendanceRequest = require('../models/attendanceRequest.model');
 const User = require('../../../auth/core/user.model');
-const ApiFeatures = require('../../../../core/utils/api.utils');
+const ApiFeatures = require('../../../../core/utils/api/ApiFeatures');
 
 class AttendanceDailyRepository {
 

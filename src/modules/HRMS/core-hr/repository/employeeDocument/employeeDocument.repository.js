@@ -1,5 +1,5 @@
 const EmployeeDocument = require('../../models/employeeDocument.model');
-const ApiFeatures = require('../../../../utils/api.utils');
+const ApiFeatures = require('../../../../../core/utils/api/ApiFeatures');
 
 class EmployeeDocumentRepository {
   async getList(orgId, queryString) {

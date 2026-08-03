@@ -3,7 +3,7 @@ const AppError = require('../../../../core/utils/api/appError');
 const repo = require('../repository/attendanceDaily.repository');
 const attendanceDailyService = require('../services/attendanceDaily.service');
 const { dateRangeSchema, regularizeSchema, bulkUpdateSchema, recalculateSchema } = require('../validation/attendanceDaily.validation');
-const { success } = require('../../../middleware/responseFormatter'); // Using standard success
+const { success } = require('../../middleware/responseFormatter'); // Using standard success
 const { parseQueryDate, isValidDateRange } = require('../../../../core/utils/dateHelpers');
 const AttendanceDaily = require('../models/attendanceDaily.model'); // ONLY imported for CSV export logic formatting if needed
 

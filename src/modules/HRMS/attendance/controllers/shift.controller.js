@@ -2,7 +2,7 @@ const catchAsync = require('../../../../core/utils/api/catchAsync');
 const repo = require('../repository/shift.repository');
 const shiftService = require('../services/shift.service');
 const { createShiftSchema, updateShiftSchema, calcHoursSchema, validateAssignmentSchema } = require('../validation/shift.validation');
-const { success, created, noContent } = require('../../../middleware/responseFormatter');
+const { success, created, noContent } = require('../../middleware/responseFormatter');
 const AppError = require('../../../../core/utils/api/appError');
 
 // --- CRUD ---

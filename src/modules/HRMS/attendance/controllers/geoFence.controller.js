@@ -2,7 +2,7 @@ const catchAsync = require('../../../../core/utils/api/catchAsync');
 const repo = require('../repository/geoFence.repository');
 const geoFenceService = require('../services/geoFence.service');
 const { createGeoFenceSchema, updateGeoFenceSchema, pointCheckSchema, assignUsersSchema, assignDepartmentsSchema } = require('../validation/geoFence.validation');
-const { success, created, noContent } = require('../../../middleware/responseFormatter');
+const { success, created, noContent } = require('../../middleware/responseFormatter');
 const AppError = require('../../../../core/utils/api/appError');
 const User = require('../../../auth/core/user.model'); // For analytics count
 

@@ -1,6 +1,6 @@
-const Employee = require('../../core-hr/models/employee.model');
-const User = require('../../auth/core/user.model');
-const ApiFeatures = require('../../core/utils/ApiFeatures');
+const Employee = require('../../models/employee.model');
+const User = require('../../../../auth/core/user.model');
+const ApiFeatures = require('../../../../../core/utils/api/ApiFeatures');
 
 const DEFAULT_POPULATE = [
   { path: 'user', select: 'name email phone avatar status isActive role branchId', populate: { path: 'role', select: 'name' } },

@@ -2,7 +2,7 @@ const ShiftGroup = require('../models/shiftGroup.model');
 const ShiftAssignment = require('../models/shiftAssignment.model');
 const Shift = require('../models/shift.model');
 const User = require('../../../auth/core/user.model');
-const ApiFeatures = require('../../../../core/utils/api.utils');
+const ApiFeatures = require('../../../../core/utils/api/ApiFeatures');
 
 class ShiftGroupRepository {
   

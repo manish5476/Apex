@@ -1,6 +1,6 @@
 const AttendanceLog = require('../models/attendanceLog.model');
 const GeoFence = require('../models/geoFencing.model');
-const ApiFeatures = require('../../../../core/utils/api.utils');
+const ApiFeatures = require('../../../../core/utils/api/ApiFeatures');
 
 class AttendanceLogRepository {
 

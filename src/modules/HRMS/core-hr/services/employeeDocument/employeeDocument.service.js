@@ -1,5 +1,5 @@
 const documentRepository = require('../../repository/employeeDocument/employeeDocument.repository');
-const AppError = require('../../../../core/utils/api/appError');
+const AppError = require('../../../../../core/utils/api/appError');
 
 class EmployeeDocumentService {
   async getList(orgId, query) {

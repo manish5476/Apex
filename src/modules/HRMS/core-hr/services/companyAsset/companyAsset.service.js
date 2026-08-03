@@ -1,7 +1,7 @@
 const assetRepository = require('../../repository/companyAsset/companyAsset.repository');
 const User = require('../../../../auth/core/user.model');
 const Employee = require('../../models/employee.model');
-const AppError = require('../../../../core/utils/api/appError');
+const AppError = require('../../../../../core/utils/api/appError');
 
 class CompanyAssetService {
   async getList(orgId, query) {

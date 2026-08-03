@@ -1,7 +1,7 @@
-const catchAsync = require('../../../core/utils/api/catchAsync');
+const catchAsync = require('../../../../core/utils/api/catchAsync');
 const assetService = require('../services/companyAsset/companyAsset.service');
 const { createAssetSchema, updateAssetSchema, assignAssetSchema, returnAssetSchema } = require('../validation/companyAsset.validation');
-const { success, created } = require('../../../middleware/responseFormatter');
+const { success, created } = require('../../middleware/responseFormatter');
 
 exports.getAllAssets = catchAsync(async (req, res) => {
   const result = await assetService.getList(req.user.organizationId, req.query);

@@ -1,7 +1,7 @@
-const catchAsync = require('../../../core/utils/api/catchAsync');
+const catchAsync = require('../../../../core/utils/api/catchAsync');
 const departmentService = require('../services/department/department.service');
 const { createDepartmentSchema, updateDepartmentSchema } = require('../validation/department.validation');
-const { success, created, noContent } = require('../../../middleware/responseFormatter'); 
+const { success, created, noContent } = require('../../middleware/responseFormatter'); 
 
 exports.getAllDepartments = catchAsync(async (req, res) => {
   // If ?tree=true, return the hierarchical structure instead of tabular pagination
@@ -52,6 +52,21 @@ exports.deleteDepartment = catchAsync(async (req, res) => {
 exports.getDepartmentStats = catchAsync(async (req, res) => {
   const stats = await departmentService.getStats(req.user.organizationId);
   return success(res, { stats });
+});
+
+exports.getDepartmentHierarchy = catchAsync(async (req, res) => {
+  const hierarchy = await departmentService.getTreeHierarchy(req.user.organizationId);
+  return success(res, { hierarchy });
+});
+
+exports.bulkUpdateDepartments = catchAsync(async (req, res) => {
+  const results = await departmentService.bulkUpdate(req.user.organizationId, req.body.operations, req.user._id);
+  return success(res, { operations: results });
+});
+
+exports.getDepartmentEmployees = catchAsync(async (req, res) => {
+  const result = await departmentService.getDepartmentEmployees(req.user.organizationId, req.params.id, req.query);
+  return success(res, { employees: result.employees }, 200, result.pagination);
 });
 
 // // controllers/core/department.controller.js

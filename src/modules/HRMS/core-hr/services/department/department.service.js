@@ -1,7 +1,7 @@
 const departmentRepository = require('../../repository/department/department.repository');
 const User = require('../../../../auth/core/user.model'); // Adjust path as needed
 const Employee = require('../../models/employee.model');
-const AppError = require('../../../../core/utils/api/appError');
+const AppError = require('../../../../../core/utils/api/appError');
 
 class DepartmentService {
   
@@ -111,6 +111,97 @@ class DepartmentService {
   async getStats(orgId) {
     const stats = await departmentRepository.getStatsAggregation(orgId);
     return stats[0] || { totalDepartments: 0, totalEmployees: 0, departments: [] };
+  }
+
+  async getDepartmentEmployees(orgId, departmentId, query) {
+    const department = await this.getById(orgId, departmentId);
+    
+    const page  = Math.max(1, parseInt(query.page)  || 1);
+    const limit = Math.min(100, parseInt(query.limit) || 20);
+    const skip  = (page - 1) * limit;
+
+    let departmentIds = [department._id];
+
+    if (query.includeSubDepts === 'true' && department.path) {
+      const escapedPath = department.path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const Department = require('../../models/department.model');
+      const descendants = await Department.find({
+        organizationId: orgId,
+        path: new RegExp(`^${escapedPath}/`),
+      }).select('_id');
+      departmentIds = [...departmentIds, ...descendants.map(d => d._id)];
+    }
+
+    const filter = {
+      organizationId: orgId,
+      departmentId:   { $in: departmentIds },
+    };
+
+    const [employees, total] = await Promise.all([
+      Employee.find(filter)
+        .select('user departmentId designationId employmentType')
+        .populate('user', 'name email phone avatar status isActive')
+        .populate('designationId', 'title grade')
+        .skip(skip).limit(limit).sort({ createdAt: -1 }),
+      Employee.countDocuments(filter),
+    ]);
+
+    return {
+      employees,
+      pagination: { total, page, totalPages: Math.ceil(total / limit) }
+    };
+  }
+
+  async bulkUpdate(orgId, operations, actorId) {
+    if (!Array.isArray(operations)) throw new AppError('Operations must be an array', 400);
+
+    const mongoose = require('mongoose');
+    const Department = require('../../models/department.model');
+    const ALLOWED_UPDATE_FIELDS = ['name', 'code', 'description', 'headOfDepartment', 'assistantHOD',
+      'branchId', 'costCenter', 'budgetCode', 'maxStrength', 'contactEmail', 'contactPhone', 'location', 'isActive'];
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const results = [];
+
+      for (const op of operations) {
+        if (op.action === 'create') {
+          op.data.organizationId = orgId;
+          op.data.createdBy      = actorId;
+          op.data.updatedBy      = actorId;
+          const dept = await Department.create([op.data], { session });
+          results.push({ action: 'create', data: dept[0] });
+
+        } else if (op.action === 'update' && op.id) {
+          const safeData = {};
+          ALLOWED_UPDATE_FIELDS.forEach(f => { if (op.data[f] !== undefined) safeData[f] = op.data[f]; });
+          const dept = await Department.findOneAndUpdate(
+            { _id: op.id, organizationId: orgId },
+            { $set: { ...safeData, updatedBy: actorId } },
+            { new: true, session }
+          );
+          results.push({ action: 'update', id: op.id, data: dept });
+
+        } else if (op.action === 'delete' && op.id) {
+          await Department.findOneAndUpdate(
+            { _id: op.id, organizationId: orgId },
+            { $set: { isActive: false, updatedBy: actorId } },
+            { session }
+          );
+          results.push({ action: 'delete', id: op.id });
+        }
+      }
+
+      await session.commitTransaction();
+      return results;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
 }
 

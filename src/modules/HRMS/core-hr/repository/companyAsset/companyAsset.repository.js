@@ -1,5 +1,5 @@
 const CompanyAsset = require('../../models/companyAsset.model');
-const ApiFeatures = require('../../../../utils/api.utils');
+const ApiFeatures = require('../../../../../core/utils/api/ApiFeatures');
 
 class CompanyAssetRepository {
   async getList(orgId, queryString) {

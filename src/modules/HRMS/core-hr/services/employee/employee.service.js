@@ -1,12 +1,12 @@
 const mongoose = require('mongoose');
-const employeeRepository = require('./employee.repository');
-const User = require('../../auth/core/user.model');
-const Department = require('../../core-hr/models/department.model');
-const Designation = require('../../core-hr/models/designation.model');
-const Branch = require('../../../organization/core/branch.model');
-const Shift = require('../../attendance/models/shift.model');
-const CompanyAsset = require('../../core-hr/models/companyAsset.model');
-const AppError = require('../../core/utils/api/appError');
+const employeeRepository = require('../../repository/employee/employee.repository');
+const User = require('../../../../auth/core/user.model');
+const Department = require('../../models/department.model');
+const Designation = require('../../models/designation.model');
+const Branch = require('../../../../organization/core/branch.model');
+const Shift = require('../../../attendance/models/shift.model');
+const CompanyAsset = require('../../models/companyAsset.model');
+const AppError = require('../../../../../core/utils/api/appError');
 
 class EmployeeService {
   

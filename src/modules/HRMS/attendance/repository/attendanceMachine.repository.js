@@ -1,7 +1,7 @@
 const AttendanceMachine = require('../models/attendanceMachine.model');
 const AttendanceLog = require('../models/attendanceLog.model');
 const User = require('../../../auth/core/user.model');
-const ApiFeatures = require('../../../../core/utils/api.utils');
+const ApiFeatures = require('../../../../core/utils/api/ApiFeatures');
 
 class AttendanceMachineRepository {
   

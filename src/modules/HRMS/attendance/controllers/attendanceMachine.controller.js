@@ -4,7 +4,7 @@ const { createMachineSchema, updateMachineSchema, bulkStatusSchema, mapUserSchem
 const repo = require('../repository/attendanceMachine.repository');
 const machineService = require('../services/attendanceMachine.service');
 const attendanceLogService = require('../services/attendanceLog.service'); // Connected!
-const { success, created, noContent } = require('../../../middleware/responseFormatter');
+const { success, created, noContent } = require('../../middleware/responseFormatter');
 const AttendanceMachine = require('../models/attendanceMachine.model');
 const User = require('../../../auth/core/user.model');
 
@@ -143,6 +143,17 @@ exports.bulkMapUsers = catchAsync(async (req, res) => {
 });
 
 // --- Analytics ---
+
+exports.getMachineLogs = catchAsync(async (req, res, next) => {
+  const machine = await repo.getById(req.user.organizationId, req.params.id);
+  if (!machine) return next(new AppError('Machine not found', 404));
+
+  const logRepo = require('../repository/attendanceLog.repository');
+  req.query.machineId = machine._id;
+  const result = await logRepo.getList(req.user.organizationId, req.query);
+  
+  return success(res, { logs: result.data }, 200, result.pagination);
+});
 
 exports.getMachineAnalytics = catchAsync(async (req, res) => {
   const data = await machineService.getAnalytics(req.user.organizationId, req.query.days);

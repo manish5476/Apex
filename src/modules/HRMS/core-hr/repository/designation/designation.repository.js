@@ -1,6 +1,6 @@
 const Designation = require('../../models/designation.model');
 const Employee = require('../../models/employee.model');
-const ApiFeatures = require('../../../../utils/api.utils');
+const ApiFeatures = require('../../../../../core/utils/api/ApiFeatures');
 
 class DesignationRepository {
   

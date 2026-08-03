@@ -1,7 +1,7 @@
-const catchAsync = require('../../../core/utils/api/catchAsync');
+const catchAsync = require('../../../../core/utils/api/catchAsync');
 const designationService = require('../services/designation/designation.service');
 const { createDesignationSchema, updateDesignationSchema } = require('../validation/designation.validation');
-const { success, created, noContent } = require('../../../middleware/responseFormatter'); 
+const { success, created, noContent } = require('../../middleware/responseFormatter'); 
 
 exports.getAllDesignations = catchAsync(async (req, res) => {
   const result = await designationService.getList(req.user.organizationId, req.query);
@@ -54,6 +54,21 @@ exports.getPromotionEligible = catchAsync(async (req, res) => {
   );
   
   return success(res, eligibilityData);
+});
+
+exports.getDesignationHierarchy = catchAsync(async (req, res) => {
+  const result = await designationService.getDesignationHierarchy(req.user.organizationId);
+  return success(res, result);
+});
+
+exports.getDesignationEmployees = catchAsync(async (req, res) => {
+  const result = await designationService.getDesignationEmployees(req.user.organizationId, req.params.id, req.query);
+  return success(res, { employees: result.employees }, 200, result.pagination);
+});
+
+exports.bulkCreateDesignations = catchAsync(async (req, res) => {
+  const result = await designationService.bulkCreateDesignations(req.user.organizationId, req.body.designations, req.user._id);
+  return created(res, result);
 });
 
 // // controllers/core/designation.controller.js

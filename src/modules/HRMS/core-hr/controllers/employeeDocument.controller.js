@@ -1,7 +1,7 @@
-const catchAsync = require('../../../core/utils/api/catchAsync');
+const catchAsync = require('../../../../core/utils/api/catchAsync');
 const documentService = require('../services/employeeDocument/employeeDocument.service');
 const { uploadDocumentSchema, verifyDocumentSchema } = require('../validation/employeeDocument.validation');
-const { success, created, noContent } = require('../../../middleware/responseFormatter');
+const { success, created, noContent } = require('../../middleware/responseFormatter');
 
 exports.getAllDocuments = catchAsync(async (req, res) => {
   const result = await documentService.getList(req.user.organizationId, req.query);

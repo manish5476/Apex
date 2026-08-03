@@ -1,7 +1,7 @@
-const catchAsync = require('../../core/utils/api/catchAsync');
-const employeeService = require('./employee.service');
-const { createEmployeeSchema, updateEmployeeSchema, deactivateEmployeeSchema } = require('./employee.validation');
-const { success, created } = require('../../core/utils/response'); 
+const catchAsync = require('../../../../core/utils/api/catchAsync');
+const employeeService = require('../services/employee/employee.service');
+const { createEmployeeSchema, updateEmployeeSchema, deactivateEmployeeSchema } = require('../validation/employee.validation');
+const { success, created } = require('../../middleware/responseFormatter'); 
 // Assuming `success` maps to standard res.status(200).json()
 
 exports.getAllEmployees = catchAsync(async (req, res) => {
@@ -70,7 +70,7 @@ exports.deactivateEmployee = catchAsync(async (req, res) => {
   });
 });
 
-const { getEmployee360Schema } = require('./employee.validation');
+const { getEmployee360Schema } = require('../validation/employee.validation');
 
 exports.getEmployeeWorkspace = catchAsync(async (req, res) => {
   // 1. Validate route params
