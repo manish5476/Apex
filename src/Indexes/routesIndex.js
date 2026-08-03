@@ -60,6 +60,9 @@ module.exports = {
   webhookRoutes: require('../modules/webhook/webhook.routes.js'),
   cronRoutes: require('../routes/v1/cron.routes.js'),
 
+  // --- Field Service ---
+  fieldServiceRoutes: require('../modules/fieldService/routes/workAssignment.routes.js'),
+
   // --- External/Public Modules ---
   hrmsRoutes: require('../modules/HRMS/routes/index'),
   storefrontPublicRoutes: require('../PublicModules/routes/storefront/public.routes.js'),

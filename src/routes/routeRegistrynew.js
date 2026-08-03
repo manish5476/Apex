@@ -73,6 +73,9 @@ const registerRoutes = (app) => {
   app.use(`${v1Prefix}/hrms`, routes.hrmsRoutes);
   app.use(`${v1Prefix}/departments`, require('../modules/HRMS/core-hr/routes/department.routes'));
 
+  // --- Field Service Routes ---
+  app.use(`${v1Prefix}/field-service/work-assignments`, routes.fieldServiceRoutes);
+
   // --- Public Storefront Routes ---
   app.use(`/api/v1/store`, routes.storefrontPublicRoutes);
   app.use(`/api/v1/admin/storefront`, routes.storefrontAdminRoutes);

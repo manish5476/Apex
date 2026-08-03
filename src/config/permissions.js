@@ -208,6 +208,12 @@ const PERMISSIONS_LIST = [
   p("task:create", "Tasks", "Create tasks"),
   // ── Global Search ─────────────────────────────────────────────────
   p("search:global", "Search", "Use Global Search"),
+  // ── Field Service ─────────────────────────────────────────────────
+  p("field-service:read",    "Field Service", "View work assignments and calendar"),
+  p("field-service:create",  "Field Service", "Create work assignments"),
+  p("field-service:manage",  "Field Service", "Update, reassign, and complete work assignments"),
+  p("field-service:delete",  "Field Service", "Cancel or delete work assignments"),
+  p("field-service:admin",   "Field Service", "Full field service admin including SLA and analytics"),
 ];
 
 
