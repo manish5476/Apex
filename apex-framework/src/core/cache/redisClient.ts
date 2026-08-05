@@ -20,16 +20,16 @@ export const initializeRedis = async (): Promise<Redis | null> => {
       port: parseInt(process.env.REDIS_PORT || '6379', 10),
       password: process.env.REDIS_PASSWORD || undefined,
       lazyConnect: true,
-      retryStrategy: (times:any) => {
+      retryStrategy: (times: number) => {
         if (times > 3) {
           logger.warn('🟡 Redis connection failed after 3 attempts, disabling cache');
           isEnabled = false;
-          return null;
+          return null; // Stop retrying
         }
         return Math.min(times * 100, 3000);
       },
       maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
+      enableOfflineQueue: false, // Prevents memory leaks by not queuing commands endlessly when down
       showFriendlyErrorStack: process.env.NODE_ENV === 'development',
     };
 
@@ -65,3 +65,9 @@ export const getRedis = async (): Promise<Redis | null> => {
 };
 
 export const isRedisEnabled = (): boolean => isEnabled;
+
+/**
+ * Synchronous getter for libraries that require a direct client instance.
+ * Call `initializeRedis()` during application bootstrap before using this.
+ */
+export const getRawRedisClient = (): Redis | null => redisInstance;

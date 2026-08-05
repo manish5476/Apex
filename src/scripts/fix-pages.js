@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 require('dotenv').config({ path: './src/.env' });
 
-const Organization = require('./src/modules/organization/core/organization.model');
-const StorefrontPage = require('./src/PublicModules/models/storefront/storefrontPage.model');
+const Organization = require('../modules/organization/core/organization.model');
+const StorefrontPage = require('../PublicModules/models/storefront/storefrontPage.model');
 
 async function restorePages() {
   try {

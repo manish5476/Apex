@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const { fetchTransactionsAggregated } = require('./modules/accounting/core/service/transaction.service');
-const AccountEntry = require('./modules/accounting/core/model/accountEntry.model');
+const { fetchTransactionsAggregated } = require('../modules/accounting/core/service/transaction.service');
+const AccountEntry = require('../modules/accounting/core/model/accountEntry.model');
 
 // Load env
 dotenv.config({ path: './.env' });

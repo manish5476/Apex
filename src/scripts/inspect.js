@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const User = require('./modules/auth/core/user.model');
-const AccountEntry = require('./modules/accounting/core/model/accountEntry.model');
+const User = require('../modules/auth/core/user.model');
+const AccountEntry = require('../modules/accounting/core/model/accountEntry.model');
 
 // Load env
 dotenv.config({ path: './.env' });

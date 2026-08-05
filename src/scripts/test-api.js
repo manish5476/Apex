@@ -10,8 +10,8 @@ async function run() {
       useUnifiedTopology: true,
     });
     console.log('Connected to DB');
-    const User = require('./modules/auth/core/user.model');
-    const Session = require('./modules/auth/core/session.model');
+    const User = require('../modules/auth/core/user.model');
+    const Session = require('../modules/auth/core/session.model');
     // Grab the first user
     const user = await User.findOne({ email: 'shivam.electronics.j@gmail.com' });
     if (!user) {
