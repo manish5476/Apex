@@ -3,8 +3,43 @@ const AppError = require('../../../../core/utils/api/appError');
 const repo = require('../repository/leaveRequest.repository');
 const leaveRequestService = require('../services/leaveRequest.service');
 const { createLeaveRequestSchema, updateLeaveRequestSchema, actionSchema, rejectSchema, escalateSchema, bulkApproveSchema } = require('../validation/leaveRequest.validation');
-const { success, created } = require('../../../middleware/responseFormatter');
-const Employee = require('../../core-hr/models/employee.model'); // For team calendar view
+const { success, created } = require('../../middleware/responseFormatter');
+const Employee = require('../../core-hr/models/employee.model');
+const LeaveBalance = require('../models/leaveBalance.model');
+const LeaveRequest = require('../models/leaveRequest.model');
+const { getFinancialYear } = require('../../../../core/utils/leaveHelpers');
+
+// --- Employee Self-Service ---
+
+exports.getMyLeaveRequests = catchAsync(async (req, res) => {
+  const result = await repo.getMyRequests(req.user.organizationId, req.user._id, req.query);
+  return success(res, result.data, 200, result.pagination);
+});
+
+exports.getLeaveBalanceSummary = catchAsync(async (req, res, next) => {
+  const financialYear = req.query.financialYear || getFinancialYear();
+
+  const balance = await LeaveBalance.findOne({ user: req.user._id, organizationId: req.user.organizationId, financialYear });
+  if (!balance) return next(new AppError('Leave balance not found for this financial year', 404));
+
+  const [upcomingLeaves, recentLeaves] = await Promise.all([
+    LeaveRequest.find({ user: req.user._id, organizationId: req.user.organizationId, status: 'approved', startDate: { $gte: new Date() } }).select('leaveType startDate endDate daysCount').sort('startDate').limit(5),
+    LeaveRequest.find({ user: req.user._id, organizationId: req.user.organizationId, status: { $in: ['approved', 'rejected', 'cancelled'] } }).select('leaveType startDate endDate status createdAt').sort('-createdAt').limit(5),
+  ]);
+
+  return success(res, {
+    financialYear,
+    balance: {
+      casual: { total: balance.casualLeave?.total || 0, used: balance.casualLeave?.used || 0, available: (balance.casualLeave?.total || 0) - (balance.casualLeave?.used || 0) },
+      sick: { total: balance.sickLeave?.total || 0, used: balance.sickLeave?.used || 0, available: (balance.sickLeave?.total || 0) - (balance.sickLeave?.used || 0) },
+      earned: { total: balance.earnedLeave?.total || 0, used: balance.earnedLeave?.used || 0, available: (balance.earnedLeave?.total || 0) - (balance.earnedLeave?.used || 0) },
+      unpaid: { used: balance.unpaidLeave?.used || 0 },
+    },
+    upcomingLeaves,
+    recentLeaves,
+    recentTransactions: (balance.recentTransactions || []).slice(-10),
+  });
+});
 
 // --- CRUD ---
 
@@ -29,8 +64,8 @@ exports.updateLeaveRequest = catchAsync(async (req, res, next) => {
   const payload = updateLeaveRequestSchema.parse(req.body);
   const leaveReq = await repo.getById(req.user.organizationId, req.params.id);
   if (!leaveReq) return next(new AppError('Leave request not found', 404));
-  if (!['draft','pending'].includes(leaveReq.status)) return next(new AppError('Cannot update a processed request', 400));
-  
+  if (!['draft', 'pending'].includes(leaveReq.status)) return next(new AppError('Cannot update a processed request', 400));
+
   // Hand off back to model/repo safely...
   Object.assign(leaveReq, payload);
   await leaveReq.save();
@@ -102,10 +137,10 @@ exports.getLeaveAnalytics = catchAsync(async (req, res) => {
 
 exports.getTeamLeaveCalendar = catchAsync(async (req, res) => {
   const targetMonth = Math.min(12, Math.max(1, parseInt(req.query.month) || new Date().getMonth() + 1));
-  const targetYear  = parseInt(req.query.year) || new Date().getFullYear();
+  const targetYear = parseInt(req.query.year) || new Date().getFullYear();
 
   const startDate = new Date(targetYear, targetMonth - 1, 1);
-  const endDate   = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+  const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
 
   const teamMembers = await Employee.find({ organizationId: req.user.organizationId, reportingManagerId: req.user._id }).select('user');
   const teamMemberIds = teamMembers.map(m => m.user);
@@ -132,7 +167,7 @@ exports.getTeamLeaveCalendar = catchAsync(async (req, res) => {
       const ls = new Date(leave.startDate);
       const le = new Date(leave.endDate);
       const leaveStartDay = new Date(ls.getFullYear(), ls.getMonth(), ls.getDate());
-      const leaveEndDay   = new Date(le.getFullYear(), le.getMonth(), le.getDate());
+      const leaveEndDay = new Date(le.getFullYear(), le.getMonth(), le.getDate());
       const today = new Date(cY, cM, cD);
       return today >= leaveStartDay && today <= leaveEndDay;
     });

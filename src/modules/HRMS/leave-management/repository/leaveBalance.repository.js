@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const LeaveBalance = require('../models/leaveBalance.model');
 const LeaveRequest = require('../models/leaveRequest.model');
 const User = require('../../../auth/core/user.model');
-const ApiFeatures = require('../../../../core/utils/api.utils');
+const ApiFeatures = require('../../../../core/utils/api/ApiFeatures');
 
 class LeaveBalanceRepository {
 
@@ -27,14 +27,14 @@ class LeaveBalanceRepository {
 
   async getPendingLeaveDays(orgId, userId, leaveTypeEnum) {
     const pendingLeaves = await LeaveRequest.aggregate([
-      { 
-        $match: { 
-          user: new mongoose.Types.ObjectId(userId), 
-          organizationId: new mongoose.Types.ObjectId(orgId), 
-          leaveType: leaveTypeEnum, 
-          status: 'pending', 
-          startDate: { $gte: new Date() } 
-        } 
+      {
+        $match: {
+          user: new mongoose.Types.ObjectId(userId),
+          organizationId: new mongoose.Types.ObjectId(orgId),
+          leaveType: leaveTypeEnum,
+          status: 'pending',
+          startDate: { $gte: new Date() }
+        }
       },
       { $group: { _id: null, totalDays: { $sum: '$daysCount' } } }
     ]);
@@ -77,7 +77,7 @@ class LeaveBalanceRepository {
           casualLeave: { total: '$casualLeave.total', used: '$casualLeave.used', available: { $subtract: ['$casualLeave.total', '$casualLeave.used'] } },
           sickLeave: { total: '$sickLeave.total', used: '$sickLeave.used', available: { $subtract: ['$sickLeave.total', '$sickLeave.used'] } },
           earnedLeave: { total: '$earnedLeave.total', used: '$earnedLeave.used', available: { $subtract: ['$earnedLeave.total', '$earnedLeave.used'] } },
-          totalAvailable: { $add: [{ $subtract: ['$casualLeave.total','$casualLeave.used'] }, { $subtract: ['$sickLeave.total','$sickLeave.used'] }, { $subtract: ['$earnedLeave.total','$earnedLeave.used'] }] }
+          totalAvailable: { $add: [{ $subtract: ['$casualLeave.total', '$casualLeave.used'] }, { $subtract: ['$sickLeave.total', '$sickLeave.used'] }, { $subtract: ['$earnedLeave.total', '$earnedLeave.used'] }] }
         }
       },
       { $lookup: { from: 'departments', localField: 'department', foreignField: '_id', as: 'deptInfo' } },

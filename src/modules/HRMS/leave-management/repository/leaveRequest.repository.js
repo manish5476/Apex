@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const LeaveRequest = require('../models/leaveRequest.model');
-const ApiFeatures = require('../../../../core/utils/api.utils');
+const ApiFeatures = require('../../../../core/utils/api/ApiFeatures');
 
 class LeaveRequestRepository {
 
@@ -15,6 +15,20 @@ class LeaveRequestRepository {
         { path: 'approvedBy', select: 'name' },
         { path: 'handoverTo', select: 'name' },
         { path: 'departmentId', select: 'name' }
+      ]);
+    return await features.execute();
+  }
+
+  async getMyRequests(orgId, userId, queryString) {
+    const filter = { organizationId: orgId, user: userId };
+    const features = new ApiFeatures(LeaveRequest.find(filter), queryString)
+      .filter()
+      .search(['leaveRequestId', 'reason'])
+      .sort({ createdAt: -1 })
+      .paginate()
+      .populate([
+        { path: 'approvedBy', select: 'name' },
+        { path: 'approvalFlow.approver', select: 'name email' }
       ]);
     return await features.execute();
   }
@@ -55,9 +69,9 @@ class LeaveRequestRepository {
 
     if (financialYear) {
       const [startYear] = financialYear.split('-');
-      matchStage.startDate = { 
-        $gte: new Date(parseInt(startYear), 3, 1), 
-        $lte: new Date(parseInt(startYear) + 1, 2, 31) 
+      matchStage.startDate = {
+        $gte: new Date(parseInt(startYear), 3, 1),
+        $lte: new Date(parseInt(startYear) + 1, 2, 31)
       };
     }
 
@@ -70,8 +84,8 @@ class LeaveRequestRepository {
       {
         $facet: {
           byLeaveType: [{ $group: { _id: '$leaveType', count: { $sum: 1 }, totalDays: { $sum: '$daysCount' }, avgDays: { $avg: '$daysCount' } } }],
-          byMonth:     [{ $group: { _id: { $month: '$startDate' }, count: { $sum: 1 }, totalDays: { $sum: '$daysCount' } } }, { $sort: { _id: 1 } }],
-          byDepartment:[
+          byMonth: [{ $group: { _id: { $month: '$startDate' }, count: { $sum: 1 }, totalDays: { $sum: '$daysCount' } } }, { $sort: { _id: 1 } }],
+          byDepartment: [
             { $group: { _id: '$departmentId', count: { $sum: 1 }, totalDays: { $sum: '$daysCount' } } },
             { $lookup: { from: 'departments', localField: '_id', foreignField: '_id', as: 'department' } },
             { $unwind: { path: '$department', preserveNullAndEmptyArrays: true } },

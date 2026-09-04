@@ -1,6 +1,6 @@
 const Holiday = require('../models/holiday.model');
 const mongoose = require('mongoose');
-const ApiFeatures = require('../../../../core/utils/api.utils');
+const ApiFeatures = require('../../../../core/utils/api/ApiFeatures');
 
 class HolidayRepository {
 

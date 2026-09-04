@@ -2,7 +2,7 @@ const catchAsync = require('../../../../core/utils/api/catchAsync');
 const repo = require('../repository/holiday.repository');
 const holidayService = require('../services/holiday.service');
 const { createHolidaySchema, updateHolidaySchema, checkDateSchema, bulkCreateSchema, copyYearSchema } = require('../validation/holiday.validation');
-const { success, created, noContent } = require('../../../middleware/responseFormatter');
+const { success, created, noContent } = require('../../middleware/responseFormatter');
 const AppError = require('../../../../core/utils/api/appError');
 const { startOfDay, endOfDay } = require('../../../../core/utils/dateHelpers');
 

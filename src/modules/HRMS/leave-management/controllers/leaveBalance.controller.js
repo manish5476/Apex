@@ -2,7 +2,7 @@ const catchAsync = require('../../../../core/utils/api/catchAsync');
 const repo = require('../repository/leaveBalance.repository');
 const leaveBalanceService = require('../services/leaveBalance.service');
 const { updateBalanceSchema, initializeBalanceSchema, bulkInitializeSchema, accrueLeaveSchema, reportQuerySchema } = require('../validation/leaveBalance.validation');
-const { success, created } = require('../../../middleware/responseFormatter');
+const { success, created } = require('../../middleware/responseFormatter');
 const AppError = require('../../../../core/utils/api/appError');
 const { getFinancialYear } = require('../../../../core/utils/leaveHelpers');
 
