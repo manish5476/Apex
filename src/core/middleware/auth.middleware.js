@@ -32,14 +32,11 @@ exports.protect = async (req, res, next) => {
       return res.status(403).json({ status: "fail", message: "Invalid token type for merchant API" });
     }
 
-    // 3. ✅ Parallel DB hit — User + Org in one round-trip instead of two sequential
-    const [currentUser, ownerOrg] = await Promise.all([
-      User.findById(decoded.id).populate({
-        path: "role",
-        select: "permissions name isSuperAdmin",
-      }),
-      Organization.findOne({ owner: decoded.id }).select("_id").lean(),
-    ]);
+    // 3. Fetch user first to get active organizationId
+    const currentUser = await User.findById(decoded.id).populate({
+      path: "role",
+      select: "permissions name isSuperAdmin",
+    });
 
     if (!currentUser) {
       return res.status(401).json({ status: "fail", message: "User no longer exists" });
@@ -51,6 +48,11 @@ exports.protect = async (req, res, next) => {
         message: "Password recently changed. Please log in again",
       });
     }
+
+    // Strictly scope ownership to active organization (prevent cross-org escalation)
+    const ownerOrg = currentUser.organizationId
+      ? await Organization.findOne({ _id: currentUser.organizationId, owner: decoded.id }).select("_id").lean()
+      : null;
 
     const isOwner = !!ownerOrg;
 

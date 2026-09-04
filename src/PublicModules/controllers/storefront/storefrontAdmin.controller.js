@@ -34,6 +34,20 @@ const { normalizeSection } = require('../../utils/storefront/sectionConfigNormal
 const OrderService = require('../../services/storefront/order.service');
 const CRMBridge = require('../../services/storefront/crmBridge.service');
 const StorefrontCustomer = require('../../models/storefront/storefrontCustomer.model');
+const activityLogService = require('../../../modules/activity/activityLogService');
+
+const RESERVED_PAGE_SLUGS = new Set([
+  'cart', 'checkout', 'account', 'orders', 'order', 'portal', 'delivery',
+  'delivery-agent', 'search', 'products', 'product', 'category', 'categories',
+  'brands', 'tags', 'login', 'register', 'forgot-password', 'reset-password',
+  'wishlist', 'track-order', 'meta', 'filters', 'sitemap', 'api', 'admin',
+  'store', 'home'
+]);
+
+const isReservedSlug = (slug) => {
+  if (!slug) return false;
+  return RESERVED_PAGE_SLUGS.has(slug.toLowerCase().trim());
+};
 
 class StorefrontAdminController {
 
@@ -291,15 +305,22 @@ class StorefrontAdminController {
         return next(new AppError('"sections" must be an array', 400));
       }
 
+      const cleanSlug = slug.toLowerCase().trim();
+
+      // Reserved slug check
+      if (isReservedSlug(cleanSlug)) {
+        return next(new AppError(`The slug "${cleanSlug}" is reserved for system routing and cannot be used.`, 400));
+      }
+
       // Slug format check
-      if (!/^[a-z0-9-]+$/.test(slug)) {
+      if (!/^[a-z0-9-]+$/.test(cleanSlug)) {
         return next(new AppError('Slug may only contain lowercase letters, numbers, and hyphens', 400));
       }
 
       // Slug uniqueness
-      const exists = await StorefrontPage.findOne({ organizationId, slug: slug.toLowerCase() });
+      const exists = await StorefrontPage.findOne({ organizationId, slug: cleanSlug });
       if (exists) {
-        return next(new AppError(`A page with slug "${slug}" already exists`, 409));
+        return next(new AppError(`A page with slug "${cleanSlug}" already exists`, 409));
       }
 
       const normalizedSections = Array.isArray(sections)
@@ -316,18 +337,32 @@ class StorefrontAdminController {
 
       const page = await StorefrontPage.create({
         organizationId,
-        name,
-        slug: slug.toLowerCase(),
+        name: name.trim(),
+        slug: cleanSlug,
         pageType,
         sections: normalizedSections,
         seo,
         themeOverride,
         isHomepage,
         status: 'draft',
+        isPublished: false,
+        hasUnpublishedChanges: true,
+        publishedVersion: 0,
+        version: 1,
+        draftUpdatedAt: new Date(),
+        lastEditedBy: req.user._id,
         createdBy: req.user._id
       });
 
       await StorefrontCache.invalidateStore(organizationId);
+
+      activityLogService.logActivity(
+        organizationId,
+        req.user._id,
+        'page:create',
+        `Created storefront page "${page.name}" (/ ${page.slug})`,
+        { pageId: page._id, slug: page.slug, pageType }
+      ).catch(() => {});
 
       res.status(201).json({
         status: 'success',
@@ -340,7 +375,7 @@ class StorefrontAdminController {
   }
 
   // ---------------------------------------------------------------------------
-  // UPDATE page (the core builder save endpoint)
+  // UPDATE page (the core builder save endpoint — DRAFT SAVE ONLY)
   // PUT /admin/storefront/pages/:pageId
   // ---------------------------------------------------------------------------
 
@@ -355,6 +390,8 @@ class StorefrontAdminController {
       delete updateData.status;
       delete updateData.isPublished;
       delete updateData.publishedAt;
+      delete updateData.publishedBy;
+      delete updateData.publishedVersion;
       delete updateData.organizationId; // Never allow org change
 
       // Validate sections if they're being updated
@@ -369,9 +406,12 @@ class StorefrontAdminController {
         }
       }
 
-      // Validate slug uniqueness if being changed
+      // Validate slug uniqueness and reserved paths if being changed
       if (updateData.slug) {
-        updateData.slug = updateData.slug.toLowerCase();
+        updateData.slug = updateData.slug.toLowerCase().trim();
+        if (isReservedSlug(updateData.slug)) {
+          return next(new AppError(`The slug "${updateData.slug}" is reserved for system routing and cannot be used.`, 400));
+        }
         if (!/^[a-z0-9-]+$/.test(updateData.slug)) {
           return next(new AppError('Slug may only contain lowercase letters, numbers, and hyphens', 400));
         }
@@ -385,23 +425,57 @@ class StorefrontAdminController {
         }
       }
 
+      // Mark that draft has pending unpublished changes
+      updateData.hasUnpublishedChanges = true;
+      updateData.draftUpdatedAt = new Date();
+      updateData.lastEditedBy = req.user._id;
+
+      // Optimistic concurrency check: if client sent version/expectedVersion, verify match
+      const rawExpected = req.body.expectedVersion ?? req.body.version;
+      const filter = { _id: pageId, organizationId };
+      if (rawExpected !== undefined && rawExpected !== null && !isNaN(Number(rawExpected))) {
+        filter.version = Number(rawExpected);
+      }
+
       const page = await StorefrontPage.findOneAndUpdate(
-        { _id: pageId, organizationId },
+        filter,
         { $set: updateData, $inc: { version: 1 } },
         { new: true, runValidators: true }
       );
 
-      if (!page) return next(new AppError('Page not found', 404));
-
-      if (page.isPublished && page.status === 'published') {
-        await PageSnapshotService.buildForPage(organizationId, page._id);
-      } else {
-        await StorefrontCache.invalidateStore(organizationId);
+      if (!page) {
+        const existing = await StorefrontPage.findOne({ _id: pageId, organizationId });
+        if (!existing) {
+          return next(new AppError('Page not found', 404));
+        }
+        return res.status(409).json({
+          status: 'fail',
+          code: 'CONCURRENT_MODIFICATION',
+          message: 'This page was modified by another user or session. Please reload the latest changes to resolve conflicts.',
+          data: {
+            currentVersion: existing.version,
+            expectedVersion: rawExpected,
+            serverUpdatedAt: existing.updatedAt,
+            lastEditedBy: existing.lastEditedBy
+          }
+        });
       }
+
+      // CRITICAL: Draft save does NOT modify the live StorefrontPageSnapshot!
+      // Invalidate store cache (for internal data), but leave published public snapshot intact
+      await StorefrontCache.invalidateStore(organizationId);
+
+      activityLogService.logActivity(
+        organizationId,
+        req.user._id,
+        'page:update',
+        `Updated draft for storefront page "${page.name}" (/ ${page.slug}) v${page.version}`,
+        { pageId: page._id, slug: page.slug, version: page.version }
+      ).catch(() => {});
 
       res.status(200).json({
         status: 'success',
-        message: 'Page saved',
+        message: 'Page draft saved',
         data: page
       });
     } catch (err) {
@@ -433,7 +507,7 @@ class StorefrontAdminController {
         ));
       }
 
-      if (page.status === 'published') {
+      if (page.status === 'published' || page.isPublished) {
         return next(new AppError(
           'Unpublish this page before deleting it.',
           400
@@ -443,6 +517,14 @@ class StorefrontAdminController {
       await page.deleteOne();
       await PageSnapshotService.deleteForPage(organizationId, pageId);
 
+      activityLogService.logActivity(
+        organizationId,
+        req.user._id,
+        'page:delete',
+        `Deleted storefront page "${page.name}" (/ ${page.slug})`,
+        { pageId, slug: page.slug }
+      ).catch(() => {});
+
       res.status(200).json({ status: 'success', message: 'Page deleted' });
     } catch (err) {
       next(err);
@@ -450,7 +532,7 @@ class StorefrontAdminController {
   }
 
   // ---------------------------------------------------------------------------
-  // PUBLISH
+  // PUBLISH (Moves draft to Live Snapshot)
   // POST /admin/storefront/pages/:pageId/publish
   // ---------------------------------------------------------------------------
 
@@ -459,14 +541,35 @@ class StorefrontAdminController {
       const { organizationId } = req.user;
       const { pageId } = req.params;
 
-      const page = await StorefrontPage.findOneAndUpdate(
-        { _id: pageId, organizationId },
-        { status: 'published', isPublished: true, publishedAt: new Date() },
-        { new: true }
-      );
+      const page = await StorefrontPage.findOne({ _id: pageId, organizationId });
       if (!page) return next(new AppError('Page not found', 404));
 
+      // Validate sections before taking live
+      if (Array.isArray(page.sections) && page.sections.length > 0) {
+        const result = SectionValidator.validateSections(page.sections);
+        if (!result.valid) {
+          return next(new AppError(`Cannot publish invalid page. Section validation failed:\n${result.errors.join('\n')}`, 400));
+        }
+      }
+
+      page.status = 'published';
+      page.isPublished = true;
+      page.hasUnpublishedChanges = false;
+      page.publishedVersion = page.version;
+      page.publishedAt = new Date();
+      page.publishedBy = req.user._id;
+      await page.save();
+
+      // Build or update the live immutable snapshot
       await PageSnapshotService.buildForPage(organizationId, page._id);
+
+      activityLogService.logActivity(
+        organizationId,
+        req.user._id,
+        'page:publish',
+        `Published storefront page "${page.name}" (/ ${page.slug}) to live (v${page.version})`,
+        { pageId: page._id, slug: page.slug, publishedVersion: page.version }
+      ).catch(() => {});
 
       res.status(200).json({ status: 'success', message: 'Page is now live', data: page });
     } catch (err) {
@@ -475,7 +578,7 @@ class StorefrontAdminController {
   }
 
   // ---------------------------------------------------------------------------
-  // UNPUBLISH
+  // UNPUBLISH (Removes from Live Snapshot)
   // POST /admin/storefront/pages/:pageId/unpublish
   // ---------------------------------------------------------------------------
 
@@ -484,14 +587,28 @@ class StorefrontAdminController {
       const { organizationId } = req.user;
       const { pageId } = req.params;
 
-      const page = await StorefrontPage.findOneAndUpdate(
-        { _id: pageId, organizationId },
-        { status: 'draft', isPublished: false },
-        { new: true }
-      );
+      const page = await StorefrontPage.findOne({ _id: pageId, organizationId });
       if (!page) return next(new AppError('Page not found', 404));
 
+      if (page.isHomepage) {
+        return next(new AppError('Cannot unpublish the active homepage. Assign another published page as homepage first.', 400));
+      }
+
+      page.status = 'draft';
+      page.isPublished = false;
+      page.hasUnpublishedChanges = true;
+      await page.save();
+
+      // Remove the live snapshot so public route returns 404
       await PageSnapshotService.deleteForPage(organizationId, page._id);
+
+      activityLogService.logActivity(
+        organizationId,
+        req.user._id,
+        'page:unpublish',
+        `Unpublished storefront page "${page.name}" (/ ${page.slug})`,
+        { pageId: page._id, slug: page.slug }
+      ).catch(() => {});
 
       res.status(200).json({ status: 'success', message: 'Page unpublished', data: page });
     } catch (err) {
@@ -512,14 +629,22 @@ class StorefrontAdminController {
       const page = await StorefrontPage.findOne({ _id: pageId, organizationId });
       if (!page) return next(new AppError('Page not found', 404));
 
-      if (page.status !== 'published') {
+      if (page.status !== 'published' || !page.isPublished) {
         return next(new AppError('Only published pages can be set as homepage', 400));
       }
 
-      // The pre-save hook on StorefrontPage handles clearing isHomepage on others
+      // The pre-save hook on StorefrontPage handles clearing isHomepage on other pages
       page.isHomepage = true;
       await page.save();
       await PageSnapshotService.buildForPage(organizationId, page._id);
+
+      activityLogService.logActivity(
+        organizationId,
+        req.user._id,
+        'page:set_homepage',
+        `Assigned storefront page "${page.name}" (/ ${page.slug}) as active homepage`,
+        { pageId: page._id, slug: page.slug }
+      ).catch(() => {});
 
       res.status(200).json({ status: 'success', message: 'Homepage updated', data: page });
     } catch (err) {
@@ -541,7 +666,7 @@ class StorefrontAdminController {
       const original = await StorefrontPage.findOne({ _id: pageId, organizationId }).lean();
       if (!original) return next(new AppError('Page not found', 404));
 
-      // Generate unique slug if not provided
+      // Generate unique slug
       const baseSlug = newSlug ?? `${original.slug}-copy`;
       const finalSlug = await this._uniqueSlug(organizationId, baseSlug);
 
@@ -554,19 +679,133 @@ class StorefrontAdminController {
         slug: finalSlug,
         status: 'draft',
         isPublished: false,
-        isHomepage: false,
+        hasUnpublishedChanges: true,
+        publishedVersion: 0,
         publishedAt: null,
+        publishedBy: null,
+        isHomepage: false,
         viewCount: 0,
         version: 1,
+        draftUpdatedAt: new Date(),
+        lastEditedBy: req.user._id,
         createdBy: req.user._id
       });
 
       await StorefrontCache.invalidateStore(organizationId);
 
+      activityLogService.logActivity(
+        organizationId,
+        req.user._id,
+        'page:duplicate',
+        `Duplicated page "${original.name}" into "${newPage.name}" (/ ${newPage.slug})`,
+        { originalPageId: pageId, newPageId: newPage._id, slug: newPage.slug }
+      ).catch(() => {});
+
       res.status(201).json({ status: 'success', message: 'Page duplicated', data: newPage });
     } catch (err) {
       next(err);
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // DRAFT PREVIEW (Authenticated, full hydrated preview of working draft)
+  // GET /admin/storefront/pages/:pageId/preview
+  // ---------------------------------------------------------------------------
+
+  getDraftPreview = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { pageId } = req.params;
+
+      const page = await StorefrontPage.findOne({ _id: pageId, organizationId });
+      if (!page) return next(new AppError('Page not found', 404));
+
+      const LayoutService = require('../../services/storefront/layout.service');
+      const DataHydrationService = require('../../services/storefront/dataHydration.service');
+      const Organization = require('../../../modules/organization/core/organization.model');
+
+      const [org, layoutData] = await Promise.all([
+        Organization.findById(organizationId).select('_id name uniqueShopId primaryEmail primaryPhone logo description address').lean(),
+        LayoutService.getLayout(organizationId)
+      ]);
+
+      const currency = layoutData.globalSettings?.commerce?.currency ?? 'INR';
+
+      const [hydratedHeader, hydratedSections, hydratedFooter] = await Promise.all([
+        DataHydrationService.hydrateSections(layoutData.header ?? [], organizationId, currency),
+        DataHydrationService.hydrateSections(page.sections ?? [], organizationId, currency),
+        DataHydrationService.hydrateSections(layoutData.footer ?? [], organizationId, currency)
+      ]);
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          isPreview: true,
+          previewNotice: 'Private draft preview. Unsaved or unpublished edits are visible here only to authorized team members.',
+          organization: org ? {
+            id: org._id,
+            name: org.name,
+            slug: org.uniqueShopId?.toLowerCase(),
+            logo: org.logo ?? null,
+            description: org.description ?? null,
+            contact: {
+              email: org.primaryEmail ?? null,
+              phone: org.primaryPhone ?? null,
+              address: org.address ?? null
+            }
+          } : null,
+          settings: layoutData.globalSettings ?? {},
+          layout: {
+            header: hydratedHeader,
+            footer: hydratedFooter
+          },
+          page: {
+            id: page._id,
+            name: page.name,
+            slug: page.slug,
+            type: page.pageType,
+            sections: hydratedSections,
+            seo: page.seo ?? {},
+            themeOverride: page.themeOverride ?? {},
+            status: page.status,
+            isPublished: page.isPublished,
+            hasUnpublishedChanges: page.hasUnpublishedChanges,
+            version: page.version,
+            publishedVersion: page.publishedVersion,
+            updatedAt: page.updatedAt,
+            draftUpdatedAt: page.draftUpdatedAt
+          }
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helper: Unique Slug Generator
+  // ---------------------------------------------------------------------------
+
+  _uniqueSlug = async (organizationId, baseSlug) => {
+    let clean = (baseSlug || 'page')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    if (!clean) clean = 'page';
+    if (isReservedSlug(clean)) {
+      clean = `${clean}-page`;
+    }
+
+    let candidate = clean;
+    let counter = 1;
+
+    while (await StorefrontPage.exists({ organizationId, slug: candidate })) {
+      candidate = `${clean}-${counter}`;
+      counter++;
+    }
+    return candidate;
   }
 
   // ---------------------------------------------------------------------------

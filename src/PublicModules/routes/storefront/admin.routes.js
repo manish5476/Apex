@@ -61,6 +61,7 @@ router.post('/pages/:pageId/unpublish',    checkPermission(PERMISSIONS.STOREFRON
 router.post('/pages/:pageId/set-homepage', checkPermission(PERMISSIONS.STOREFRONT.PUBLISH), storefrontAdminController.setHomepage);
 router.post('/pages/:pageId/duplicate',    checkPermission(PERMISSIONS.STOREFRONT.PAGE_MANAGE), storefrontAdminController.duplicatePage);
 router.get('/pages/:pageId/analytics',     canReadStorefront, storefrontAdminController.getPageAnalytics);
+router.get('/pages/:pageId/preview',       canReadStorefront, storefrontAdminController.getDraftPreview);
 // ============================================================
 // ORDERS
 // ============================================================
