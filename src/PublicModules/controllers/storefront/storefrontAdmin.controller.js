@@ -239,20 +239,29 @@ class StorefrontAdminController {
         ];
       }
 
-      const skip = (Math.max(parseInt(page), 1) - 1) * Math.min(parseInt(limit), 50);
+      const parsedPage  = Math.max(parseInt(page),  1);
+      const parsedLimit = Math.min(parseInt(limit), 50);
+      const skip = (parsedPage - 1) * parsedLimit;
       const total = await StorefrontPage.countDocuments(query);
 
       const pages = await StorefrontPage.find(query)
-        .select('name slug pageType status isPublished isHomepage viewCount updatedAt sections')
+        .select(
+          'name slug pageType status isPublished isHomepage viewCount updatedAt sections ' +
+          'hasUnpublishedChanges publishedVersion version publishedAt ' +
+          'lastEditedBy publishedBy createdAt draftUpdatedAt'
+        )
         .sort({ isHomepage: -1, updatedAt: -1 })
         .skip(skip)
-        .limit(Math.min(parseInt(limit), 50))
+        .limit(parsedLimit)
         .lean();
 
       res.status(200).json({
         status: 'success',
         results: pages.length,
         total,
+        page: parsedPage,
+        limit: parsedLimit,
+        totalPages: Math.ceil(total / parsedLimit),
         data: pages.map(p => ({
           ...p,
           sectionsCount: p.sections?.length ?? 0,
@@ -935,15 +944,22 @@ class StorefrontAdminController {
 
       const orders = await StorefrontOrder.find(query)
         .populate('customerId', 'firstName lastName email phone avatar')
+        .populate('deliveryAgent', 'name phone vehicleType vehicleRegistrationNumber')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Math.min(parseInt(limit), 50))
         .lean();
 
+      const parsedPage = Math.max(parseInt(page), 1);
+      const parsedLimit = Math.min(parseInt(limit), 50);
+
       res.status(200).json({
         status: 'success',
         results: orders.length,
         total,
+        page: parsedPage,
+        limit: parsedLimit,
+        totalPages: Math.ceil(total / parsedLimit),
         data: orders
       });
     } catch (err) {
@@ -1067,6 +1083,71 @@ class StorefrontAdminController {
       }
 
       await order.save();
+
+      res.status(200).json({ status: 'success', data: order });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ASSIGN DELIVERY AGENT / FULFILLMENT
+  // PATCH /admin/storefront/orders/:orderId/assign-agent
+  // ---------------------------------------------------------------------------
+  assignDeliveryAgent = async (req, res, next) => {
+    try {
+      const { organizationId } = req.user;
+      const { orderId } = req.params;
+      const {
+        deliveryAgent,
+        carrierName,
+        trackingNumber,
+        estimatedDeliveryDate,
+        deliveryNotes,
+        fulfillmentMode,
+        dispatchPriority,
+        serviceLevel,
+        deliveryQuote
+      } = req.body;
+
+      const order = await StorefrontOrder.findOne({ _id: orderId, organizationId });
+      if (!order) return next(new AppError('Order not found', 404));
+
+      if (deliveryAgent) {
+        order.deliveryAgent = deliveryAgent;
+      } else if (fulfillmentMode && fulfillmentMode !== 'internal_fleet') {
+        order.deliveryAgent = null;
+      }
+
+      if (carrierName !== undefined) order.carrierName = carrierName;
+      if (trackingNumber !== undefined) order.trackingNumber = trackingNumber;
+      if (deliveryNotes !== undefined) order.deliveryNotes = deliveryNotes;
+      if (estimatedDeliveryDate) order.estimatedDeliveryDate = new Date(estimatedDeliveryDate);
+
+      order.metadata = {
+        ...order.metadata,
+        logistics: {
+          ...(order.metadata?.logistics || {}),
+          fulfillmentMode: fulfillmentMode || 'internal_fleet',
+          dispatchPriority: dispatchPriority || 'normal',
+          serviceLevel: serviceLevel || 'standard',
+          deliveryQuote: deliveryQuote || null
+        }
+      };
+
+      const agentDesc = deliveryAgent
+        ? 'assigned to internal agent'
+        : (carrierName ? `dispatched via carrier ${carrierName}` : 'fulfillment details updated');
+
+      order.timeline.push({
+        type: 'logistics_assigned',
+        message: `Fulfillment plan updated: ${agentDesc}`,
+        actorId: req.user._id,
+        at: new Date()
+      });
+
+      await order.save();
+      await order.populate('deliveryAgent', 'name phone vehicleType vehicleRegistrationNumber');
 
       res.status(200).json({ status: 'success', data: order });
     } catch (err) {
