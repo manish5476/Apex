@@ -9,8 +9,6 @@ const User = require('./user.model');
 const Organization = require('../../organization/core/organization.model');
 const Role = require('./role.model');
 const Session = require('./session.model');
-const Employee = require('../../HRMS/core-hr/models/employee.model');
-const { attachEmployeeRecord } = require('./employeeProfile.service');
 
 const catchAsync = require('../../../core/utils/api/catchAsync');
 const AppError = require('../../../core/utils/api/appError');
@@ -334,13 +332,6 @@ exports.login = catchAsync(async (req, res, next) => {
   // ── FIX (Issue 3): strip sensitive fields from user before sending ───────
   const userObj = user.toObject();
 
-  // Attach canonical HRMS employee record
-  const employee = await Employee.findOne({ user: user._id })
-    .populate('departmentId', 'name')
-    .populate('designationId', 'title level')
-    .populate('reportingManagerId', 'name email');
-  userObj.employee = employee;
-
   delete userObj.password;
   delete userObj.loginAttempts;
   delete userObj.lockUntil;
@@ -465,10 +456,10 @@ exports.protect = catchAsync(async (req, res, next) => {
   const isSuperAdmin = user.role?.isSuperAdmin || user.isSuperAdmin || false;
   const isOwner = user.isOwner;
 
-  const hydratedUser = await attachEmployeeRecord(user);
+  const userObj = user.toObject ? user.toObject({ virtuals: true }) : user;
 
   req.user = {
-    ...hydratedUser,
+    ...userObj,
     id: user._id,
     isSuperAdmin,
     isOwner,
@@ -561,8 +552,6 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
 
   if (!session) return next(new AppError('Session expired', 401));
 
-  const hydratedUser = await attachEmployeeRecord(user);
-
   res.status(200).json({
     status: 'success',
     data: {
@@ -579,9 +568,6 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
         organizationId: user.organizationId,
         branchId: user.branchId,
         avatar: user.avatar,
-        employeeProfile: hydratedUser.employeeProfile,
-        attendanceConfig: hydratedUser.attendanceConfig,
-        employee: hydratedUser.employee,
       },
       session: {
         id: session._id,

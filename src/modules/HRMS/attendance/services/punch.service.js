@@ -13,6 +13,16 @@ class PunchService {
     return Math.max(0, Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100);
   }
 
+  // Helper: compute break duration in minutes from a break object with startTime/endTime
+  _breakDurationMins(breakObj) {
+    if (!breakObj.startTime || !breakObj.endTime) return 0;
+    const [sh, sm] = breakObj.startTime.split(':').map(Number);
+    const [eh, em] = breakObj.endTime.split(':').map(Number);
+    const start = sh * 60 + sm;
+    const end = eh * 60 + em;
+    return Math.max(0, end - start);
+  }
+
   async _processLogIntoDaily(log, employee, session) {
     const dayStart = startOfDay(log.timestamp);
     const dayEnd = endOfDay(log.timestamp);
@@ -47,9 +57,81 @@ class PunchService {
       daily.lastOut = log.timestamp;
     }
 
-    // Calculate Hours
+    // --- Resolve shift config for accurate late/half-day evaluation ---
+    // Populates scheduledInTime/scheduledOutTime so the Mongoose pre-save hook
+    // (attendanceDaily.model.js) can compute isLate + isHalfDay flags correctly.
+    let shift = null;
+    const shiftId = daily.shiftId || employee?.attendanceConfig?.shiftId;
+
+    if (shiftId) {
+      const Shift = mongoose.model('Shift');
+      shift = await Shift.findById(shiftId).lean();
+    }
+
+    if (shift) {
+      if (!daily.scheduledInTime) daily.scheduledInTime = shift.startTime;
+      if (!daily.scheduledOutTime) daily.scheduledOutTime = shift.endTime;
+    }
+
+    // --- Compute work hours with break deduction ---
     if (daily.firstIn && daily.lastOut) {
-      daily.totalWorkHours = this._calculateWorkHours(daily.firstIn, daily.lastOut);
+      const grossHours = this._calculateWorkHours(daily.firstIn, daily.lastOut);
+
+      // Deduct unpaid breaks from gross work hours
+      let unpaidBreakHours = 0;
+      if (shift) {
+        if (shift.breaks && shift.breaks.length > 0) {
+          const unpaidMins = shift.breaks
+            .filter(b => !b.isPaid)
+            .reduce((sum, b) => sum + this._breakDurationMins(b), 0);
+          unpaidBreakHours = Math.round((unpaidMins / 60) * 100) / 100;
+        } else if (shift.breakDurationMins > 0) {
+          // Fallback: treat all breakDurationMins as unpaid
+          unpaidBreakHours = Math.round((shift.breakDurationMins / 60) * 100) / 100;
+        }
+      }
+
+      daily.breakHours = unpaidBreakHours;
+      daily.totalWorkHours = Math.max(0, Math.round((grossHours - unpaidBreakHours) * 100) / 100);
+    }
+
+    // --- FIX [CRITICAL]: Derive attendance status from punches ---
+    // Previously: status was initialized as 'absent' and NEVER updated,
+    // so every employee appeared absent regardless of how many punches they recorded.
+    // Now: any punch-in transitions 'absent' → 'present' | 'late' | 'half_day'.
+    const protectedStatuses = ['on_leave', 'holiday', 'week_off'];
+    if (!protectedStatuses.includes(daily.status) && daily.firstIn) {
+      if (shift) {
+        const graceMs = (shift.gracePeriodMins ?? 15) * 60 * 1000;
+        const halfDayThresholdHrs = shift.halfDayThresholdHrs ?? 4;
+
+        // Anchor scheduled-in to the real punch date (handles night shifts crossing midnight)
+        const scheduledIn = new Date(daily.firstIn);
+        const [inH, inM] = (shift.startTime || '09:00').split(':').map(Number);
+        scheduledIn.setHours(inH, inM, 0, 0);
+
+        const isLate = daily.firstIn > new Date(scheduledIn.getTime() + graceMs);
+        const netHours = Math.max(0, daily.totalWorkHours);
+
+        if (netHours > 0 && netHours < halfDayThresholdHrs) {
+          daily.status = 'half_day';
+          daily.isHalfDay = true;
+          daily.isLate = isLate;
+        } else if (isLate) {
+          daily.status = 'late';
+          daily.isLate = true;
+          daily.isHalfDay = false;
+        } else {
+          daily.status = 'present';
+          daily.isLate = false;
+          daily.isHalfDay = false;
+        }
+      } else {
+        // No shift template → any punch-in counts as present
+        daily.status = 'present';
+        daily.isLate = false;
+        daily.isHalfDay = false;
+      }
     }
 
     await daily.save({ session });

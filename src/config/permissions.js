@@ -79,6 +79,33 @@ const PERMISSIONS_LIST = [
   p("leave:approve", "HR", "Approve, reject, or escalate leave requests"),
   p("leave:admin", "HR", "Access leave analytics and bulk approval tools"),
 
+  // Employee Master
+  p("employee:read", "HR Core", "View employee master directory and basic HR profiles"),
+  p("employee:manage", "HR Core", "Onboard, update, and offboard employees"),
+  p("employee:view_confidential", "HR Core", "View confidential compensation, bank details, and statutory numbers"),
+
+  // Payroll & Compensation
+  p("payroll:read", "Payroll", "View salary structures and organization payroll summaries"),
+  p("payroll:manage", "Payroll", "Manage salary structures and execute monthly payroll runs"),
+  p("payslip:view_self", "Payroll", "View and download personal payslips"),
+  p("payslip:view_all", "Payroll", "View and download all employee payslips"),
+
+  // Company Assets & Equipment
+  p("asset:hrms_read", "HR Assets", "View company equipment and asset allocations"),
+  p("asset:hrms_manage", "HR Assets", "Register, assign, and return company equipment"),
+
+  // Compliance Documents
+  p("document:read", "HR Compliance", "View employee compliance documents and verification status"),
+  p("document:manage", "HR Compliance", "Upload, verify, and manage compliance documents"),
+
+  // Expense Claims & Reimbursements
+  p("expense:claim", "Expenses", "Submit and view personal expense reimbursement claims"),
+  p("expense:approve", "Expenses", "Approve, reject, or process team expense claims"),
+
+  // Performance Management
+  p("performance:read", "Performance", "View goals, review cycles, and performance appraisals"),
+  p("performance:manage", "Performance", "Configure review cycles, goals, and appraisals"),
+
   // ── Finance & Billing ─────────────────────────────────────────────
   p("account:read", "Finance", "View the Chart of Accounts list"),
   p("account:manage", "Finance", "Create, Edit, Delete, and Restructure Accounts"),

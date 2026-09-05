@@ -12,9 +12,17 @@ const bankDetailsSchema = new mongoose.Schema({
 }, { _id: false });
 
 const employeeSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  // Identity link to User (optional to support non-login employees and pre-onboarding)
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true, default: null },
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
   branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', index: true },
+  
+  // Basic contact fields (canonical when user is not linked or for HR directory reference)
+  firstName: { type: String, trim: true },
+  lastName: { type: String, trim: true },
+  officialEmail: { type: String, trim: true, lowercase: true },
+  phone: { type: String, trim: true },
+
   employeeId: { type: String, trim: true, uppercase: true },
   departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', index: true },
   designationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Designation', index: true },
@@ -85,7 +93,13 @@ employeeSchema.index(
   { organizationId: 1, employeeId: 1 },
   { unique: true, partialFilterExpression: { employeeId: { $type: 'string' } } }
 );
-employeeSchema.index({ organizationId: 1, user: 1 }, { unique: true });
+
+// One User can only be linked to at most one Employee per organization
+employeeSchema.index(
+  { organizationId: 1, user: 1 },
+  { unique: true, partialFilterExpression: { user: { $type: 'objectId' } } }
+);
+
 employeeSchema.index({ organizationId: 1, branchId: 1, status: 1 });
 employeeSchema.index({ organizationId: 1, departmentId: 1, status: 1 });
 employeeSchema.index({ organizationId: 1, reportingManagerId: 1, status: 1 });
@@ -94,6 +108,16 @@ employeeSchema.virtual('serviceYears').get(function () {
   if (!this.dateOfJoining) return 0;
   const end = this.dateOfExit || new Date();
   return Math.max(0, Math.round(((end - this.dateOfJoining) / (1000 * 60 * 60 * 24 * 365.25)) * 10) / 10);
+});
+
+employeeSchema.virtual('displayName').get(function () {
+  if (this.firstName || this.lastName) {
+    return [this.firstName, this.lastName].filter(Boolean).join(' ');
+  }
+  if (this.user && typeof this.user === 'object' && this.user.name) {
+    return this.user.name;
+  }
+  return this.employeeId || 'Unnamed Employee';
 });
 
 employeeSchema.pre('validate', function (next) {

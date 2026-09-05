@@ -45,6 +45,8 @@ class ApiFeatures {
   // ─────────────────────────────────────────────────────────────────
 
   static coerceValue(value) {
+    if (value === null || value === undefined) return value;
+    if (value instanceof mongoose.Types.ObjectId || value instanceof Date) return value;
     if (typeof value !== "string") return value;
 
     const lowerVal = value.toLowerCase().trim();
@@ -208,11 +210,28 @@ class ApiFeatures {
         continue;
       }
 
+      // ── Handle ObjectId or Date instances directly ─────────────
+      if (value instanceof mongoose.Types.ObjectId || value instanceof Date) {
+        filterConditions[key] = value;
+        continue;
+      }
+
       // ── ?price[gte]=100&price[lte]=500 ──────────────────────────
-      if (typeof value === "object" && value !== null) {
+      if (
+        typeof value === "object" &&
+        value !== null &&
+        !Array.isArray(value) &&
+        (value.constructor === Object || !value.constructor)
+      ) {
         filterConditions[key] = {};
+        const VALID_OPS = ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'regex', 'exists', 'options'];
         for (const op in value) {
-          filterConditions[key][`$${op}`] = ApiFeatures.coerceValue(value[op]);
+          if (Object.prototype.hasOwnProperty.call(value, op)) {
+            if (VALID_OPS.includes(op) || op.startsWith('$')) {
+              const mongoOp = op.startsWith('$') ? op : `$${op}`;
+              filterConditions[key][mongoOp] = ApiFeatures.coerceValue(value[op]);
+            }
+          }
         }
         continue;
       }
@@ -366,8 +385,20 @@ class ApiFeatures {
    * Populates referenced relationships.
    * Query: ?populate=category,brand
    */
-  populate() {
-    if (this.queryString.populate) {
+  populate(...args) {
+    if (args.length > 0) {
+      if (Array.isArray(args[0])) {
+        args[0].forEach((item) => {
+          this.query = this.query.populate(item);
+        });
+      } else if (typeof args[0] === 'string' && args.length > 1) {
+        this.query = this.query.populate(args[0], args[1]);
+      } else if (args[0]) {
+        this.query = this.query.populate(args[0]);
+      }
+    }
+
+    if (this.queryString && this.queryString.populate) {
       const paths = this.queryString.populate.split(",");
       paths.forEach((p) => {
         this.query = this.query.populate(p.trim());

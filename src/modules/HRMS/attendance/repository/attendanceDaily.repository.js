@@ -4,6 +4,10 @@ const AttendanceLog = require('../models/attendanceLog.model');
 const AttendanceRequest = require('../models/attendanceRequest.model');
 const User = require('../../../auth/core/user.model');
 const ApiFeatures = require('../../../../core/utils/api/ApiFeatures');
+require('../../core-hr/models/employee.model');
+require('../../core-hr/models/department.model');
+require('../models/shift.model');
+require('../../leave-management/models/holiday.model');
 
 class AttendanceDailyRepository {
 
@@ -15,7 +19,7 @@ class AttendanceDailyRepository {
       .sort()
       .paginate()
       .populate([
-        { path: 'user', select: 'name employeeProfile.employeeId employeeProfile.departmentId' },
+        { path: 'user', select: 'name email avatar' },
         { path: 'shiftId', select: 'name startTime endTime' },
         { path: 'leaveRequestId', select: 'leaveType' },
         { path: 'holidayId', select: 'name' },
@@ -26,7 +30,7 @@ class AttendanceDailyRepository {
 
   async getById(orgId, id) {
     return AttendanceDaily.findOne({ _id: id, organizationId: orgId }).populate([
-      { path: 'user', select: 'name employeeProfile.employeeId employeeProfile.departmentId' },
+      { path: 'user', select: 'name email phone avatar' },
       { path: 'shiftId', select: 'name startTime endTime gracePeriodMins' },
       { path: 'leaveRequestId', select: 'leaveType reason' },
       { path: 'holidayId', select: 'name description' },
@@ -68,7 +72,7 @@ class AttendanceDailyRepository {
     return AttendanceDaily.aggregate([
       { $match: { organizationId: orgId, date: { $gte: dayStart, $lte: dayEnd } } },
       { $lookup: { from: 'employees', localField: 'user', foreignField: 'user', as: 'empInfo' } },
-      { $unwind: '$empInfo' },
+      { $unwind: { path: '$empInfo', preserveNullAndEmptyArrays: true } },
       {
         $group: {
           _id: '$empInfo.departmentId',
@@ -79,7 +83,7 @@ class AttendanceDailyRepository {
         },
       },
       { $lookup: { from: 'departments', localField: '_id', foreignField: '_id', as: 'dept' } },
-      { $addFields: { departmentName: { $arrayElemAt: ['$dept.name', 0] } } },
+      { $addFields: { departmentName: { $ifNull: [{ $arrayElemAt: ['$dept.name', 0] }, 'General Department'] } } },
       { $project: { dept: 0 } }
     ]);
   }
@@ -88,9 +92,9 @@ class AttendanceDailyRepository {
     const pipeline = [
       { $match: matchStage },
       { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'userInfo' } },
-      { $unwind: '$userInfo' },
+      { $unwind: { path: '$userInfo', preserveNullAndEmptyArrays: true } },
       { $lookup: { from: 'employees', localField: 'user', foreignField: 'user', as: 'empInfo' } },
-      { $unwind: '$empInfo' },
+      { $unwind: { path: '$empInfo', preserveNullAndEmptyArrays: true } },
     ];
 
     if (departmentId) pipeline.push({ $match: { 'empInfo.departmentId': new mongoose.Types.ObjectId(departmentId) } });
@@ -99,9 +103,9 @@ class AttendanceDailyRepository {
     pipeline.push(
       {
         $group: {
-          _id: '$userInfo._id',
-          employeeName: { $first: '$userInfo.name' },
-          employeeId: { $first: '$empInfo.employeeId' },
+          _id: '$user',
+          employeeName: { $first: { $ifNull: ['$userInfo.name', { $concat: ['$empInfo.firstName', ' ', '$empInfo.lastName'] }] } },
+          employeeId: { $first: { $ifNull: ['$empInfo.employeeId', '—'] } },
           departmentId: { $first: '$empInfo.departmentId' },
           totalDays: { $sum: 1 },
           present: { $sum: { $cond: [{ $in: ['$status', ['present','late','half_day']] }, 1, 0] } },
@@ -116,11 +120,11 @@ class AttendanceDailyRepository {
       { $lookup: { from: 'departments', localField: 'departmentId', foreignField: '_id', as: 'department' } },
       {
         $addFields: {
-          departmentName: { $arrayElemAt: ['$department.name', 0] },
+          departmentName: { $ifNull: [{ $arrayElemAt: ['$department.name', 0] }, 'General Department'] },
           attendancePercentage: {
             $cond: [
               { $eq: ['$totalDays', 0] }, 0,
-              { $multiply: [{ $divide: ['$present', '$totalDays'] }, 100] },
+              { $round: [{ $multiply: [{ $divide: ['$present', '$totalDays'] }, 100] }, 1] },
             ],
           },
         },

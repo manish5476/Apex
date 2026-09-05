@@ -8,16 +8,7 @@ const Organization = require('../../organization/core/organization.model');
 const ActivityLog = require('../../activity/activityLogModel');
 const Role = require('./role.model');
 const Session = require('./session.model');
-const Employee = require('../../HRMS/core-hr/models/employee.model');
-const LeaveBalance = require('../../HRMS/leave-management/models/leaveBalance.model');
-const Shift = require('../../HRMS/attendance/models/shift.model');
-const Department = require('../../HRMS/core-hr/models/department.model');
-const Designation = require('../../HRMS/core-hr/models/designation.model');
 const Branch = require('../../organization/core/branch.model');
-const {
-  attachEmployeeRecord,
-  syncEmployeeFromUserPayload,
-} = require('./employeeProfile.service');
 
 const catchAsync = require('../../../core/utils/api/catchAsync');
 const AppError = require('../../../core/utils/api/appError');
@@ -107,8 +98,7 @@ exports.getMyProfile = catchAsync(async (req, res, next) => {
 
   if (!user) return next(new AppError('User not found.', 404));
 
-  const hydratedUser = await attachEmployeeRecord(user);
-  res.status(200).json({ status: 'success', data: { user: hydratedUser } });
+  res.status(200).json({ status: 'success', data: { user } });
 });
 
 /**
@@ -119,41 +109,24 @@ exports.updateMyProfile = catchAsync(async (req, res, next) => {
   // Strip anything that must go through dedicated endpoints
   const restrictedFields = [
     'password', 'passwordConfirm', 'role', 'isOwner', 'organizationId',
-    'isActive', 'status', 'email', 'phone', 'employeeProfile.employeeId',
+    'isActive', 'status', 'email', 'phone',
     'isLoginBlocked', 'loginAttempts', 'lockUntil', 'refreshTokens',
     'permissionOverrides', 'isSuperAdmin', 'branchId',
   ];
   restrictedFields.forEach(f => delete req.body[f]);
 
-  // Explicit allowlist
+  // Explicit allowlist for user identity
   const allowedFields = [
     'name', 'avatar', 'language', 'themeId', 'upiId',
-    'preferences.theme', 'preferences.notifications',
-    'employee', 'preferences'
+    'preferences.theme', 'preferences.notifications', 'preferences'
   ];
 
   const filteredBody = {};
   Object.keys(req.body).forEach(key => {
-    if (allowedFields.includes(key) || key.startsWith('preferences.') || key.startsWith('employee.')) {
-      if (key === 'employee.employeeId') return; // double-block via prefix match
+    if (allowedFields.includes(key) || key.startsWith('preferences.')) {
       filteredBody[key] = req.body[key];
     }
   });
-
-  // Validate + clean secondary phone if provided
-  const secondaryPhone = filteredBody['employee.personal.secondaryPhone']
-    ?? filteredBody.employee?.personal?.secondaryPhone;
-
-  if (secondaryPhone) {
-    if (!validatePhone(secondaryPhone))
-      return next(new AppError('Please provide a valid secondary phone number', 400));
-
-    if (filteredBody.employee && filteredBody.employee.personal) {
-      filteredBody.employee.personal.secondaryPhone = cleanPhone(secondaryPhone);
-    } else {
-      filteredBody['employee.personal.secondaryPhone'] = cleanPhone(secondaryPhone);
-    }
-  }
 
   const updatedUserDoc = await User.findByIdAndUpdate(
     req.user.id,
@@ -163,14 +136,7 @@ exports.updateMyProfile = catchAsync(async (req, res, next) => {
     .populate('role', 'name permissions isSuperAdmin')
     .select('-password -refreshTokens -loginAttempts -lockUntil -permissionOverrides');
 
-  await syncEmployeeFromUserPayload({
-    user: updatedUserDoc,
-    body: filteredBody,
-    actorId: req.user._id,
-  });
-
-  const updatedUser = await attachEmployeeRecord(updatedUserDoc);
-  res.status(200).json({ status: 'success', data: { user: updatedUser } });
+  res.status(200).json({ status: 'success', data: { user: updatedUserDoc } });
 });
 
 /**
@@ -324,18 +290,11 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
 
   const result = await features.execute();
 
-  // Hydrate the users with their Employee records
-  const hydratedUsers = await Promise.all(
-    result.data.map(async (user) => {
-      return await attachEmployeeRecord(user);
-    })
-  );
-
   res.status(200).json({
     status: 'success',
     results: result.results,
     pagination: result.pagination,
-    data: { data: hydratedUsers },
+    data: { data: result.data },
   });
 });
 
@@ -357,8 +316,7 @@ exports.getUser = catchAsync(async (req, res, next) => {
 
   if (!user) return next(new AppError('User not found or unauthorized', 404));
 
-  const hydratedUser = await attachEmployeeRecord(user);
-  res.status(200).json({ status: 'success', data: { user: hydratedUser } });
+  res.status(200).json({ status: 'success', data: { user } });
 });
 
 /**
@@ -426,6 +384,7 @@ exports.getOrgHierarchy = catchAsync(async (req, res, next) => {
     .select('name avatar email')
     .lean();
 
+  const Employee = mongoose.models.Employee || mongoose.model('Employee');
   const employees = await Employee.find({
     organizationId: req.user.organizationId,
     user: { $in: users.map(u => u._id) }
@@ -475,6 +434,8 @@ exports.getOrgHierarchy = catchAsync(async (req, res, next) => {
  */
 exports.getUsersByDepartment = catchAsync(async (req, res, next) => {
   const { departmentId } = req.params;
+  const Department = mongoose.models.Department || mongoose.model('Department');
+  const Employee = mongoose.models.Employee || mongoose.model('Employee');
 
   const department = await Department.findOne({ _id: departmentId, organizationId: req.user.organizationId });
   if (!department) return next(new AppError('Department not found', 404));
@@ -537,9 +498,6 @@ exports.createUser = catchAsync(async (req, res, next) => {
     ];
     escalationFields.forEach(f => delete req.body[f]);
 
-    const employeePayload = req.body.employee || {};
-    const personal = employeePayload.personal || {};
-    const attendanceConfig = employeePayload.attendanceConfig || {};
     const { phone } = req.body;
 
     // Phone validation
@@ -547,26 +505,7 @@ exports.createUser = catchAsync(async (req, res, next) => {
       if (!validatePhone(phone)) throw new AppError('Please provide a valid primary phone number', 400);
       req.body.phone = cleanPhone(phone);
     }
-    if (personal.secondaryPhone) {
-      if (!validatePhone(personal.secondaryPhone))
-        throw new AppError('Please provide a valid secondary phone number', 400);
-      personal.secondaryPhone = cleanPhone(personal.secondaryPhone);
-      employeePayload.personal.secondaryPhone = personal.secondaryPhone;
-    }
 
-    // Validate all reference IDs belong to this org
-    if (attendanceConfig.shiftId) {
-      const ok = await Shift.exists({ _id: attendanceConfig.shiftId, organizationId: orgId });
-      if (!ok) throw new AppError('Invalid Shift ID.', 400);
-    }
-    if (employeePayload.departmentId) {
-      const ok = await Department.exists({ _id: employeePayload.departmentId, organizationId: orgId });
-      if (!ok) throw new AppError('Invalid Department ID.', 400);
-    }
-    if (employeePayload.designationId) {
-      const ok = await Designation.exists({ _id: employeePayload.designationId, organizationId: orgId });
-      if (!ok) throw new AppError('Invalid Designation ID.', 400);
-    }
     if (req.body.branchId) {
       const ok = await Branch.exists({ _id: req.body.branchId, organizationId: orgId });
       if (!ok) throw new AppError('Invalid Branch ID.', 400);
@@ -589,23 +528,6 @@ exports.createUser = catchAsync(async (req, res, next) => {
 
     const [newUser] = await User.create([req.body], { session });
 
-    const employee = await syncEmployeeFromUserPayload({
-      user: newUser,
-      body: req.body,
-      actorId: req.user._id,
-      session,
-    });
-
-    await LeaveBalance.create([{
-      user: newUser._id,
-      organizationId: orgId,
-      branchId: req.body.branchId,
-      financialYear: getFinancialYear(),
-      casualLeave: { total: 12, used: 0 },
-      sickLeave: { total: 10, used: 0 },
-      earnedLeave: { total: 0, used: 0 },
-    }], { session });
-
     await session.commitTransaction();
 
     newUser.password = undefined;
@@ -614,7 +536,7 @@ exports.createUser = catchAsync(async (req, res, next) => {
     res.status(201).json({
       status: 'success',
       data: {
-        user: { ...newUser.toObject({ virtuals: true }), employee },
+        user: newUser,
         message: 'User created. They must reset their password on first login.',
       },
     });
@@ -625,8 +547,7 @@ exports.createUser = catchAsync(async (req, res, next) => {
     if (err.code === 11000) {
       const field = err.keyPattern?.email ? 'Email'
         : err.keyPattern?.phone ? 'Phone'
-          : (err.keyPattern?.['employeeProfile.employeeId'] || err.keyPattern?.employeeId) ? 'Employee ID'
-            : 'Field';
+          : 'Field';
       return next(new AppError(`${field} already exists in this organization.`, 400));
     }
 
@@ -660,34 +581,17 @@ exports.updateUser = catchAsync(async (req, res, next) => {
     req.body.phone = cleanPhone(req.body.phone);
   }
 
-  // Flatten nested objects to dot-notation for safe partial updates
+  // Flatten preferences to dot-notation for safe partial updates
   const updatePayload = { ...req.body, updatedBy: req.user._id };
 
-  const flatten = (obj, prefix) => {
-    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
-    Object.keys(obj).forEach(key => {
-      if (obj[key] !== undefined)
-        updatePayload[`${prefix}.${key}`] = obj[key];
+  if (req.body.preferences && typeof req.body.preferences === 'object') {
+    Object.keys(req.body.preferences).forEach(key => {
+      if (req.body.preferences[key] !== undefined)
+        updatePayload[`preferences.${key}`] = req.body.preferences[key];
     });
-    delete updatePayload[prefix];
-  };
-
-  if (req.body.employee) flatten(req.body.employee, 'employee');
-  if (req.body.preferences) flatten(req.body.preferences, 'preferences');
-
-  // Validate all reference IDs are org-bound
-  if (updatePayload['employee.reportingManagerId']) {
-    const ok = await User.exists({ _id: updatePayload['employee.reportingManagerId'], organizationId: req.user.organizationId });
-    if (!ok) return next(new AppError('Reporting Manager not found.', 400));
+    delete updatePayload.preferences;
   }
-  if (updatePayload['employee.departmentId']) {
-    const ok = await Department.exists({ _id: updatePayload['employee.departmentId'], organizationId: req.user.organizationId });
-    if (!ok) return next(new AppError('Department not found.', 400));
-  }
-  if (updatePayload['employee.designationId']) {
-    const ok = await Designation.exists({ _id: updatePayload['employee.designationId'], organizationId: req.user.organizationId });
-    if (!ok) return next(new AppError('Designation not found.', 400));
-  }
+  delete updatePayload.employee; // Guard against HR mutations through user endpoint
 
   const updateOperation = { $set: updatePayload };
   const unsetPayload = {};
@@ -709,19 +613,11 @@ exports.updateUser = catchAsync(async (req, res, next) => {
     .populate('role', 'name permissions isSuperAdmin')
     .select('-password -refreshTokens -loginAttempts -lockUntil -permissionOverrides');
 
-  await syncEmployeeFromUserPayload({
-    user: updatedUserDoc,
-    body: req.body,
-    actorId: req.user._id,
-  });
-
-  const updatedUser = await attachEmployeeRecord(updatedUserDoc);
-
   emitSocket(req, `user:${req.params.id}`, 'permissions:updated', {
     type: 'role_assigned', userId: String(req.params.id), timestamp: new Date().toISOString(),
   });
 
-  res.status(200).json({ status: 'success', data: { user: updatedUser } });
+  res.status(200).json({ status: 'success', data: { user: updatedUserDoc } });
 });
 
 /**
@@ -747,11 +643,6 @@ exports.deleteUser = catchAsync(async (req, res, next) => {
   await Session.updateMany(
     { userId: targetUser._id, isValid: true },
     { isValid: false, terminatedAt: new Date() }
-  );
-
-  await Employee.findOneAndUpdate(
-    { user: targetUser._id, organizationId: targetUser.organizationId },
-    { $set: { status: 'inactive', dateOfExit: new Date(), updatedBy: req.user._id } }
   );
 
   emitSocket(req, `user:${targetUser._id}`, 'forceLogout', {
@@ -979,14 +870,6 @@ exports.activateUser = catchAsync(async (req, res, next) => {
 
   await targetUser.save({ validateBeforeSave: false });
 
-  await Employee.findOneAndUpdate(
-    { user: targetUser._id, organizationId: targetUser.organizationId },
-    {
-      $set: { status: 'active', updatedBy: req.user._id },
-      $unset: { dateOfExit: 1, exitReason: 1 },
-    }
-  );
-
   emitSocket(req, `user:${req.params.id}`, 'permissions:updated', {
     type: 'status_change', userId: String(req.params.id), status: 'active', timestamp: new Date().toISOString(),
   });
@@ -1013,11 +896,6 @@ exports.deactivateUser = catchAsync(async (req, res, next) => {
   await Session.updateMany(
     { userId: targetUser._id, isValid: true },
     { isValid: false, terminatedAt: new Date() }
-  );
-
-  await Employee.findOneAndUpdate(
-    { user: targetUser._id, organizationId: targetUser.organizationId },
-    { $set: { status: 'inactive', updatedBy: req.user._id } }
   );
 
   emitSocket(req, `user:${req.params.id}`, 'permissions:updated', {
@@ -1149,6 +1027,7 @@ exports.exportUsers = catchAsync(async (req, res, next) => {
     isActive: req.query.isActive !== 'false',
   };
 
+  const Employee = mongoose.models.Employee || mongoose.model('Employee');
   if (departmentId) {
     const emps = await Employee.find({ organizationId: req.user.organizationId, departmentId }).select('user').lean();
     query._id = { $in: emps.map(e => e.user) };

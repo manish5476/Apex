@@ -1,27 +1,38 @@
+'use strict';
+
 module.exports = {
-    AttendanceDaily: require('./attendanceDaily.model'),
-    AttendanceLog: require('./attendanceLog.model'),
-    AttendanceMachine: require('./attendanceMachine.model'),
-    AttendanceRequest: require('./attendanceRequest.model'),
-    AttendanceSummary: require('./attendanceSummary.model'),
-    CompanyAsset: require('./companyAsset.model'),
-    Department: require('./department.model'),
-    Designation: require('./designation.model'),
-    Employee: require('./employee.model'),
-    EmployeeDocument: require('./employeeDocument.model'),
-    ExpenseClaim: require('./expenseClaim.model'),
-    Feedback: require('./feedback.model'),
-    GeoFencing: require('./geoFencing.model'),
-    Goal: require('./goal.model'),
-    Holiday: require('./holiday.model'),
-    LeaveBalance: require('./leaveBalance.model'),
-    LeaveRequest: require('./leaveRequest.model'),
-    LeaveTransaction: require('./leaveTransaction.model'),
-    Payslip: require('./payslip.model'),
-    ReviewCycle: require('./reviewCycle.model'),
-    SalaryStructure: require('./salaryStructure.model'),
-    Shift: require('./shift.model'),
-    ShiftAssignment: require('./shiftAssignment.model'),
-    ShiftGroup: require('./shiftGroup.model'),
-    TaxDeduction: require('./taxDeduction.model')
+  // Core HR
+  Department: require('../core-hr/models/department.model'),
+  Designation: require('../core-hr/models/designation.model'),
+  Employee: require('../core-hr/models/employee.model'),
+  CompanyAsset: require('../core-hr/models/companyAsset.model'),
+  EmployeeDocument: require('../core-hr/models/employeeDocument.model'),
+
+  // Attendance
+  AttendanceDaily: require('../attendance/models/attendanceDaily.model'),
+  AttendanceLog: require('../attendance/models/attendanceLog.model'),
+  AttendanceMachine: require('../attendance/models/attendanceMachine.model'),
+  AttendanceRequest: require('../attendance/models/attendanceRequest.model'),
+  AttendanceSummary: require('../attendance/models/attendanceSummary.model'),
+  GeoFencing: require('../attendance/models/geoFencing.model'),
+  Shift: require('../attendance/models/shift.model'),
+  ShiftAssignment: require('../attendance/models/shiftAssignment.model'),
+  ShiftGroup: require('../attendance/models/shiftGroup.model'),
+
+  // Leave Management
+  Holiday: require('../leave-management/models/holiday.model'),
+  LeaveBalance: require('../leave-management/models/leaveBalance.model'),
+  LeaveRequest: require('../leave-management/models/leaveRequest.model'),
+  LeaveTransaction: require('../leave-management/models/leaveTransaction.model'),
+
+  // Payroll & Compensation
+  SalaryStructure: require('../payroll-compensation/models/salaryStructure.model'),
+  Payslip: require('../payroll-compensation/models/payslip.model'),
+  ExpenseClaim: require('../payroll-compensation/models/expenseClaim.model'),
+  TaxDeduction: require('../payroll-compensation/models/taxDeduction.model'),
+
+  // Performance
+  Goal: require('../performance/models/goal.model'),
+  ReviewCycle: require('../performance/models/reviewCycle.model'),
+  Feedback: require('../performance/models/feedback.model'),
 };

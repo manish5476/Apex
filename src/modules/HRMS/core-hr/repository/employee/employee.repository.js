@@ -1,6 +1,24 @@
+'use strict';
+
+const mongoose = require('mongoose');
 const Employee = require('../../models/employee.model');
 const User = require('../../../../auth/core/user.model');
 const ApiFeatures = require('../../../../../core/utils/api/ApiFeatures');
+
+// Ensure all referenced models are explicitly registered with Mongoose
+require('../../models/department.model');
+require('../../models/designation.model');
+require('../../../../organization/core/branch.model');
+require('../../../../organization/core/organization.model');
+require('../../../../auth/core/role.model');
+require('../../../attendance/models/shift.model');
+require('../../../attendance/models/shiftGroup.model');
+require('../../../attendance/models/geoFencing.model');
+require('../../../attendance/models/attendanceDaily.model');
+require('../../../attendance/models/attendanceLog.model');
+require('../../../leave-management/models/leaveBalance.model');
+require('../../models/companyAsset.model');
+require('../../models/employeeDocument.model');
 
 const DEFAULT_POPULATE = [
   { path: 'user', select: 'name email phone avatar status isActive role branchId', populate: { path: 'role', select: 'name' } },
@@ -15,229 +33,285 @@ const DEFAULT_POPULATE = [
 
 class EmployeeRepository {
   
+  /**
+   * Seamlessly syncs existing organization users who do not yet have an Employee record,
+   * and backfills any incomplete Employee records (missing names, codes, contacts, or depts).
+   * Preserves identity separation while ensuring all user details are fully populated in HRMS.
+   */
+  async ensureOrgEmployeesSynced(orgId) {
+    try {
+      const users = await User.find({ organizationId: orgId, isDeleted: false }).lean();
+      if (!users || users.length === 0) return;
+
+      const userMap = new Map(users.map(u => [u._id.toString(), u]));
+      const existingEmployees = await Employee.find({ organizationId: orgId, user: { $ne: null } });
+      const existingUserIds = new Set(existingEmployees.map(e => e.user.toString()));
+
+      // 1. Backfill any existing linked employees that are missing names, codes, or contact info
+      for (let idx = 0; idx < existingEmployees.length; idx++) {
+        const emp = existingEmployees[idx];
+        const u = userMap.get(emp.user.toString());
+        if (!u) continue;
+
+        let needsUpdate = false;
+        const updates = {};
+
+        if (!emp.firstName || !emp.lastName) {
+          const parts = (u.name || '').trim().split(/\s+/);
+          updates.firstName = emp.firstName || parts[0] || 'Employee';
+          updates.lastName = emp.lastName || parts.slice(1).join(' ') || '';
+          needsUpdate = true;
+        }
+
+        if (!emp.officialEmail && u.email) {
+          updates.officialEmail = u.email;
+          needsUpdate = true;
+        }
+
+        if (!emp.phone && u.phone) {
+          updates.phone = u.phone;
+          needsUpdate = true;
+        }
+
+        if (!emp.employeeId) {
+          updates.employeeId = u.employeeProfile?.employeeId || `EMP-${String(idx + 1).padStart(3, '0')}-${u._id.toString().slice(-4).toUpperCase()}`;
+          needsUpdate = true;
+        }
+
+        if (!emp.departmentId && u.employeeProfile?.departmentId) {
+          updates.departmentId = u.employeeProfile.departmentId;
+          needsUpdate = true;
+        }
+
+        if (!emp.designationId && u.employeeProfile?.designationId) {
+          updates.designationId = u.employeeProfile.designationId;
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          await Employee.updateOne({ _id: emp._id }, { $set: updates }).catch(() => {});
+        }
+      }
+
+      // 2. Insert any completely unlinked users
+      const unlinkedUsers = users.filter(u => !existingUserIds.has(u._id.toString()));
+      if (unlinkedUsers.length > 0) {
+        const docsToInsert = [];
+        for (let i = 0; i < unlinkedUsers.length; i++) {
+          const u = unlinkedUsers[i];
+          const parts = (u.name || '').trim().split(/\s+/);
+          const firstName = parts[0] || 'Employee';
+          const lastName = parts.slice(1).join(' ') || '';
+
+          docsToInsert.push({
+            user: u._id,
+            organizationId: orgId,
+            branchId: u.branchId || undefined,
+            employeeId: u.employeeProfile?.employeeId || `EMP-${String(existingEmployees.length + i + 1).padStart(3, '0')}-${u._id.toString().slice(-4).toUpperCase()}`,
+            firstName,
+            lastName,
+            officialEmail: u.email,
+            phone: u.phone,
+            departmentId: u.employeeProfile?.departmentId || undefined,
+            designationId: u.employeeProfile?.designationId || undefined,
+            dateOfJoining: u.employeeProfile?.dateOfJoining || u.createdAt || new Date(),
+            employmentType: u.employeeProfile?.employmentType || 'permanent',
+            workMode: 'office',
+            status: u.isActive ? 'active' : 'inactive',
+            attendanceConfig: {
+              shiftId: u.attendanceConfig?.shiftId || undefined,
+              isAttendanceEnabled: u.attendanceConfig?.isAttendanceEnabled ?? true,
+              allowWebPunch: u.attendanceConfig?.allowWebPunch ?? false,
+              allowMobilePunch: u.attendanceConfig?.allowMobilePunch ?? true,
+            }
+          });
+        }
+
+        if (docsToInsert.length > 0) {
+          await Employee.insertMany(docsToInsert, { ordered: false }).catch(() => {});
+        }
+      }
+    } catch {
+      // Non-blocking sync
+    }
+  }
+
   async getEmployeeList(orgId, queryString) {
+    // Auto-sync any unbridged organization users so the directory is never empty/stale
+    await this.ensureOrgEmployeesSynced(orgId);
+
     const baseFilter = { organizationId: orgId };
 
-    // 🔥 Cross-Collection Search Strategy
+    // Search across Employee direct fields AND linked User identity fields
     if (queryString.search) {
-      const userSearchFeatures = new ApiFeatures(User.find({ organizationId: orgId }), queryString)
-        .search(['name', 'email', 'phone']);
+      const searchStr = queryString.search;
+      const regex = new RegExp(searchStr, 'i');
       
-      const matchingUsers = await userSearchFeatures.query.select('_id').lean();
+      const matchingUsers = await User.find({
+        organizationId: orgId,
+        $or: [{ name: regex }, { email: regex }, { phone: regex }]
+      }).select('_id').lean();
+      
       const userIds = matchingUsers.map(u => u._id);
 
-      // Pass user IDs back into query string so ApiFeatures picks it up
-      queryString.user = userIds.length ? userIds.join('|') : 'no-match'; 
+      baseFilter.$or = [
+        { employeeId: regex },
+        { firstName: regex },
+        { lastName: regex },
+        { officialEmail: regex },
+        { phone: regex },
+        ...(userIds.length > 0 ? [{ user: { $in: userIds } }] : [])
+      ];
+
+      // Clone query to not mutate caller
+      queryString = { ...queryString };
+      delete queryString.search;
     }
 
     const features = new ApiFeatures(Employee.find(baseFilter), queryString)
       .filter()
-      .search(['employeeId', 'employmentType']) 
       .sort()
       .limitFields()
       .paginate()
       .populate(DEFAULT_POPULATE); 
 
-    return await features.execute();
+    const result = await features.execute();
+
+    // Ensure displayName, employeeId, and contact info are reliably populated on lean records
+    if (result && Array.isArray(result.data)) {
+      result.data.forEach(emp => {
+        const userObj = typeof emp.user === 'object' && emp.user !== null ? emp.user : null;
+        const names = [emp.firstName, emp.lastName].filter(Boolean).join(' ');
+        emp.displayName = names || userObj?.name || (emp.officialEmail ? emp.officialEmail.split('@')[0] : null) || emp.employeeId || 'Employee';
+
+        if (!emp.employeeId) {
+          emp.employeeId = `EMP-${(userObj?._id || emp._id).toString().slice(-4).toUpperCase()}`;
+        }
+        if (!emp.officialEmail && userObj?.email) {
+          emp.officialEmail = userObj.email;
+        }
+        if (!emp.phone && userObj?.phone) {
+          emp.phone = userObj.phone;
+        }
+      });
+    }
+
+    return result;
   }
 
   async getById(orgId, id) {
-    return Employee.findOne({ _id: id, organizationId: orgId }).populate(DEFAULT_POPULATE);
+    const emp = await Employee.findOne({ _id: id, organizationId: orgId }).populate(DEFAULT_POPULATE);
+    if (emp) {
+      const userObj = typeof emp.user === 'object' && emp.user !== null ? emp.user : null;
+      if (!emp.officialEmail && userObj?.email) emp.officialEmail = userObj.email;
+      if (!emp.phone && userObj?.phone) emp.phone = userObj.phone;
+    }
+    return emp;
   }
 
   async getByUserId(orgId, userId) {
-    return Employee.findOne({ user: userId, organizationId: orgId }).populate(DEFAULT_POPULATE);
+    const emp = await Employee.findOne({ user: userId, organizationId: orgId }).populate(DEFAULT_POPULATE);
+    if (emp) {
+      const userObj = typeof emp.user === 'object' && emp.user !== null ? emp.user : null;
+      if (!emp.officialEmail && userObj?.email) emp.officialEmail = userObj.email;
+      if (!emp.phone && userObj?.phone) emp.phone = userObj.phone;
+    }
+    return emp;
   }
 
   async create(orgId, payload) {
     const doc = await Employee.create({ ...payload, organizationId: orgId });
-    // Re-fetch to apply population logic cleanly
     return this.getById(orgId, doc._id);
   }
 
   async updateById(orgId, id, payload, session = null) {
-    const doc = await Employee.findOneAndUpdate(
+    const options = { new: true, runValidators: true };
+    if (session) options.session = session;
+    
+    return await Employee.findOneAndUpdate(
       { _id: id, organizationId: orgId },
       { $set: payload },
-      { new: true, runValidators: true, session }
+      options
     ).populate(DEFAULT_POPULATE);
-    return doc;
   }
 
-/**
-   * Generates a comprehensive 360-degree view of an employee in a single DB pass.
+  /**
+   * Generates a comprehensive 360-degree view of an employee.
+   * Returns unified structure expected by EmployeeWorkspace360 frontend contract.
    */
-async getEmployee360Workspace(orgId, employeeId) {
-  const mongoose = require('mongoose');
-  
-  const pipeline = [
-    // 1. Match the exact employee and enforce tenant isolation
-    { 
-      $match: { 
-        _id: new mongoose.Types.ObjectId(employeeId), 
-        organizationId: new mongoose.Types.ObjectId(orgId) 
-      } 
-    },
+  async getEmployee360Workspace(orgId, employeeId) {
+    const employee = await this.getById(orgId, employeeId);
+    if (!employee) return null;
 
-    // 2. Lookup Core Identity (User)
-    { 
-      $lookup: { 
-        from: 'users', 
-        localField: 'user', 
-        foreignField: '_id', 
-        as: 'userData' 
-      } 
-    },
-    { $unwind: { path: '$userData', preserveNullAndEmptyArrays: true } },
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
 
-    // 3. Lookup Organizational Placement
-    { 
-      $lookup: { from: 'departments', localField: 'departmentId', foreignField: '_id', as: 'department' } 
-    },
-    { $unwind: { path: '$department', preserveNullAndEmptyArrays: true } },
-    
-    { 
-      $lookup: { from: 'designations', localField: 'designationId', foreignField: '_id', as: 'designation' } 
-    },
-    { $unwind: { path: '$designation', preserveNullAndEmptyArrays: true } },
-    
-    { 
-      $lookup: { from: 'users', localField: 'reportingManagerId', foreignField: '_id', as: 'manager' } 
-    },
-    { $unwind: { path: '$manager', preserveNullAndEmptyArrays: true } },
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // 4. Lookup Assigned Assets (Filtered by 'assigned' status)
-    {
-      $lookup: {
-        from: 'companyassets',
-        let: { userId: '$user' },
-        pipeline: [
-          { 
-            $match: { 
-              $expr: { 
-                $and: [ 
-                  { $eq: ['$assignedTo', '$$userId'] }, 
-                  { $eq: ['$status', 'assigned'] } 
-                ] 
-              } 
-            } 
-          },
-          { $project: { assetCode: 1, name: 1, category: 1, condition: 1, assignedAt: 1 } }
+    const userId = employee.user ? (employee.user._id || employee.user) : null;
+
+    // Concurrently fetch peripheral domains for the workspace cockpit
+    const [todayAttendance, recentPunches, leaveBalances, assignedAssets, documents] = await Promise.all([
+      // 1. Today's attendance
+      mongoose.models['AttendanceDaily'] ? mongoose.model('AttendanceDaily').findOne({
+        organizationId: orgId,
+        $or: [
+          ...(userId ? [{ user: userId }] : []),
+          { employeeRef: employee._id }
         ],
-        as: 'assets'
-      }
-    },
+        date: { $gte: startOfToday, $lte: endOfToday }
+      }).lean().catch(() => null) : Promise.resolve(null),
 
-    // 5. Lookup Uploaded Documents (Excluding soft-deleted)
-    {
-      $lookup: {
-        from: 'employeedocuments',
-        let: { empId: '$_id' },
-        pipeline: [
-          { 
-            $match: { 
-              $expr: { 
-                $and: [ 
-                  { $eq: ['$employeeRef', '$$empId'] }, 
-                  { $eq: ['$isDeleted', false] } 
-                ] 
-              } 
-            } 
-          },
-          { $project: { title: 1, documentType: 1, 'verification.status': 1, createdAt: 1 } }
+      // 2. Recent punches
+      mongoose.models['AttendanceLog'] ? mongoose.model('AttendanceLog').find({
+        organizationId: orgId,
+        $or: [
+          ...(userId ? [{ user: userId }] : []),
+          { employeeRef: employee._id }
         ],
-        as: 'documents'
-      }
-    },
+        punchTime: { $gte: sevenDaysAgo }
+      }).sort({ punchTime: -1 }).limit(10).lean().catch(() => []) : Promise.resolve([]),
 
-    // 6. Project the UI-Optimized DTO
-    {
-      $project: {
-        _id: 0,
-        identity: {
-          id: '$_id',
-          employeeId: '$employeeId',
-          name: '$userData.name',
-          email: '$userData.email',
-          avatar: '$userData.avatar',
-          phone: '$userData.phone',
-          status: '$status',
-          employmentType: '$employmentType',
-          dateOfJoining: '$dateOfJoining',
-          workMode: '$workMode'
-        },
-        organization: {
-          department: { id: '$department._id', name: '$department.name', code: '$department.code' },
-          designation: { id: '$designation._id', title: '$designation.title', level: '$designation.level' },
-          manager: { id: '$manager._id', name: '$manager.name', avatar: '$manager.avatar' }
-        },
-        attendanceConfig: 1,
-        assets: 1,
-        documents: 1,
-        // Calculate compliance dynamically in the database
-        compliance: {
-           totalDocuments: { $size: '$documents' },
-           verifiedDocuments: {
-              $size: {
-                 $filter: { 
-                   input: '$documents', 
-                   as: 'doc', 
-                   cond: { $eq: ['$$doc.verification.status', 'verified'] } 
-                 }
-              }
-           }
-        }
-      }
-    }
-  ];
+      // 3. Leave balances
+      mongoose.models['LeaveBalance'] ? mongoose.model('LeaveBalance').find({
+        organizationId: orgId,
+        ...(userId ? { user: userId } : { employeeRef: employee._id })
+      }).lean().catch(() => []) : Promise.resolve([]),
 
-  const result = await Employee.aggregate(pipeline);
-  return result[0] || null;
+      // 4. Assigned company assets
+      mongoose.models['CompanyAsset'] ? mongoose.model('CompanyAsset').find({
+        organizationId: orgId,
+        $or: [
+          { employeeRef: employee._id },
+          ...(userId ? [{ assignedTo: userId }] : [])
+        ],
+        status: 'assigned'
+      }).lean().catch(() => []) : Promise.resolve([]),
+
+      // 5. Compliance documents
+      mongoose.models['EmployeeDocument'] ? mongoose.model('EmployeeDocument').find({
+        organizationId: orgId,
+        isDeleted: false,
+        $or: [
+          { employeeRef: employee._id },
+          ...(userId ? [{ user: userId }] : [])
+        ]
+      }).select('+documentNumber').lean().catch(() => []) : Promise.resolve([])
+    ]);
+
+    return {
+      employee,
+      todayAttendance: todayAttendance || null,
+      recentPunches: recentPunches || [],
+      leaveBalances: leaveBalances || [],
+      assignedAssets: assignedAssets || [],
+      documents: documents || [],
+      isConfidentialViewer: true
+    };
+  }
 }
-}
+
 module.exports = new EmployeeRepository();
-
-// const Employee = require('../../core-hr/models/employee.model');
-// const User = require('../../auth/core/user.model');
-// const ApiFeatures = require('../../core/utils/ApiFeatures');
-
-// class EmployeeRepository {
-  
-//   async getEmployeeList(orgId, queryString) {
-//     const baseFilter = { organizationId: orgId };
-
-//     // 🔥 FIX: Cross-Collection Search
-//     // If there is a search term, find matching Users first, then inject their IDs into the Employee filter.
-//     if (queryString.search) {
-//       const userSearchFeatures = new ApiFeatures(User.find({ organizationId: orgId }), queryString)
-//         .search(['name', 'email', 'phone']);
-      
-//       const matchingUsers = await userSearchFeatures.query.select('_id').lean();
-//       const userIds = matchingUsers.map(u => u._id);
-
-//       // We append this to the query string so ApiFeatures picks it up as an exact filter
-//       queryString.user = userIds.join('|'); 
-//     }
-
-//     // Now use your existing ApiFeatures for the rest of the logic
-//     const features = new ApiFeatures(Employee.find(baseFilter), queryString)
-//       .filter()
-//       .search(['employeeId', 'employmentType']) // Fields directly on Employee schema
-//       .sort()
-//       .limitFields()
-//       .paginate()
-//       .populate('user departmentId designationId'); // Adjust fields as needed
-
-//     return await features.execute();
-//   }
-
-//   async updateById(orgId, id, data, session = null) {
-//     return Employee.findOneAndUpdate(
-//       { _id: id, organizationId: orgId },
-//       { $set: data },
-//       { new: true, runValidators: true, session }
-//     );
-//   }
-// }
-
-// module.exports = new EmployeeRepository();

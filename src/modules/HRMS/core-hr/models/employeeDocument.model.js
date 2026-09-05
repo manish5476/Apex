@@ -16,7 +16,7 @@ const verificationSchema = new mongoose.Schema({
 const employeeDocumentSchema = new mongoose.Schema({
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
   branchId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', index: true },
-  user:           { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  user:           { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true, default: null },
   employeeRef:    { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', index: true },
 
   documentType: {
@@ -27,7 +27,8 @@ const employeeDocumentSchema = new mongoose.Schema({
   },
   documentNumber: { type: String, trim: true, select: false },
   title:          { type: String, required: true, trim: true },
-  assetId:        { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true },
+  fileUrl:        { type: String, trim: true },
+  assetId:        { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
 
   confidentiality: { type: String, enum: ['public', 'internal', 'confidential', 'restricted'], default: 'confidential' },
   verification: verificationSchema,

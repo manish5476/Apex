@@ -62,7 +62,7 @@ exports.getLog = catchAsync(async (req, res, next) => {
 
 exports.getMyLogs = catchAsync(async (req, res) => {
   // Query construction for specific date ranges
-  req.query.user = req.user._id;
+  req.query.user = req.user._id.toString();
   const result = await repo.getList(req.user.organizationId, req.query);
 
   // Today's specific summary (FIX BUG-AL-C06)

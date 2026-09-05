@@ -1,5 +1,8 @@
 const CompanyAsset = require('../../models/companyAsset.model');
 const ApiFeatures = require('../../../../../core/utils/api/ApiFeatures');
+require('../../../../auth/core/user.model');
+require('../../models/employee.model');
+require('../../../../organization/core/branch.model');
 
 class CompanyAssetRepository {
   async getList(orgId, queryString) {
@@ -11,6 +14,7 @@ class CompanyAssetRepository {
       .paginate()
       .populate([
         { path: 'assignedTo', select: 'name email avatar' },
+        { path: 'employeeRef', select: 'employeeId firstName lastName displayName officialEmail' },
         { path: 'branchId', select: 'name' }
       ]);
     return await features.execute();
@@ -19,7 +23,9 @@ class CompanyAssetRepository {
   async getById(orgId, id) {
     return CompanyAsset.findOne({ _id: id, organizationId: orgId })
       .populate('assignedTo', 'name email avatar')
+      .populate('employeeRef', 'employeeId firstName lastName displayName officialEmail')
       .populate('assignmentHistory.user', 'name email')
+      .populate('assignmentHistory.employeeRef', 'employeeId displayName')
       .populate('assignmentHistory.processedBy', 'name');
   }
 

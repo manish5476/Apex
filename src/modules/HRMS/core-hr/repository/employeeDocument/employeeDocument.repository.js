@@ -1,5 +1,7 @@
 const EmployeeDocument = require('../../models/employeeDocument.model');
 const ApiFeatures = require('../../../../../core/utils/api/ApiFeatures');
+require('../../../../auth/core/user.model');
+require('../../models/employee.model');
 
 class EmployeeDocumentRepository {
   async getList(orgId, queryString) {
@@ -9,7 +11,8 @@ class EmployeeDocumentRepository {
       .sort()
       .limitFields()
       .paginate()
-      .populate('user', 'name email avatar');
+      .populate('user', 'name email avatar')
+      .populate('employeeRef', 'employeeId firstName lastName displayName officialEmail');
     return await features.execute();
   }
 
@@ -18,6 +21,7 @@ class EmployeeDocumentRepository {
     return EmployeeDocument.findOne({ _id: id, organizationId: orgId, isDeleted: false })
       .select('+documentNumber') 
       .populate('user', 'name email')
+      .populate('employeeRef', 'employeeId firstName lastName displayName officialEmail')
       .populate('verification.verifiedBy', 'name email');
   }
 

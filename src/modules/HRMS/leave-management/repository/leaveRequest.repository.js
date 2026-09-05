@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const LeaveRequest = require('../models/leaveRequest.model');
 const ApiFeatures = require('../../../../core/utils/api/ApiFeatures');
+require('../../../auth/core/user.model');
+require('../../core-hr/models/employee.model');
+require('../../core-hr/models/department.model');
 
 class LeaveRequestRepository {
 
@@ -11,7 +14,8 @@ class LeaveRequestRepository {
       .sort({ createdAt: -1 })
       .paginate()
       .populate([
-        { path: 'user', select: 'name employeeProfile.employeeId avatar' },
+        { path: 'user', select: 'name email phone avatar' },
+        { path: 'employeeRef', select: 'employeeId firstName lastName displayName officialEmail' },
         { path: 'approvedBy', select: 'name' },
         { path: 'handoverTo', select: 'name' },
         { path: 'departmentId', select: 'name' }
@@ -35,7 +39,8 @@ class LeaveRequestRepository {
 
   async getById(orgId, id, session = null) {
     return LeaveRequest.findOne({ _id: id, organizationId: orgId }).session(session).populate([
-      { path: 'user', select: 'name email phone employeeProfile avatar' },
+      { path: 'user', select: 'name email phone avatar' },
+      { path: 'employeeRef', select: 'employeeId firstName lastName displayName officialEmail phone' },
       { path: 'approvedBy', select: 'name' },
       { path: 'handoverTo', select: 'name email' },
       { path: 'departmentId', select: 'name' },
@@ -59,7 +64,8 @@ class LeaveRequestRepository {
     if (!isGlobalAdmin) query.assignedApprover = approverId;
 
     return LeaveRequest.find(query)
-      .populate('user', 'name employeeProfile.employeeId employeeProfile.departmentId avatar')
+      .populate('user', 'name email avatar')
+      .populate('employeeRef', 'employeeId firstName lastName displayName')
       .populate('departmentId', 'name')
       .sort({ createdAt: -1 });
   }

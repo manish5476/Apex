@@ -1,3 +1,5 @@
+'use strict';
+
 const express = require('express');
 const router = express.Router();
 
@@ -8,16 +10,30 @@ const { PERMISSIONS } = require('../../../../config/permissions');
 
 router.use(authController.protect);
 
-router.get('/by-user/:userId', checkPermission(PERMISSIONS.USER.READ), employeeController.getEmployeeByUser);
+// Self-service endpoint: authenticated user gets their own employee profile (no admin permission needed)
+router.get('/me/profile', employeeController.getMyProfile);
 
+// Query by User ID
+router.get('/by-user/:userId', checkPermission(PERMISSIONS.EMPLOYEE.READ), employeeController.getEmployeeByUser);
+
+// 360 Workspace (supports both /workspace/:id and /:id/workspace)
+router.get('/workspace/:id', checkPermission(PERMISSIONS.EMPLOYEE.READ), employeeController.getEmployeeWorkspace);
+router.get('/:id/workspace', checkPermission(PERMISSIONS.EMPLOYEE.READ), employeeController.getEmployeeWorkspace);
+
+// Provision / Invite login user account for unlinked employee
+router.post('/:id/invite-user', checkPermission(PERMISSIONS.EMPLOYEE.MANAGE), employeeController.inviteUserForEmployee);
+
+// Offboarding / Deactivate
+router.patch('/:id/deactivate', checkPermission(PERMISSIONS.EMPLOYEE.MANAGE), employeeController.deactivateEmployee);
+
+// Root collection routes
 router.route('/')
-  .get(checkPermission(PERMISSIONS.USER.READ), employeeController.getAllEmployees)
-  .post(checkPermission(PERMISSIONS.USER.MANAGE), employeeController.createEmployee);
+  .get(checkPermission(PERMISSIONS.EMPLOYEE.READ), employeeController.getAllEmployees)
+  .post(checkPermission(PERMISSIONS.EMPLOYEE.MANAGE), employeeController.createEmployee);
 
-router.patch('/:id/deactivate', checkPermission(PERMISSIONS.USER.MANAGE), employeeController.deactivateEmployee);
-
+// Individual employee CRUD
 router.route('/:id')
-  .get(checkPermission(PERMISSIONS.USER.READ), employeeController.getEmployee)
-  .patch(checkPermission(PERMISSIONS.USER.MANAGE), employeeController.updateEmployee);
+  .get(checkPermission(PERMISSIONS.EMPLOYEE.READ), employeeController.getEmployee)
+  .patch(checkPermission(PERMISSIONS.EMPLOYEE.MANAGE), employeeController.updateEmployee);
 
 module.exports = router;

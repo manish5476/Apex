@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const leaveRequestSchema = new mongoose.Schema({
   user:           { type: mongoose.Schema.Types.ObjectId, ref: 'User',         required: true, index: true },
+  employeeRef:    { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', index: true },
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
   branchId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
   departmentId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },

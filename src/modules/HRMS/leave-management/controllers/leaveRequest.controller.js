@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const catchAsync = require('../../../../core/utils/api/catchAsync');
 const AppError = require('../../../../core/utils/api/appError');
 const repo = require('../repository/leaveRequest.repository');
@@ -142,17 +143,32 @@ exports.getTeamLeaveCalendar = catchAsync(async (req, res) => {
   const startDate = new Date(targetYear, targetMonth - 1, 1);
   const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
 
-  const teamMembers = await Employee.find({ organizationId: req.user.organizationId, reportingManagerId: req.user._id }).select('user');
-  const teamMemberIds = teamMembers.map(m => m.user);
+  const userRole = req.user.role?.slug || req.user.role;
+  const isOrgWideViewer = req.user.isSuperAdmin || 
+    ['admin', 'super-admin', 'hr', 'hr-manager'].includes(userRole) ||
+    (Array.isArray(req.user.permissions) && req.user.permissions.some(p => ['hrms:all', 'hrms:leave:admin', 'hrms:leave:read'].includes(p)));
 
-  const leaves = await mongoose.model('LeaveRequest').find({
-    user: { $in: teamMemberIds }, organizationId: req.user.organizationId, status: 'approved',
+  let teamMemberIds = [];
+  const leaveQuery = {
+    organizationId: req.user.organizationId,
+    status: 'approved',
     $or: [
       { startDate: { $lte: endDate, $gte: startDate } },
       { endDate: { $lte: endDate, $gte: startDate } },
       { startDate: { $lte: startDate }, endDate: { $gte: endDate } },
     ],
-  }).populate('user', 'name avatar').sort('startDate');
+  };
+
+  if (!isOrgWideViewer) {
+    const teamMembers = await Employee.find({ organizationId: req.user.organizationId, reportingManagerId: req.user._id }).select('user');
+    teamMemberIds = teamMembers.map(m => m.user).concat(req.user._id);
+    leaveQuery.user = { $in: teamMemberIds };
+  } else {
+    const teamMembers = await Employee.find({ organizationId: req.user.organizationId, status: 'active' }).select('user');
+    teamMemberIds = teamMembers.map(m => m.user);
+  }
+
+  const leaves = await LeaveRequest.find(leaveQuery).populate('user', 'name avatar email').sort('startDate');
 
   const calendar = [];
   const current = new Date(startDate);
