@@ -20,21 +20,47 @@ exports.getMyLeaveRequests = catchAsync(async (req, res) => {
 exports.getLeaveBalanceSummary = catchAsync(async (req, res, next) => {
   const financialYear = req.query.financialYear || getFinancialYear();
 
-  const balance = await LeaveBalance.findOne({ user: req.user._id, organizationId: req.user.organizationId, financialYear });
-  if (!balance) return next(new AppError('Leave balance not found for this financial year', 404));
+  let balance = await LeaveBalance.findOne({ user: req.user._id, organizationId: req.user.organizationId, financialYear });
+  if (!balance) {
+    // Fall back to most recent balance record for this user or auto-create standard initial balance
+    balance = await LeaveBalance.findOne({ user: req.user._id, organizationId: req.user.organizationId }).sort({ createdAt: -1 });
+    if (!balance) {
+      balance = await LeaveBalance.create({
+        user: req.user._id,
+        organizationId: req.user.organizationId,
+        financialYear,
+        casualLeave: { total: 12, used: 0 },
+        sickLeave: { total: 10, used: 0 },
+        earnedLeave: { total: 15, used: 0 },
+        unpaidLeave: { used: 0 }
+      });
+    }
+  }
 
   const [upcomingLeaves, recentLeaves] = await Promise.all([
     LeaveRequest.find({ user: req.user._id, organizationId: req.user.organizationId, status: 'approved', startDate: { $gte: new Date() } }).select('leaveType startDate endDate daysCount').sort('startDate').limit(5),
     LeaveRequest.find({ user: req.user._id, organizationId: req.user.organizationId, status: { $in: ['approved', 'rejected', 'cancelled'] } }).select('leaveType startDate endDate status createdAt').sort('-createdAt').limit(5),
   ]);
 
+  const casual = { total: balance.casualLeave?.total || 0, used: balance.casualLeave?.used || 0, available: (balance.casualLeave?.total || 0) - (balance.casualLeave?.used || 0) };
+  const sick = { total: balance.sickLeave?.total || 0, used: balance.sickLeave?.used || 0, available: (balance.sickLeave?.total || 0) - (balance.sickLeave?.used || 0) };
+  const earned = { total: balance.earnedLeave?.total || 0, used: balance.earnedLeave?.used || 0, available: (balance.earnedLeave?.total || 0) - (balance.earnedLeave?.used || 0) };
+  const unpaid = { used: balance.unpaidLeave?.used || 0 };
+
   return success(res, {
-    financialYear,
+    financialYear: balance.financialYear || financialYear,
+    casual,
+    sick,
+    earned,
+    unpaid,
+    casualLeave: casual,
+    sickLeave: sick,
+    earnedLeave: earned,
     balance: {
-      casual: { total: balance.casualLeave?.total || 0, used: balance.casualLeave?.used || 0, available: (balance.casualLeave?.total || 0) - (balance.casualLeave?.used || 0) },
-      sick: { total: balance.sickLeave?.total || 0, used: balance.sickLeave?.used || 0, available: (balance.sickLeave?.total || 0) - (balance.sickLeave?.used || 0) },
-      earned: { total: balance.earnedLeave?.total || 0, used: balance.earnedLeave?.used || 0, available: (balance.earnedLeave?.total || 0) - (balance.earnedLeave?.used || 0) },
-      unpaid: { used: balance.unpaidLeave?.used || 0 },
+      casual,
+      sick,
+      earned,
+      unpaid,
     },
     upcomingLeaves,
     recentLeaves,
