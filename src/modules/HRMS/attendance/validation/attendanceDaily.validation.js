@@ -9,8 +9,8 @@ exports.dateRangeSchema = z.object({
 });
 
 exports.regularizeSchema = z.object({
-  firstIn: z.string().datetime().optional(),
-  lastOut: z.string().datetime().optional(),
+  firstIn: z.string().datetime().nullable().optional(),
+  lastOut: z.string().datetime().nullable().optional(),
   status: z.enum(['present', 'absent', 'half_day', 'late', 'on_leave', 'week_off', 'holiday', 'work_from_home', 'on_duty']).optional(),
   reason: z.string().min(2, 'Please provide a valid regularization reason')
 });
